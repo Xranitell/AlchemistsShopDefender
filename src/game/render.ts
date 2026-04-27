@@ -35,6 +35,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   );
   drawRunePoints(ctx, state);
   drawFirePools(ctx, state);
+  drawReactionPools(ctx, state);
   drawGoldPickups(ctx, state);
   drawEnemies(ctx, state);
   drawTowers(ctx, state);
@@ -119,11 +120,14 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawShadow(ctx, t.pos.x, t.pos.y + 16, 18, 5, 0.4);
 
     // Base sprite
-    const base = t.kind.id === 'mortar' ? s.towerMortar : s.towerNeedler;
+    let base = s.towerNeedler;
+    let barrel = s.towerNeedlerBarrel;
+    if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
+    else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+    else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
     drawSprite(ctx, base, t.pos.x, t.pos.y, SPRITE_SCALE);
 
     // Rotating barrel sprite
-    const barrel = t.kind.id === 'mortar' ? s.towerMortarBarrel : s.towerNeedlerBarrel;
     drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 4, t.aimAngle, SPRITE_SCALE);
 
     // Level pips: small brass dots beneath the base
@@ -181,20 +185,28 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow
     drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
 
-    // Choose sprite — alternate between sprite variants based on entity id
-    // for visual variety, while keeping each enemy kind silhouette distinct.
+    // Choose sprite based on enemy kind.
     let sprite = s.slime;
     let bob = 0;
     if (e.kind.id === 'rat') {
-      // Rat kind shows up as a brown spider OR crystal spider every other id.
       sprite = e.id % 3 === 0 ? s.crystalSpider : s.spider;
-      // Quick small bob (skitter)
       bob = Math.round(Math.sin(state.worldTime * 18 + e.id) * 1);
+    } else if (e.kind.id === 'flying_flask') {
+      sprite = s.flyingFlask;
+      bob = Math.round(Math.sin(state.worldTime * 10 + e.id) * 2);
+    } else if (e.kind.id === 'shaman') {
+      sprite = s.shaman;
+      bob = Math.round(Math.sin(state.worldTime * 3 + e.id) * 1);
+    } else if (e.kind.id === 'boss_rat_king') {
+      sprite = s.ratKing;
+      bob = Math.round(Math.sin(state.worldTime * 2 + e.id) * 1);
     } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
       sprite = s.slimeBoss;
       bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
+    } else if (e.kind.id === 'golem') {
+      sprite = s.golem;
+      bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
     } else {
-      // Regular slime
       bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
     }
 
@@ -230,6 +242,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (e.status.armorBreakTime > 0) {
+      ctx.strokeStyle = `rgba(210, 245, 90, 0.5)`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
     // HP bar
     if (e.hp < e.maxHp) {
@@ -252,23 +273,31 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
   const s = getSprites();
   for (const p of state.projectiles) {
     if (p.kind === 'potion') {
-      // Trail
-      ctx.fillStyle =
-        p.element === 'fire'
-          ? `rgba(255, 140, 58, 0.25)`
-          : `rgba(125, 249, 255, 0.25)`;
+      const trailColors: Record<string, string> = {
+        fire: 'rgba(255, 140, 58, 0.25)',
+        mercury: 'rgba(201, 201, 216, 0.25)',
+        acid: 'rgba(210, 245, 90, 0.25)',
+      };
+      ctx.fillStyle = trailColors[p.element] ?? 'rgba(125, 249, 255, 0.25)';
       ctx.fillRect(
         Math.round(p.pos.x - 3 - p.vel.x * 0.02),
         Math.round(p.pos.y - 3 - p.vel.y * 0.02),
         6,
         6,
       );
-      const sprite = p.element === 'fire' ? s.potionBottleFire : s.potionBottle;
+      let sprite = s.potionBottle;
+      if (p.element === 'fire') sprite = s.potionBottleFire;
+      else if (p.element === 'mercury') sprite = s.potionBottleMercury;
+      else if (p.element === 'acid') sprite = s.potionBottleAcid;
       drawSprite(ctx, sprite, p.pos.x, p.pos.y, SPRITE_SCALE);
     } else {
-      // Tower needle, rotate to velocity direction
       const angle = Math.atan2(p.vel.y, p.vel.x);
-      drawSpriteRotated(ctx, s.needle, p.pos.x, p.pos.y, angle, SPRITE_SCALE);
+      if (p.element === 'mercury' || p.element === 'acid') {
+        const projSprite = p.element === 'acid' ? s.acidDrop : s.potionBottleMercury;
+        drawSpriteRotated(ctx, projSprite, p.pos.x, p.pos.y, angle, SPRITE_SCALE);
+      } else {
+        drawSpriteRotated(ctx, s.needle, p.pos.x, p.pos.y, angle, SPRITE_SCALE);
+      }
     }
   }
 }
@@ -293,6 +322,39 @@ function drawGoldPickups(ctx: CanvasRenderingContext2D, state: GameState): void 
       ctx.fillRect(Math.round(g.pos.x + 5), Math.round(g.pos.y + bob - 5), 1, 1);
       ctx.fillRect(Math.round(g.pos.x + 6), Math.round(g.pos.y + bob - 4), 1, 1);
     }
+  }
+}
+
+function drawReactionPools(ctx: CanvasRenderingContext2D, state: GameState): void {
+  for (const rp of state.reactionPools) {
+    const fadeIn = Math.min(1, (3 - rp.time + 0.3) / 0.3);
+    const fadeOut = Math.min(1, rp.time / 0.5);
+    const alpha = fadeIn * fadeOut * 0.6;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (rp.kind === 'caustic_vapor') {
+      const flicker = 0.5 + 0.5 * Math.sin(state.worldTime * 8);
+      ctx.fillStyle = `rgba(210, 245, 90, ${0.3 + flicker * 0.15})`;
+      ctx.beginPath();
+      ctx.arc(rp.pos.x, rp.pos.y, rp.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(156, 204, 46, ${0.2 + flicker * 0.1})`;
+      ctx.beginPath();
+      ctx.arc(rp.pos.x, rp.pos.y, rp.radius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
+      ctx.fillStyle = `rgba(125, 249, 255, ${0.15 + pulse * 0.1})`;
+      ctx.beginPath();
+      ctx.arc(rp.pos.x, rp.pos.y, rp.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(189, 246, 255, ${0.4 + pulse * 0.2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rp.pos.x, rp.pos.y, rp.radius * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 

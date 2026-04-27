@@ -1,6 +1,7 @@
 import { dist, dist2, norm, scale, sub, type Vec2 } from '../engine/math';
 import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
+import { checkElementalReaction } from './reactions';
 
 export function fireTowerProjectile(
   state: GameState,
@@ -186,6 +187,9 @@ export function applyDamageToEnemy(
   e.hp -= dmg;
   e.hitFlash = 0.12;
 
+  // Check elemental reactions before applying new status (order matters).
+  checkElementalReaction(state, e, element);
+
   // Apply elemental statuses.
   if (element === 'fire') {
     e.status.burnDps = Math.max(e.status.burnDps, 6 * state.modifiers.potionDamageMult);
@@ -196,6 +200,17 @@ export function applyDamageToEnemy(
   } else if (element === 'acid') {
     e.status.armorBreakFactor = Math.min(e.status.armorBreakFactor, 0.5);
     e.status.armorBreakTime = Math.max(e.status.armorBreakTime, 4);
+  }
+
+  // Mercury Coating card: all tower hits apply mild slow.
+  if (state.modifiers.towerMercurySlow && element === 'neutral') {
+    e.status.slowFactor = Math.min(e.status.slowFactor, 0.8);
+    e.status.slowTime = Math.max(e.status.slowTime, 1.5);
+  }
+  // Acid Tips card: all tower hits apply mild armor break.
+  if (state.modifiers.towerAcidBreak && element === 'neutral') {
+    e.status.armorBreakFactor = Math.min(e.status.armorBreakFactor, 0.85);
+    e.status.armorBreakTime = Math.max(e.status.armorBreakTime, 2);
   }
 
   if (e.hp <= 0) {

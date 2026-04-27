@@ -2,6 +2,7 @@ import type { Vec2 } from '../engine/math';
 import { Rng } from '../engine/rng';
 import type { CardDef, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
 import { newStatus } from './types';
+import type { ReactionPool } from './reactions';
 
 export type Phase =
   | 'menu'
@@ -106,8 +107,17 @@ export interface Modifiers {
   towerRangeMult: number;
   towerDamageMult: number;
   towerBonusVsBurning: boolean;
+  towerMercurySlow: boolean;
+  towerAcidBreak: boolean;
+  towerSyncVolley: boolean;
   lootRadiusMult: number;
   overloadType: 'lightning' | 'chronos';
+  thornyShell: boolean;
+  goldDropMult: number;
+  fireRubyCounter: number;
+  mercuryRingActive: boolean;
+  reactionDamageMult: number;
+  aetherEngineActive: boolean;
 }
 
 export const newModifiers = (): Modifiers => ({
@@ -120,8 +130,17 @@ export const newModifiers = (): Modifiers => ({
   towerRangeMult: 1,
   towerDamageMult: 1,
   towerBonusVsBurning: false,
+  towerMercurySlow: false,
+  towerAcidBreak: false,
+  towerSyncVolley: false,
   lootRadiusMult: 1,
   overloadType: 'lightning',
+  thornyShell: false,
+  goldDropMult: 1,
+  fireRubyCounter: 0,
+  mercuryRingActive: false,
+  reactionDamageMult: 1,
+  aetherEngineActive: false,
 });
 
 export interface WaveState {
@@ -156,6 +175,7 @@ export interface GameState {
   firePools: FirePool[];
   goldPickups: GoldPickup[];
   floatingTexts: FloatingText[];
+  reactionPools: ReactionPool[];
   gold: number;
   essence: number;
   totalKills: number;

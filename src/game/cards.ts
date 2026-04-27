@@ -39,6 +39,15 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'crossfire':
       m.towerBonusVsBurning = true;
       break;
+    case 'mercury_coating':
+      m.towerMercurySlow = true;
+      break;
+    case 'acid_tips':
+      m.towerAcidBreak = true;
+      break;
+    case 'synchronized_volley':
+      m.towerSyncVolley = true;
+      break;
     case 'reinforced_frame':
       mq.maxHp += 25;
       mq.hp = Math.min(mq.maxHp, mq.hp + 25);
@@ -48,6 +57,24 @@ export function applyCard(state: GameState, card: CardDef): void {
       break;
     case 'chronos':
       m.overloadType = 'chronos';
+      break;
+    case 'thorny_shell':
+      m.thornyShell = true;
+      break;
+    case 'gold_rush':
+      m.goldDropMult *= 1.3;
+      break;
+    case 'fire_ruby':
+      m.fireRubyCounter = 5;
+      break;
+    case 'mercury_ring':
+      m.mercuryRingActive = true;
+      break;
+    case 'acid_prism':
+      m.reactionDamageMult *= 1.25;
+      break;
+    case 'aether_engine':
+      m.aetherEngineActive = true;
       break;
     default:
       break;

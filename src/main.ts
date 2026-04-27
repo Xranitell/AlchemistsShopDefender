@@ -6,6 +6,7 @@ import { yandex } from './yandex';
 import { buildInitialState } from './game/world';
 import { updateMannequin } from './game/mannequin';
 import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts } from './game/enemy';
+import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves } from './game/wave';
@@ -95,6 +96,7 @@ function tick(dt: number): void {
     updateProjectiles(state, dt);
     updateEnemies(state, dt);
     updateFirePools(state, dt);
+    updateReactionPools(state, dt);
     updateGoldPickups(state, dt);
     updateFloatingTexts(state, dt);
     tickOverloadEffect(dt);

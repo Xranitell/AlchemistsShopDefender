@@ -27,6 +27,32 @@ export const TOWERS: Record<string, TowerKind> = {
     color: '#ff8c5a',
     desc: 'Медленная AoE-мортира. Хороша против толп.',
   },
+  mercury_sprayer: {
+    id: 'mercury_sprayer',
+    name: 'Ртутный распылитель',
+    cost: 90,
+    damage: 4,
+    range: 200,
+    fireRate: 1.8,
+    projectileSpeed: 420,
+    splashRadius: 45,
+    element: 'mercury',
+    color: '#c9c9d8',
+    desc: 'Конус замедления. Контролирует проход.',
+  },
+  acid_injector: {
+    id: 'acid_injector',
+    name: 'Кислотный инжектор',
+    cost: 100,
+    damage: 8,
+    range: 240,
+    fireRate: 1.2,
+    projectileSpeed: 480,
+    splashRadius: 0,
+    element: 'acid',
+    color: '#d2f55a',
+    desc: 'Снимает броню одиночной цели. Для элиты и боссов.',
+  },
 };
 
 export const TOWER_UPGRADE_COST = 70;

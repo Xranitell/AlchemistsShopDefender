@@ -84,8 +84,39 @@ export class TowerShop {
       el.appendChild(cancel);
     }
 
+    // Mannequin repair (always available)
+    this.appendRepairButton(el);
+
     this.root.appendChild(el);
     this.el = el;
+  }
+
+  private appendRepairButton(el: HTMLDivElement): void {
+    if (!this.state) return;
+    const m = this.state.mannequin;
+    if (m.hp >= m.maxHp) return;
+    const repairCost = 30;
+    const repairAmount = Math.round(m.maxHp * 0.3);
+    const btn = document.createElement('button');
+    const left = document.createElement('span');
+    left.textContent = `Починить (+${repairAmount} HP)`;
+    const right = document.createElement('span');
+    right.className = 'cost';
+    right.textContent = `${repairCost} зол.`;
+    btn.appendChild(left);
+    btn.appendChild(right);
+    btn.disabled = this.state.gold < repairCost;
+    btn.addEventListener('click', () => {
+      if (!this.state) return;
+      if (this.state.gold < repairCost) return;
+      this.state.gold -= repairCost;
+      this.state.mannequin.hp = Math.min(
+        this.state.mannequin.maxHp,
+        this.state.mannequin.hp + repairAmount,
+      );
+      this.close();
+    });
+    el.appendChild(btn);
   }
 
   close(): void {

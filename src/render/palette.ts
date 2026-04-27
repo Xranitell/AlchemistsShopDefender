@@ -100,6 +100,8 @@ export const COLORS = {
   ratB: '#5a3a1f',
   ratC: '#3a1f10',
   ratEye: '#ff5a5a',
+  ratFur: '#c5a36a',
+  ratFurLight: '#e0c892',
 
   // Mini-boss (kept for legacy)
   bossCrown: '#e8c98c',
