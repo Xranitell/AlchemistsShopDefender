@@ -1,15 +1,30 @@
 import type { GameState } from './state';
-import { TOWERS } from '../data/towers';
 import { getActiveEffect } from './overload';
+import { getSprites } from '../render/sprites';
+import { drawSprite, drawSpriteRotated } from '../render/sprite';
+import { drawActiveDoor, getRoomBackdrop } from '../render/room';
+import {
+  drawFirePool,
+  drawPixelFloatingText,
+  drawReticle,
+  drawShadow,
+  drawZigzagBolt,
+} from '../render/effects';
+import { COLORS } from '../render/palette';
+
+const SPRITE_SCALE = 2;
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
+  ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, width, height);
 
-  drawArenaBackground(ctx, state);
-  drawEntrances(ctx, state);
-  drawFirePools(ctx, state);
+  // Pre-baked floor + walls + decor.
+  ctx.drawImage(getRoomBackdrop(width, height), 0, 0);
+
+  drawDoorOverlays(ctx, state);
   drawRunePoints(ctx, state);
+  drawFirePools(ctx, state);
   drawGoldPickups(ctx, state);
   drawEnemies(ctx, state);
   drawTowers(ctx, state);
@@ -20,263 +35,280 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawFloatingTexts(ctx, state);
 }
 
-function drawArenaBackground(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const { width, height, center } = state.arena;
-  const grad = ctx.createRadialGradient(center.x, center.y, 60, center.x, center.y, 540);
-  grad.addColorStop(0, '#1f1936');
-  grad.addColorStop(1, '#0d0a14');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
-
-  // Concentric arena rings.
-  ctx.strokeStyle = 'rgba(125, 249, 255, 0.06)';
-  ctx.lineWidth = 1;
-  for (let r = 80; r < 360; r += 40) {
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-
-function drawEntrances(ctx: CanvasRenderingContext2D, state: GameState): void {
+function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const { width, height } = state.arena;
   for (const e of state.entrances) {
-    const radius = 22;
-    if (e.active) {
-      const pulse = 0.4 + 0.6 * Math.abs(Math.sin(state.worldTime * 4));
-      ctx.fillStyle = `rgba(255, 106, 61, ${0.22 * pulse})`;
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, radius * 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ff6a3d';
-      ctx.lineWidth = 2;
-    } else {
-      ctx.strokeStyle = 'rgba(125, 249, 255, 0.18)';
-      ctx.lineWidth = 1;
-    }
-    ctx.beginPath();
-    ctx.arc(e.pos.x, e.pos.y, radius, 0, Math.PI * 2);
-    ctx.stroke();
+    if (!e.active) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 4);
+    drawActiveDoor(ctx, e.pos.x, e.pos.y, pulse, width, height);
   }
 }
 
 function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const rp of state.runePoints) {
-    if (!rp.active && rp.towerId === null) {
-      ctx.strokeStyle = 'rgba(154, 147, 179, 0.3)';
-      ctx.fillStyle = 'rgba(154, 147, 179, 0.08)';
-    } else if (rp.towerId !== null) {
-      ctx.strokeStyle = 'rgba(125, 249, 255, 0.45)';
-      ctx.fillStyle = 'rgba(125, 249, 255, 0.10)';
-    } else {
-      ctx.strokeStyle = '#7df9ff';
-      ctx.fillStyle = 'rgba(125, 249, 255, 0.16)';
-    }
-    ctx.lineWidth = 2;
+    if (rp.towerId !== null) continue; // tower will be drawn over the rune
+    const isActive = rp.active;
+    const isSelected = state.activeRunePoint === rp.id;
+
+    // Chalk pentagram glyph: a soft circle + 5-point star.
+    ctx.save();
+    ctx.translate(rp.pos.x, rp.pos.y);
+
+    const baseAlpha = isActive ? 0.55 : 0.18;
+    ctx.strokeStyle = isActive ? COLORS.aetherB : COLORS.stoneHi;
+    ctx.fillStyle = isActive
+      ? `rgba(125, 249, 255, ${0.10 + 0.06 * Math.sin(state.worldTime * 3)})`
+      : 'rgba(160, 160, 180, 0.05)';
+    ctx.globalAlpha = baseAlpha;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(rp.pos.x, rp.pos.y, 18, 0, Math.PI * 2);
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Star
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
+      const x = Math.cos(a) * 14;
+      const y = Math.sin(a) * 14;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
 
-    // Hint at active rune point ring (selectable).
-    if (state.activeRunePoint === rp.id) {
-      ctx.strokeStyle = '#ffd166';
-      ctx.lineWidth = 3;
+    ctx.globalAlpha = 1;
+    if (isSelected) {
+      ctx.strokeStyle = COLORS.brassHi;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(rp.pos.x, rp.pos.y, 26, 0, Math.PI * 2);
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
       ctx.stroke();
     }
+    ctx.restore();
   }
 }
 
 function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const s = getSprites();
   for (const t of state.towers) {
-    // Range circle on hover (simple: when active rune is the tower's rune).
+    // Range indicator when shop is open on this rune
     if (state.activeRunePoint === t.runePointId) {
-      ctx.strokeStyle = 'rgba(125, 249, 255, 0.18)';
+      ctx.save();
+      ctx.strokeStyle = `rgba(125, 249, 255, 0.18)`;
+      ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(t.pos.x, t.pos.y, t.kind.range * state.modifiers.towerRangeMult, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // Body
-    ctx.fillStyle = TOWERS[t.kind.id]!.color;
-    ctx.strokeStyle = '#0d0a14';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(t.pos.x, t.pos.y, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // Barrel.
-    const len = 18;
-    ctx.strokeStyle = '#e8e3f0';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(t.pos.x, t.pos.y);
-    ctx.lineTo(t.pos.x + Math.cos(t.aimAngle) * len, t.pos.y + Math.sin(t.aimAngle) * len);
-    ctx.stroke();
-    // Level pips.
-    for (let i = 0; i < t.level; i++) {
-      ctx.fillStyle = '#ffd166';
-      ctx.beginPath();
-      ctx.arc(t.pos.x - 10 + i * 8, t.pos.y + 22, 2.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Drop shadow under base.
+    drawShadow(ctx, t.pos.x, t.pos.y + 16, 18, 5, 0.4);
+
+    // Base sprite
+    const base = t.kind.id === 'mortar' ? s.towerMortar : s.towerNeedler;
+    drawSprite(ctx, base, t.pos.x, t.pos.y, SPRITE_SCALE);
+
+    // Rotating barrel sprite
+    const barrel = t.kind.id === 'mortar' ? s.towerMortarBarrel : s.towerNeedlerBarrel;
+    drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 4, t.aimAngle, SPRITE_SCALE);
+
+    // Level pips: small brass dots beneath the base
+    for (let i = 0; i < t.level; i++) {
+      ctx.fillStyle = COLORS.brassHi;
+      ctx.fillRect(t.pos.x - 8 + i * 6, t.pos.y + 22, 3, 3);
+      ctx.fillStyle = COLORS.brass;
+      ctx.fillRect(t.pos.x - 8 + i * 6, t.pos.y + 25, 3, 1);
     }
   }
 }
 
 function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   const m = state.mannequin;
-  // Body.
-  ctx.fillStyle = m.damageFlash > 0 ? '#ff6a3d' : '#c084fc';
-  ctx.strokeStyle = '#0d0a14';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(m.pos.x, m.pos.y, 22, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
+  const s = getSprites();
 
-  // Eye glow.
-  ctx.fillStyle = '#7df9ff';
-  ctx.beginPath();
-  ctx.arc(m.pos.x, m.pos.y - 4, 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Loot magnet ring (subtle).
+  // Soft loot magnet ring
   const lootR = m.baseLootRadius * state.modifiers.lootRadiusMult;
+  ctx.save();
   ctx.strokeStyle = 'rgba(255, 209, 102, 0.10)';
+  ctx.setLineDash([4, 4]);
   ctx.beginPath();
   ctx.arc(m.pos.x, m.pos.y, lootR, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.restore();
+
+  // Drop shadow
+  drawShadow(ctx, m.pos.x, m.pos.y + 18, 20, 6, 0.5);
+
+  // Idle bob
+  const bob = Math.round(Math.sin(state.worldTime * 2.4) * 1);
+
+  if (m.damageFlash > 0) {
+    // Tint by drawing a red overlay on top of the sprite.
+    drawSprite(ctx, s.mannequin, m.pos.x, m.pos.y + bob, SPRITE_SCALE);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
+    ctx.fillStyle = COLORS.fireC;
+    ctx.fillRect(
+      m.pos.x - s.mannequin.anchor.x * SPRITE_SCALE,
+      m.pos.y + bob - s.mannequin.anchor.y * SPRITE_SCALE,
+      s.mannequin.width * SPRITE_SCALE,
+      s.mannequin.height * SPRITE_SCALE,
+    );
+    ctx.restore();
+  } else {
+    drawSprite(ctx, s.mannequin, m.pos.x, m.pos.y + bob, SPRITE_SCALE);
+  }
 }
 
 function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const s = getSprites();
   for (const e of state.enemies) {
-    // Body.
-    if (e.hitFlash > 0) {
-      ctx.fillStyle = '#ffffff';
-    } else {
-      ctx.fillStyle = e.kind.color;
-    }
-    ctx.strokeStyle = e.kind.isBoss ? '#ff6a3d' : '#0d0a14';
-    ctx.lineWidth = e.kind.isBoss ? 3 : 2;
-    ctx.beginPath();
-    ctx.arc(e.pos.x, e.pos.y, e.kind.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    // Drop shadow
+    drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
 
-    // Status overlays.
+    // Choose sprite
+    let sprite = s.slime;
+    let bob = 0;
+    if (e.kind.id === 'rat') {
+      sprite = s.rat;
+      // Rat scurries — quick small horizontal jitter
+      bob = Math.round(Math.sin(state.worldTime * 18 + e.id) * 1);
+    } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
+      sprite = s.slimeBoss;
+      bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
+    } else {
+      // slime
+      bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
+    }
+
+    drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
+
+    // White hit flash
+    if (e.hitFlash > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = Math.min(0.85, e.hitFlash * 4);
+      ctx.fillStyle = COLORS.whiteSoft;
+      ctx.fillRect(
+        e.pos.x - sprite.anchor.x * SPRITE_SCALE,
+        e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
+        sprite.width * SPRITE_SCALE,
+        sprite.height * SPRITE_SCALE,
+      );
+      ctx.restore();
+    }
+
+    // Status overlays
     if (e.status.burnTime > 0) {
-      ctx.strokeStyle = 'rgba(255, 106, 61, 0.6)';
-      ctx.lineWidth = 2;
+      // small pixel flame puff above
+      ctx.fillStyle = COLORS.fireA;
+      ctx.fillRect(e.pos.x - 1, e.pos.y - e.kind.radius - 6, 2, 2);
+      ctx.fillStyle = COLORS.fireB;
+      ctx.fillRect(e.pos.x - 2, e.pos.y - e.kind.radius - 4, 4, 2);
+    }
+    if (e.status.slowTime > 0) {
+      ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (e.status.slowTime > 0) {
-      ctx.strokeStyle = 'rgba(125, 249, 255, 0.6)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 6, 0, Math.PI * 2);
-      ctx.stroke();
-    }
 
-    // HP bar.
+    // HP bar
     if (e.hp < e.maxHp) {
       const w = Math.max(20, e.kind.radius * 2.4);
-      const x = e.pos.x - w / 2;
-      const y = e.pos.y - e.kind.radius - 8;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      const x = Math.round(e.pos.x - w / 2);
+      const y = Math.round(e.pos.y - e.kind.radius - 10);
+      ctx.fillStyle = '#0d0a14';
+      ctx.fillRect(x - 1, y - 1, w + 2, 6);
+      ctx.fillStyle = COLORS.stoneDark;
       ctx.fillRect(x, y, w, 4);
-      ctx.fillStyle = '#ff6a3d';
-      ctx.fillRect(x, y, (e.hp / e.maxHp) * w, 4);
+      ctx.fillStyle = e.kind.isBoss ? COLORS.fireC : COLORS.fireB;
+      ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
+      ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
+      ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
     }
   }
 }
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const s = getSprites();
   for (const p of state.projectiles) {
     if (p.kind === 'potion') {
-      ctx.fillStyle = p.element === 'fire' ? '#ff8c5a' : '#7df9ff';
-      ctx.beginPath();
-      ctx.arc(p.pos.x, p.pos.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(p.pos.x, p.pos.y, 9, 0, Math.PI * 2);
-      ctx.stroke();
+      // Trail
+      ctx.fillStyle =
+        p.element === 'fire'
+          ? `rgba(255, 140, 58, 0.25)`
+          : `rgba(125, 249, 255, 0.25)`;
+      ctx.fillRect(
+        Math.round(p.pos.x - 3 - p.vel.x * 0.02),
+        Math.round(p.pos.y - 3 - p.vel.y * 0.02),
+        6,
+        6,
+      );
+      const sprite = p.element === 'fire' ? s.potionBottleFire : s.potionBottle;
+      drawSprite(ctx, sprite, p.pos.x, p.pos.y, SPRITE_SCALE);
     } else {
-      ctx.fillStyle = '#ffd166';
-      ctx.beginPath();
-      ctx.arc(p.pos.x, p.pos.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // Tower needle, rotate to velocity direction
+      const angle = Math.atan2(p.vel.y, p.vel.x);
+      drawSpriteRotated(ctx, s.needle, p.pos.x, p.pos.y, angle, SPRITE_SCALE);
     }
   }
 }
 
 function drawFirePools(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const fp of state.firePools) {
-    const alpha = Math.min(0.55, fp.time / 3 * 0.55);
-    const grad = ctx.createRadialGradient(fp.pos.x, fp.pos.y, 4, fp.pos.x, fp.pos.y, fp.radius);
-    grad.addColorStop(0, `rgba(255, 184, 107, ${alpha + 0.15})`);
-    grad.addColorStop(1, `rgba(255, 106, 61, 0)`);
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(fp.pos.x, fp.pos.y, fp.radius, 0, Math.PI * 2);
-    ctx.fill();
+    drawFirePool(ctx, fp.pos.x, fp.pos.y, fp.radius, fp.time, state.worldTime);
   }
 }
 
 function drawGoldPickups(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const s = getSprites();
   for (const g of state.goldPickups) {
-    ctx.fillStyle = '#ffd166';
-    ctx.beginPath();
-    ctx.arc(g.pos.x, g.pos.y, 5, 0, Math.PI * 2);
-    ctx.fill();
+    // tiny shadow
+    drawShadow(ctx, g.pos.x, g.pos.y + 4, 5, 1.5, 0.35);
+    // bob
+    const bob = Math.round(Math.sin(state.worldTime * 6 + g.id) * 1);
+    drawSprite(ctx, s.coin, g.pos.x, g.pos.y + bob, 2);
+    // sparkle on alternating frames
+    if (((state.worldTime * 4) | 0) % 3 === g.id % 3) {
+      ctx.fillStyle = COLORS.whiteSoft;
+      ctx.fillRect(Math.round(g.pos.x + 5), Math.round(g.pos.y + bob - 5), 1, 1);
+      ctx.fillRect(Math.round(g.pos.x + 6), Math.round(g.pos.y + bob - 4), 1, 1);
+    }
   }
 }
 
 function drawAimReticle(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') return;
-  ctx.strokeStyle = 'rgba(125, 249, 255, 0.55)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(state.aim.x, state.aim.y, 14, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(state.aim.x - 18, state.aim.y);
-  ctx.lineTo(state.aim.x - 8, state.aim.y);
-  ctx.moveTo(state.aim.x + 8, state.aim.y);
-  ctx.lineTo(state.aim.x + 18, state.aim.y);
-  ctx.moveTo(state.aim.x, state.aim.y - 18);
-  ctx.lineTo(state.aim.x, state.aim.y - 8);
-  ctx.moveTo(state.aim.x, state.aim.y + 8);
-  ctx.lineTo(state.aim.x, state.aim.y + 18);
-  ctx.stroke();
+  drawReticle(ctx, state.aim.x, state.aim.y);
 }
 
 function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
   const eff = getActiveEffect();
   if (!eff) return;
-  const alpha = 1 - eff.age / 0.45;
-  ctx.strokeStyle = `rgba(125, 249, 255, ${alpha})`;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
+  const alpha = Math.max(0, 1 - eff.age / 0.45);
   for (let i = 0; i < eff.lightningChain.length - 1; i++) {
     const a = eff.lightningChain[i]!;
     const b = eff.lightningChain[i + 1]!;
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
+    drawZigzagBolt(ctx, a.x, a.y, b.x, b.y, alpha, eff.age * 100 + i);
   }
-  ctx.stroke();
+  // Flash dot at endpoints
+  ctx.fillStyle = `rgba(189, 246, 255, ${alpha})`;
+  for (const p of eff.lightningChain) {
+    ctx.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 4, 4);
+  }
 }
 
 function drawFloatingTexts(ctx: CanvasRenderingContext2D, state: GameState): void {
-  ctx.font = 'bold 14px Trebuchet MS, sans-serif';
-  ctx.textAlign = 'center';
   for (const t of state.floatingTexts) {
-    ctx.fillStyle = t.color;
-    ctx.globalAlpha = Math.max(0, t.life / 0.8);
-    ctx.fillText(t.text, t.pos.x, t.pos.y);
+    const alpha = Math.max(0, t.life / 0.8);
+    drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha);
   }
-  ctx.globalAlpha = 1;
 }
+
