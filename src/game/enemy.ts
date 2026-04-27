@@ -41,7 +41,7 @@ export function updateEnemies(state: GameState, dt: number): void {
     // Mercury ring: slow enemies near mannequin.
     if (state.modifiers.mercuryRingActive) {
       const dToM = dist(e.pos, m.pos);
-      if (dToM < 120) {
+      if (dToM < 120 * state.metaAuraRadiusMult) {
         e.status.slowFactor = Math.min(e.status.slowFactor, 0.6);
         e.status.slowTime = Math.max(e.status.slowTime, 0.2);
       }

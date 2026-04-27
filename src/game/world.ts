@@ -108,5 +108,6 @@ export function buildInitialState(seed?: number): GameState {
     metaBossShield: 0,
     metaAutoRepairCooldown: 0,
     metaPotionAimBonus: 0,
+    metaAuraRadiusMult: 1,
   };
 }

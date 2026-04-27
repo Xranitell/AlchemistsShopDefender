@@ -206,6 +206,7 @@ export interface GameState {
   metaBossShield: number;
   metaAutoRepairCooldown: number;
   metaPotionAimBonus: number;
+  metaAuraRadiusMult: number;
 }
 
 export function newId(state: GameState): number {

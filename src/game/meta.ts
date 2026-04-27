@@ -51,8 +51,7 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
       state.overload.maxCharge += e.value;
       break;
     case 'auraRadius':
-      // Applies to mercury ring and similar radii
-      state.modifiers.lootRadiusMult *= e.value;
+      state.metaAuraRadiusMult *= e.value;
       break;
     case 'catalystSlot':
       // Reserved for future catalyst system

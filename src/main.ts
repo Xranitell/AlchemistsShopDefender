@@ -106,21 +106,22 @@ function tick(dt: number): void {
     updateFloatingTexts(state, dt);
     tickOverloadEffect(dt);
     updateWave(state, dt);
-    // Auto-repair (meta upgrade)
-    if (state.metaAutoRepairRate > 0) {
-      state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
-      if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
-        state.mannequin.hp = Math.min(
-          state.mannequin.maxHp,
-          state.mannequin.hp + state.metaAutoRepairRate * dt,
-        );
-      }
-    }
   } else if (state.phase === 'preparing') {
     // Allow projectile and gold pickup decay during pause for clean transitions.
     updateProjectiles(state, dt);
     updateGoldPickups(state, dt);
     updateFloatingTexts(state, dt);
+  }
+
+  // Auto-repair ticks in both wave and preparing phases
+  if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0) {
+    state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
+    if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
+      state.mannequin.hp = Math.min(
+        state.mannequin.maxHp,
+        state.mannequin.hp + state.metaAutoRepairRate * dt,
+      );
+    }
   }
 
   // Phase transitions that drive overlays.
