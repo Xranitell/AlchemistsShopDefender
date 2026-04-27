@@ -41,7 +41,7 @@ export function updateEnemies(state: GameState, dt: number): void {
     // Mercury ring: slow enemies near mannequin.
     if (state.modifiers.mercuryRingActive) {
       const dToM = dist(e.pos, m.pos);
-      if (dToM < 120) {
+      if (dToM < 120 * state.metaAuraRadiusMult) {
         e.status.slowFactor = Math.min(e.status.slowFactor, 0.6);
         e.status.slowTime = Math.max(e.status.slowTime, 0.2);
       }
@@ -50,9 +50,11 @@ export function updateEnemies(state: GameState, dt: number): void {
     // Hit mannequin.
     const d = dist(e.pos, m.pos);
     if (d < e.kind.radius + 22) {
-      m.hp -= e.kind.damage;
+      const dmgReduced = Math.max(1, e.kind.damage * (1 - state.metaMannequinArmor));
+      m.hp -= dmgReduced;
+      state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
-      spawnFloatingText(state, `-${Math.round(e.kind.damage)}`, m.pos, '#ff6a3d');
+      spawnFloatingText(state, `-${Math.round(dmgReduced)}`, m.pos, '#ff6a3d');
       // Thorny shell: reflect damage on melee contact.
       if (state.modifiers.thornyShell) {
         e.hp -= 8;
@@ -157,7 +159,7 @@ export function updateFloatingTexts(state: GameState, dt: number): void {
 
 export function addOverload(state: GameState, amount: number): void {
   const o = state.overload;
-  o.charge = Math.min(o.maxCharge, o.charge + amount);
+  o.charge = Math.min(o.maxCharge, o.charge + amount * state.metaOverloadRateMult);
 }
 
 // Convenience used in projectile.ts via importVec2 reference.

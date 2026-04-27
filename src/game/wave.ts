@@ -22,6 +22,14 @@ export function startNextWave(state: GameState): void {
     e.active = used.has(i);
   });
 
+  // Boss shield (meta upgrade)
+  if (def.isBoss && state.metaBossShield > 0) {
+    state.mannequin.hp = Math.min(
+      state.mannequin.maxHp,
+      state.mannequin.hp + state.metaBossShield,
+    );
+  }
+
   state.phase = 'wave';
 }
 

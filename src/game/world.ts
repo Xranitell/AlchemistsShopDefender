@@ -100,5 +100,14 @@ export function buildInitialState(seed?: number): GameState {
     activeRunePoint: null,
     worldTime: 0,
     nextEntityId: 1,
+    metaTowerDiscount: 0,
+    metaTowerStartLevel: 1,
+    metaOverloadRateMult: 1,
+    metaMannequinArmor: 0,
+    metaAutoRepairRate: 0,
+    metaBossShield: 0,
+    metaAutoRepairCooldown: 0,
+    metaPotionAimBonus: 0,
+    metaAuraRadiusMult: 1,
   };
 }

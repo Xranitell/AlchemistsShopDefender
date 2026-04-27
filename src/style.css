@@ -544,3 +544,114 @@ body {
 }
 .tower-shop button:disabled { opacity: 0.4; cursor: not-allowed; }
 .tower-shop .cost { color: var(--gold); }
+
+/* Meta-progression overlay */
+.meta-panel {
+  max-width: 900px;
+  width: min(96vw, 900px);
+}
+.meta-currencies {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+}
+.meta-currency.blue { color: #7df9ff; }
+.meta-currency.ancient { color: #c084fc; }
+.meta-currency strong { color: #ffd166; }
+.meta-stats {
+  color: var(--fg-dim);
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.meta-branches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.meta-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.meta-branch-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.meta-upgrade {
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'VT323', monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color 100ms;
+}
+.meta-upgrade:hover:not(:disabled) { border-color: var(--accent); }
+.meta-upgrade:disabled { opacity: 0.35; cursor: not-allowed; }
+.meta-upgrade.owned {
+  border-color: #5a8c14;
+  opacity: 0.7;
+}
+.meta-upgrade.available {
+  border-color: var(--gold);
+  box-shadow: 0 0 6px rgba(255, 209, 102, 0.15);
+}
+.meta-upgrade.locked { opacity: 0.25; }
+.meta-upgrade-name {
+  font-size: 14px;
+  color: var(--fg);
+}
+.meta-upgrade.owned .meta-upgrade-name::before {
+  content: '+ ';
+  color: #5a8c14;
+}
+.meta-upgrade-desc {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.meta-upgrade-cost {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.meta-upgrade-cost.blue { color: #7df9ff; }
+.meta-upgrade-cost.ancient { color: #c084fc; }
+.meta-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.meta-start {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 16px;
+  background: linear-gradient(180deg, #2a1a14, #14101f);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  padding: 10px 28px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.meta-start:hover { background: #3a2a1a; }
+.meta-reset {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid var(--bg-frame-mid);
+  color: var(--fg-dim);
+  padding: 8px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.meta-reset:hover { border-color: #d24f1c; color: #d24f1c; }

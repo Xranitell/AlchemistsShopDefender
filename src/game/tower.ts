@@ -9,14 +9,17 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   if (!rp || !rp.active || rp.towerId !== null) return false;
   const kind = TOWERS[towerKindId];
   if (!kind) return false;
-  if (state.gold < kind.cost) return false;
-  state.gold -= kind.cost;
+  const isFirst = state.towers.length === 0;
+  const discount = isFirst ? state.metaTowerDiscount : 0;
+  const cost = Math.max(0, kind.cost - discount);
+  if (state.gold < cost) return false;
+  state.gold -= cost;
   const tower: Tower = {
     id: newId(state),
     kind,
     pos: { ...rp.pos },
     runePointId,
-    level: 1,
+    level: isFirst ? state.metaTowerStartLevel : 1,
     fireTimer: 0,
     aimAngle: 0,
     shotCount: 0,
