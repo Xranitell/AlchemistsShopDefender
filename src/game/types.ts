@@ -12,6 +12,8 @@ export interface StatusEffects {
   /** Armor reduction factor (1 = full armor, 0 = no armor). */
   armorBreakFactor: number;
   armorBreakTime: number;
+  /** Aether mark: tracks recent aether damage for reaction triggers. */
+  aetherMarkTime: number;
 }
 
 export const newStatus = (): StatusEffects => ({
@@ -21,6 +23,7 @@ export const newStatus = (): StatusEffects => ({
   slowTime: 0,
   armorBreakFactor: 1,
   armorBreakTime: 0,
+  aetherMarkTime: 0,
 });
 
 export interface EnemyKind {

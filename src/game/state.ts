@@ -116,6 +116,7 @@ export interface Modifiers {
   thornyShell: boolean;
   goldDropMult: number;
   fireRubyCounter: number;
+  fireRubyActive: boolean;
   mercuryRingActive: boolean;
   reactionDamageMult: number;
   aetherEngineActive: boolean;
@@ -139,6 +140,7 @@ export const newModifiers = (): Modifiers => ({
   thornyShell: false,
   goldDropMult: 1,
   fireRubyCounter: 0,
+  fireRubyActive: false,
   mercuryRingActive: false,
   reactionDamageMult: 1,
   aetherEngineActive: false,

@@ -49,9 +49,9 @@ export function throwPotion(
     damage,
     splashRadius: radius,
     targetId: null,
-    element: state.modifiers.potionLeavesFire ? 'fire' : 'neutral',
+    element: (state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive) ? 'fire' : 'neutral',
     life: 1.6,
-    leaveFire: state.modifiers.potionLeavesFire,
+    leaveFire: state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive,
     echoExplosion: state.modifiers.potionEchoExplode && state.rng.chance(0.5),
     bonusFromManualAim: manual,
   });
@@ -200,6 +200,8 @@ export function applyDamageToEnemy(
   } else if (element === 'acid') {
     e.status.armorBreakFactor = Math.min(e.status.armorBreakFactor, 0.5);
     e.status.armorBreakTime = Math.max(e.status.armorBreakTime, 4);
+  } else if (element === 'aether') {
+    e.status.aetherMarkTime = Math.max(e.status.aetherMarkTime, 3);
   }
 
   // Mercury Coating card: all tower hits apply mild slow.
