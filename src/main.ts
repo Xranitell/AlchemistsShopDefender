@@ -12,7 +12,8 @@ import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves } from './game/wave';
 import { applyCard, rollCardOptions } from './game/cards';
 import { tickOverloadEffect } from './game/overload';
-import { render } from './game/render';
+import { render, getRenderCamera } from './game/render';
+import { screenToWorld } from './render/camera';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
@@ -72,14 +73,17 @@ void (async () => {
 
 function tick(dt: number): void {
   state.worldTime += dt;
-  state.aim = { ...input.state.mouse };
+  // Convert screen mouse position to world coordinates through inverse iso transform
+  const cam = getRenderCamera(state.arena.width, state.arena.height);
+  state.aim = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
 
   // Click handling.
   if (interactive && input.state.mousePressedThisFrame) {
-    handleClick(input.state.mouse);
+    const worldClick = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
+    handleClick(worldClick);
   }
 
   // Hotkeys.

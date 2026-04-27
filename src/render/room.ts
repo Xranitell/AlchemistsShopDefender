@@ -83,6 +83,33 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     }
   }
 
+  // Ambient occlusion: darker edges along walls
+  const aoSize = 16;
+  // Top edge AO
+  const aoTop = ctx.createLinearGradient(0, innerY0, 0, innerY0 + aoSize);
+  aoTop.addColorStop(0, 'rgba(0,0,0,0.35)');
+  aoTop.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aoTop;
+  ctx.fillRect(innerX0, innerY0, innerX1 - innerX0, aoSize);
+  // Bottom edge AO
+  const aoBot = ctx.createLinearGradient(0, innerY1 - aoSize, 0, innerY1);
+  aoBot.addColorStop(0, 'rgba(0,0,0,0)');
+  aoBot.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = aoBot;
+  ctx.fillRect(innerX0, innerY1 - aoSize, innerX1 - innerX0, aoSize);
+  // Left edge AO
+  const aoLeft = ctx.createLinearGradient(innerX0, 0, innerX0 + aoSize, 0);
+  aoLeft.addColorStop(0, 'rgba(0,0,0,0.3)');
+  aoLeft.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aoLeft;
+  ctx.fillRect(innerX0, innerY0, aoSize, innerY1 - innerY0);
+  // Right edge AO
+  const aoRight = ctx.createLinearGradient(innerX1 - aoSize, 0, innerX1, 0);
+  aoRight.addColorStop(0, 'rgba(0,0,0,0)');
+  aoRight.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = aoRight;
+  ctx.fillRect(innerX1 - aoSize, innerY0, aoSize, innerY1 - innerY0);
+
   // Soft edge vignette around the playable area to push focus to the centre.
   const grad = ctx.createRadialGradient(
     w / 2,
@@ -95,6 +122,13 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   grad.addColorStop(0, 'rgba(0,0,0,0)');
   grad.addColorStop(1, 'rgba(0,0,0,0.45)');
   ctx.fillStyle = grad;
+  ctx.fillRect(innerX0, innerY0, innerX1 - innerX0, innerY1 - innerY0);
+
+  // Subtle center spotlight
+  const spotlight = ctx.createRadialGradient(w / 2, h / 2 - 30, 0, w / 2, h / 2 - 30, 200);
+  spotlight.addColorStop(0, 'rgba(125, 249, 255, 0.03)');
+  spotlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = spotlight;
   ctx.fillRect(innerX0, innerY0, innerX1 - innerX0, innerY1 - innerY0);
 }
 
