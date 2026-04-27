@@ -55,6 +55,8 @@ export function updateEnemies(state: GameState, dt: number): void {
         life: 12,
       });
       state.totalKills += 1;
+      // Essence: alchemical residue dropped on kill (matches reference HUD).
+      state.essence += e.kind.isBoss ? 5 : 1;
       // Overload charge from kills.
       addOverload(state, e.kind.isBoss ? 25 : 6);
       remove.push(i);

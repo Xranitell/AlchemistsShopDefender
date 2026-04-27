@@ -3,6 +3,7 @@ import { getActiveEffect } from './overload';
 import { getSprites } from '../render/sprites';
 import { drawSprite, drawSpriteRotated } from '../render/sprite';
 import { drawActiveDoor, getRoomBackdrop } from '../render/room';
+import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
 import {
   drawFirePool,
   drawPixelFloatingText,
@@ -23,6 +24,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.drawImage(getRoomBackdrop(width, height), 0, 0);
 
   drawDoorOverlays(ctx, state);
+  // Stone dais beneath the mannequin (cached).
+  ctx.drawImage(getDais(width, height), 0, 0);
+  drawAbilitySlotsOverlay(
+    ctx,
+    state.mannequin.pos.x,
+    state.mannequin.pos.y,
+    state.worldTime,
+    ['cloud', 'flame', 'cloud', 'shield'],
+  );
   drawRunePoints(ctx, state);
   drawFirePools(ctx, state);
   drawGoldPickups(ctx, state);
@@ -171,18 +181,20 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow
     drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
 
-    // Choose sprite
+    // Choose sprite — alternate between sprite variants based on entity id
+    // for visual variety, while keeping each enemy kind silhouette distinct.
     let sprite = s.slime;
     let bob = 0;
     if (e.kind.id === 'rat') {
-      sprite = s.rat;
-      // Rat scurries — quick small horizontal jitter
+      // Rat kind shows up as a brown spider OR crystal spider every other id.
+      sprite = e.id % 3 === 0 ? s.crystalSpider : s.spider;
+      // Quick small bob (skitter)
       bob = Math.round(Math.sin(state.worldTime * 18 + e.id) * 1);
     } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
       sprite = s.slimeBoss;
       bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
     } else {
-      // slime
+      // Regular slime
       bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
     }
 

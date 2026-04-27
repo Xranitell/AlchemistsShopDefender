@@ -1,18 +1,30 @@
 :root {
   color-scheme: dark;
-  /* Alchemy / TBOI dungeon palette */
+  /* Alchemy / dungeon palette + cool stone HUD frames matching reference */
   --bg: #0d0a14;
   --bg-2: #1a1018;
   --bg-frame: #2a1a14;
   --bg-frame-mid: #5a3622;
   --bg-frame-light: #8a5a30;
+  /* Cool stone HUD frame (reference uses dark blue-grey panels) */
+  --hud-frame-dark: #131625;
+  --hud-frame-mid: #1f243a;
+  --hud-frame-light: #3a4361;
+  --hud-frame-rim: #6a7591;
+  --hud-frame-shine: #98a4c4;
   --fg: #f0e3c8;
   --fg-dim: #b89e7a;
   --accent: #ffb86b;
   --accent-cool: #7df9ff;
+  --cool-glow: #7df9ff;
   --gold: #ffd166;
   --hp: #ff6a3d;
+  --hp-rim: #7a2410;
+  --essence: #c084fc;
   --overload: #c084fc;
+  --cta-yellow: #f7c93c;
+  --cta-yellow-hi: #ffe480;
+  --cta-yellow-rim: #8a5a14;
   --common: #c8b692;
   --rare: #6ec1ff;
   --epic: #c084fc;
@@ -68,11 +80,12 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* ============ HUD: top row (WAVE / HP / GOLD+ESSENCE) ============ */
 .hud-top {
   position: absolute;
-  top: 12px;
-  left: 16px;
-  right: 16px;
+  top: 14px;
+  left: 18px;
+  right: 18px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -80,99 +93,260 @@ body {
   pointer-events: none;
 }
 
-.hud-left, .hud-right {
+/* Stone-frame badge: dark blue-grey with light rim and inner shine, looks
+   like the reference's chunky HUD plates. */
+.hud-badge {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background:
-    linear-gradient(180deg, rgba(42, 26, 20, 0.92), rgba(13, 10, 20, 0.85));
-  padding: 10px 14px;
-  border-radius: 4px;
-  border: 2px solid var(--bg-frame-mid);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, var(--hud-frame-mid), var(--hud-frame-dark));
+  border: 2px solid var(--hud-frame-rim);
+  border-radius: 8px;
   box-shadow:
-    inset 0 0 0 1px var(--bg-frame-light),
-    inset 0 0 0 3px var(--bg-frame),
-    0 4px 10px rgba(0, 0, 0, 0.5);
-  min-width: 200px;
+    inset 0 1px 0 var(--hud-frame-shine),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    inset 0 0 0 3px var(--hud-frame-dark),
+    0 6px 14px rgba(0, 0, 0, 0.55);
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 1px;
 }
 
-.hud-row { display: flex; align-items: center; gap: 8px; }
-.hud-label {
-  color: var(--fg-dim);
-  font-size: 14px;
+.hud-tag-label {
+  color: var(--hud-frame-rim);
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 2px;
   font-family: 'Press Start 2P', 'VT323', monospace;
+  text-shadow: 1px 1px 0 var(--hud-frame-dark);
 }
-.hud-value { color: var(--fg); font-weight: bold; font-size: 22px; }
-.hud-gold { color: var(--gold); }
-.hud-wave { color: var(--accent); }
 
-.bar {
+.hud-sprite { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+/* WAVE widget */
+.hud-wave-badge { min-width: 130px; }
+.hud-wave-col { display: flex; flex-direction: column; gap: 3px; }
+.hud-wave-value {
+  font-size: 18px;
+  color: var(--cool-glow);
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 2px 2px 0 var(--hud-frame-dark);
+}
+
+/* HP central widget — bigger, with a chunky red bar and metal frame */
+.hud-hp-badge {
+  flex: 0 1 420px;
+  align-self: center;
+  padding: 8px 14px;
+}
+.hud-hp-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.hud-hp-label { font-size: 9px; }
+.hud-hp-bar {
   position: relative;
   width: 100%;
-  height: 12px;
-  background: var(--bg-frame);
-  border: 1px solid var(--bg-frame-light);
-  border-radius: 2px;
+  height: 18px;
+  background: var(--hud-frame-dark);
+  border: 1px solid #000;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
-.bar > div {
+.hud-hp-fill {
   position: absolute;
   inset: 0;
-  width: 0%;
-  transition: width 120ms linear;
+  width: 100%;
+  background:
+    linear-gradient(180deg, #ff8a5a 0%, var(--hp) 35%, #b53618 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: width 140ms linear;
 }
-.bar.hp > div { background: linear-gradient(90deg, #ff6a3d, #ffb86b); }
-.bar.overload > div { background: linear-gradient(90deg, #7df9ff, #c084fc); }
-
-.hud-bottom {
+.hud-hp-label-num {
   position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #fff;
+  text-shadow:
+    -1px 0 0 #000, 1px 0 0 #000,
+    0 -1px 0 #000, 0 1px 0 #000;
+  letter-spacing: 1px;
+  z-index: 2;
+}
+
+/* Top-right resources stack */
+.hud-right-stack {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hud-resource-badge {
+  min-width: 150px;
+  padding: 8px 12px;
+}
+.hud-resource-inner { display: flex; flex-direction: column; gap: 2px; }
+.hud-resource-value {
+  color: var(--fg);
+  font-size: 18px;
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 2px 2px 0 var(--hud-frame-dark);
+}
+.hud-tag-gold { color: var(--gold); }
+.hud-tag-essence { color: var(--essence); }
+
+/* ============ HUD: bottom row (MAGNET / CTA / ABILITY+OVERLOAD) ============ */
+.hud-bottom-row {
+  position: absolute;
+  bottom: 18px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   pointer-events: none;
-  font-family: 'VT323', monospace;
-  font-size: 18px;
 }
 
-.hud-bottom button {
-  pointer-events: auto;
-  background: linear-gradient(180deg, var(--bg-frame-mid), var(--bg-frame));
-  border: 2px solid var(--bg-frame-light);
+.hud-center-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  text-align: center;
+}
+.hud-hint {
   color: var(--fg);
-  padding: 10px 22px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-weight: bold;
-  letter-spacing: 1px;
   font-family: 'VT323', monospace;
-  font-size: 18px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 209, 102, 0.15),
-    0 3px 0 rgba(0, 0, 0, 0.6);
+  font-size: 16px;
+  text-shadow: 1px 1px 0 #000, 2px 2px 0 rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  max-width: 540px;
+}
+
+/* Big yellow "В БОЙ" CTA — matches the reference start button */
+.hud-skip-btn {
+  pointer-events: auto;
+  background:
+    linear-gradient(180deg, var(--cta-yellow-hi) 0%, var(--cta-yellow) 50%, #c89a14 100%);
+  color: #3a2a05;
+  border: 3px solid #2a1c00;
+  border-radius: 10px;
+  padding: 12px 36px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  letter-spacing: 2px;
   text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -3px 0 rgba(80, 50, 0, 0.55),
+    0 4px 0 #4a3200,
+    0 6px 14px rgba(0, 0, 0, 0.55);
 }
-
-.hud-bottom button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+.hud-skip-btn:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, #fff0a8 0%, var(--cta-yellow-hi) 50%, var(--cta-yellow) 100%);
+  transform: translateY(-1px);
 }
-
-.hud-bottom button:active:not(:disabled) {
+.hud-skip-btn:active:not(:disabled) {
   transform: translateY(2px);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 209, 102, 0.15),
-    0 1px 0 rgba(0, 0, 0, 0.6);
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 rgba(80, 50, 0, 0.55),
+    0 1px 0 #4a3200;
+}
+.hud-skip-btn:disabled { opacity: 0; pointer-events: none; }
+
+/* Round icon buttons (MAGNET / ABILITY / OVERLOAD) */
+.hud-bottom-right { display: flex; gap: 14px; align-items: center; }
+
+.hud-round-btn {
+  pointer-events: auto;
+  position: relative;
+  width: 86px;
+  height: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background:
+    radial-gradient(circle at 30% 25%, var(--hud-frame-shine) 0%, var(--hud-frame-light) 25%, var(--hud-frame-mid) 65%, var(--hud-frame-dark) 100%);
+  border: 3px solid #000;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 0 4px var(--hud-frame-rim),
+    0 6px 14px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  color: var(--fg);
+  padding: 0;
+}
+.hud-round-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.hud-round-btn:active:not(:disabled) { transform: translateY(2px); }
+.hud-round-btn:disabled { opacity: 0.55; cursor: not-allowed; filter: grayscale(0.4); }
+
+.hud-icon-magnet {
+  background:
+    radial-gradient(circle at 30% 25%, #f5d3ff 0%, #c084fc 25%, #7a3acb 65%, #3a1c5e 100%);
+}
+.hud-round-ability {
+  background:
+    radial-gradient(circle at 30% 25%, #ffd9b0 0%, #ff8c3a 25%, #d24f1c 65%, #5a1c08 100%);
+}
+.hud-round-overload {
+  background:
+    radial-gradient(circle at 30% 25%, #fff4a8 0%, #ffd166 25%, #c9941a 65%, #5a3a05 100%);
+}
+.hud-round-overload.ready {
+  animation: hud-pulse-glow 1.2s ease-in-out infinite;
+}
+@keyframes hud-pulse-glow {
+  0%, 100% { box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.6),
+      inset 0 0 0 4px #fff4a8,
+      0 6px 14px rgba(0, 0, 0, 0.6),
+      0 0 0 0 rgba(255, 209, 102, 0.0); }
+  50%      { box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.6),
+      inset 0 0 0 4px #fff4a8,
+      0 6px 22px rgba(0, 0, 0, 0.6),
+      0 0 0 14px rgba(255, 209, 102, 0.18); }
 }
 
-.hud-bottom button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(0.6);
+.hud-icon-label {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+  margin-top: 1px;
+}
+
+/* Overload conic charge ring overlaid on top of OVERLOAD button */
+.hud-overload-charge {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  /* The conic gradient is set inline by hud.ts via background */
 }
 
 #overlay {

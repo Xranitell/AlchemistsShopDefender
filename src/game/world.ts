@@ -87,6 +87,7 @@ export function buildInitialState(seed?: number): GameState {
     goldPickups: [],
     floatingTexts: [],
     gold: 90, // enough for one starter tower
+    essence: 0,
     totalKills: 0,
     modifiers: newModifiers(),
     waveState: buildWaveState(),

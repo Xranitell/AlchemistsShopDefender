@@ -140,7 +140,8 @@ export function drawReticle(
   ctx.restore();
 }
 
-// Floating combat text in pixel style (sharp edges, no AA).
+// Floating combat text in pixel style (sharp edges, no AA). Bold red damage
+// numbers with 2px black outline matching reference.
 export function drawPixelFloatingText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -151,12 +152,24 @@ export function drawPixelFloatingText(
 ): void {
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.font = 'bold 13px "VT323", "Courier New", monospace';
+  ctx.font = 'bold 22px "Press Start 2P", "VT323", "Courier New", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.85)';
-  ctx.fillText(text, x + 1, y + 1);
+  // 2px chunky outline (offset shadow in 8 directions for pixel-style edge)
+  ctx.fillStyle = 'rgba(0,0,0,0.9)';
+  for (const [ox, oy] of [
+    [-2, 0],
+    [2, 0],
+    [0, -2],
+    [0, 2],
+    [-2, -2],
+    [2, -2],
+    [-2, 2],
+    [2, 2],
+  ] as const) {
+    ctx.fillText(text, x + ox, y + oy);
+  }
+  // Inner fill
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
   ctx.restore();

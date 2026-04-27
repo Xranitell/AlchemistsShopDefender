@@ -157,6 +157,7 @@ export interface GameState {
   goldPickups: GoldPickup[];
   floatingTexts: FloatingText[];
   gold: number;
+  essence: number;
   totalKills: number;
   modifiers: Modifiers;
   waveState: WaveState;
