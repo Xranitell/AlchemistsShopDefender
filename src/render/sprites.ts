@@ -1,0 +1,744 @@
+import { bakeSprite, type BakedSprite } from './sprite';
+
+// All sprites are designed in low-resolution pixel grids. Letters reference
+// keys from the shared palette in render/palette.ts.
+//
+// Convention:
+// - "." or " " = transparent
+// - Sprites are baked once at import via lazy initialisation (so unit tests
+//   that import data files don't try to call canvas APIs).
+
+let _baked: Sprites | null = null;
+
+export interface Sprites {
+  mannequin: BakedSprite;
+  slime: BakedSprite;
+  slimeBoss: BakedSprite;
+  rat: BakedSprite;
+  spider: BakedSprite;
+  crystalSpider: BakedSprite;
+  golem: BakedSprite;
+  towerNeedler: BakedSprite;
+  towerNeedlerBarrel: BakedSprite;
+  towerMortar: BakedSprite;
+  towerMortarBarrel: BakedSprite;
+  potionBottle: BakedSprite;
+  potionBottleFire: BakedSprite;
+  needle: BakedSprite;
+  coin: BakedSprite;
+  doorClosed: BakedSprite;
+  doorOpen: BakedSprite;
+  shelf: BakedSprite;
+  cauldron: BakedSprite;
+  candle: BakedSprite;
+  // HUD icons (not drawn on the world canvas; used by hud.ts)
+  iconCoin: BakedSprite;
+  iconEssence: BakedSprite;
+  iconMagnet: BakedSprite;
+  iconLightning: BakedSprite;
+  iconAbility: BakedSprite;
+  iconWavePip: BakedSprite;
+  iconHpHeart: BakedSprite;
+  // Crystal altar (sits atop dais)
+  crystalAltar: BakedSprite;
+}
+
+export function getSprites(): Sprites {
+  if (_baked) return _baked;
+  _baked = bakeAll();
+  return _baked;
+}
+
+function bakeAll(): Sprites {
+  return {
+    // Wooden mech mannequin v2: brass helmet with glowing cyan eyes,
+    // wooden chest panel with X emblem and core, peg legs.
+    mannequin: bakeSprite(
+      {
+        rows: [
+          '.....BBBBB.....',
+          '....BiiiiiB....',
+          '...BiHHHHHHiB..',
+          '..BiHIIIIIIHiB.',
+          '..BiHIcCCcIHiB.',
+          '..BiHIIcccIIHiB',
+          '..BiHIIIIIIIHiB',
+          '..BiiHHHHHHHiB.',
+          '...iiBHHHHHBii.',
+          '..PPiBmMMMmBiPP',
+          '..PWmMmCCCmMmWP',
+          '..PWmmCcXcCmmWP',
+          '..PWmmCCcCCmmWP',
+          '..PWmmmCCCmmmWP',
+          '..PPMMMmmmMMMPP',
+          '...iiBmmwmmBii.',
+          '....bbWWWWWbb..',
+          '...llLmmmmmLll.',
+          '...llLmm.mmLll.',
+          '...llLmm.mmLll.',
+          '..bblLmm.mmLlbb',
+          '..BBLLww.wwLLBB',
+        ],
+        legend: {
+          B: 'brass',
+          i: 'brassDark',
+          H: 'mechMid',
+          I: 'mechDark',
+          c: 'mechCore',
+          C: 'mechCoreHi',
+          P: 'mechIron',
+          W: 'mechIronHi',
+          m: 'mechMid',
+          M: 'mechLight',
+          w: 'mechCore',
+          X: 'brassHi',
+          l: 'mechDark',
+          L: 'mechMid',
+          b: 'brassDark',
+        },
+      },
+      { x: 7.5, y: 21 },
+    ),
+
+    slime: bakeSprite(
+      {
+        rows: [
+          '...gggggg....',
+          '..gAAAAAAg...',
+          '.gAAaaaaAAg..',
+          'gAAaaaaaaAAg.',
+          'gAaaaWwWwaAg.',
+          'gAaaWwwWwaAg.',
+          'gAaaaaaaaaAg.',
+          'gAaaaaaaaAAg.',
+          '.gAAAAAAAAg..',
+          '..gggggggg...',
+          '...sssssss...',
+        ],
+        legend: {
+          g: 'slimeC',
+          A: 'slimeB',
+          a: 'slimeA',
+          W: 'whiteSoft',
+          w: 'slimeShadow',
+          s: 'slimeShadow',
+        },
+      },
+      { x: 6.5, y: 10 },
+    ),
+
+    // Renamed visual: stone golem (mini-boss). Bigger silhouette than slime,
+    // shouldered, glowing crack down chest, yellow eyes.
+    slimeBoss: bakeSprite(
+      {
+        rows: [
+          '......CCCCCC......',
+          '.....CcCCCcC......',
+          '....DDCCCCCCDD....',
+          '...DAAAAAAAAAAD...',
+          '..DAAAabbbabAAAD..',
+          '.DAAabbbbbbbbAAD..',
+          'DAAabAAAAAAAAbAAD.',
+          'DAAabAEEAAEEAbAAD.',
+          'DAAabAAAAAAAAbAAD.',
+          'DAAabAAAKAAAAbAAD.',
+          'DAAabAAKkKAAAbAAD.',
+          'DAAabAAAKAAAAbAAD.',
+          'DAAabAAAAAAAAbAAD.',
+          'DAAabbbbbbbbbAAD..',
+          '.DAAaaaaaaaaaAAD..',
+          '..DDAAAAAAAAADDD..',
+          '....bbbbbbbbb.....',
+        ],
+        legend: {
+          C: 'crystalA',
+          c: 'crystalB',
+          D: 'golemD',
+          A: 'golemA',
+          a: 'golemB',
+          b: 'golemC',
+          E: 'golemEye',
+          K: 'golemCrack',
+          k: 'fireA',
+        },
+      },
+      { x: 8.5, y: 16 },
+    ),
+
+    rat: bakeSprite(
+      {
+        rows: [
+          '.........RR..',
+          '....RRRRRRR..',
+          '...RrrrrrRRR.',
+          '..RrrrrrrrrR.',
+          '..RrrrrEErrR.',
+          '.RrrrrrrrrrR.',
+          'RrTTrTTrTrrR.',
+          '.R..R..R.....',
+        ],
+        legend: {
+          R: 'ratC',
+          r: 'ratB',
+          E: 'ratEye',
+          T: 'ratA',
+        },
+      },
+      { x: 6.5, y: 7 },
+    ),
+
+    // Spider (brown). Round body, 8 legs, two yellow eye specks.
+    spider: bakeSprite(
+      {
+        rows: [
+          'L.L.....L.L',
+          '.LL.....LL.',
+          '..LL...LL..',
+          '...BBBBB...',
+          '..BbbbbbB..',
+          '.BbeBBBebB.',
+          '.BbbbbbbbB.',
+          '..BbbbbbB..',
+          '...BBBBB...',
+          '..L..L..L..',
+          '.L..L.L..L.',
+        ],
+        legend: {
+          L: 'spiderC',
+          B: 'spiderB',
+          b: 'spiderA',
+          e: 'spiderEye',
+        },
+      },
+      { x: 5.5, y: 7 },
+    ),
+
+    // Crystal spider — bigger, with cyan crystals embedded in back.
+    crystalSpider: bakeSprite(
+      {
+        rows: [
+          'L..L.....L..L',
+          '.LL.......LL.',
+          '..LL.....LL..',
+          '...BBBBBBB...',
+          '..BbbCCCbbB..',
+          '.BbbCcKCcbbB.',
+          '.BbecCKCcebB.',
+          '.BbbCcKCcbbB.',
+          '..BbbCCCbbB..',
+          '...BBBBBBB...',
+          '..L..L.L..L..',
+          '.L..L...L..L.',
+        ],
+        legend: {
+          L: 'spiderC',
+          B: 'spiderB',
+          b: 'spiderA',
+          C: 'crystalC',
+          c: 'crystalB',
+          K: 'crystalA',
+          e: 'crystalA',
+        },
+      },
+      { x: 6.5, y: 8 },
+    ),
+
+    // Standalone stone golem visual (used by slimeBoss alias too — keep both
+    // for naming; the renderer picks slimeBoss).
+    golem: bakeSprite(
+      {
+        rows: [
+          '....DDDDDD....',
+          '...DAAAAAAD...',
+          '..DAAaaaaAAD..',
+          '.DAAabbbbAAAD.',
+          'DAAabAEEAbAAD.',
+          'DAAabAAAAbAAD.',
+          'DAAabAKKAbAAD.',
+          'DAAabAkkAbAAD.',
+          'DAAabbbbbbAAD.',
+          'DAAaaaaaaaAAD.',
+          '.DAAAAAAAAAD..',
+          '..DDDDDDDDDD..',
+          '...bbbbbbbb...',
+        ],
+        legend: {
+          D: 'golemD',
+          A: 'golemA',
+          a: 'golemB',
+          b: 'golemC',
+          E: 'golemEye',
+          K: 'golemCrack',
+          k: 'fireA',
+        },
+      },
+      { x: 6.5, y: 12 },
+    ),
+
+    towerNeedler: bakeSprite(
+      {
+        rows: [
+          '...nnnn...',
+          '..nNNNNn..',
+          '.nNNNNNNn.',
+          '.nNNNNNNn.',
+          '.nNNNNNNn.',
+          '..nNNNNn..',
+          '..nWWWWn..',
+          '.WWWWWWWW.',
+          'WdWWWWWWdW',
+          'Wdddddddd.',
+          '.dddddddd.',
+        ],
+        legend: {
+          n: 'mortar',
+          N: 'mercA',
+          W: 'woodLight',
+          d: 'woodDark',
+        },
+      },
+      { x: 4.5, y: 6 },
+    ),
+
+    towerNeedlerBarrel: bakeSprite(
+      {
+        rows: [
+          'KKKkkkk',
+          'KKKkkkk',
+          'KKKkkkk',
+        ],
+        legend: {
+          K: 'mercC',
+          k: 'mercB',
+        },
+      },
+      { x: 0, y: 1.5 },
+    ),
+
+    towerMortar: bakeSprite(
+      {
+        rows: [
+          '.MMMMMMM..',
+          'MMmmmmmmMM',
+          'MmFFFFFFmM',
+          'MmFffFffmM',
+          'MmFffFffmM',
+          'MmFFFFFFmM',
+          'MmmmmmmmmM',
+          'WWWWWWWWWW',
+          'WdWWWWWWdW',
+          'Wddddddddd',
+          '.ddddddddd',
+        ],
+        legend: {
+          M: 'mortar',
+          m: 'stoneDark',
+          F: 'fireC',
+          f: 'fireA',
+          W: 'woodLight',
+          d: 'woodDark',
+        },
+      },
+      { x: 4.5, y: 6 },
+    ),
+
+    towerMortarBarrel: bakeSprite(
+      {
+        rows: [
+          'KKKKkk',
+          'KKKKkk',
+          'KKKKkk',
+          'KKKKkk',
+        ],
+        legend: {
+          K: 'stoneDark',
+          k: 'mortar',
+        },
+      },
+      { x: 0, y: 2 },
+    ),
+
+    potionBottle: bakeSprite(
+      {
+        rows: [
+          '.kk.',
+          '.kk.',
+          '.dd.',
+          'dCCd',
+          'dCCd',
+          'dccd',
+          '.dd.',
+        ],
+        legend: {
+          k: 'mortar',
+          d: 'woodDark',
+          C: 'aetherA',
+          c: 'aetherB',
+        },
+      },
+    ),
+
+    potionBottleFire: bakeSprite(
+      {
+        rows: [
+          '.kk.',
+          '.kk.',
+          '.dd.',
+          'dFFd',
+          'dFfd',
+          'dffd',
+          '.dd.',
+        ],
+        legend: {
+          k: 'mortar',
+          d: 'woodDark',
+          F: 'fireA',
+          f: 'fireB',
+        },
+      },
+    ),
+
+    needle: bakeSprite(
+      {
+        rows: [
+          'WkkkkkkkW',
+        ],
+        legend: {
+          W: 'whiteSoft',
+          k: 'mercA',
+        },
+      },
+    ),
+
+    coin: bakeSprite(
+      {
+        rows: [
+          '.GGG.',
+          'GgGgG',
+          'GGgGG',
+          'GgGgG',
+          '.GGG.',
+        ],
+        legend: {
+          G: 'goldB',
+          g: 'goldA',
+        },
+      },
+    ),
+
+    doorClosed: bakeSprite(
+      {
+        rows: [
+          'WWWWWWW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WdwwwdW',
+          'WWWWWWW',
+        ],
+        legend: {
+          W: 'woodDark',
+          d: 'woodMid',
+          w: 'woodLight',
+        },
+      },
+    ),
+
+    doorOpen: bakeSprite(
+      {
+        rows: [
+          'WRRRRRW',
+          'WRkkkRW',
+          'WRkkkRW',
+          'WRkrkRW',
+          'WRkkkRW',
+          'WRkkkRW',
+          'WRkrkRW',
+          'WRkkkRW',
+          'WRRRRRW',
+        ],
+        legend: {
+          W: 'woodDark',
+          R: 'fireC',
+          r: 'fireA',
+          k: 'mortar',
+        },
+      },
+    ),
+
+    shelf: bakeSprite(
+      {
+        rows: [
+          'WWWWWWWWWWWW',
+          'W..........W',
+          'W.aB.cC.fF.W',
+          'W.aB.cC.fF.W',
+          'WWWWWWWWWWWW',
+          'W..........W',
+          'W.gG.hH.iI..',
+          'W.gG.hH.iI..',
+          'WWWWWWWWWWWW',
+        ],
+        legend: {
+          W: 'woodDark',
+          a: 'aetherC',
+          B: 'aetherB',
+          c: 'fireC',
+          C: 'fireA',
+          f: 'acidC',
+          F: 'acidA',
+          g: 'mercC',
+          G: 'mercA',
+          h: 'fireB',
+          H: 'fireA',
+          i: 'aetherD',
+          I: 'aetherB',
+        },
+      },
+    ),
+
+    cauldron: bakeSprite(
+      {
+        rows: [
+          '.kkkkkkkk.',
+          'kBBBBBBBBk',
+          'kBaaaaaaBk',
+          'kBaWaWaaBk',
+          'kBaaaaaaBk',
+          'kBBBBBBBBk',
+          'WMMMMMMMMW',
+          'WdMMMMMMdW',
+          '.dddddddd.',
+        ],
+        legend: {
+          k: 'mortar',
+          B: 'stoneDark',
+          a: 'aetherB',
+          W: 'whiteSoft',
+          M: 'stoneMid',
+          d: 'woodDark',
+        },
+      },
+    ),
+
+    candle: bakeSprite(
+      {
+        rows: [
+          '.f.',
+          '.F.',
+          'WCW',
+          'WCW',
+          'WCW',
+          'ddd',
+        ],
+        legend: {
+          f: 'fireA',
+          F: 'fireB',
+          W: 'parchment',
+          C: 'whiteSoft',
+          d: 'woodDark',
+        },
+      },
+    ),
+
+    // Crystal altar atop the dais. Hex-cut cyan crystal on a stone base.
+    crystalAltar: bakeSprite(
+      {
+        rows: [
+          '....CC....',
+          '...CcCc...',
+          '..CcKKcC..',
+          '.CcKkkKcC.',
+          'CcKkkkkKcC',
+          'CcKkkkkKcC',
+          '.CcKkkKcC.',
+          '..CcCCcC..',
+          '...CcCc...',
+          '..DDDDDD..',
+          '.DAAAAAAd.',
+          '.DABbbAAd.',
+          '.DAbbbbAd.',
+          '..dddddd..',
+        ],
+        legend: {
+          C: 'crystalA',
+          c: 'crystalB',
+          K: 'crystalC',
+          k: 'crystalD',
+          D: 'daisDark',
+          A: 'daisLight',
+          B: 'daisMid',
+          b: 'daisDark',
+          d: 'daisDark',
+        },
+      },
+      { x: 5, y: 13 },
+    ),
+
+    // ---------------- HUD ICONS ----------------
+    // Gold coin (large, with face/star detail)
+    iconCoin: bakeSprite(
+      {
+        rows: [
+          '..ddDDDDdd..',
+          '.dDGGGGGGDd.',
+          'dDGgGGGGgGDd',
+          'DGgGGggGGgGD',
+          'DGGggGGggGGD',
+          'DGGGGGGGGGGD',
+          'DGGggGGggGGD',
+          'DGgGGggGGgGD',
+          'dDGgGGGGgGDd',
+          '.dDGGGGGGDd.',
+          '..ddDDDDdd..',
+        ],
+        legend: {
+          d: 'goldC',
+          D: 'goldB',
+          G: 'goldA',
+          g: 'brassHi',
+        },
+      },
+      { x: 6, y: 5.5 },
+    ),
+
+    // Essence potion (purple, with cork)
+    iconEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDPpppDD.',
+          'dDPppPpppD',
+          'dDpPpppppD',
+          'dDppppPpPD',
+          'dDPpppPpPD',
+          'dDpppppppD',
+          '.dDppPppDd',
+          '..ddpppdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'essenceD',
+          D: 'essenceC',
+          p: 'essenceB',
+          P: 'essenceA',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Magnet U-shape (purple gem)
+    iconMagnet: bakeSprite(
+      {
+        rows: [
+          'PPP....PPP',
+          'PpP....PpP',
+          'PpP....PpP',
+          'PpP....PpP',
+          'PpP....PpP',
+          'PpP....PpP',
+          'PpPppppPpP',
+          'PppPPPPppP',
+          'PppppppppP',
+          '.PPPPPPPP.',
+        ],
+        legend: {
+          P: 'essenceC',
+          p: 'essenceB',
+        },
+      },
+      { x: 5, y: 5 },
+    ),
+
+    // Lightning bolt (yellow, for Overload)
+    iconLightning: bakeSprite(
+      {
+        rows: [
+          '....fFFf..',
+          '...fFfff..',
+          '..fFFff...',
+          '..fFff....',
+          '.fFFFFff..',
+          '.ffffFf...',
+          '....Fff...',
+          '...Fff....',
+          '..Fff.....',
+          '..ff......',
+        ],
+        legend: {
+          f: 'fireA',
+          F: 'fireB',
+        },
+      },
+      { x: 5, y: 5 },
+    ),
+
+    // Ability star (orange, used as "ability" button)
+    iconAbility: bakeSprite(
+      {
+        rows: [
+          '....FF....',
+          '....fF....',
+          '...fFF....',
+          'F..fFFf..F',
+          'FfffFFFffF',
+          'FFFFFFFFFF',
+          'FfffFFFffF',
+          'F..fFFf..F',
+          '...fFF....',
+          '....fF....',
+        ],
+        legend: {
+          F: 'fireB',
+          f: 'fireA',
+        },
+      },
+      { x: 5, y: 5 },
+    ),
+
+    // Wave pip — small indicator chevron used in WAVE widget
+    iconWavePip: bakeSprite(
+      {
+        rows: [
+          '..C..',
+          '.CcC.',
+          'CcccC',
+          'CcccC',
+          '.CCC.',
+        ],
+        legend: {
+          C: 'crystalA',
+          c: 'crystalB',
+        },
+      },
+      { x: 2.5, y: 2.5 },
+    ),
+
+    // HP heart (small, for HP widget label)
+    iconHpHeart: bakeSprite(
+      {
+        rows: [
+          '.HH.HH.',
+          'HhHhHhH',
+          'HhhhhhH',
+          'HhhhhhH',
+          '.HhhhH.',
+          '..HhH..',
+          '...H...',
+        ],
+        legend: {
+          H: 'hudHpRed',
+          h: 'hudHpRedHi',
+        },
+      },
+      { x: 3.5, y: 3.5 },
+    ),
+  };
+}
