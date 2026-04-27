@@ -43,6 +43,7 @@ export interface Tower {
   level: number; // 1..3
   fireTimer: number;
   aimAngle: number;
+  shotCount: number;
 }
 
 export interface RunePoint {

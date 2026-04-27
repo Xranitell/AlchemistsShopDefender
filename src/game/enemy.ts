@@ -54,6 +54,18 @@ export function updateEnemies(state: GameState, dt: number): void {
       if (state.modifiers.thornyShell) {
         e.hp -= 8;
         e.hitFlash = 0.12;
+        if (e.hp <= 0) {
+          const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * state.modifiers.goldDropMult);
+          state.goldPickups.push({
+            id: newId(state),
+            pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },
+            value,
+            life: 12,
+          });
+          state.totalKills += 1;
+          state.essence += e.kind.isBoss ? 5 : 1;
+          addOverload(state, e.kind.isBoss ? 25 : 6);
+        }
       }
       remove.push(i);
       continue;

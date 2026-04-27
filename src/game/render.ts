@@ -327,7 +327,7 @@ function drawGoldPickups(ctx: CanvasRenderingContext2D, state: GameState): void 
 
 function drawReactionPools(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const rp of state.reactionPools) {
-    const fadeIn = Math.min(1, (3 - rp.time + 0.3) / 0.3);
+    const fadeIn = Math.min(1, (rp.maxTime - rp.time + 0.3) / 0.3);
     const fadeOut = Math.min(1, rp.time / 0.5);
     const alpha = fadeIn * fadeOut * 0.6;
     ctx.save();

@@ -19,6 +19,7 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
     level: 1,
     fireTimer: 0,
     aimAngle: 0,
+    shotCount: 0,
   };
   state.towers.push(tower);
   rp.towerId = tower.id;
@@ -68,6 +69,7 @@ export function updateTowers(state: GameState, dt: number): void {
 
     t.aimAngle = Math.atan2(target.pos.y - t.pos.y, target.pos.x - t.pos.x);
     t.fireTimer = 1 / stats.rate;
+    t.shotCount += 1;
     fireTowerProjectile(
       state,
       t.pos,
@@ -77,5 +79,17 @@ export function updateTowers(state: GameState, dt: number): void {
       t.kind.projectileSpeed,
       t.kind.element,
     );
+    // Synchronized Volley: every 4th shot fires twice.
+    if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
+      fireTowerProjectile(
+        state,
+        t.pos,
+        target,
+        stats.damage,
+        t.kind.splashRadius,
+        t.kind.projectileSpeed,
+        t.kind.element,
+      );
+    }
   }
 }

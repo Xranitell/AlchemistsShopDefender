@@ -48,6 +48,8 @@ function tickFireRuby(state: GameState): void {
   if (state.modifiers.fireRubyCounter <= 0) {
     state.modifiers.potionLeavesFire = true;
     state.modifiers.fireRubyCounter = 5;
+  } else {
+    state.modifiers.potionLeavesFire = false;
   }
 }
 

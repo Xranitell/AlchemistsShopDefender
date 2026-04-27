@@ -10,6 +10,7 @@ export interface ReactionPool {
   pos: Vec2;
   radius: number;
   time: number;
+  maxTime: number;
 }
 
 export function checkElementalReaction(
@@ -53,6 +54,7 @@ function spawnCausticVapor(state: GameState, pos: Vec2): void {
     pos: { ...pos },
     radius: 55,
     time: 3.0,
+    maxTime: 3.0,
   });
 }
 
@@ -63,6 +65,7 @@ function spawnTimeRift(state: GameState, pos: Vec2): void {
     pos: { ...pos },
     radius: 65,
     time: 2.5,
+    maxTime: 2.5,
   });
 }
 
