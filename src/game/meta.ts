@@ -23,10 +23,10 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
       state.modifiers.potionRadiusMult *= e.value;
       break;
     case 'potionEchoChance':
-      state.modifiers.potionEchoExplode = true;
+      state.modifiers.potionEchoExplode = Math.max(state.modifiers.potionEchoExplode, e.value);
       break;
     case 'potionAimBonus':
-      // Stored but applied in projectile.ts manual-aim bonus calculation
+      state.metaPotionAimBonus += e.value;
       break;
     case 'towerDiscount':
       state.metaTowerDiscount = e.value;

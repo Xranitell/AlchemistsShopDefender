@@ -52,7 +52,7 @@ export function throwPotion(
     element: (state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive) ? 'fire' : 'neutral',
     life: 1.6,
     leaveFire: state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive,
-    echoExplosion: state.modifiers.potionEchoExplode && state.rng.chance(0.5),
+    echoExplosion: state.modifiers.potionEchoExplode > 0 && state.rng.chance(state.modifiers.potionEchoExplode),
     bonusFromManualAim: manual,
   });
 }
@@ -165,7 +165,7 @@ export function applyAreaDamage(
     const d = dist(at, e.pos);
     if (d > radius + e.kind.radius) continue;
     let dmg = damage;
-    if (manualBonus && d < radius * 0.4) dmg *= 1.2;
+    if (manualBonus && d < radius * 0.4) dmg *= 1.2 + state.metaPotionAimBonus;
     applyDamageToEnemy(state, e, dmg, element);
   }
 }

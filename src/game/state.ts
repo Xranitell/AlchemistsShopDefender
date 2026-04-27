@@ -102,7 +102,7 @@ export interface Modifiers {
   potionDamageMult: number;
   potionRadiusMult: number;
   potionCooldownMult: number;
-  potionEchoExplode: boolean;
+  potionEchoExplode: number;
   potionLeavesFire: boolean;
   towerFireRateMult: number;
   towerRangeMult: number;
@@ -126,7 +126,7 @@ export const newModifiers = (): Modifiers => ({
   potionDamageMult: 1,
   potionRadiusMult: 1,
   potionCooldownMult: 1,
-  potionEchoExplode: false,
+  potionEchoExplode: 0,
   potionLeavesFire: false,
   towerFireRateMult: 1,
   towerRangeMult: 1,
@@ -205,6 +205,7 @@ export interface GameState {
   metaAutoRepairRate: number;
   metaBossShield: number;
   metaAutoRepairCooldown: number;
+  metaPotionAimBonus: number;
 }
 
 export function newId(state: GameState): number {

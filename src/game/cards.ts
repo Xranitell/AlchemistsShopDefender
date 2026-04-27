@@ -27,7 +27,7 @@ export function applyCard(state: GameState, card: CardDef): void {
       m.potionLeavesFire = true;
       break;
     case 'unstable_flask':
-      m.potionEchoExplode = true;
+      m.potionEchoExplode = Math.max(m.potionEchoExplode, 0.5);
       break;
     case 'oiled_gears':
       m.towerFireRateMult *= 1.15;
