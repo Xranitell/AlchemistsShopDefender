@@ -111,7 +111,7 @@ export class MetaOverlay {
 
     const startBtn = document.createElement('button');
     startBtn.className = 'meta-start';
-    startBtn.textContent = 'Начать забег';
+    startBtn.textContent = 'Назад';
     startBtn.addEventListener('click', opts.onStart);
     actions.appendChild(startBtn);
 
