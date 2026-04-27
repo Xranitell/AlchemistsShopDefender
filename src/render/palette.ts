@@ -129,6 +129,17 @@ export const COLORS = {
   shadow: 'rgba(0, 0, 0, 0.45)',
   shadowSoft: 'rgba(0, 0, 0, 0.25)',
 
+  // Detailed shading extras
+  mechHighlight: '#d4a862',
+  mechShadow: '#2a1810',
+  slimeHighlight: '#c8f090',
+  slimeGlow: '#88d44a',
+  spiderHighlight: '#7a5a4a',
+  golemHighlight: '#b8a8a0',
+  golemShadow: '#1a1512',
+  brassGlow: '#f0d88a',
+  woodHighlight: '#c09050',
+
   // UI
   hudFrameDark: '#1a1c28',
   hudFrameMid: '#2a2c3a',

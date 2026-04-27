@@ -12,6 +12,8 @@ import {
   drawZigzagBolt,
 } from '../render/effects';
 import { COLORS } from '../render/palette';
+import { applyIsoTransform, type Camera } from '../render/camera';
+import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS } from '../render/particles';
 
 const SPRITE_SCALE = 2;
 
@@ -19,6 +21,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, width, height);
+
+  // Dark background fill (visible at corners due to rotation)
+  ctx.fillStyle = '#0a0810';
+  ctx.fillRect(0, 0, width, height);
+
+  // Apply isometric camera
+  const camera: Camera = { cx: width / 2, cy: height / 2, scale: 1.05 };
+  ctx.save();
+  applyIsoTransform(ctx, camera);
 
   // Pre-baked floor + walls + decor.
   ctx.drawImage(getRoomBackdrop(width, height), 0, 0);
@@ -41,9 +52,20 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawTowers(ctx, state);
   drawMannequin(ctx, state);
   drawProjectiles(ctx, state);
+  // Update and draw particle system
+  updateParticles(1 / 60);
+  drawParticles(ctx);
   drawOverloadVfx(ctx);
   drawAimReticle(ctx, state);
   drawFloatingTexts(ctx, state);
+  // Dynamic lighting from fire pools
+  drawDynamicLighting(ctx, state);
+
+  // Restore from isometric transform
+  ctx.restore();
+
+  // Post-process: ambient particles drawn in screen space
+  drawAmbientParticles(ctx, state);
 }
 
 function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -119,6 +141,16 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow under base.
     drawShadow(ctx, t.pos.x, t.pos.y + 16, 18, 5, 0.4);
 
+    // Base glow
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    const baseGlow = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 28);
+    baseGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
+    baseGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
+    ctx.fillStyle = baseGlow;
+    ctx.fillRect(t.pos.x - 28, t.pos.y - 28, 56, 56);
+    ctx.restore();
+
     // Base sprite
     let base = s.towerNeedler;
     let barrel = s.towerNeedlerBarrel;
@@ -129,6 +161,19 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     // Rotating barrel sprite
     drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 4, t.aimAngle, SPRITE_SCALE);
+
+    // Muzzle flash when recently fired
+    if (t.fireTimer < 0.08) {
+      const flashX = t.pos.x + Math.cos(t.aimAngle) * 16;
+      const flashY = t.pos.y - 4 + Math.sin(t.aimAngle) * 16;
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
+                       t.kind.id === 'mercury_sprayer' ? '#7df9ff' :
+                       t.kind.id === 'mortar' ? '#ff8c3a' : '#ffd166';
+      ctx.fillRect(Math.round(flashX - 3), Math.round(flashY - 3), 6, 6);
+      ctx.restore();
+    }
 
     // Level pips: small brass dots beneath the base
     for (let i = 0; i < t.level; i++) {
@@ -156,6 +201,17 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // Drop shadow
   drawShadow(ctx, m.pos.x, m.pos.y + 18, 20, 6, 0.5);
+
+  // Core glow pulse
+  const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
+  ctx.save();
+  ctx.globalAlpha = 0.12 + corePulse * 0.06;
+  const mannGlow = ctx.createRadialGradient(m.pos.x, m.pos.y - 4, 0, m.pos.x, m.pos.y - 4, 40);
+  mannGlow.addColorStop(0, 'rgba(125, 249, 255, 0.4)');
+  mannGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
+  ctx.fillStyle = mannGlow;
+  ctx.fillRect(m.pos.x - 40, m.pos.y - 44, 80, 80);
+  ctx.restore();
 
   // Idle bob
   const bob = Math.round(Math.sin(state.worldTime * 2.4) * 1);
@@ -212,7 +268,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
 
-    // White hit flash
+    // White hit flash + impact particles
     if (e.hitFlash > 0) {
       ctx.save();
       ctx.globalCompositeOperation = 'source-atop';
@@ -225,26 +281,52 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
         sprite.height * SPRITE_SCALE,
       );
       ctx.restore();
+
+      // Spawn impact sparks on fresh hit
+      if (e.hitFlash > 0.18) {
+        spawnBurst(e.pos.x, e.pos.y, 4, ['#fff', '#ffd166', '#ff8c3a'], 60, 0.3, 2, 80);
+      }
     }
 
-    // Status overlays
+    // Status overlays with enhanced VFX
     if (e.status.burnTime > 0) {
-      // small pixel flame puff above
+      // Fire particles rising
       ctx.fillStyle = COLORS.fireA;
       ctx.fillRect(e.pos.x - 1, e.pos.y - e.kind.radius - 6, 2, 2);
       ctx.fillStyle = COLORS.fireB;
       ctx.fillRect(e.pos.x - 2, e.pos.y - e.kind.radius - 4, 4, 2);
+      if (Math.random() < 0.4) {
+        spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
+      }
+      // Under-glow
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      const fireGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 2);
+      fireGlow.addColorStop(0, 'rgba(255, 140, 58, 0.4)');
+      fireGlow.addColorStop(1, 'rgba(255, 140, 58, 0)');
+      ctx.fillStyle = fireGlow;
+      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
+      ctx.restore();
     }
     if (e.status.slowTime > 0) {
       ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
+      // Frost shimmer
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      const frostGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 1.5);
+      frostGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
+      frostGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
+      ctx.fillStyle = frostGlow;
+      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
+      ctx.restore();
     }
     if (e.status.armorBreakTime > 0) {
-      ctx.strokeStyle = `rgba(210, 245, 90, 0.5)`;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(210, 245, 90, 0.6)`;
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
@@ -271,20 +353,33 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
+  const trailColorMap: Record<string, string[]> = {
+    fire: FIRE_COLORS,
+    mercury: MERCURY_COLORS,
+    acid: ACID_COLORS,
+  };
   for (const p of state.projectiles) {
+    // Spawn particle trail behind projectile
+    const trailColors = trailColorMap[p.element] ?? AETHER_COLORS;
+    spawnTrail(p.pos.x, p.pos.y, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
+
     if (p.kind === 'potion') {
-      const trailColors: Record<string, string> = {
-        fire: 'rgba(255, 140, 58, 0.25)',
-        mercury: 'rgba(201, 201, 216, 0.25)',
-        acid: 'rgba(210, 245, 90, 0.25)',
+      // Glowing trail behind potion
+      const trailGlow: Record<string, string> = {
+        fire: 'rgba(255, 140, 58, 0.35)',
+        mercury: 'rgba(201, 201, 216, 0.3)',
+        acid: 'rgba(210, 245, 90, 0.3)',
       };
-      ctx.fillStyle = trailColors[p.element] ?? 'rgba(125, 249, 255, 0.25)';
+      ctx.save();
+      ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
       ctx.fillRect(
-        Math.round(p.pos.x - 3 - p.vel.x * 0.02),
-        Math.round(p.pos.y - 3 - p.vel.y * 0.02),
-        6,
-        6,
+        Math.round(p.pos.x - 4 - p.vel.x * 0.03),
+        Math.round(p.pos.y - 4 - p.vel.y * 0.03),
+        8,
+        8,
       );
+      ctx.restore();
+
       let sprite = s.potionBottle;
       if (p.element === 'fire') sprite = s.potionBottleFire;
       else if (p.element === 'mercury') sprite = s.potionBottleMercury;
@@ -292,6 +387,15 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       drawSprite(ctx, sprite, p.pos.x, p.pos.y, SPRITE_SCALE);
     } else {
       const angle = Math.atan2(p.vel.y, p.vel.x);
+      // Muzzle flash trail
+      ctx.save();
+      const flashColor = p.element === 'acid' ? 'rgba(210, 245, 90, 0.4)' :
+                          p.element === 'mercury' ? 'rgba(189, 246, 255, 0.4)' :
+                          'rgba(255, 209, 102, 0.4)';
+      ctx.fillStyle = flashColor;
+      ctx.fillRect(Math.round(p.pos.x - 2), Math.round(p.pos.y - 2), 4, 4);
+      ctx.restore();
+
       if (p.element === 'mercury' || p.element === 'acid') {
         const projSprite = p.element === 'acid' ? s.acidDrop : s.potionBottleMercury;
         drawSpriteRotated(ctx, projSprite, p.pos.x, p.pos.y, angle, SPRITE_SCALE);
@@ -305,6 +409,15 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
 function drawFirePools(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const fp of state.firePools) {
     drawFirePool(ctx, fp.pos.x, fp.pos.y, fp.radius, fp.time, state.worldTime);
+    // Spark particles from fire
+    if (Math.random() < 0.3) {
+      spawnTrail(
+        fp.pos.x + (Math.random() - 0.5) * fp.radius,
+        fp.pos.y + (Math.random() - 0.5) * fp.radius,
+        FIRE_COLORS[Math.floor(Math.random() * FIRE_COLORS.length)]!,
+        2,
+      );
+    }
   }
 }
 
@@ -358,6 +471,41 @@ function drawReactionPools(ctx: CanvasRenderingContext2D, state: GameState): voi
   }
 }
 
+function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): void {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Mannequin core glow
+  const m = state.mannequin;
+  const coreGlow = ctx.createRadialGradient(m.pos.x, m.pos.y, 0, m.pos.x, m.pos.y, 80);
+  coreGlow.addColorStop(0, 'rgba(125, 249, 255, 0.06)');
+  coreGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
+  ctx.fillStyle = coreGlow;
+  ctx.fillRect(m.pos.x - 80, m.pos.y - 80, 160, 160);
+
+  // Fire pool lights
+  for (const fp of state.firePools) {
+    const fadeOut = Math.max(0, Math.min(1, fp.time / 0.5));
+    const r = fp.radius * 3;
+    const g = ctx.createRadialGradient(fp.pos.x, fp.pos.y, 0, fp.pos.x, fp.pos.y, r);
+    g.addColorStop(0, `rgba(255, 140, 58, ${0.08 * fadeOut})`);
+    g.addColorStop(1, 'rgba(255, 140, 58, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(fp.pos.x - r, fp.pos.y - r, r * 2, r * 2);
+  }
+
+  // Tower range glow (subtle)
+  for (const t of state.towers) {
+    const tg = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 30);
+    tg.addColorStop(0, 'rgba(125, 249, 255, 0.03)');
+    tg.addColorStop(1, 'rgba(125, 249, 255, 0)');
+    ctx.fillStyle = tg;
+    ctx.fillRect(t.pos.x - 30, t.pos.y - 30, 60, 60);
+  }
+
+  ctx.restore();
+}
+
 function drawAimReticle(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') return;
   drawReticle(ctx, state.aim.x, state.aim.y);
@@ -367,15 +515,39 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
   const eff = getActiveEffect();
   if (!eff) return;
   const alpha = Math.max(0, 1 - eff.age / 0.45);
+
+  // Screen flash on initial overload
+  if (eff.age < 0.1) {
+    ctx.save();
+    ctx.globalAlpha = (0.1 - eff.age) * 3;
+    ctx.fillStyle = 'rgba(189, 246, 255, 0.15)';
+    ctx.fillRect(0, 0, 1280, 720);
+    ctx.restore();
+  }
+
   for (let i = 0; i < eff.lightningChain.length - 1; i++) {
     const a = eff.lightningChain[i]!;
     const b = eff.lightningChain[i + 1]!;
     drawZigzagBolt(ctx, a.x, a.y, b.x, b.y, alpha, eff.age * 100 + i);
   }
-  // Flash dot at endpoints
-  ctx.fillStyle = `rgba(189, 246, 255, ${alpha})`;
+  // Flash dot at endpoints with glow
   for (const p of eff.lightningChain) {
-    ctx.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 4, 4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = COLORS.whiteSoft;
+    ctx.fillRect(Math.round(p.x) - 3, Math.round(p.y) - 3, 6, 6);
+    // Point glow
+    ctx.globalAlpha = alpha * 0.3;
+    const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
+    pg.addColorStop(0, 'rgba(189, 246, 255, 0.5)');
+    pg.addColorStop(1, 'rgba(189, 246, 255, 0)');
+    ctx.fillStyle = pg;
+    ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
+    ctx.restore();
+    // Spawn spark particles
+    if (alpha > 0.5 && Math.random() < 0.6) {
+      spawnBurst(p.x, p.y, 2, AETHER_COLORS, 40, 0.2, 1.5, 50);
+    }
   }
 }
 
@@ -384,5 +556,74 @@ function drawFloatingTexts(ctx: CanvasRenderingContext2D, state: GameState): voi
     const alpha = Math.max(0, t.life / 0.8);
     drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha);
   }
+}
+
+// Ambient dust/sparkle particles (drawn in screen space, not affected by iso)
+interface AmbientParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+}
+
+const ambientParticles: AmbientParticle[] = [];
+let lastAmbientSpawn = 0;
+
+function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const { width, height } = state.arena;
+  const t = state.worldTime;
+
+  // Spawn new particles periodically
+  if (t - lastAmbientSpawn > 0.08) {
+    lastAmbientSpawn = t;
+    const colors = ['rgba(125, 249, 255, 0.3)', 'rgba(255, 209, 102, 0.25)', 'rgba(189, 246, 255, 0.2)'];
+    ambientParticles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 8,
+      vy: -Math.random() * 12 - 4,
+      life: 2 + Math.random() * 3,
+      maxLife: 2 + Math.random() * 3,
+      size: 1 + Math.random() * 2,
+      color: colors[Math.floor(Math.random() * colors.length)]!,
+    });
+  }
+
+  // Update and draw
+  for (let i = ambientParticles.length - 1; i >= 0; i--) {
+    const p = ambientParticles[i]!;
+    p.life -= 0.016;
+    if (p.life <= 0) {
+      ambientParticles.splice(i, 1);
+      continue;
+    }
+    p.x += p.vx * 0.016;
+    p.y += p.vy * 0.016;
+    const alpha = Math.min(1, p.life / p.maxLife) * Math.min(1, (p.maxLife - p.life) / 0.5);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    ctx.restore();
+  }
+
+  // Vignette overlay for cinematic depth
+  const grad = ctx.createRadialGradient(
+    width / 2, height / 2, Math.min(width, height) * 0.25,
+    width / 2, height / 2, Math.max(width, height) * 0.7,
+  );
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+}
+
+// Export camera config for input system
+export function getRenderCamera(width: number, height: number): Camera {
+  return { cx: width / 2, cy: height / 2, scale: 1.05 };
 }
 
