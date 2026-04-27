@@ -86,6 +86,7 @@ export function buildInitialState(seed?: number): GameState {
     firePools: [],
     goldPickups: [],
     floatingTexts: [],
+    reactionPools: [],
     gold: 90, // enough for one starter tower
     essence: 0,
     totalKills: 0,

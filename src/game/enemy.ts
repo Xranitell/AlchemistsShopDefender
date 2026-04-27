@@ -35,19 +35,45 @@ export function updateEnemies(state: GameState, dt: number): void {
     e.pos.x += dir.x * speed * dt;
     e.pos.y += dir.y * speed * dt;
 
+    // Mercury ring: slow enemies near mannequin.
+    if (state.modifiers.mercuryRingActive) {
+      const dToM = dist(e.pos, m.pos);
+      if (dToM < 120) {
+        e.status.slowFactor = Math.min(e.status.slowFactor, 0.6);
+        e.status.slowTime = Math.max(e.status.slowTime, 0.2);
+      }
+    }
+
     // Hit mannequin.
     const d = dist(e.pos, m.pos);
     if (d < e.kind.radius + 22) {
       m.hp -= e.kind.damage;
       m.damageFlash = 0.25;
       spawnFloatingText(state, `-${Math.round(e.kind.damage)}`, m.pos, '#ff6a3d');
+      // Thorny shell: reflect damage on melee contact.
+      if (state.modifiers.thornyShell) {
+        e.hp -= 8;
+        e.hitFlash = 0.12;
+        if (e.hp <= 0) {
+          const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * state.modifiers.goldDropMult);
+          state.goldPickups.push({
+            id: newId(state),
+            pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },
+            value,
+            life: 12,
+          });
+          state.totalKills += 1;
+          state.essence += e.kind.isBoss ? 5 : 1;
+          addOverload(state, e.kind.isBoss ? 25 : 6);
+        }
+      }
       remove.push(i);
       continue;
     }
 
     if (e.hp <= 0) {
       // Drop gold pickup.
-      const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]));
+      const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * state.modifiers.goldDropMult);
       state.goldPickups.push({
         id: newId(state),
         pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },

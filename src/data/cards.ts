@@ -60,6 +60,27 @@ export const CARDS: CardDef[] = [
     rarity: 'rare',
     desc: 'Стойки наносят +30% урона горящим врагам.',
   },
+  {
+    id: 'mercury_coating',
+    name: 'Ртутное покрытие',
+    category: 'engineering',
+    rarity: 'rare',
+    desc: 'Все стойки получают +20% замедления целей.',
+  },
+  {
+    id: 'acid_tips',
+    name: 'Кислотные наконечники',
+    category: 'engineering',
+    rarity: 'rare',
+    desc: 'Стойки снимают 15% брони при попадании.',
+  },
+  {
+    id: 'synchronized_volley',
+    name: 'Синхронный залп',
+    category: 'engineering',
+    rarity: 'rare',
+    desc: 'Каждая 4-я атака стойки стреляет дважды.',
+  },
 
   // --- Rituals / Mannequin ---
   {
@@ -82,5 +103,49 @@ export const CARDS: CardDef[] = [
     category: 'ritual',
     rarity: 'epic',
     desc: 'Overload: замедляет всех врагов на 5 сек (заменяет Громоотвод).',
+  },
+  {
+    id: 'thorny_shell',
+    name: 'Шипастая оболочка',
+    category: 'ritual',
+    rarity: 'rare',
+    desc: 'Враги получают 8 урона при касании Манекена.',
+  },
+  {
+    id: 'gold_rush',
+    name: 'Золотая лихорадка',
+    category: 'ritual',
+    rarity: 'common',
+    desc: '+30% золота с врагов.',
+  },
+
+  // --- Catalysts ---
+  {
+    id: 'fire_ruby',
+    name: 'Малый огненный камень',
+    category: 'catalyst',
+    rarity: 'common',
+    desc: 'Каждая 5-я склянка поджигает врагов.',
+  },
+  {
+    id: 'mercury_ring',
+    name: 'Ртутный обруч',
+    category: 'catalyst',
+    rarity: 'rare',
+    desc: 'Враги рядом с Манекеном замедляются на 40%.',
+  },
+  {
+    id: 'acid_prism',
+    name: 'Кислотная призма',
+    category: 'catalyst',
+    rarity: 'rare',
+    desc: 'Стихийные реакции наносят +25% урона.',
+  },
+  {
+    id: 'aether_engine',
+    name: 'Эфирный двигатель',
+    category: 'catalyst',
+    rarity: 'epic',
+    desc: 'Каждая стихийная реакция заряжает +15 Overload.',
   },
 ];

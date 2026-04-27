@@ -22,9 +22,16 @@ export interface Sprites {
   towerNeedlerBarrel: BakedSprite;
   towerMortar: BakedSprite;
   towerMortarBarrel: BakedSprite;
+  towerMercury: BakedSprite;
+  towerMercuryBarrel: BakedSprite;
+  towerAcid: BakedSprite;
+  towerAcidBarrel: BakedSprite;
   potionBottle: BakedSprite;
   potionBottleFire: BakedSprite;
+  potionBottleMercury: BakedSprite;
+  potionBottleAcid: BakedSprite;
   needle: BakedSprite;
+  acidDrop: BakedSprite;
   coin: BakedSprite;
   doorClosed: BakedSprite;
   doorOpen: BakedSprite;
@@ -39,6 +46,9 @@ export interface Sprites {
   iconAbility: BakedSprite;
   iconWavePip: BakedSprite;
   iconHpHeart: BakedSprite;
+  flyingFlask: BakedSprite;
+  shaman: BakedSprite;
+  ratKing: BakedSprite;
   // Crystal altar (sits atop dais)
   crystalAltar: BakedSprite;
 }
@@ -358,6 +368,92 @@ function bakeAll(): Sprites {
       { x: 0, y: 2 },
     ),
 
+    towerMercury: bakeSprite(
+      {
+        rows: [
+          '..MMMMMM..',
+          '.MMmmmmMM.',
+          'MMmBBBBmMM',
+          'MmBbbbbBmM',
+          'MmBbbbbBmM',
+          'MmBBBBBBmM',
+          'MMmmmmmmMM',
+          'WWWWWWWWWW',
+          'WdWWWWWWdW',
+          'Wdddddddd.',
+          '.dddddddd.',
+        ],
+        legend: {
+          M: 'mercC',
+          m: 'mercB',
+          B: 'mercA',
+          b: 'aetherB',
+          W: 'woodLight',
+          d: 'woodDark',
+        },
+      },
+      { x: 4.5, y: 6 },
+    ),
+
+    towerMercuryBarrel: bakeSprite(
+      {
+        rows: [
+          'MMmm',
+          'MMmm',
+          'MMmm',
+          'MMmm',
+          'MMmm',
+        ],
+        legend: {
+          M: 'mercC',
+          m: 'mercB',
+        },
+      },
+      { x: 0, y: 2.5 },
+    ),
+
+    towerAcid: bakeSprite(
+      {
+        rows: [
+          '..AAAAAA..',
+          '.AAaaaaAA.',
+          'AAaGGGGaAA',
+          'AaGggggGaA',
+          'AaGggggGaA',
+          'AaGGGGGGaA',
+          'AAaaaaaAAA',
+          'WWWWWWWWWW',
+          'WdWWWWWWdW',
+          'Wdddddddd.',
+          '.dddddddd.',
+        ],
+        legend: {
+          A: 'acidC',
+          a: 'acidB',
+          G: 'acidA',
+          g: 'fireA',
+          W: 'woodLight',
+          d: 'woodDark',
+        },
+      },
+      { x: 4.5, y: 6 },
+    ),
+
+    towerAcidBarrel: bakeSprite(
+      {
+        rows: [
+          'AAaa',
+          'AAaa',
+          'AAaa',
+        ],
+        legend: {
+          A: 'acidC',
+          a: 'acidB',
+        },
+      },
+      { x: 0, y: 1.5 },
+    ),
+
     potionBottle: bakeSprite(
       {
         rows: [
@@ -398,6 +494,46 @@ function bakeAll(): Sprites {
       },
     ),
 
+    potionBottleMercury: bakeSprite(
+      {
+        rows: [
+          '.kk.',
+          '.kk.',
+          '.dd.',
+          'dMMd',
+          'dMmd',
+          'dmmd',
+          '.dd.',
+        ],
+        legend: {
+          k: 'mortar',
+          d: 'woodDark',
+          M: 'mercC',
+          m: 'mercB',
+        },
+      },
+    ),
+
+    potionBottleAcid: bakeSprite(
+      {
+        rows: [
+          '.kk.',
+          '.kk.',
+          '.dd.',
+          'dAAd',
+          'dAad',
+          'daad',
+          '.dd.',
+        ],
+        legend: {
+          k: 'mortar',
+          d: 'woodDark',
+          A: 'acidA',
+          a: 'acidB',
+        },
+      },
+    ),
+
     needle: bakeSprite(
       {
         rows: [
@@ -406,6 +542,21 @@ function bakeAll(): Sprites {
         legend: {
           W: 'whiteSoft',
           k: 'mercA',
+        },
+      },
+    ),
+
+    acidDrop: bakeSprite(
+      {
+        rows: [
+          '.A.',
+          'AaA',
+          'AaA',
+          '.A.',
+        ],
+        legend: {
+          A: 'acidA',
+          a: 'acidB',
         },
       },
     ),
@@ -542,6 +693,80 @@ function bakeAll(): Sprites {
           d: 'woodDark',
         },
       },
+    ),
+
+    flyingFlask: bakeSprite(
+      {
+        rows: [
+          '...PP...',
+          '...PP...',
+          '..dPPd..',
+          '.dPppPd.',
+          'dPppppPd',
+          'dPpPPpPd',
+          '.dPppPd.',
+          '..dddd..',
+        ],
+        legend: {
+          P: 'essenceA',
+          p: 'essenceB',
+          d: 'essenceC',
+        },
+      },
+      { x: 4, y: 5 },
+    ),
+
+    shaman: bakeSprite(
+      {
+        rows: [
+          '...GGGG...',
+          '..GGggGG..',
+          '.GGgaagGG.',
+          '.GgaEEagG.',
+          '.GgaEEagG.',
+          '.GGgaagGG.',
+          '..GGggGG..',
+          '...GggG...',
+          '..GGggGG..',
+          '..GggggG..',
+          '...GGGG...',
+        ],
+        legend: {
+          G: 'acidC',
+          g: 'acidB',
+          a: 'acidA',
+          E: 'golemEye',
+        },
+      },
+      { x: 5.5, y: 6 },
+    ),
+
+    ratKing: bakeSprite(
+      {
+        rows: [
+          '..GGGG.GGGG..',
+          '.GggRRRRggG..',
+          'GggRRrrRRggG.',
+          'GgRRrrrrrRgG.',
+          'GgRRrRRRrRgG.',
+          'GgRRrEEERrRgG',
+          'GgRRrRRRrRgG.',
+          'GgRRrrrrrRgG.',
+          'GggRRrrRRggG.',
+          '.GggRRRRggG..',
+          '..GggggggG...',
+          '.GG..G..GG...',
+          'GG..GG..GG...',
+        ],
+        legend: {
+          G: 'goldC',
+          g: 'goldB',
+          R: 'ratFur',
+          r: 'ratFurLight',
+          E: 'golemEye',
+        },
+      },
+      { x: 6.5, y: 9 },
     ),
 
     // Crystal altar atop the dais. Hex-cut cyan crystal on a stone base.
