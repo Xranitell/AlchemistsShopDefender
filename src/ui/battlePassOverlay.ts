@@ -55,6 +55,9 @@ export class BattlePassOverlay {
     // Level numbers row
     const numbersRow = document.createElement('div');
     numbersRow.className = 'bp-row bp-numbers';
+    const numLabel = document.createElement('div');
+    numLabel.className = 'bp-track-label';
+    numbersRow.appendChild(numLabel);
 
     // Free track row
     const freeRow = document.createElement('div');
