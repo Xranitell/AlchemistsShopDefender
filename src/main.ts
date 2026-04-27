@@ -17,6 +17,11 @@ import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
 import { MetaOverlay } from './ui/metaOverlay';
+import { MainMenu } from './ui/mainMenu';
+import { DailyRewardsOverlay } from './ui/dailyRewardsOverlay';
+import { BattlePassOverlay, addBpXp } from './ui/battlePassOverlay';
+import { SettingsOverlay } from './ui/settingsOverlay';
+import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, buyMetaUpgrade, calcRunEssence } from './game/meta';
@@ -38,6 +43,10 @@ let state: GameState = buildInitialState();
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);
+const mainMenu = new MainMenu(overlayRoot);
+const dailyOverlay = new DailyRewardsOverlay(overlayRoot);
+const bpOverlay = new BattlePassOverlay(overlayRoot);
+const settingsOverlay = new SettingsOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 
@@ -211,8 +220,10 @@ function awardRunEssence(victory: boolean): void {
   meta.ancientEssence += reward.ancient;
   meta.totalRuns += 1;
   if (wave > meta.bestWave) meta.bestWave = wave;
+  // Battle pass XP
+  const bpXp = wave * BP_XP_PER_WAVE + state.totalKills * BP_XP_PER_KILL + (victory ? BP_XP_VICTORY : 0);
+  addBpXp(meta, bpXp);
   saveMeta(meta);
-  return;
 }
 
 function showVictory(): void {
@@ -253,6 +264,36 @@ function showGameOver(): void {
 
 function showMainMenu(): void {
   meta = loadMeta();
+  mainMenu.show({
+    meta,
+    onBattle: () => {
+      mainMenu.hide();
+      state = buildInitialState();
+      applyMetaUpgrades(state, meta);
+      towerShop.attach(state);
+      startNextWave(state);
+      yandex.gameplayStart();
+    },
+    onLaboratory: () => {
+      mainMenu.hide();
+      showLaboratory();
+    },
+    onBattlePass: () => {
+      mainMenu.hide();
+      showBattlePass();
+    },
+    onDailyRewards: () => {
+      mainMenu.hide();
+      showDailyRewards();
+    },
+    onSettings: () => {
+      mainMenu.hide();
+      showSettings();
+    },
+  });
+}
+
+function showLaboratory(): void {
   metaOverlay.show({
     meta,
     onBuy: (upg) => {
@@ -262,14 +303,46 @@ function showMainMenu(): void {
     },
     onStart: () => {
       metaOverlay.hide();
-      state = buildInitialState();
-      applyMetaUpgrades(state, meta);
-      towerShop.attach(state);
-      startNextWave(state);
-      yandex.gameplayStart();
+      showMainMenu();
     },
     onReset: () => {
       resetMeta();
+      meta = loadMeta();
+      metaOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function showDailyRewards(): void {
+  dailyOverlay.show({
+    meta,
+    onClose: () => {
+      dailyOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function showBattlePass(): void {
+  bpOverlay.show({
+    meta,
+    onClose: () => {
+      bpOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function showSettings(): void {
+  settingsOverlay.show({
+    meta,
+    onClose: () => {
+      settingsOverlay.hide();
+      showMainMenu();
+    },
+    onReset: () => {
+      settingsOverlay.hide();
       meta = loadMeta();
       showMainMenu();
     },

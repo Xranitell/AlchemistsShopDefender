@@ -655,3 +655,344 @@ body {
   cursor: pointer;
 }
 .meta-reset:hover { border-color: #d24f1c; color: #d24f1c; }
+
+/* ============= Main Menu ============= */
+.main-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.mm-top-bar {
+  display: flex;
+  gap: 20px;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+}
+.mm-currency { display: flex; align-items: center; gap: 4px; }
+.mm-currency.gold strong { color: var(--gold); }
+.mm-currency.essence strong { color: #7df9ff; }
+.mm-currency.keys strong { color: #c084fc; }
+.mm-center {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+.mm-left, .mm-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 200px;
+}
+.mm-mid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+.mm-section {
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'VT323', monospace;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 150ms;
+  text-align: left;
+}
+.mm-section:hover { border-color: var(--accent); }
+.mm-section-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.mm-craft-level { font-size: 14px; color: var(--fg-dim); }
+.mm-stats { font-size: 13px; color: var(--fg-dim); display: flex; gap: 12px; margin-top: 4px; }
+.mm-lab-desc { font-size: 13px; color: var(--fg-dim); }
+.mm-lab-btn, .mm-settings-btn, .mm-bp-btn, .mm-daily-btn {
+  all: unset;
+  display: block;
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'VT323', monospace;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 150ms;
+  text-align: left;
+}
+.mm-lab-btn:hover, .mm-settings-btn:hover { border-color: #7df9ff; }
+.mm-bp-btn:hover { border-color: var(--gold); }
+.mm-daily-btn:hover { border-color: #a3e36a; }
+.mm-bp-sub { font-size: 13px; color: var(--fg-dim); }
+.mm-daily-badge {
+  font-size: 12px;
+  color: #a3e36a;
+  margin-top: 4px;
+  animation: dailyPulse 1.5s infinite;
+}
+@keyframes dailyPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.mm-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+}
+.mm-title-top { font-size: 18px; color: var(--fg); letter-spacing: 2px; }
+.mm-title-bottom { font-size: 28px; color: var(--accent); letter-spacing: 3px; margin-top: 4px; }
+.mm-battle-btn {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 20px;
+  background: linear-gradient(180deg, #2a1a14, #14101f);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  padding: 14px 40px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: background 150ms, transform 100ms;
+}
+.mm-battle-btn:hover { background: #3a2a1a; transform: scale(1.05); }
+.mm-battle-btn:active { transform: scale(0.97); }
+
+/* ============= Daily Rewards ============= */
+.daily-panel {
+  max-width: 480px;
+  width: min(94vw, 480px);
+}
+.daily-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.daily-header h2 {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  margin: 0;
+}
+.daily-week {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg-dim);
+}
+.overlay-close {
+  all: unset;
+  font-size: 20px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.overlay-close:hover { color: #d24f1c; }
+.daily-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.daily-cell {
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  padding: 8px 4px;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 60px;
+}
+.daily-cell.today {
+  border-color: #a3e36a;
+  box-shadow: 0 0 8px rgba(163, 227, 106, 0.2);
+}
+.daily-cell.claimed { opacity: 0.5; border-color: #5a8c14; }
+.daily-cell.locked { opacity: 0.3; }
+.daily-day-label { font-size: 10px; color: var(--fg-dim); }
+.daily-icon { font-size: 20px; }
+.daily-reward-label { font-size: 12px; color: var(--fg); }
+.daily-actions { display: flex; justify-content: center; }
+.daily-claim-btn {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  background: linear-gradient(180deg, #1a3a14, #0d140a);
+  border: 2px solid #a3e36a;
+  color: #a3e36a;
+  padding: 10px 32px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.daily-claim-btn:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--bg-frame-mid); color: var(--fg-dim); }
+.daily-claim-btn:not(:disabled):hover { background: #2a4a1a; }
+
+/* ============= Battle Pass ============= */
+.bp-panel {
+  max-width: 720px;
+  width: min(96vw, 720px);
+}
+.bp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.bp-header h2 {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  margin: 0;
+  color: var(--gold);
+}
+.bp-level-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+}
+.bp-xp-bar {
+  position: relative;
+  height: 16px;
+  background: #0d0a14;
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bp-xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #a3e36a);
+  border-radius: 8px;
+  transition: width 300ms;
+}
+.bp-xp-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--fg);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.bp-track {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.bp-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.bp-track-label {
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  width: 80px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--fg-dim);
+}
+.bp-track-label.premium { color: var(--gold); }
+.bp-cell {
+  flex: 1;
+  min-width: 64px;
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 3px;
+  padding: 6px;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  color: var(--fg);
+}
+.bp-num-cell {
+  font-size: 14px;
+  background: transparent;
+  border-color: transparent;
+}
+.bp-num-cell.reached { color: #a3e36a; }
+.bp-num-cell.current { color: var(--gold); font-weight: bold; }
+.bp-cell.claimable {
+  border-color: var(--gold);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(255, 209, 102, 0.15);
+}
+.bp-cell.claimable:hover { background: #2a1a14; }
+.bp-cell.claimed { border-color: #5a8c14; opacity: 0.6; }
+.bp-cell.locked { opacity: 0.3; }
+.bp-cell.empty { opacity: 0.15; }
+.bp-actions { display: flex; justify-content: center; }
+.bp-claim-all {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  background: linear-gradient(180deg, #2a1a14, #14101f);
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  padding: 10px 32px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.bp-claim-all:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--bg-frame-mid); color: var(--fg-dim); }
+.bp-claim-all:not(:disabled):hover { background: #3a2a1a; }
+
+/* ============= Settings ============= */
+.settings-panel {
+  max-width: 400px;
+  width: min(90vw, 400px);
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.settings-header h2 {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  margin: 0;
+}
+.settings-body { display: flex; flex-direction: column; gap: 16px; }
+.settings-section {
+  background: linear-gradient(180deg, #1a1420, #0d0a14);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'VT323', monospace;
+}
+.settings-section h3 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: var(--fg);
+}
+.settings-stat { font-size: 14px; color: var(--fg-dim); margin: 4px 0; }
+.settings-stat strong { color: var(--fg); }
+.settings-reset-btn {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid #d24f1c;
+  color: #d24f1c;
+  padding: 8px 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 100%;
+}
+.settings-reset-btn:hover { background: rgba(210, 79, 28, 0.15); }
