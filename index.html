@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0a14" />
+    <title>Alchemist's Shop Defender</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <!-- Yandex Games SDK. The script is hosted on Yandex CDN and is no-op in
+         non-Yandex environments. Our wrapper falls back to a stub. -->
+    <script src="https://yandex.ru/games/sdk/v2"></script>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas" width="1280" height="720"></canvas>
+      <div id="hud"></div>
+      <div id="overlay"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

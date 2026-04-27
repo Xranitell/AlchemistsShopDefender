@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-tsc/
+*.zip
+.DS_Store
+.idea/
+.vscode/
+*.log
+.cache/
