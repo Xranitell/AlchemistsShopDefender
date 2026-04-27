@@ -24,8 +24,8 @@ export class MainMenu {
     const topBar = document.createElement('div');
     topBar.className = 'mm-top-bar';
     topBar.innerHTML = `
-      <span class="mm-currency gold">🪙 <strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency essence">💎 <strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="mm-currency gold">💎 <strong>${opts.meta.blueEssence}</strong></span>
+      <span class="mm-currency essence">🔮 <strong>${opts.meta.ancientEssence}</strong></span>
       <span class="mm-currency keys">🗝️ <strong>${opts.meta.keys}</strong></span>
     `;
     wrap.appendChild(topBar);
