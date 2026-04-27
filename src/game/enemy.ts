@@ -54,7 +54,7 @@ export function updateEnemies(state: GameState, dt: number): void {
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
-      spawnFloatingText(state, `-${Math.round(e.kind.damage)}`, m.pos, '#ff6a3d');
+      spawnFloatingText(state, `-${Math.round(dmgReduced)}`, m.pos, '#ff6a3d');
       // Thorny shell: reflect damage on melee contact.
       if (state.modifiers.thornyShell) {
         e.hp -= 8;
