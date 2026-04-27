@@ -105,7 +105,7 @@ export class DailyRewardsOverlay {
 function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number }): void {
   switch (reward.type) {
     case 'gold':
-      meta.blueEssence += Math.round(reward.amount / 10);
+      meta.blueEssence += reward.amount;
       break;
     case 'blue_essence':
       meta.blueEssence += reward.amount;
