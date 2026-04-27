@@ -1,0 +1,56 @@
+import { CARDS } from '../data/cards';
+import type { CardDef } from './types';
+import type { GameState } from './state';
+
+export function rollCardOptions(state: GameState): CardDef[] {
+  const taken = new Set(state.cardChoice.pickedIds);
+  const pool = CARDS.filter((c) => !taken.has(c.id));
+  const shuffled = state.rng.shuffle(pool);
+  return shuffled.slice(0, Math.min(3, shuffled.length));
+}
+
+export function applyCard(state: GameState, card: CardDef): void {
+  const m = state.modifiers;
+  const mq = state.mannequin;
+
+  switch (card.id) {
+    case 'heavy_brew':
+      m.potionDamageMult *= 1.25;
+      break;
+    case 'wide_splash':
+      m.potionRadiusMult *= 1.20;
+      break;
+    case 'quick_hands':
+      m.potionCooldownMult *= 0.85;
+      break;
+    case 'flammable_mix':
+      m.potionLeavesFire = true;
+      break;
+    case 'unstable_flask':
+      m.potionEchoExplode = true;
+      break;
+    case 'oiled_gears':
+      m.towerFireRateMult *= 1.15;
+      break;
+    case 'wider_lenses':
+      m.towerRangeMult *= 1.12;
+      m.towerDamageMult *= 1.10;
+      break;
+    case 'crossfire':
+      m.towerBonusVsBurning = true;
+      break;
+    case 'reinforced_frame':
+      mq.maxHp += 25;
+      mq.hp = Math.min(mq.maxHp, mq.hp + 25);
+      break;
+    case 'magnet':
+      m.lootRadiusMult *= 1.5;
+      break;
+    case 'chronos':
+      m.overloadType = 'chronos';
+      break;
+    default:
+      break;
+  }
+  state.cardChoice.pickedIds.push(card.id);
+}
