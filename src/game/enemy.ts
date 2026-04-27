@@ -27,6 +27,9 @@ export function updateEnemies(state: GameState, dt: number): void {
     } else {
       e.status.armorBreakFactor = 1;
     }
+    if (e.status.aetherMarkTime > 0) {
+      e.status.aetherMarkTime -= dt;
+    }
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
     // Move toward mannequin.

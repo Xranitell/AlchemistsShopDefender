@@ -42,9 +42,7 @@ export function checkElementalReaction(
 }
 
 function hasAetherHit(enemy: Enemy): boolean {
-  return enemy.status.burnTime <= 0 &&
-    enemy.status.slowTime <= 0 &&
-    enemy.status.armorBreakTime <= 0;
+  return enemy.status.aetherMarkTime > 0;
 }
 
 function spawnCausticVapor(state: GameState, pos: Vec2): void {
