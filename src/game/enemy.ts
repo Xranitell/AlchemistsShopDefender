@@ -50,7 +50,9 @@ export function updateEnemies(state: GameState, dt: number): void {
     // Hit mannequin.
     const d = dist(e.pos, m.pos);
     if (d < e.kind.radius + 22) {
-      m.hp -= e.kind.damage;
+      const dmgReduced = Math.max(1, e.kind.damage * (1 - state.metaMannequinArmor));
+      m.hp -= dmgReduced;
+      state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
       spawnFloatingText(state, `-${Math.round(e.kind.damage)}`, m.pos, '#ff6a3d');
       // Thorny shell: reflect damage on melee contact.
@@ -157,7 +159,7 @@ export function updateFloatingTexts(state: GameState, dt: number): void {
 
 export function addOverload(state: GameState, amount: number): void {
   const o = state.overload;
-  o.charge = Math.min(o.maxCharge, o.charge + amount);
+  o.charge = Math.min(o.maxCharge, o.charge + amount * state.metaOverloadRateMult);
 }
 
 // Convenience used in projectile.ts via importVec2 reference.

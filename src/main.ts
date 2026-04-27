@@ -16,7 +16,10 @@ import { render } from './game/render';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
+import { MetaOverlay } from './ui/metaOverlay';
 import type { GameState } from './game/state';
+import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
+import { applyMetaUpgrades, buyMetaUpgrade, calcRunEssence } from './game/meta';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -30,9 +33,11 @@ const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
+let meta: MetaSave = loadMeta();
 let state: GameState = buildInitialState();
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
+const metaOverlay = new MetaOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 
@@ -101,6 +106,16 @@ function tick(dt: number): void {
     updateFloatingTexts(state, dt);
     tickOverloadEffect(dt);
     updateWave(state, dt);
+    // Auto-repair (meta upgrade)
+    if (state.metaAutoRepairRate > 0) {
+      state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
+      if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
+        state.mannequin.hp = Math.min(
+          state.mannequin.maxHp,
+          state.mannequin.hp + state.metaAutoRepairRate * dt,
+        );
+      }
+    }
   } else if (state.phase === 'preparing') {
     // Allow projectile and gold pickup decay during pause for clean transitions.
     updateProjectiles(state, dt);
@@ -188,14 +203,28 @@ function showCardOverlay(): void {
   }
 }
 
+function awardRunEssence(victory: boolean): void {
+  const wave = state.waveState.currentIndex + 1;
+  const reward = calcRunEssence(meta, wave, state.totalKills, victory);
+  meta.blueEssence += reward.blue;
+  meta.ancientEssence += reward.ancient;
+  meta.totalRuns += 1;
+  if (wave > meta.bestWave) meta.bestWave = wave;
+  saveMeta(meta);
+  return;
+}
+
 function showVictory(): void {
   yandex.gameplayStop();
+  awardRunEssence(true);
+  const wave = state.waveState.currentIndex + 1;
+  const reward = calcRunEssence(meta, wave, state.totalKills, true);
   overlay.showSimple({
     title: 'Победа!',
-    subtitle: `Ты защитил лавку и прошёл все ${totalWaves()} волн. Убийств: ${state.totalKills}. Золота собрано: ${state.gold}.`,
+    subtitle: `Все ${totalWaves()} волн пройдены! Убийств: ${state.totalKills}. +${reward.blue} СЭ${reward.ancient > 0 ? `, +${reward.ancient} ДЭ` : ''}.`,
     buttons: [
       {
-        label: 'Сыграть ещё раз',
+        label: 'Улучшения',
         primary: true,
         onClick: () => restart(),
       },
@@ -205,12 +234,15 @@ function showVictory(): void {
 
 function showGameOver(): void {
   yandex.gameplayStop();
+  awardRunEssence(false);
+  const wave = state.waveState.currentIndex + 1;
+  const reward = calcRunEssence(meta, wave, state.totalKills, false);
   overlay.showSimple({
     title: 'Манекен пал',
-    subtitle: `Ты дошёл до волны ${state.waveState.currentIndex + 1}. Попробуй другой билд!`,
+    subtitle: `Волна ${wave}. Убийств: ${state.totalKills}. +${reward.blue} СЭ. Улучши манекена и попробуй снова!`,
     buttons: [
       {
-        label: 'Начать заново',
+        label: 'Улучшения',
         primary: true,
         onClick: () => restart(),
       },
@@ -219,27 +251,31 @@ function showGameOver(): void {
 }
 
 function showMainMenu(): void {
-  overlay.showSimple({
-    title: "Alchemist's Shop Defender",
-    subtitle:
-      'Roguelike Tower Defense. Защити лавку, бросай склянки, ставь стойки и собирай билд через карты улучшений. ЛКМ — точный бросок. Q — Overload.',
-    buttons: [
-      {
-        label: 'Начать забег',
-        primary: true,
-        onClick: () => {
-          overlay.hide();
-          startNextWave(state);
-          yandex.gameplayStart();
-        },
-      },
-    ],
+  meta = loadMeta();
+  metaOverlay.show({
+    meta,
+    onBuy: (upg) => {
+      const ok = buyMetaUpgrade(meta, upg);
+      if (ok) saveMeta(meta);
+      return ok;
+    },
+    onStart: () => {
+      metaOverlay.hide();
+      state = buildInitialState();
+      applyMetaUpgrades(state, meta);
+      towerShop.attach(state);
+      startNextWave(state);
+      yandex.gameplayStart();
+    },
+    onReset: () => {
+      resetMeta();
+      meta = loadMeta();
+      showMainMenu();
+    },
   });
 }
 
 function restart(): void {
-  state = buildInitialState();
-  towerShop.attach(state);
   overlay.hide();
   showMainMenu();
 }

@@ -197,6 +197,14 @@ export interface GameState {
   /** Time accumulator (debug + status effects). */
   worldTime: number;
   nextEntityId: number;
+  // Meta-progression fields (applied at run start)
+  metaTowerDiscount: number;
+  metaTowerStartLevel: number;
+  metaOverloadRateMult: number;
+  metaMannequinArmor: number;
+  metaAutoRepairRate: number;
+  metaBossShield: number;
+  metaAutoRepairCooldown: number;
 }
 
 export function newId(state: GameState): number {

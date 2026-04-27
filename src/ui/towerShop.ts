@@ -37,10 +37,13 @@ export class TowerShop {
         left.textContent = kind.name;
         const right = document.createElement('span');
         right.className = 'cost';
-        right.textContent = `${kind.cost} зол.`;
+        const isFirst = this.state.towers.length === 0;
+        const discount = isFirst ? this.state.metaTowerDiscount : 0;
+        const displayCost = Math.max(0, kind.cost - discount);
+        right.textContent = discount > 0 ? `${displayCost} зол. (-${discount})` : `${kind.cost} зол.`;
         btn.appendChild(left);
         btn.appendChild(right);
-        btn.disabled = this.state.gold < kind.cost;
+        btn.disabled = this.state.gold < displayCost;
         btn.addEventListener('click', () => {
           if (!this.state) return;
           const ok = buyTower(this.state, runePointId, kind.id);
