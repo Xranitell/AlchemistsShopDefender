@@ -3,6 +3,7 @@ import type { GameState, Enemy } from './state';
 import { spawnFloatingText } from './state';
 import { throwPotion } from './projectile';
 import { tryActivateOverload } from './overload';
+import { audio } from '../audio/audio';
 
 export function updateMannequin(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -15,6 +16,7 @@ export function updateMannequin(state: GameState, dt: number): void {
     const aim = clampAim(state, state.aim);
     tickFireRuby(state);
     throwPotion(state, aim, /*manual*/ true);
+    audio.playSfx('throwPotion');
     m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult;
     // Face the throw and trigger the mid-throw pose briefly.
     const dx = aim.x - m.pos.x;
@@ -36,6 +38,7 @@ export function updateMannequin(state: GameState, dt: number): void {
       const target = pickFanTarget(state);
       if (target) {
         spawnFanThrow(state, target);
+        audio.playSfx('throwPotion', { detune: 1.1 });
       }
     }
   }

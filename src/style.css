@@ -1916,6 +1916,54 @@ body {
 }
 .settings-reset-btn:hover { background: rgba(210, 79, 28, 0.15); }
 
+/* Volume sliders inside the settings overlay (PR-7) */
+.settings-volume-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.settings-volume-label {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--fg);
+}
+.settings-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent-cool) 0%, var(--bg-frame-mid) 100%);
+  outline: none;
+  cursor: pointer;
+}
+.settings-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #090b13;
+  cursor: pointer;
+}
+.settings-volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #090b13;
+  cursor: pointer;
+}
+.settings-volume-value {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--fg-dim);
+  text-align: right;
+}
+
 /* ============ Main menu illustration ============ */
 .mm-illustration {
   width: min(92%, 500px);

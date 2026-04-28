@@ -3,6 +3,7 @@ import type { Enemy, GameState } from './state';
 import { newId, spawnFloatingText } from './state';
 import type { Element } from './types';
 import { addOverload } from './enemy';
+import { audio } from '../audio/audio';
 
 /** GDD §7.4: a reaction occurring within `RESONANT_RANGE` of any active
  *  resonant rune deals +25% damage. Multipliers stack per rune in range. */
@@ -64,6 +65,7 @@ export function checkElementalReaction(
     spawnPool(state, 'caustic_vapor', enemy.pos, 55, 3.0);
     spawnFloatingText(state, 'Едкий пар!', enemy.pos, '#d2f55a');
     chargeOverloadOnReaction(state, 15);
+    audio.playSfx('reactionAcid');
   }
 
   // Mercury + Aether = Time Rift
@@ -74,6 +76,7 @@ export function checkElementalReaction(
     spawnPool(state, 'time_rift', enemy.pos, 65, 2.5);
     spawnFloatingText(state, 'Временной разлом!', enemy.pos, '#7df9ff');
     chargeOverloadOnReaction(state, 15);
+    audio.playSfx('reactionFreeze');
   }
 
   // Fire + Aether = Spark Cascade — instant chain to up to 3 nearby enemies.
@@ -84,6 +87,7 @@ export function checkElementalReaction(
     triggerSparkCascade(state, enemy);
     spawnFloatingText(state, 'Искровой каскад!', enemy.pos, '#a78bfa');
     chargeOverloadOnReaction(state, 12);
+    audio.playSfx('reactionFire', { detune: 1.2 });
   }
 
   // Acid + Frost = Brittle Frost — strong armor break + freeze pool.
@@ -96,6 +100,7 @@ export function checkElementalReaction(
     enemy.status.armorBreakTime = Math.max(enemy.status.armorBreakTime, 3.5);
     spawnFloatingText(state, 'Хрупкая глазурь!', enemy.pos, '#7dd3fc');
     chargeOverloadOnReaction(state, 8);
+    audio.playSfx('reactionFreeze');
   }
 
   // Mercury + Frost = Glass Shatter — burst damage to slow + chilled enemies.
@@ -106,6 +111,7 @@ export function checkElementalReaction(
     spawnPool(state, 'glass_shatter', enemy.pos, 45, 0.6);
     spawnFloatingText(state, 'Стекло вдребезги!', enemy.pos, '#c0e8ff');
     chargeOverloadOnReaction(state, 8);
+    audio.playSfx('reactionFreeze', { detune: 0.85 });
   }
 
   // Acid + Poison = Mutagen Burst — heavy DoT around target.
@@ -116,6 +122,7 @@ export function checkElementalReaction(
     spawnPool(state, 'mutagen_burst', enemy.pos, 60, 4.0);
     spawnFloatingText(state, 'Мутаген!', enemy.pos, '#9be36b');
     chargeOverloadOnReaction(state, 10);
+    audio.playSfx('reactionAcid', { detune: 0.9 });
   }
 
   // Fire + Frost = Flash Steam — clears chill, deals AoE burn.
@@ -127,6 +134,7 @@ export function checkElementalReaction(
     enemy.status.frostMarkTime = 0;
     spawnFloatingText(state, 'Пар!', enemy.pos, '#f4a261');
     chargeOverloadOnReaction(state, 8);
+    audio.playSfx('reactionFire');
   }
 }
 
