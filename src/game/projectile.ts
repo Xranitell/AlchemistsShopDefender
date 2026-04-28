@@ -253,11 +253,26 @@ export function applyDamageToEnemy(
     return;
   }
 
+  // Ethereal elite: immune while phased out.
+  if (e.elite === 'ethereal' && e.etherealActive) {
+    spawnFloatingText(state, t('floating.ethereal'), e.pos, '#8338ec');
+    return;
+  }
+
   // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
   const baseArmor = e.kind.armor
     + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
   const armor = baseArmor * e.status.armorBreakFactor;
   let dmg = Math.max(1, rawDamage * (1 - armor));
+
+  // Armored elite: ×0.6 physical damage, aether unaffected.
+  if (e.elite === 'armored' && element !== 'aether') {
+    dmg *= 0.6;
+  }
+  // Fire-resistant elite: ×0.4 fire damage.
+  if (e.elite === 'fire_resistant' && element === 'fire') {
+    dmg *= 0.4;
+  }
 
   // Engineering: +30% damage to burning enemies.
   if (state.modifiers.towerBonusVsBurning && e.status.burnTime > 0) {
@@ -279,8 +294,11 @@ export function applyDamageToEnemy(
 
   // Apply elemental statuses.
   if (element === 'fire') {
-    e.status.burnDps = Math.max(e.status.burnDps, 6 * state.modifiers.potionDamageMult);
-    e.status.burnTime = Math.max(e.status.burnTime, 2.5);
+    // Fire-resistant elite: immune to burn status.
+    if (e.elite !== 'fire_resistant') {
+      e.status.burnDps = Math.max(e.status.burnDps, 6 * state.modifiers.potionDamageMult);
+      e.status.burnTime = Math.max(e.status.burnTime, 2.5);
+    }
   } else if (element === 'mercury') {
     e.status.slowFactor = Math.min(e.status.slowFactor, 0.55);
     e.status.slowTime = Math.max(e.status.slowTime, 2.5);

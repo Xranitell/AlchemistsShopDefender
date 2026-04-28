@@ -6,6 +6,7 @@ import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
 import type { EnemyAbility } from '../data/difficulty';
+import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { audio } from '../audio/audio';
 
 /** Return the active wave list for the current difficulty mode. */
@@ -174,10 +175,19 @@ export function spawnEnemy(
   splitGeneration = 0,
 ): void {
   const mod = state.difficultyModifier;
-  const maxHp = Math.round(kind.hp * mod.hpMult);
+  let maxHp = Math.round(kind.hp * mod.hpMult);
   const abilities = pickEnemyAbilities(kind.id, mod.abilities);
   // Homunculus enters phase 1 and starts summoning minions every 4 sec.
   const isHomunculus = kind.id === 'boss_homunculus';
+
+  // Elite assignment: wave 6+, non-boss, 10-25% chance.
+  const elite = rollEliteMod(state, kind);
+
+  // Frenzied elite: ×0.7 HP (trades survivability for speed).
+  if (elite === 'frenzied') {
+    maxHp = Math.round(maxHp * 0.7);
+  }
+
   state.enemies.push({
     id: newId(state),
     kind,
@@ -195,7 +205,22 @@ export function spawnEnemy(
     sapperFuse: 0,
     bossPhase: isHomunculus ? 1 : 0,
     minionSummonTimer: isHomunculus ? 4 : 0,
+    elite,
+    etherealTimer: elite === 'ethereal' ? 4 : 0,
+    etherealActive: false,
   });
+}
+
+/** Roll an elite modifier for a freshly spawned enemy.
+ *  Returns null for bosses, waves < 6, and most regular spawns. */
+function rollEliteMod(state: GameState, kind: EnemyKind): EliteModId | null {
+  if (kind.isBoss) return null;
+  const waveIdx = state.waveState.currentIndex;
+  if (waveIdx < 5) return null; // wave 6+ (0-based index 5)
+  // 10 % base, scaling up to ~25 % by wave 15.
+  const chance = 0.10 + Math.min(0.15, (waveIdx - 5) * 0.015);
+  if (state.rng.range(0, 1) >= chance) return null;
+  return ELITE_MOD_IDS[state.rng.int(0, ELITE_MOD_IDS.length)]!;
 }
 
 /**

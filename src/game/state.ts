@@ -5,6 +5,7 @@ import { newStatus } from './types';
 import type { ReactionPool } from './reactions';
 import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
 import type { BiomeId } from '../data/biomes';
+import type { EliteModId } from '../data/eliteMods';
 
 export type Phase =
   | 'menu'
@@ -58,6 +59,12 @@ export interface Enemy {
   bossPhase: number;
   /** Boss-only: seconds left on the current phase's minion-summon timer. */
   minionSummonTimer: number;
+  /** Elite modifier assigned to this enemy, if any (GDD §12.2). */
+  elite: EliteModId | null;
+  /** Ethereal elite: seconds remaining in the current immune phase. */
+  etherealTimer: number;
+  /** Ethereal elite: whether currently in the immune (phased-out) window. */
+  etherealActive: boolean;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';

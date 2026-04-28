@@ -488,6 +488,14 @@ Object.assign(RU, {
   'meta.node.eco_loot_1.name': "Магнит",
   'meta.node.eco_loot_1.desc': "+15% радиус подбора золота",
 
+  // ── Elite modifiers (§12.2) ──────────────────────────────────────────
+  'elite.armored': 'Бронированный',
+  'elite.frenzied': 'Бешеный',
+  'elite.regenerating': 'Регенерирующий',
+  'elite.ethereal': 'Эфирный',
+  'elite.fireResistant': 'Огнестойкий',
+  'floating.ethereal': 'Эфир!',
+
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Лидерборды',
   'ui.lb.tab.bestWave': 'Лучшая волна',

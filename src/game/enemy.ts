@@ -54,6 +54,20 @@ export function updateEnemies(state: GameState, dt: number): void {
       e.dashBackTimer -= dt;
     }
 
+    // ── Elite modifier ticks ──
+    // Regenerating: +5 HP/sec up to 50 % max HP.
+    if (e.elite === 'regenerating' && e.hp < e.maxHp * 0.5) {
+      e.hp = Math.min(e.maxHp * 0.5, e.hp + 5 * dt);
+    }
+    // Ethereal: cycle 4 s visible → 1 s immune.
+    if (e.elite === 'ethereal') {
+      e.etherealTimer -= dt;
+      if (e.etherealTimer <= 0) {
+        e.etherealActive = !e.etherealActive;
+        e.etherealTimer = e.etherealActive ? 1 : 4;
+      }
+    }
+
     // --- Per-kind pre-move behaviours ---
     // Sapper: once it gets close enough to the mannequin, freeze in place and
     // tick a short fuse; explode radially when the fuse reaches zero.
@@ -87,8 +101,10 @@ export function updateEnemies(state: GameState, dt: number): void {
     const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
     // Homunculus phase 3 gets +35% speed.
     const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.35 : 1;
+    // Frenzied elite: ×1.5 speed.
+    const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
     const speed = e.kind.speed * e.status.slowFactor
-      * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost;
+      * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult;
     e.pos.x += dir.x * speed * dt;
     e.pos.y += dir.y * speed * dt;
 

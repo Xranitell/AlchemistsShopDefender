@@ -12,6 +12,7 @@ import {
   drawZigzagBolt,
 } from '../render/effects';
 import { COLORS } from '../render/palette';
+import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
 import type { DifficultyMode } from '../data/difficulty';
@@ -453,6 +454,28 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
+    // Elite glow: colored aura around the enemy based on elite mod type.
+    if (e.elite) {
+      const eliteDef = ELITE_MODS[e.elite];
+      const pulse = 0.55 + Math.sin(state.worldTime * 4 + e.id * 1.7) * 0.2;
+      // Ethereal: fade glow when phased out.
+      const alpha = e.elite === 'ethereal' && e.etherealActive ? 0.15 : 0.4;
+      ctx.save();
+      ctx.globalAlpha = alpha * pulse;
+      ctx.strokeStyle = eliteDef.color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Ethereal phase-out transparency.
+    if (e.elite === 'ethereal' && e.etherealActive) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+    }
+
     // Choose sprite based on enemy kind.
     let sprite = s.slime;
     let bob = 0;
@@ -488,6 +511,11 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
 
     drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
+
+    // Close ethereal phase-out transparency.
+    if (e.elite === 'ethereal' && e.etherealActive) {
+      ctx.restore();
+    }
 
     // White hit flash + impact particles
     if (e.hitFlash > 0) {
@@ -568,6 +596,23 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
       ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
+
+      // Elite badge above HP bar.
+      if (e.elite) {
+        const eliteDef = ELITE_MODS[e.elite];
+        ctx.font = '8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = eliteDef.color;
+        ctx.fillText(eliteDef.badge, e.pos.x, y - 3);
+      }
+    } else if (e.elite) {
+      // Even at full HP, show the badge so elites are identifiable.
+      const eliteDef = ELITE_MODS[e.elite];
+      const y = Math.round(e.pos.y - e.kind.radius - 6);
+      ctx.font = '8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = eliteDef.color;
+      ctx.fillText(eliteDef.badge, e.pos.x, y);
     }
   }
 }
