@@ -3,6 +3,7 @@ import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
 import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
+import { tutorial } from '../ui/tutorial';
 
 export const TARGETING_MODES: TargetingMode[] = ['nearest', 'strongest', 'fastest', 'debuffed', 'first'];
 
@@ -51,6 +52,7 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   state.towers.push(tower);
   rp.towerId = tower.id;
   spawnFloatingText(state, kind.name, rp.pos, '#7df9ff');
+  tutorial.notify('towerPlaced');
   return true;
 }
 
@@ -63,6 +65,7 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
   state.gold -= cost;
   t.level += 1;
   spawnFloatingText(state, `Lv ${t.level}`, t.pos, '#7df9ff');
+  tutorial.notify('towerUpgraded');
   return true;
 }
 

@@ -4,6 +4,7 @@ import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
 import type { Element } from './types';
 import { audio } from '../audio/audio';
+import { tutorial } from '../ui/tutorial';
 
 /** Pick the element of a thrown potion based on currently-active recipe
  *  modifiers. Cards can layer multiple flags on the same potion — we resolve
@@ -164,6 +165,12 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
     // Potion glass-shatter on landing. Echo-secondary blasts deliberately
     // skip the SFX so the rate-limit stays kind to chained reactions.
     audio.playSfx('potionImpact');
+  }
+  // Did this potion actually land on top of (or touching) an enemy? The
+  // tutorial fires its "manual aim bonus" hint only on the first such hit.
+  if (p.kind === 'potion' && p.bonusFromManualAim) {
+    const closest = nearestEnemy(state, at, Math.max(p.splashRadius, 14));
+    if (closest) tutorial.notify('manualHit');
   }
   if (p.splashRadius > 0) {
     applyAreaDamage(state, at, p.splashRadius, p.damage, p.element, p.bonusFromManualAim);

@@ -2304,3 +2304,101 @@ body {
   pointer-events: none;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
 }
+
+/* ============ Tutorial / FTUE overlay (PR-8 / GDD §18) ============
+ * Non-modal full-viewport layer. Pointer events are off everywhere
+ * except the tooltip card so the player keeps interacting with the
+ * game while a hint is shown. */
+.tutorial-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1500; /* above HUD (1000) and tower-shop (1100), below modal overlays */
+  pointer-events: none;
+}
+.tutorial-root.hidden { display: none; }
+.tutorial-dimmer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* The dimmer is fully opaque but the SVG mask cuts a hole around the
+   * spotlight target. */
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.tutorial-root.step-visible .tutorial-dimmer { opacity: 1; }
+.tutorial-spotlight-ring {
+  filter: drop-shadow(0 0 6px rgba(245, 196, 83, 0.85));
+  animation: tutorial-pulse 1.4s ease-in-out infinite;
+}
+@keyframes tutorial-pulse {
+  0%, 100% { opacity: 0.85; stroke-width: 3; }
+  50%      { opacity: 0.45; stroke-width: 5; }
+}
+.tutorial-tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 360px;
+  padding: 14px 18px 12px;
+  background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
+  border: 2px solid #f5c453;
+  border-radius: 8px;
+  color: #f4ecd6;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  line-height: 1.35;
+  pointer-events: auto;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.tutorial-root.step-visible .tutorial-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+.tutorial-text { margin: 0 0 10px; }
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.tutorial-actions:empty { display: none; }
+.tutorial-skip-btn,
+.tutorial-ok-btn {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #2a1f3d;
+  color: #f4ecd6;
+  border: 1px solid #4d3970;
+  transition: background 120ms ease, transform 80ms ease;
+}
+.tutorial-skip-btn:hover,
+.tutorial-ok-btn:hover { background: #3a2c54; }
+.tutorial-skip-btn:active,
+.tutorial-ok-btn:active { transform: translateY(1px); }
+.tutorial-ok-btn {
+  background: #4a3a2a;
+  border-color: #f5c453;
+  color: #f5c453;
+}
+.tutorial-ok-btn:hover { background: #5c4836; }
+.tutorial-arrow {
+  position: absolute;
+  font-size: 28px;
+  color: #f5c453;
+  text-shadow: 0 0 6px rgba(245, 196, 83, 0.75);
+  pointer-events: none;
+  animation: tutorial-bob 1.2s ease-in-out infinite;
+}
+.tutorial-arrow.hidden { display: none; }
+@keyframes tutorial-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}

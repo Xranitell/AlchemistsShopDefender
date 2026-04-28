@@ -31,6 +31,7 @@ import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
 import { audio } from './audio/audio';
+import { tutorial } from './ui/tutorial';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -94,6 +95,15 @@ const hud = new Hud(hudRoot, {
 });
 
 const loop = new Loop((dt) => tick(dt));
+
+// Attach the FTUE tutorial overlay once the canvas is in the DOM. The
+// controller stays dormant until startRun() decides to call .start().
+tutorial.attach(canvas, {
+  onSkip: () => {
+    meta.tutorialDone = true;
+    saveMeta(meta);
+  },
+});
 
 void (async () => {
   await yandex.init();
@@ -197,6 +207,7 @@ function tick(dt: number): void {
 
   render(ctx!, state);
   hud.update(state);
+  tutorial.update(state);
 }
 
 /** True when the cursor is over an in-world UI hot-spot (rune point or the
@@ -287,6 +298,7 @@ function renderCardOverlay(): void {
     pickedIds: state.cardChoice.pickedIds,
     onPick: (card) => {
       applyCard(state, card);
+      tutorial.notify('cardPicked');
       overlay.hide();
       startPause(state);
       yandex.gameplayStart();
@@ -348,6 +360,10 @@ function showVictory(): void {
   yandex.gameplayStop();
   audio.playSfx('waveWin');
   audio.playMusic('menu');
+  if (!meta.tutorialDone) {
+    meta.tutorialDone = true;
+  }
+  tutorial.stop();
   const reward = awardRunEssence(true);
   const wave = state.waveState.currentIndex + 1;
   let doubled = false;
@@ -384,6 +400,7 @@ function showGameOver(): void {
   yandex.gameplayStop();
   audio.playSfx('runDefeat');
   audio.playMusic('menu');
+  tutorial.stop();
   const reward = awardRunEssence(false);
   const wave = state.waveState.currentIndex + 1;
   overlay.showSimple({
@@ -491,6 +508,14 @@ function startRun(mode: DifficultyMode): void {
   applyMetaUpgrades(state, meta);
   towerShop.attach(state);
   mannequinShop.attach(state);
+  // Light up the FTUE for first-time players. We only run the tutorial on
+  // standard difficulty — dropping into Epic/Ancient already means the
+  // player has cleared the basics.
+  if (!meta.tutorialDone && mode === 'normal') {
+    tutorial.start();
+  } else {
+    tutorial.stop();
+  }
   // startNextWave handles the music switch + wave-start stinger itself.
   startNextWave(state);
   yandex.gameplayStart();

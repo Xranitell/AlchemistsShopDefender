@@ -4,6 +4,7 @@ import { spawnFloatingText } from './state';
 import { throwPotion } from './projectile';
 import { tryActivateOverload } from './overload';
 import { audio } from '../audio/audio';
+import { tutorial } from '../ui/tutorial';
 
 export function updateMannequin(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -17,6 +18,7 @@ export function updateMannequin(state: GameState, dt: number): void {
     tickFireRuby(state);
     throwPotion(state, aim, /*manual*/ true);
     audio.playSfx('throwPotion');
+    tutorial.notify('manualThrow');
     m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult;
     // Face the throw and trigger the mid-throw pose briefly.
     const dx = aim.x - m.pos.x;

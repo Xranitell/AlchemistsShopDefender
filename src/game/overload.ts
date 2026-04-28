@@ -3,6 +3,7 @@ import type { GameState } from './state';
 import { applyDamageToEnemy } from './projectile';
 import { spawnFloatingText } from './state';
 import { audio } from '../audio/audio';
+import { tutorial } from '../ui/tutorial';
 import {
   ALCH_DOME_DURATION,
   ALCH_DOME_REDUCTION,
@@ -36,6 +37,7 @@ export function tryActivateOverload(state: GameState): boolean {
   if (o.charge < o.maxCharge) return false;
   o.charge = 0;
   audio.playSfx('overloadActivate');
+  tutorial.notify('overloadActivated');
 
   switch (state.activeModuleId) {
     case 'chronos':

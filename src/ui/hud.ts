@@ -221,6 +221,7 @@ export class Hud {
 
     this.overloadButton = document.createElement('button');
     this.overloadButton.className = 'hud-round-btn hud-round-overload';
+    this.overloadButton.dataset.tutorialTarget = 'overload';
     this.overloadButton.appendChild(spriteEl(getSprites().iconLightning, 4));
     const olLabel = document.createElement('span');
     olLabel.className = 'hud-icon-label';
