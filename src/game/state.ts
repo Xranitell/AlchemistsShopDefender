@@ -135,6 +135,20 @@ export interface FloatingText {
   vy: number;
 }
 
+/** Short-lived visual segment for chain-lightning beams (Эфирная катушка).
+ *  Each segment is a single hop between two enemies (or tower→enemy). */
+export interface ChainBolt {
+  id: number;
+  from: Vec2;
+  to: Vec2;
+  /** Total lifetime in seconds. Counts down to 0 and is removed. */
+  time: number;
+  maxTime: number;
+  /** Hop index (0 = primary tower→enemy, 1+ = enemy→enemy). Higher hops draw
+   *  thinner / dimmer to convey the falloff. */
+  hop: number;
+}
+
 export interface Modifiers {
   potionDamageMult: number;
   potionRadiusMult: number;
@@ -264,6 +278,9 @@ export interface GameState {
   firePools: FirePool[];
   goldPickups: GoldPickup[];
   floatingTexts: FloatingText[];
+  /** Visual-only chain-lightning segments (Эфирная катушка). Updated in lockstep
+   *  with the rest of the world; damage is applied at spawn-time. */
+  chainBolts: ChainBolt[];
   reactionPools: ReactionPool[];
   gold: number;
   essence: number;
