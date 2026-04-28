@@ -22,6 +22,9 @@ import { MainMenu } from './ui/mainMenu';
 import { DailyRewardsOverlay } from './ui/dailyRewardsOverlay';
 import { BattlePassOverlay, addBpXp } from './ui/battlePassOverlay';
 import { SettingsOverlay } from './ui/settingsOverlay';
+import { DifficultyOverlay } from './ui/difficultyOverlay';
+import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
+import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
@@ -48,6 +51,8 @@ const mainMenu = new MainMenu(overlayRoot);
 const dailyOverlay = new DailyRewardsOverlay(overlayRoot);
 const bpOverlay = new BattlePassOverlay(overlayRoot);
 const settingsOverlay = new SettingsOverlay(overlayRoot);
+const difficultyOverlay = new DifficultyOverlay(overlayRoot);
+const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 
@@ -279,11 +284,7 @@ function showMainMenu(): void {
     meta,
     onBattle: () => {
       mainMenu.hide();
-      state = buildInitialState();
-      applyMetaUpgrades(state, meta);
-      towerShop.attach(state);
-      startNextWave(state);
-      yandex.gameplayStart();
+      showDifficultySelect();
     },
     onLaboratory: () => {
       mainMenu.hide();
@@ -302,6 +303,61 @@ function showMainMenu(): void {
       showSettings();
     },
   });
+}
+
+function showDifficultySelect(): void {
+  difficultyOverlay.show({
+    meta,
+    onSelect: (mode) => {
+      if (mode === 'normal' || mode === 'endless') {
+        difficultyOverlay.hide();
+        startRun(mode);
+      } else {
+        // Show modifier preview before consuming the key.
+        difficultyOverlay.hide();
+        modifierPreview.show({
+          mode,
+          onConfirm: () => {
+            if (!consumeKey(mode)) {
+              modifierPreview.hide();
+              showDifficultySelect();
+              return;
+            }
+            modifierPreview.hide();
+            startRun(mode);
+          },
+          onCancel: () => {
+            modifierPreview.hide();
+            showDifficultySelect();
+          },
+        });
+      }
+    },
+    onClose: () => {
+      difficultyOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function consumeKey(mode: DifficultyMode): boolean {
+  if (mode === 'epic') {
+    if (meta.epicKeys <= 0) return false;
+    meta.epicKeys -= 1;
+  } else if (mode === 'ancient') {
+    if (meta.ancientKeys <= 0) return false;
+    meta.ancientKeys -= 1;
+  }
+  saveMeta(meta);
+  return true;
+}
+
+function startRun(mode: DifficultyMode): void {
+  state = buildInitialState(undefined, mode);
+  applyMetaUpgrades(state, meta);
+  towerShop.attach(state);
+  startNextWave(state);
+  yandex.gameplayStart();
 }
 
 function showLaboratory(): void {

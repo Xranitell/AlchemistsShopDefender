@@ -8,6 +8,7 @@ import {
   type RunePoint,
   type WaveState,
 } from './state';
+import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 
 const ARENA_W = 1280;
 const ARENA_H = 720;
@@ -76,7 +77,11 @@ export function buildWaveState(): WaveState {
   };
 }
 
-export function buildInitialState(seed?: number): GameState {
+export function buildInitialState(
+  seed?: number,
+  difficulty: DifficultyMode = 'normal',
+): GameState {
+  const mode = DIFFICULTY_MODES[difficulty];
   return {
     rng: new Rng(seed ?? (Date.now() >>> 0)),
     phase: 'preparing',
@@ -119,5 +124,8 @@ export function buildInitialState(seed?: number): GameState {
     metaAutoRepairCooldown: 0,
     metaPotionAimBonus: 0,
     metaAuraRadiusMult: 1,
+    difficulty,
+    difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
+    endlessLoop: 0,
   };
 }

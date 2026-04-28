@@ -1,6 +1,9 @@
 import { dist, norm, sub, type Vec2 } from '../engine/math';
-import type { GameState } from './state';
+import type { Enemy, GameState } from './state';
 import { newId, spawnFloatingText } from './state';
+import { ENEMIES } from '../data/enemies';
+import { spawnEnemy } from './wave';
+import { applyDamageToEnemy } from './projectile';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -32,9 +35,17 @@ export function updateEnemies(state: GameState, dt: number): void {
     }
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
-    // Move toward mannequin.
+    // Dash-back: while this timer is >0 the enemy is pushed away from the
+    // hero instead of toward them (brief knockback from the last hit).
+    if (e.dashBackTimer > 0) {
+      e.dashBackTimer -= dt;
+    }
+
+    // Move toward mannequin (or away while dashed back).
     const dir = norm(sub(m.pos, e.pos));
-    const speed = e.kind.speed * e.status.slowFactor;
+    const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
+    const speed = e.kind.speed * e.status.slowFactor
+      * state.difficultyModifier.speedMult * dashMult;
     e.pos.x += dir.x * speed * dt;
     e.pos.y += dir.y * speed * dt;
 
@@ -50,7 +61,8 @@ export function updateEnemies(state: GameState, dt: number): void {
     // Hit mannequin.
     const d = dist(e.pos, m.pos);
     if (d < e.kind.radius + 22) {
-      const dmgReduced = Math.max(1, e.kind.damage * (1 - state.metaMannequinArmor));
+      const scaledDamage = e.kind.damage * state.difficultyModifier.damageMult;
+      const dmgReduced = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor));
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
@@ -60,16 +72,7 @@ export function updateEnemies(state: GameState, dt: number): void {
         e.hp -= 8;
         e.hitFlash = 0.12;
         if (e.hp <= 0) {
-          const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * state.modifiers.goldDropMult);
-          state.goldPickups.push({
-            id: newId(state),
-            pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },
-            value,
-            life: 12,
-          });
-          state.totalKills += 1;
-          state.essence += e.kind.isBoss ? 5 : 1;
-          addOverload(state, e.kind.isBoss ? 25 : 6);
+          onEnemyDeath(state, e);
         }
       }
       remove.push(i);
@@ -77,19 +80,7 @@ export function updateEnemies(state: GameState, dt: number): void {
     }
 
     if (e.hp <= 0) {
-      // Drop gold pickup.
-      const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * state.modifiers.goldDropMult);
-      state.goldPickups.push({
-        id: newId(state),
-        pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },
-        value,
-        life: 12,
-      });
-      state.totalKills += 1;
-      // Essence: alchemical residue dropped on kill (matches reference HUD).
-      state.essence += e.kind.isBoss ? 5 : 1;
-      // Overload charge from kills.
-      addOverload(state, e.kind.isBoss ? 25 : 6);
+      onEnemyDeath(state, e);
       remove.push(i);
     }
   }
@@ -163,6 +154,62 @@ export function updateFloatingTexts(state: GameState, dt: number): void {
 export function addOverload(state: GameState, amount: number): void {
   const o = state.overload;
   o.charge = Math.min(o.maxCharge, o.charge + amount * state.metaOverloadRateMult);
+}
+
+/**
+ * Common bookkeeping for an enemy that just died: gold drop, kill counter,
+ * essence, overload charge, plus difficulty-driven on-death abilities
+ * (slime split / explode-on-death).
+ */
+function onEnemyDeath(state: GameState, e: Enemy): void {
+  const goldMult = state.modifiers.goldDropMult * state.difficultyModifier.goldMult;
+  const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * goldMult);
+  state.goldPickups.push({
+    id: newId(state),
+    pos: { x: e.pos.x + state.rng.range(-6, 6), y: e.pos.y + state.rng.range(-6, 6) },
+    value,
+    life: 12,
+  });
+  state.totalKills += 1;
+  state.essence += e.kind.isBoss ? 5 : 1;
+  addOverload(state, e.kind.isBoss ? 25 : 6);
+
+  // Split-on-death: spawn N smaller slimes (2 the first generation, 1 the
+  // second) at the death position. Offspring inherit abilities but cannot
+  // split themselves beyond generation 2.
+  if (e.abilities.includes('split_on_death') && e.splitGeneration < 2) {
+    const count = e.splitGeneration === 0 ? 2 : 1;
+    const slime = ENEMIES['slime'];
+    if (slime) {
+      for (let i = 0; i < count; i++) {
+        const angle = state.rng.range(0, Math.PI * 2);
+        const r = 14 + state.rng.range(0, 8);
+        const pos = {
+          x: e.pos.x + Math.cos(angle) * r,
+          y: e.pos.y + Math.sin(angle) * r,
+        };
+        spawnEnemy(state, slime, pos, e.splitGeneration + 1);
+      }
+    }
+  }
+
+  // Explode-on-death: do a small fire-pool-less radial damage burst.
+  if (e.abilities.includes('explode_on_death')) {
+    const radius = 60;
+    for (const other of state.enemies) {
+      if (other.id === e.id) continue;
+      if (dist(other.pos, e.pos) < radius) {
+        applyDamageToEnemy(state, other, 6, 'fire');
+      }
+    }
+    // Damage the hero too if close enough.
+    if (dist(state.mannequin.pos, e.pos) < radius) {
+      const dmg = Math.max(1, 4 * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor));
+      state.mannequin.hp -= dmg;
+      state.mannequin.damageFlash = 0.22;
+      spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
+    }
+  }
 }
 
 // Convenience used in projectile.ts via importVec2 reference.

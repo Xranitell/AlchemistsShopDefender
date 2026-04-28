@@ -1,15 +1,26 @@
 import type { GameState } from './state';
 import { newId } from './state';
-import { newStatus } from './types';
+import { newStatus, type EnemyKind } from './types';
+import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
+import type { EnemyAbility } from '../data/difficulty';
 
 export function startNextWave(state: GameState): void {
   const ws = state.waveState;
   ws.currentIndex += 1;
   if (ws.currentIndex >= WAVES.length) {
-    state.phase = 'victory';
-    return;
+    if (state.difficulty === 'endless') {
+      // Endless: loop back to wave 0 with stiffer modifiers.
+      state.endlessLoop += 1;
+      state.difficultyModifier.hpMult *= 1.1;
+      state.difficultyModifier.speedMult *= 1.05;
+      state.difficultyModifier.damageMult *= 1.05;
+      ws.currentIndex = 0;
+    } else {
+      state.phase = 'victory';
+      return;
+    }
   }
   const def = WAVES[ws.currentIndex]!;
   ws.timeInWave = 0;
@@ -65,23 +76,19 @@ export function updateWave(state: GameState, dt: number): void {
     const baseAngle = baseAngles[spawn.entrance % 4]!;
     // Wide ±60° jitter so a single wave direction still spans a full side.
     const angle = baseAngle + state.rng.range(-Math.PI / 3, Math.PI / 3);
-    const { px, py } = pickOffscreenPoint(state, angle);
-    state.enemies.push({
-      id: newId(state),
-      kind,
-      pos: { x: px, y: py },
-      hp: kind.hp,
-      maxHp: kind.hp,
-      status: newStatus(),
-      hitFlash: 0,
-      goldPending: 0,
-    });
+    const pos = pickOffscreenPoint(state, angle);
+    spawnEnemy(state, kind, pos);
     ws.spawnedCount += 1;
   }
 
   // Wave is over when all spawns finished and arena is empty.
   if (ws.pendingSpawns.length === 0 && state.enemies.length === 0) {
-    if (ws.currentIndex >= WAVES.length - 1) {
+    if (state.difficulty === 'endless') {
+      // Award end-of-wave gold and trigger card draft — no victory.
+      const reward = 25 + ws.currentIndex * 8;
+      state.gold += reward;
+      state.phase = 'card_select';
+    } else if (ws.currentIndex >= WAVES.length - 1) {
       state.phase = 'victory';
     } else {
       // Award end-of-wave gold and trigger card draft.
@@ -90,6 +97,66 @@ export function updateWave(state: GameState, dt: number): void {
       state.phase = 'card_select';
     }
   }
+}
+
+/**
+ * Spawn an enemy with the current difficulty's HP/speed/abilities applied.
+ * `splitGeneration` is used by the slime-split ability so offspring cannot
+ * infinitely chain.
+ */
+export function spawnEnemy(
+  state: GameState,
+  kind: EnemyKind,
+  pos: Vec2,
+  splitGeneration = 0,
+): void {
+  const mod = state.difficultyModifier;
+  const maxHp = Math.round(kind.hp * mod.hpMult);
+  const abilities = pickEnemyAbilities(kind.id, mod.abilities);
+  state.enemies.push({
+    id: newId(state),
+    kind,
+    pos: { x: pos.x, y: pos.y },
+    hp: maxHp,
+    maxHp,
+    status: newStatus(),
+    hitFlash: 0,
+    goldPending: 0,
+    abilities,
+    shieldCharges: abilities.includes('one_hit_shield') ? 1 : 0,
+    dashBackTimer: 0,
+    splitGeneration,
+    damageTaken: 1,
+  });
+}
+
+/**
+ * Only attach abilities that actually make sense for a given enemy kind.
+ * For example, `split_on_death` is flavoured for slimes, `one_hit_shield`
+ * for golems, etc.
+ */
+function pickEnemyAbilities(kindId: string, abilities: EnemyAbility[]): EnemyAbility[] {
+  const out: EnemyAbility[] = [];
+  for (const a of abilities) {
+    switch (a) {
+      case 'split_on_death':
+        if (kindId === 'slime' || kindId === 'miniboss_slime') out.push(a);
+        break;
+      case 'one_hit_shield':
+        if (kindId === 'golem' || kindId === 'boss_rat_king') out.push(a);
+        break;
+      case 'dash_back_on_hit':
+        if (kindId === 'rat' || kindId === 'flying_flask') out.push(a);
+        break;
+      case 'explode_on_death':
+        if (kindId === 'flying_flask') out.push(a);
+        break;
+      case 'aura_heal':
+        if (kindId === 'shaman') out.push(a);
+        break;
+    }
+  }
+  return out;
 }
 
 export function totalWaves(): number {
@@ -103,7 +170,7 @@ export function totalWaves(): number {
 function pickOffscreenPoint(
   state: GameState,
   angle: number,
-): { px: number; py: number } {
+): Vec2 {
   const OFFSCREEN = 40;
   const { width: W, height: H } = state.arena;
   const cx = W / 2;
@@ -121,7 +188,7 @@ function pickOffscreenPoint(
   const jx = -dy * jitter;
   const jy = dx * jitter;
   return {
-    px: cx + dx * t + jx,
-    py: cy + dy * t + jy,
+    x: cx + dx * t + jx,
+    y: cy + dy * t + jy,
   };
 }

@@ -2,6 +2,7 @@ import type { GameState } from '../game/state';
 import { totalWaves } from '../game/wave';
 import { getSprites } from '../render/sprites';
 import type { BakedSprite } from '../render/sprite';
+import { DIFFICULTY_MODES } from '../data/difficulty';
 
 export interface HudHandlers {
   onPause(): void;
@@ -24,6 +25,8 @@ export class Hud {
 
   // Top-left WAVE widget
   private waveValue!: HTMLSpanElement;
+  /** Ribbon under the WAVE widget showing the current difficulty. */
+  private difficultyBadge!: HTMLDivElement;
 
   // Top-center HP bar
   private hpFill!: HTMLDivElement;
@@ -73,7 +76,15 @@ export class Hud {
     waveCol.appendChild(this.waveValue);
     waveBadge.appendChild(waveCol);
     waveBadge.appendChild(spriteEl(getSprites().iconWavePip, 4));
-    top.appendChild(waveBadge);
+    // Wrap wave badge + difficulty ribbon into a single vertical stack so
+    // the difficulty sits directly under the wave number.
+    const waveStack = document.createElement('div');
+    waveStack.className = 'hud-wave-stack';
+    waveStack.appendChild(waveBadge);
+    this.difficultyBadge = document.createElement('div');
+    this.difficultyBadge.className = 'hud-difficulty-badge';
+    waveStack.appendChild(this.difficultyBadge);
+    top.appendChild(waveStack);
 
     // Top-center: HP bar in metal frame
     const hpBadge = badgeFrame('hud-hp-badge');
@@ -210,11 +221,22 @@ export class Hud {
     const ws = state.waveState;
     const idx = ws.currentIndex;
     const total = totalWaves();
-    if (idx < 0) {
+    if (state.difficulty === 'endless') {
+      // Show loop count instead of total so the player sees progress across
+      // wave loops (waves reset to 0 each loop).
+      const loop = state.endlessLoop;
+      this.waveValue.textContent = `${idx + 1} • круг ${loop + 1}`;
+    } else if (idx < 0) {
       this.waveValue.textContent = `0 / ${total}`;
     } else {
       this.waveValue.textContent = `${idx + 1} / ${total}`;
     }
+
+    const difDef = DIFFICULTY_MODES[state.difficulty];
+    this.difficultyBadge.textContent = difDef.shortName;
+    this.difficultyBadge.style.color = difDef.color;
+    this.difficultyBadge.style.borderColor = difDef.color;
+    this.difficultyBadge.style.display = state.difficulty === 'normal' ? 'none' : '';
 
     // Skip-wave button only active during preparing phase
     const showSkip = state.phase === 'preparing';
