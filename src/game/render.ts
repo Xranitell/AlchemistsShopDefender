@@ -64,6 +64,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawTowers(ctx, state);
   drawMannequin(ctx, state);
   drawProjectiles(ctx, state);
+  drawChainBolts(ctx, state);
   // Update and draw particle system
   updateParticles(1 / 60);
   drawParticles(ctx);
@@ -205,19 +206,55 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
     else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
     else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
+    else if (t.kind.id === 'ether_coil') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+    else if (t.kind.id === 'watch_tower') { base = s.towerNeedler; barrel = s.towerNeedlerBarrel; }
     drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
 
     // Rotating barrel sprite
     drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
 
+    // Эфирная катушка: pulsing arcane halo above the coil to read it as
+    // distinct from the mercury sprayer it visually re-uses.
+    if (t.kind.id === 'ether_coil') {
+      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
+      ctx.save();
+      ctx.globalAlpha = 0.55 + pulse * 0.35;
+      ctx.fillStyle = '#a78bfa';
+      // Two stacked diamond pixels above the head to suggest a static spark.
+      ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 26 - pulse * 4), 4, 4);
+      ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 4), 2, 4);
+      ctx.restore();
+    }
+
+    // Сторожевой фонарь: lantern halo + slow aura pulse on the floor so the
+    // player can see who's being buffed. Color matches the tower hue.
+    if (t.kind.id === 'watch_tower') {
+      const auraR = t.kind.range * state.modifiers.towerRangeMult;
+      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 1.5);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 209, 102, ${0.10 + pulse * 0.08})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(t.pos.x, t.pos.y, auraR, auraR * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Lantern flame on top.
+      ctx.fillStyle = '#ffd166';
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 30 - pulse * 2), 4, 5);
+      ctx.fillStyle = '#ffe6a3';
+      ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 2), 2, 3);
+      ctx.restore();
+    }
+
     // Muzzle flash when recently fired
-    if (t.fireTimer < 0.08) {
+    if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura') {
       const flashX = t.pos.x + Math.cos(t.aimAngle) * 24;
       const flashY = t.pos.y - 6 + Math.sin(t.aimAngle) * 24;
       ctx.save();
       ctx.globalAlpha = 0.6;
       ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
                        t.kind.id === 'mercury_sprayer' ? '#7df9ff' :
+                       t.kind.id === 'ether_coil' ? '#a78bfa' :
                        t.kind.id === 'mortar' ? '#ff8c3a' : '#ffd166';
       ctx.fillRect(Math.round(flashX - 3), Math.round(flashY - 3), 6, 6);
       ctx.restore();
@@ -444,6 +481,45 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
     }
   }
+}
+
+/** Render short-lived chain-lightning segments left by Эфирная катушка.
+ *  Each bolt is drawn as a jagged zig-zag whose alpha fades out with `time`.
+ *  Higher-hop segments are drawn thinner / dimmer to match the damage falloff. */
+function drawChainBolts(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.chainBolts.length === 0) return;
+  ctx.save();
+  for (const cb of state.chainBolts) {
+    const t = Math.max(0, cb.time / cb.maxTime);
+    const alpha = Math.pow(t, 0.7);
+    const dx = cb.to.x - cb.from.x;
+    const dy = cb.to.y - cb.from.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    // Build a short zig-zag of 6 jitter points along the segment.
+    const SEGMENTS = 6;
+    const jitter = 6 - cb.hop * 1.5;
+    ctx.beginPath();
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const u = i / SEGMENTS;
+      const j = (i === 0 || i === SEGMENTS) ? 0 : (Math.random() * 2 - 1) * jitter;
+      const x = cb.from.x + dx * u + nx * j;
+      const y = cb.from.y + dy * u + ny * j;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    // Outer glow.
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(167, 139, 250, ${0.35 * alpha})`;
+    ctx.lineWidth = Math.max(1, 5 - cb.hop);
+    ctx.stroke();
+    // Bright core.
+    ctx.strokeStyle = `rgba(230, 220, 255, ${0.85 * alpha})`;
+    ctx.lineWidth = Math.max(1, 2 - cb.hop * 0.4);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void {

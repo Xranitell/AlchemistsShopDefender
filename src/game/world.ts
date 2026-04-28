@@ -123,6 +123,7 @@ export function buildInitialState(
     firePools: [],
     goldPickups: [],
     floatingTexts: [],
+    chainBolts: [],
     reactionPools: [],
     gold: 90, // enough for one starter tower
     essence: 0,

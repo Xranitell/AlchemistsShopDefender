@@ -99,20 +99,23 @@ export class TowerShop {
       el.appendChild(upgrade);
 
       // Targeting mode cycle — closes on click so the player re-opens to
-      // see the new label, keeping the UI stateless.
-      const tgt = document.createElement('button');
-      const tgtLeft = document.createElement('span');
-      tgtLeft.textContent = 'Цель';
-      const tgtRight = document.createElement('span');
-      tgtRight.className = 'cost';
-      tgtRight.textContent = targetingModeLabel(tower.targetingMode);
-      tgt.appendChild(tgtLeft);
-      tgt.appendChild(tgtRight);
-      tgt.addEventListener('click', () => {
-        cycleTargetingMode(tower);
+      // see the new label, keeping the UI stateless. Aura towers don't pick
+      // targets, so we hide the control for them.
+      if (tower.kind.behavior !== 'aura') {
+        const tgt = document.createElement('button');
+        const tgtLeft = document.createElement('span');
+        tgtLeft.textContent = 'Цель';
+        const tgtRight = document.createElement('span');
+        tgtRight.className = 'cost';
         tgtRight.textContent = targetingModeLabel(tower.targetingMode);
-      });
-      el.appendChild(tgt);
+        tgt.appendChild(tgtLeft);
+        tgt.appendChild(tgtRight);
+        tgt.addEventListener('click', () => {
+          cycleTargetingMode(tower);
+          tgtRight.textContent = targetingModeLabel(tower.targetingMode);
+        });
+        el.appendChild(tgt);
+      }
 
       const cancel = document.createElement('button');
       cancel.textContent = 'Закрыть';

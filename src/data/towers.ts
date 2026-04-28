@@ -53,6 +53,50 @@ export const TOWERS: Record<string, TowerKind> = {
     color: '#d2f55a',
     desc: 'Снимает броню одиночной цели. Для элиты и боссов.',
   },
+  ether_coil: {
+    id: 'ether_coil',
+    name: 'Эфирная катушка',
+    cost: 130,
+    damage: 7,
+    range: 230,
+    fireRate: 1.4,
+    projectileSpeed: 0,
+    splashRadius: 0,
+    element: 'aether',
+    color: '#a78bfa',
+    desc: 'Цепная молния: бьёт цель и перепрыгивает на 2 ближайших врага.',
+    behavior: 'chain',
+  },
+  watch_tower: {
+    id: 'watch_tower',
+    name: 'Сторожевой фонарь',
+    cost: 80,
+    damage: 0,
+    range: 200,
+    fireRate: 0,
+    projectileSpeed: 0,
+    splashRadius: 0,
+    element: 'neutral',
+    color: '#ffd166',
+    desc: 'Не стреляет. Соседним стойкам в радиусе: +20% скорострельности и +10% дальности.',
+    behavior: 'aura',
+  },
+};
+
+/** Сторожевой фонарь aura buffs applied to other towers within its range. */
+export const WATCH_TOWER_AURA = {
+  fireRateMult: 1.20,
+  rangeMult: 1.10,
+};
+
+/** Эфирная катушка chain parameters. */
+export const ETHER_COIL_CHAIN = {
+  /** Maximum number of additional hops after the primary target. */
+  hops: 2,
+  /** Maximum jump distance between consecutive enemies. */
+  range: 180,
+  /** Fraction of base damage retained on each hop. 1.0, 0.6, 0.36, ... */
+  falloff: 0.6,
 };
 
 export const TOWER_UPGRADE_DAMAGE_MULT = 1.45;

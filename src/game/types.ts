@@ -59,7 +59,19 @@ export interface TowerKind {
   element: Element;
   color: string;
   desc: string;
+  /** Special behavior tag. Towers without a behavior fire a regular tracking
+   *  projectile. */
+  behavior?: TowerBehavior;
 }
+
+export type TowerBehavior =
+  | 'projectile'
+  /** Эфирная катушка: instant chain-lightning that arcs to up to N nearby
+   *  enemies, dealing decreasing damage with each hop. */
+  | 'chain'
+  /** Сторожевой фонарь: passive aura tower — never fires a projectile, but
+   *  buffs other towers within `range`. */
+  | 'aura';
 
 export type CardCategory = 'recipe' | 'engineering' | 'ritual' | 'catalyst';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';

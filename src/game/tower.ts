@@ -1,8 +1,8 @@
 import { dist } from '../engine/math';
-import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost } from '../data/towers';
+import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost, WATCH_TOWER_AURA, ETHER_COIL_CHAIN } from '../data/towers';
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
-import { fireTowerProjectile } from './projectile';
+import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
 
 export const TARGETING_MODES: TargetingMode[] = ['nearest', 'strongest', 'fastest', 'debuffed', 'first'];
 
@@ -70,11 +70,25 @@ export function towerStats(state: GameState, t: Tower) {
   const damage = t.kind.damage *
     Math.pow(TOWER_UPGRADE_DAMAGE_MULT, t.level - 1) *
     state.modifiers.towerDamageMult;
-  const rate = t.kind.fireRate *
+  const baseRate = t.kind.fireRate *
     Math.pow(TOWER_UPGRADE_RATE_MULT, t.level - 1) *
     state.modifiers.towerFireRateMult;
-  const range = t.kind.range * state.modifiers.towerRangeMult;
-  return { damage, rate, range };
+  const baseRange = t.kind.range * state.modifiers.towerRangeMult;
+
+  // Сторожевой фонарь aura: each watch tower whose range covers `t` adds its
+  // multipliers. Aura towers don't buff themselves and don't stack with copies
+  // of themselves on the same rune (only one tower per rune anyway).
+  let rateMult = 1;
+  let rangeMult = 1;
+  for (const other of state.towers) {
+    if (other.id === t.id) continue;
+    if (other.kind.behavior !== 'aura') continue;
+    const auraRange = other.kind.range * state.modifiers.towerRangeMult;
+    if (dist(other.pos, t.pos) > auraRange) continue;
+    rateMult *= WATCH_TOWER_AURA.fireRateMult;
+    rangeMult *= WATCH_TOWER_AURA.rangeMult;
+  }
+  return { damage, rate: baseRate * rateMult, range: baseRange * rangeMult };
 }
 
 function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | null {
@@ -125,7 +139,23 @@ function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | nul
 }
 
 export function updateTowers(state: GameState, dt: number): void {
+  // Tick chain bolts (visual-only, damage already applied at spawn).
+  for (let i = state.chainBolts.length - 1; i >= 0; i--) {
+    const cb = state.chainBolts[i]!;
+    cb.time -= dt;
+    if (cb.time <= 0) state.chainBolts.splice(i, 1);
+  }
+
   for (const t of state.towers) {
+    // Aura towers (Сторожевой фонарь) never fire, but they keep ticking the
+    // fire timer so the visual idle-rotation can still use it.
+    if (t.kind.behavior === 'aura') {
+      t.fireTimer = Math.max(0, t.fireTimer - dt);
+      // Slow idle rotation of the lantern.
+      t.aimAngle = (t.aimAngle + dt * 0.6) % (Math.PI * 2);
+      continue;
+    }
+
     const stats = towerStats(state, t);
     t.fireTimer -= dt;
     if (t.fireTimer > 0) continue;
@@ -134,8 +164,18 @@ export function updateTowers(state: GameState, dt: number): void {
     if (!target) continue;
 
     t.aimAngle = Math.atan2(target.pos.y - t.pos.y, target.pos.x - t.pos.x);
-    t.fireTimer = 1 / stats.rate;
+    t.fireTimer = 1 / Math.max(0.0001, stats.rate);
     t.shotCount += 1;
+
+    if (t.kind.behavior === 'chain') {
+      fireChainLightning(state, t, target, stats.damage);
+      // Synchronized Volley still applies — re-zap the same primary chain.
+      if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
+        fireChainLightning(state, t, target, stats.damage);
+      }
+      continue;
+    }
+
     fireTowerProjectile(
       state,
       t.pos,
@@ -158,4 +198,50 @@ export function updateTowers(state: GameState, dt: number): void {
       );
     }
   }
+}
+
+/** Эфирная катушка primary attack. Chains from `tower` → `primary` → up to
+ *  `ETHER_COIL_CHAIN.hops` additional enemies, dealing decreasing damage with
+ *  each hop. Each hop is independently selected so the bolt picks the closest
+ *  unhit enemy at every step. Visual segments are pushed to `state.chainBolts`. */
+function fireChainLightning(
+  state: GameState,
+  tower: Tower,
+  primary: Enemy,
+  baseDamage: number,
+): void {
+  const hit = new Set<number>();
+  hit.add(primary.id);
+  // Primary hit
+  applyDamageToEnemy(state, primary, baseDamage, tower.kind.element);
+  pushBolt(state, tower.pos, primary.pos, 0);
+
+  let current: Enemy = primary;
+  let dmg = baseDamage;
+  for (let h = 0; h < ETHER_COIL_CHAIN.hops; h++) {
+    dmg *= ETHER_COIL_CHAIN.falloff;
+    let next: Enemy | null = null;
+    let nextD = ETHER_COIL_CHAIN.range;
+    for (const e of state.enemies) {
+      if (hit.has(e.id)) continue;
+      const d = dist(e.pos, current.pos);
+      if (d <= nextD) { nextD = d; next = e; }
+    }
+    if (!next) break;
+    hit.add(next.id);
+    applyDamageToEnemy(state, next, dmg, tower.kind.element);
+    pushBolt(state, current.pos, next.pos, h + 1);
+    current = next;
+  }
+}
+
+function pushBolt(state: GameState, from: { x: number; y: number }, to: { x: number; y: number }, hop: number): void {
+  state.chainBolts.push({
+    id: newId(state),
+    from: { x: from.x, y: from.y },
+    to: { x: to.x, y: to.y },
+    time: 0.18,
+    maxTime: 0.18,
+    hop,
+  });
 }
