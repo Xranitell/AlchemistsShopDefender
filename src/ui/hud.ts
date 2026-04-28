@@ -35,6 +35,8 @@ export class Hud {
   // Top-right gold / essence
   private goldLabel!: HTMLSpanElement;
   private essenceLabel!: HTMLSpanElement;
+  private catalystBadge!: HTMLDivElement;
+  private catalystValue!: HTMLSpanElement;
 
   // Bottom-left magnet info (loot radius indicator)
   // (Decorative for now, animates when picking up gold)
@@ -161,6 +163,19 @@ export class Hud {
     essBadge.appendChild(essInner);
     rightStack.appendChild(essBadge);
 
+    // Catalyst slot counter: shows N/M (equipped/total). Hidden when no slots.
+    this.catalystBadge = document.createElement('div');
+    this.catalystBadge.className = 'hud-catalyst-badge';
+    const catLab = document.createElement('div');
+    catLab.className = 'hud-tag-label';
+    catLab.textContent = 'КАТАЛИЗАТОРЫ';
+    this.catalystValue = document.createElement('span');
+    this.catalystValue.className = 'hud-resource-value';
+    this.catalystValue.textContent = '0/0';
+    this.catalystBadge.appendChild(catLab);
+    this.catalystBadge.appendChild(this.catalystValue);
+    rightStack.appendChild(this.catalystBadge);
+
     top.appendChild(rightStack);
 
     // ────────────── BOTTOM ROW ──────────────
@@ -239,6 +254,14 @@ export class Hud {
 
     this.goldLabel.textContent = `${state.gold}`;
     this.essenceLabel.textContent = `${state.essence}`;
+
+    // Catalyst counter — show only when there's at least 1 slot.
+    if (state.catalystSlots > 0) {
+      this.catalystBadge.style.display = '';
+      this.catalystValue.textContent = `${state.equippedCatalysts.length}/${state.catalystSlots}`;
+    } else {
+      this.catalystBadge.style.display = 'none';
+    }
 
     const ws = state.waveState;
     const idx = ws.currentIndex;

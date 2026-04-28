@@ -205,6 +205,19 @@ body {
 }
 .hud-tag-gold { color: var(--gold); }
 .hud-tag-essence { color: var(--essence); }
+.hud-catalyst-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  background: rgba(20, 18, 32, 0.7);
+  border: 1px solid rgba(125, 249, 255, 0.35);
+  border-radius: 4px;
+  min-width: 110px;
+}
+.hud-catalyst-badge .hud-resource-value { font-size: 16px; color: var(--accent); }
+.hud-catalyst-badge .hud-tag-label { color: var(--accent); }
 
 /* ============ HUD: bottom row (MAGNET / CTA / ABILITY+OVERLOAD) ============ */
 .hud-bottom-row {
