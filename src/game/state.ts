@@ -4,12 +4,14 @@ import type { CardDef, Element, Entrance, EnemyKind, StatusEffects, TowerKind, W
 import { newStatus } from './types';
 import type { ReactionPool } from './reactions';
 import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
+import type { BiomeId } from '../data/biomes';
 
 export type Phase =
   | 'menu'
   | 'preparing'
   | 'wave'
   | 'card_select'
+  | 'endless_modifier_select'
   | 'victory'
   | 'gameover';
 
@@ -277,6 +279,28 @@ export interface OverloadState {
   maxCharge: number;
 }
 
+/** Identifiers for the endless-loop modifier pool. */
+export type EndlessModifierId =
+  | 'hp_x125'
+  | 'speed_x110'
+  | 'gold_minus10'
+  | 'extra_enemies'
+  | 'elites_on_normal';
+
+export interface EndlessModifier {
+  id: EndlessModifierId;
+  label: string;
+  desc: string;
+}
+
+export const ENDLESS_MODIFIER_POOL: EndlessModifier[] = [
+  { id: 'hp_x125',         label: 'Живучесть',       desc: '×1.25 HP врагов' },
+  { id: 'speed_x110',      label: 'Прыткость',       desc: '×1.10 скорость врагов' },
+  { id: 'gold_minus10',    label: 'Скупость',         desc: '−10% золота' },
+  { id: 'extra_enemies',   label: 'Подкрепление',     desc: '+2 врага в каждой волне' },
+  { id: 'elites_on_normal', label: 'Элитный патруль', desc: 'Элиты на обычных волнах' },
+];
+
 export interface GameState {
   rng: Rng;
   phase: Phase;
@@ -333,6 +357,13 @@ export interface GameState {
   difficultyModifier: DifficultyModifier;
   /** In endless mode, how many full wave-lists we have already completed. */
   endlessLoop: number;
+  /** Biome selected for this run. Affects palette and passive modifiers. */
+  biomeId: BiomeId;
+  /** Cumulative endless-mode modifiers applied after each W15 loop. */
+  endlessModifiers: EndlessModifier[];
+  /** The modifier just rolled for the upcoming endless cycle (shown in the
+   *  selector overlay). Null when no selection is pending. */
+  pendingEndlessModifier: EndlessModifierId | null;
   /** Seconds left on the active "Temporary Shield" buy. While >0 incoming
    * damage to the mannequin is reduced by `tempShieldReduction`. */
   tempShieldTime: number;

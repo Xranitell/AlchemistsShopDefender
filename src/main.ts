@@ -3,13 +3,13 @@ import { Input } from './engine/input';
 import { Loop } from './engine/loop';
 import { dist } from './engine/math';
 import { yandex } from './yandex';
-import { buildInitialState } from './game/world';
+import { buildInitialState, applyBiomeModifiers } from './game/world';
 import { updateMannequin } from './game/mannequin';
 import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts } from './game/enemy';
 import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
-import { startNextWave, startPause, updateWave, totalWaves } from './game/wave';
+import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier } from './game/wave';
 import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
@@ -25,6 +25,7 @@ import { BattlePassOverlay, addBpXp } from './ui/battlePassOverlay';
 import { SettingsOverlay } from './ui/settingsOverlay';
 import { DifficultyOverlay } from './ui/difficultyOverlay';
 import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
+import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
@@ -75,6 +76,7 @@ const bpOverlay = new BattlePassOverlay(overlayRoot);
 const settingsOverlay = new SettingsOverlay(overlayRoot);
 const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
+const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -210,6 +212,9 @@ function tick(dt: number): void {
   if (state.phase === 'card_select' && !overlay.isVisible()) {
     showCardOverlay();
   }
+  if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
+    showEndlessModifierOverlay();
+  }
   if (state.phase === 'victory' && !overlay.isVisible()) {
     showVictory();
   }
@@ -330,6 +335,20 @@ function renderCardOverlay(): void {
         });
       },
     } : undefined,
+  });
+}
+
+function showEndlessModifierOverlay(): void {
+  if (!state.pendingEndlessModifier) return;
+  endlessModOverlay.show({
+    modifierId: state.pendingEndlessModifier,
+    loop: state.endlessLoop,
+    activeModifiers: state.endlessModifiers,
+    onConfirm: () => {
+      endlessModOverlay.hide();
+      confirmEndlessModifier(state);
+      yandex.gameplayStart();
+    },
   });
 }
 
@@ -529,6 +548,7 @@ function consumeKey(mode: DifficultyMode): boolean {
 function startRun(mode: DifficultyMode): void {
   state = buildInitialState(undefined, mode);
   applyMetaUpgrades(state, meta);
+  applyBiomeModifiers(state);
   towerShop.attach(state);
   mannequinShop.attach(state);
   // Light up the FTUE for first-time players. We only run the tutorial on

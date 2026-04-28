@@ -1,4 +1,5 @@
 import { COLORS } from './palette';
+import { BIOMES, type BiomeId, type BiomePalette } from '../data/biomes';
 
 // Room backdrop — walls and door frames have been removed so enemies can walk
 // in from off-screen. The backdrop is now purely an iso-rhombic floor that
@@ -13,9 +14,27 @@ export const WALL_BOTTOM = 0;
 
 let cached: HTMLCanvasElement | null = null;
 let cachedSize: { w: number; h: number } | null = null;
+let cachedBiome: BiomeId | null = null;
+
+/** Current biome set by the game. Call `setBiome` before the first
+ *  `getRoomBackdrop` to switch palettes; the cache is invalidated
+ *  automatically when the biome changes. */
+let activeBiome: BiomeId = 'workshop';
+
+export function setBiome(id: BiomeId): void {
+  if (id !== activeBiome) {
+    activeBiome = id;
+    cached = null;        // force re-render on next call
+    cachedBiome = null;
+  }
+}
+
+export function getActiveBiomePalette(): BiomePalette {
+  return BIOMES[activeBiome].palette;
+}
 
 export function getRoomBackdrop(width: number, height: number): HTMLCanvasElement {
-  if (cached && cachedSize && cachedSize.w === width && cachedSize.h === height) {
+  if (cached && cachedSize && cachedSize.w === width && cachedSize.h === height && cachedBiome === activeBiome) {
     return cached;
   }
   const c = document.createElement('canvas');
@@ -24,19 +43,22 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   const ctx = c.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
 
-  drawFloor(ctx, width, height);
-  drawWorkshopWalls(ctx, width, height);
+  const pal = BIOMES[activeBiome].palette;
+  drawFloor(ctx, width, height, pal);
+  drawWorkshopWalls(ctx, width, height, pal);
   drawScatteredDecor(ctx, width, height);
+  drawBiomeDecor(ctx, width, height, activeBiome);
 
   cached = c;
   cachedSize = { w: width, h: height };
+  cachedBiome = activeBiome;
   return c;
 }
 
-function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
   const wall = 70;
   const side = 46;
-  ctx.fillStyle = '#090d14';
+  ctx.fillStyle = pal.wallDark;
   ctx.fillRect(0, 0, w, wall);
   ctx.fillRect(0, 0, side, h);
   ctx.fillRect(w - side, 0, side, h);
@@ -75,12 +97,12 @@ function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number):
 }
 
 // Iso rhombus tile floor covering the entire canvas.
-function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
   const TILE_W = 64;
   const TILE_H = 32;
 
   // Base fill.
-  ctx.fillStyle = COLORS.tileA;
+  ctx.fillStyle = pal.tileA;
   ctx.fillRect(0, 0, w, h);
 
   let row = 0;
@@ -90,9 +112,9 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     for (let cx = -TILE_W + rowOffset; cx <= w + TILE_W; cx += TILE_W) {
       const seed = hash2(col + (row << 8), row);
       const checker = ((row >> 1) + col) & 1;
-      const base = checker === 0 ? COLORS.tileA : COLORS.tileB;
+      const base = checker === 0 ? pal.tileA : pal.tileB;
       fillRhombus(ctx, cx, cy, TILE_W, TILE_H, base);
-      strokeRhombus(ctx, cx, cy, TILE_W, TILE_H, COLORS.tileCrack);
+      strokeRhombus(ctx, cx, cy, TILE_W, TILE_H, pal.tileCrack);
 
       // Extra detail: each tile may pick up a number of small wear marks
       // based on its deterministic seed. This keeps the grid lively without
@@ -114,13 +136,13 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     Math.max(w, h) * 0.7,
   );
   grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.55)');
+  grad.addColorStop(1, `rgba(0,0,0,${pal.vignetteAlpha})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
   // Subtle centre spotlight.
   const spotlight = ctx.createRadialGradient(w / 2, h / 2 - 30, 0, w / 2, h / 2 - 30, 220);
-  spotlight.addColorStop(0, 'rgba(125, 249, 255, 0.04)');
+  spotlight.addColorStop(0, pal.spotlight);
   spotlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = spotlight;
   ctx.fillRect(0, 0, w, h);
@@ -503,6 +525,69 @@ function hash2(x: number, y: number): number {
   let h = (x * 73856093) ^ (y * 19349663);
   h = (h ^ (h >>> 13)) >>> 0;
   return h * 2654435761 >>> 0;
+}
+
+// Biome-specific small decorations drawn on the backdrop canvas.
+function drawBiomeDecor(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  biome: BiomeId,
+): void {
+  if (biome === 'workshop') return; // workshop uses only the standard decor
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const excludeRX = 280;
+  const excludeRY = 150;
+  const COUNT = 14;
+
+  for (let i = 0; i < COUNT; i++) {
+    const r = hash2(i * 47 + 113, 29 + i * 7);
+    const x = (r & 0xffff) % (w - 80) + 40;
+    const y = ((r >> 16) & 0xffff) % (h - 80) + 40;
+    const dx = (x - cx) / excludeRX;
+    const dy = (y - cy) / excludeRY;
+    if (dx * dx + dy * dy < 1) continue;
+
+    if (biome === 'crypt') {
+      // Small skull / bone scatter
+      if (i % 3 === 0) {
+        // Skull
+        ctx.fillStyle = '#6a6470';
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3a3440';
+        ctx.fillRect(x - 1, y + 1, 1, 1);
+        ctx.fillRect(x + 1, y + 1, 1, 1);
+      } else {
+        // Bone shard
+        ctx.fillStyle = '#5a5460';
+        ctx.fillRect(x, y, 6, 2);
+        ctx.fillStyle = '#7a7480';
+        ctx.fillRect(x + 1, y, 4, 1);
+      }
+    } else if (biome === 'foundry') {
+      // Embers / slag lumps
+      if (i % 3 === 0) {
+        // Glowing ember
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#ff6030';
+        ctx.fillRect(x, y, 3, 3);
+        ctx.fillStyle = '#ffa050';
+        ctx.fillRect(x + 1, y + 1, 1, 1);
+        ctx.restore();
+      } else {
+        // Slag lump
+        ctx.fillStyle = '#3a2220';
+        ctx.fillRect(x, y, 5, 3);
+        ctx.fillStyle = '#5a3230';
+        ctx.fillRect(x + 1, y + 1, 3, 1);
+      }
+    }
+  }
 }
 
 // Walls have been removed, so there are no door overlays. Kept as a no-op so

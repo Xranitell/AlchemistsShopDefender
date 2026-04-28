@@ -9,6 +9,7 @@ import {
   type WaveState,
 } from './state';
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { biomeFromSeed, BIOMES, type BiomeId } from '../data/biomes';
 
 const ARENA_W = 1280;
 const ARENA_H = 720;
@@ -129,10 +130,13 @@ export function buildWaveState(): WaveState {
 export function buildInitialState(
   seed?: number,
   difficulty: DifficultyMode = 'normal',
+  biome?: BiomeId,
 ): GameState {
   const mode = DIFFICULTY_MODES[difficulty];
+  const actualSeed = seed ?? (Date.now() >>> 0);
+  const biomeId: BiomeId = biome ?? biomeFromSeed(actualSeed);
   return {
-    rng: new Rng(seed ?? (Date.now() >>> 0)),
+    rng: new Rng(actualSeed),
     phase: 'preparing',
     arena: {
       width: ARENA_W,
@@ -185,6 +189,9 @@ export function buildInitialState(
     difficulty,
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
     endlessLoop: 0,
+    biomeId,
+    endlessModifiers: [],
+    pendingEndlessModifier: null,
     tempShieldTime: 0,
     tempShieldReduction: 0,
     golemHeartCharges: 0,
@@ -198,4 +205,19 @@ export function buildInitialState(
     catalystSlots: 2,
     equippedCatalysts: [],
   };
+}
+
+/** Apply passive biome modifiers to the state. Call once after
+ *  `buildInitialState` + `applyMetaUpgrades` so they stack on top of
+ *  meta progression. */
+export function applyBiomeModifiers(state: GameState): void {
+  const bm = BIOMES[state.biomeId].modifier;
+  // Crypt: reduce tower range (simulates reduced visibility).
+  state.modifiers.towerRangeMult *= bm.visionRangeMult;
+  // Foundry: +5% fire damage for player (potionDamageMult used for fire
+  // potions), and enemy fire damage is scaled by the difficulty modifier.
+  if (bm.fireDamageMult !== 1) {
+    state.modifiers.potionDamageMult *= bm.fireDamageMult;
+    state.difficultyModifier.damageMult *= bm.fireDamageMult;
+  }
 }
