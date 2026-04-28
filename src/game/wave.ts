@@ -5,6 +5,7 @@ import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import type { EnemyAbility } from '../data/difficulty';
+import { audio } from '../audio/audio';
 
 /** Configured length of the active wave in seconds, or 0 if no wave is set. */
 export function currentWaveDuration(state: GameState): number {
@@ -42,6 +43,16 @@ export function startNextWave(state: GameState): void {
   ws.timeInWave = 0;
   ws.spawnedCount = 0;
   ws.pendingSpawns = def.spawns.slice();
+
+  // Boss waves swap to the dedicated boss music track and play a stinger;
+  // otherwise we just bump the regular waveStart fanfare.
+  if (def.isBoss) {
+    audio.playSfx('bossSpawn');
+    audio.playMusic('boss');
+  } else {
+    audio.playSfx('waveStart');
+    audio.playMusic('battle');
+  }
 
   // Light up the entrances used by this wave so the player can read threats.
   const used = new Set(def.spawns.map((s) => s.entrance));

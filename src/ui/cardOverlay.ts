@@ -1,5 +1,6 @@
 import type { CardDef } from '../game/types';
 import { pickedSynergyNames } from '../data/cards';
+import { audio } from '../audio/audio';
 
 export class CardOverlay {
   private root: HTMLElement;
@@ -108,7 +109,11 @@ export class CardOverlay {
     for (const b of opts.buttons) {
       const el = document.createElement('button');
       el.textContent = b.label;
-      el.addEventListener('click', b.onClick);
+      el.addEventListener('click', () => {
+        audio.playSfx('uiClick');
+        b.onClick();
+      });
+      el.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
       if (b.primary) {
         el.style.borderColor = 'var(--accent)';
         el.style.color = 'var(--accent)';
@@ -198,7 +203,11 @@ function buildCardElement(
     c.classList.add('has-synergy');
   }
 
-  c.addEventListener('click', () => onPick(card));
+  c.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  c.addEventListener('click', () => {
+    audio.playSfx('cardPick');
+    onPick(card);
+  });
   return c;
 }
 
@@ -286,6 +295,10 @@ function buildActionPill(opts: {
   cnt.textContent = opts.counter;
   b.appendChild(lab);
   b.appendChild(cnt);
-  b.addEventListener('click', () => opts.onClick());
+  b.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  b.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    opts.onClick();
+  });
   return b;
 }

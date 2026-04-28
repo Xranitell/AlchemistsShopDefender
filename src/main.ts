@@ -30,6 +30,7 @@ import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
+import { audio } from './audio/audio';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -45,6 +46,21 @@ ctx.imageSmoothingEnabled = true;
 
 let meta: MetaSave = loadMeta();
 let state: GameState = buildInitialState();
+
+// Initialise the audio engine on the first user gesture (click / keydown).
+// AudioContext can only be created from inside a gesture handler under the
+// Yandex/Chrome autoplay policy, so we attach one-shot listeners that bring
+// up the engine, push the user-saved volumes in and start the menu loop.
+function startAudioOnGesture(): void {
+  audio.ensureStarted();
+  audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
+  // Whatever phase we're in when the gesture lands, kick off the matching
+  // music. Most players will land here from the main-menu screen.
+  audio.playMusic(state.phase === 'wave' || state.phase === 'preparing' ? 'battle' : 'menu');
+}
+['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, startAudioOnGesture, { once: true, passive: true });
+});
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);
@@ -330,6 +346,8 @@ function doubleRewards(r: { blue: number; ancient: number; bpXp: number }): void
 
 function showVictory(): void {
   yandex.gameplayStop();
+  audio.playSfx('waveWin');
+  audio.playMusic('menu');
   const reward = awardRunEssence(true);
   const wave = state.waveState.currentIndex + 1;
   let doubled = false;
@@ -364,6 +382,8 @@ function showVictory(): void {
 
 function showGameOver(): void {
   yandex.gameplayStop();
+  audio.playSfx('runDefeat');
+  audio.playMusic('menu');
   const reward = awardRunEssence(false);
   const wave = state.waveState.currentIndex + 1;
   overlay.showSimple({
@@ -392,6 +412,8 @@ function showGameOver(): void {
 
 function showMainMenu(): void {
   meta = loadMeta();
+  audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
+  audio.playMusic('menu');
   mainMenu.show({
     meta,
     onBattle: () => {
@@ -469,6 +491,7 @@ function startRun(mode: DifficultyMode): void {
   applyMetaUpgrades(state, meta);
   towerShop.attach(state);
   mannequinShop.attach(state);
+  // startNextWave handles the music switch + wave-start stinger itself.
   startNextWave(state);
   yandex.gameplayStart();
 }

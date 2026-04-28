@@ -35,6 +35,9 @@ export interface MetaSave {
    *  preserve pre-loadout behaviour: lightning Overload + magnet aura. */
   selectedActiveModule: string;
   selectedAuraModule: string;
+  /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
+  sfxVolume: number;
+  musicVolume: number;
 }
 
 export function newMetaSave(): MetaSave {
@@ -60,6 +63,8 @@ export function newMetaSave(): MetaSave {
     craftingLevel: 1,
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
     selectedAuraModule: DEFAULT_AURA_MODULE,
+    sfxVolume: 0.6,
+    musicVolume: 0.4,
   };
 }
 
@@ -98,6 +103,8 @@ export function loadMeta(): MetaSave {
       selectedAuraModule: isAuraModule(data.selectedAuraModule ?? '')
         ? (data.selectedAuraModule as string)
         : DEFAULT_AURA_MODULE,
+      sfxVolume: clampVolume(data.sfxVolume, 0.6),
+      musicVolume: clampVolume(data.musicVolume, 0.4),
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {
@@ -124,6 +131,13 @@ export function resetMeta(): void {
   } catch {
     // ignore
   }
+}
+
+function clampVolume(v: unknown, fallback: number): number {
+  if (typeof v !== 'number' || Number.isNaN(v)) return fallback;
+  if (v < 0) return 0;
+  if (v > 1) return 1;
+  return v;
 }
 
 export function todayString(): string {

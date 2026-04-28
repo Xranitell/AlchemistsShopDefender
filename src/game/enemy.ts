@@ -4,6 +4,7 @@ import { newId, spawnFloatingText } from './state';
 import { ENEMIES } from '../data/enemies';
 import { spawnEnemy } from './wave';
 import { applyDamageToEnemy } from './projectile';
+import { audio } from '../audio/audio';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -256,7 +257,10 @@ export function updateGoldPickups(state: GameState, dt: number): void {
       g.pos.y += dir.y * sp * dt;
     }
     if (d < 18 || g.life <= 0) {
-      if (d < 18) state.gold += g.value;
+      if (d < 18) {
+        state.gold += g.value;
+        audio.playSfx('goldPickup');
+      }
       remove.push(i);
     }
   }
@@ -305,6 +309,7 @@ export function addOverload(state: GameState, amount: number): void {
  * (slime split / explode-on-death).
  */
 function onEnemyDeath(state: GameState, e: Enemy): void {
+  audio.playSfx('enemyDeath', { detune: e.kind.isBoss ? 0.5 : 1 });
   const goldMult = state.modifiers.goldDropMult
     * state.difficultyModifier.goldMult
     * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1);

@@ -3,6 +3,7 @@ import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
 import type { Element } from './types';
+import { audio } from '../audio/audio';
 
 /** Pick the element of a thrown potion based on currently-active recipe
  *  modifiers. Cards can layer multiple flags on the same potion — we resolve
@@ -45,6 +46,10 @@ export function fireTowerProjectile(
     echoExplosion: false,
     bonusFromManualAim: false,
   });
+  // Slight pitch jitter per element so chained shots from the same volley
+  // don't sound mechanical. Rate-limiting in the audio engine handles bursts.
+  const detune = element === 'fire' ? 0.85 : element === 'frost' ? 1.2 : 1.0;
+  audio.playSfx('towerFire', { detune });
 }
 
 export function throwPotion(
@@ -155,6 +160,11 @@ export function updateProjectiles(state: GameState, dt: number): void {
 }
 
 function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
+  if (p.kind === 'potion' && !p.echoExplosion) {
+    // Potion glass-shatter on landing. Echo-secondary blasts deliberately
+    // skip the SFX so the rate-limit stays kind to chained reactions.
+    audio.playSfx('potionImpact');
+  }
   if (p.splashRadius > 0) {
     applyAreaDamage(state, at, p.splashRadius, p.damage, p.element, p.bonusFromManualAim);
   } else {
@@ -248,6 +258,7 @@ export function applyDamageToEnemy(
 
   e.hp -= dmg;
   e.hitFlash = 0.12;
+  audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
 
   // Dash-back: on a successful hit push the enemy away from the hero for
   // a brief period so the projectile knocks them back slightly.
