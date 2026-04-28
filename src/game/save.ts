@@ -38,6 +38,9 @@ export interface MetaSave {
   /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
   sfxVolume: number;
   musicVolume: number;
+  /** First-time-user-experience flag (GDD §18). True once the player has
+   *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
+  tutorialDone: boolean;
 }
 
 export function newMetaSave(): MetaSave {
@@ -65,6 +68,7 @@ export function newMetaSave(): MetaSave {
     selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
     musicVolume: 0.4,
+    tutorialDone: false,
   };
 }
 
@@ -105,6 +109,12 @@ export function loadMeta(): MetaSave {
         : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
       musicVolume: clampVolume(data.musicVolume, 0.4),
+      // Migration: pre-FTUE saves had no tutorial flag. Treat any returning
+      // player who has at least one finished run as having seen the
+      // tutorial — we don't want to nag veterans with the wave-1 hint.
+      tutorialDone: typeof data.tutorialDone === 'boolean'
+        ? data.tutorialDone
+        : (data.totalRuns ?? 0) > 0,
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {

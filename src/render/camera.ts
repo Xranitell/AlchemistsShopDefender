@@ -37,3 +37,20 @@ export function screenToWorld(
     y: camera.cy + (sy - camera.cy) / camera.scale,
   };
 }
+
+/** Inverse of `screenToWorld`. Used by overlay UI (tutorial spotlights,
+ *  damage numbers anchored to entities) that needs to convert a world
+ *  coordinate back into a canvas-space pixel position. */
+export function worldToScreen(
+  wx: number,
+  wy: number,
+  camera: Camera,
+): { x: number; y: number } {
+  if (camera.scale === 1) {
+    return { x: wx, y: wy };
+  }
+  return {
+    x: camera.cx + (wx - camera.cx) * camera.scale,
+    y: camera.cy + (wy - camera.cy) * camera.scale,
+  };
+}
