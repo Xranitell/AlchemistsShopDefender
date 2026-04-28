@@ -14,9 +14,13 @@ import {
   AURA_MODULES,
   isActiveModule,
   isAuraModule,
+  moduleName,
+  moduleDesc,
   type ActiveModuleId,
   type AuraModuleId,
+  type ModuleDef,
 } from '../data/modules';
+import { metaNodeName, metaNodeDesc } from '../data/metaTree';
 
 const BRANCH_COLORS: Record<MetaBranch, string> = {
   potions: '#c084fc',     // purple
@@ -158,7 +162,7 @@ export class MetaOverlay {
 
       const name = document.createElement('div');
       name.className = 'meta-side-name';
-      name.textContent = node.name;
+      name.textContent = metaNodeName(node);
       name.style.color = branchColor;
       sidePanel.appendChild(name);
 
@@ -169,7 +173,7 @@ export class MetaOverlay {
 
       const desc = document.createElement('div');
       desc.className = 'meta-side-desc';
-      desc.textContent = node.desc;
+      desc.textContent = metaNodeDesc(node);
       sidePanel.appendChild(desc);
 
       const cost = document.createElement('div');
@@ -424,14 +428,14 @@ function buildModuleSlot(
   const current = valid ? currentRaw : Object.keys(pool)[0]!;
 
   const updateDesc = (id: string) => {
-    const def = (pool as Record<string, { desc: string }>)[id];
-    desc.textContent = def ? def.desc : '';
+    const def = (pool as Record<string, ModuleDef>)[id];
+    desc.textContent = def ? moduleDesc(def) : '';
   };
 
   for (const def of Object.values(pool)) {
     const btn = document.createElement('button');
     btn.className = 'meta-loadout-btn';
-    btn.textContent = def.name;
+    btn.textContent = moduleName(def);
     if (def.id === current) btn.classList.add('selected');
     btn.addEventListener('click', () => {
       if (slot === 'active') meta.selectedActiveModule = def.id as ActiveModuleId;

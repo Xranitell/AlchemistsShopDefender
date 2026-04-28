@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export interface BpReward {
   type: 'gold' | 'blue_essence' | 'ancient_essence' | 'keys';
   amount: number;
@@ -45,10 +47,5 @@ function premiumRewardForLevel(lv: number): BpReward | null {
 }
 
 export function bpRewardLabel(r: BpReward): string {
-  switch (r.type) {
-    case 'gold': return `${r.amount} зол.`;
-    case 'blue_essence': return `${r.amount} СЭ`;
-    case 'ancient_essence': return `${r.amount} ДЭ`;
-    case 'keys': return `${r.amount} кл.`;
-  }
+  return t(`reward.${r.type}`, { n: r.amount });
 }

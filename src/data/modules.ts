@@ -19,6 +19,8 @@
  *  - elem_reson  — Резонатор стихий: +30% reaction damage.
  */
 
+import { tWithFallback } from '../i18n';
+
 export type ActiveModuleId =
   | 'lightning'
   | 'chronos'
@@ -106,6 +108,16 @@ export function isActiveModule(id: string): id is ActiveModuleId {
 
 export function isAuraModule(id: string): id is AuraModuleId {
   return id in AURA_MODULES;
+}
+
+// Localised display accessors. Source-of-truth Russian strings live above as
+// `name`/`desc` fields and serve as fallback if a translation is missing.
+export function moduleName(def: ModuleDef): string {
+  return tWithFallback(`modules.${def.id}.name`, def.name);
+}
+
+export function moduleDesc(def: ModuleDef): string {
+  return tWithFallback(`modules.${def.id}.desc`, def.desc);
 }
 
 /** Module-specific tuning constants. */

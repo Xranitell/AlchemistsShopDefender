@@ -636,3 +636,15 @@ export const META_UPGRADES: MetaUpgrade[] = [
 export const META_BY_ID: Record<string, MetaUpgrade> = Object.fromEntries(
   META_UPGRADES.map((u) => [u.id, u]),
 );
+
+import { tWithFallback } from '../i18n';
+
+/** Localised name for a meta-tree node; falls back to source-of-truth Russian. */
+export function metaNodeName(node: MetaUpgrade): string {
+  return tWithFallback(`meta.node.${node.id}.name`, node.name);
+}
+
+/** Localised description for a meta-tree node; falls back to Russian. */
+export function metaNodeDesc(node: MetaUpgrade): string {
+  return tWithFallback(`meta.node.${node.id}.desc`, node.desc);
+}
