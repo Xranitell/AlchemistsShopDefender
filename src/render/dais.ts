@@ -11,10 +11,10 @@ import { getSprites } from './sprites';
 let _baked: HTMLCanvasElement | null = null;
 let _bakedSize: { w: number; h: number } | null = null;
 
-export const DAIS_RADIUS_OUTER = 138;
-export const DAIS_RADIUS_INNER = 100;
-export const DAIS_RING_RADIUS = 58;
-export const DAIS_RING_HALF = 18;
+export const DAIS_RADIUS_OUTER = 170;
+export const DAIS_RADIUS_INNER = 126;
+export const DAIS_RING_RADIUS = 76;
+export const DAIS_RING_HALF = 23;
 
 export function getDais(width: number, height: number): HTMLCanvasElement {
   if (_baked && _bakedSize && _bakedSize.w === width && _bakedSize.h === height) {
@@ -32,7 +32,17 @@ export function getDais(width: number, height: number): HTMLCanvasElement {
   // Outer cast shadow on floor.
   ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 12, DAIS_RADIUS_OUTER + 14, DAIS_RADIUS_OUTER * 0.55 + 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 34, DAIS_RADIUS_OUTER + 34, DAIS_RADIUS_OUTER * 0.55 + 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Raised vertical skirt, like the reference arena platform.
+  ctx.fillStyle = COLORS.daisDark;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 28, DAIS_RADIUS_OUTER + 4, DAIS_RADIUS_OUTER * 0.62, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = COLORS.daisMid;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 18, DAIS_RADIUS_OUTER, DAIS_RADIUS_OUTER * 0.62 - 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Outer rim of the dais (darkest stone)
@@ -49,6 +59,7 @@ export function getDais(width: number, height: number): HTMLCanvasElement {
 
   // Stone block segments around the rim (chunky pixel masonry).
   drawRimBlocks(ctx, cx, cy, DAIS_RADIUS_OUTER - 4, DAIS_RADIUS_OUTER * 0.62 - 3, 14);
+  drawStepBlockRing(ctx, cx, cy + 28);
 
   // Inner platform (lighter stone)
   ctx.fillStyle = COLORS.daisLight;
@@ -67,7 +78,7 @@ export function getDais(width: number, height: number): HTMLCanvasElement {
 
   // Crystal altar at top of dais.
   const s = getSprites();
-  drawSprite(ctx, s.crystalAltar, cx, cy - DAIS_RADIUS_INNER * 0.62 + 8, 2);
+  drawSprite(ctx, s.crystalAltar, cx, cy - DAIS_RADIUS_INNER * 0.62 + 4, 3);
 
   // Four ability ring slots (decorative — purely visual indicators of
   // mannequin loadout). Positioned in a 2x2 grid around the centre.
@@ -86,9 +97,9 @@ export function getAbilitySlotPositions(
   cy: number,
 ): { x: number; y: number }[] {
   // 2 above, 2 below — like the reference.
-  const dx = 50;
-  const dyTop = -16;
-  const dyBot = 24;
+  const dx = 67;
+  const dyTop = -22;
+  const dyBot = 34;
   return [
     { x: cx - dx, y: cy + dyTop },
     { x: cx + dx, y: cy + dyTop },
@@ -231,6 +242,22 @@ function drawRimBlocks(
     ctx.moveTo(Math.round(bx), Math.round(by));
     ctx.lineTo(Math.round((bx + cx) * 0.5 + (cx - bx) * 0.04), Math.round((by + cy) * 0.5 + (cy - by) * 0.04));
     ctx.stroke();
+  }
+}
+
+function drawStepBlockRing(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  const blocks = 24;
+  for (let i = 0; i < blocks; i++) {
+    const a = (i / blocks) * Math.PI * 2;
+    if (Math.sin(a) < -0.15) continue;
+    const x = cx + Math.cos(a) * (DAIS_RADIUS_OUTER - 8);
+    const y = cy + Math.sin(a) * ((DAIS_RADIUS_OUTER - 8) * 0.62);
+    const w = 20 - Math.abs(Math.cos(a)) * 8;
+    const h = 9;
+    ctx.fillStyle = i % 2 === 0 ? COLORS.daisLight : COLORS.daisMid;
+    ctx.fillRect(Math.round(x - w / 2), Math.round(y - h / 2), Math.round(w), h);
+    ctx.fillStyle = COLORS.daisCrack;
+    ctx.fillRect(Math.round(x - w / 2), Math.round(y + h / 2 - 1), Math.round(w), 1);
   }
 }
 

@@ -25,11 +25,53 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   ctx.imageSmoothingEnabled = false;
 
   drawFloor(ctx, width, height);
+  drawWorkshopWalls(ctx, width, height);
   drawScatteredDecor(ctx, width, height);
 
   cached = c;
   cachedSize = { w: width, h: height };
   return c;
+}
+
+function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const wall = 70;
+  const side = 46;
+  ctx.fillStyle = '#090d14';
+  ctx.fillRect(0, 0, w, wall);
+  ctx.fillRect(0, 0, side, h);
+  ctx.fillRect(w - side, 0, side, h);
+
+  for (let x = 0; x < w; x += 40) {
+    const shade = (x / 40) % 2 === 0 ? COLORS.stoneDark : COLORS.mortar;
+    ctx.fillStyle = shade;
+    ctx.fillRect(x, 0, 38, 28);
+    ctx.fillStyle = COLORS.stoneMid;
+    ctx.fillRect(x + 2, 29, 36, 28);
+    ctx.fillStyle = COLORS.tileCrack;
+    ctx.fillRect(x, 27, 40, 2);
+  }
+
+  for (let y = 22; y < h; y += 38) {
+    ctx.fillStyle = (y / 38) % 2 === 0 ? COLORS.stoneDark : COLORS.mortar;
+    ctx.fillRect(0, y, side - 8, 34);
+    ctx.fillRect(w - side + 8, y, side - 8, 34);
+    ctx.fillStyle = COLORS.stoneMid;
+    ctx.fillRect(4, y + 2, side - 16, 6);
+    ctx.fillRect(w - side + 12, y + 2, side - 16, 6);
+  }
+
+  drawBackShelf(ctx, 76, 22);
+  drawBackShelf(ctx, w - 192, 22);
+  drawCandleCluster(ctx, 63, 158);
+  drawCandleCluster(ctx, w - 72, 160);
+  drawBarrels(ctx, 182, 40);
+  drawBarrels(ctx, w - 245, 38);
+
+  const vignette = ctx.createLinearGradient(0, 0, 0, wall + 90);
+  vignette.addColorStop(0, 'rgba(0,0,0,0.5)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, wall + 90);
 }
 
 // Iso rhombus tile floor covering the entire canvas.
@@ -180,6 +222,58 @@ function drawScatteredDecor(
       case 4: drawPaperSheet(ctx, x, y, (r >> 5) & 3); break;
       default: drawDustPile(ctx, x, y); break;
     }
+  }
+}
+
+function drawBackShelf(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = COLORS.woodDark;
+  ctx.fillRect(x, y, 120, 44);
+  ctx.fillStyle = COLORS.woodLight;
+  ctx.fillRect(x + 4, y + 4, 112, 6);
+  ctx.fillRect(x + 4, y + 25, 112, 6);
+  ctx.fillStyle = COLORS.woodMid;
+  ctx.fillRect(x + 8, y + 11, 104, 4);
+  ctx.fillRect(x + 8, y + 32, 104, 4);
+  const colors = [COLORS.aetherB, COLORS.fireB, COLORS.acidA, COLORS.essenceB, COLORS.mercA];
+  for (let i = 0; i < 12; i++) {
+    const bx = x + 12 + i * 8;
+    const by = y + (i % 2 === 0 ? 16 : 36);
+    ctx.fillStyle = colors[i % colors.length]!;
+    ctx.fillRect(bx, by - 6, 5, 7);
+    ctx.fillStyle = COLORS.whiteSoft;
+    ctx.fillRect(bx + 1, by - 5, 1, 1);
+  }
+}
+
+function drawCandleCluster(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(x + 9, y + 18, 18, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const cx = x + i * 8;
+    const h = 16 - i * 3;
+    ctx.fillStyle = COLORS.parchment;
+    ctx.fillRect(cx, y + 12 - h, 5, h);
+    ctx.fillStyle = COLORS.fireB;
+    ctx.fillRect(cx + 1, y + 8 - h, 3, 4);
+    ctx.fillStyle = COLORS.fireA;
+    ctx.fillRect(cx + 2, y + 7 - h, 1, 2);
+  }
+}
+
+function drawBarrels(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  for (let i = 0; i < 2; i++) {
+    const bx = x + i * 28;
+    ctx.fillStyle = COLORS.woodDark;
+    ctx.fillRect(bx, y, 22, 34);
+    ctx.fillStyle = COLORS.woodMid;
+    ctx.fillRect(bx + 3, y + 2, 16, 30);
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(bx + 5, y + 4, 4, 26);
+    ctx.fillStyle = COLORS.mortar;
+    ctx.fillRect(bx, y + 8, 22, 3);
+    ctx.fillRect(bx, y + 24, 22, 3);
   }
 }
 
@@ -415,12 +509,35 @@ function hash2(x: number, y: number): number {
 // existing call-sites compile; the active entrance is still communicated via
 // a subtle glow hint drawn by render.ts.
 export function drawActiveDoor(
-  _ctx: CanvasRenderingContext2D,
-  _entranceX: number,
-  _entranceY: number,
-  _pulse: number,
-  _w: number,
-  _h: number,
+  ctx: CanvasRenderingContext2D,
+  entranceX: number,
+  entranceY: number,
+  pulse: number,
+  w: number,
+  h: number,
 ): void {
-  /* no-op — walls removed */
+  const x = Math.max(22, Math.min(w - 22, entranceX));
+  const y = Math.max(26, Math.min(h - 26, entranceY));
+  const horizontal = entranceY < 0 || entranceY > h;
+  const glow = 0.28 + pulse * 0.32;
+  ctx.save();
+  ctx.globalAlpha = glow;
+  ctx.fillStyle = COLORS.fireC;
+  ctx.beginPath();
+  ctx.ellipse(x, y, horizontal ? 55 : 22, horizontal ? 18 : 58, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = COLORS.woodDark;
+  if (horizontal) {
+    ctx.fillRect(x - 34, y - 10, 68, 20);
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(x - 28, y - 6, 56, 5);
+    ctx.fillRect(x - 28, y + 2, 56, 5);
+  } else {
+    ctx.fillRect(x - 10, y - 34, 20, 68);
+    ctx.fillStyle = COLORS.woodLight;
+    ctx.fillRect(x - 6, y - 28, 5, 56);
+    ctx.fillRect(x + 2, y - 28, 5, 56);
+  }
+  ctx.restore();
 }

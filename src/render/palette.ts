@@ -23,10 +23,10 @@ export const COLORS = {
   daisCrack: '#161721',
 
   // Floor
-  tileA: '#3d2f3a',
-  tileB: '#34272f',
-  tileC: '#48394a',
-  tileCrack: '#231a22',
+  tileA: '#1f2838',
+  tileB: '#252f42',
+  tileC: '#344057',
+  tileCrack: '#111722',
 
   // Manequin / decorations (warm cloth + brass)
   cloth: '#7a3a3a',
@@ -76,22 +76,22 @@ export const COLORS = {
   mercC: '#3a3a55',
 
   // Slime (green)
-  slimeA: '#a3e36a',
-  slimeB: '#6dbb3a',
-  slimeC: '#3a7a1a',
-  slimeShadow: '#1f3a14',
+  slimeA: '#b8ff5f',
+  slimeB: '#73d13d',
+  slimeC: '#2c8f24',
+  slimeShadow: '#174a16',
 
   // Spider (brown)
-  spiderA: '#5a3a2a',
-  spiderB: '#3a2218',
-  spiderC: '#1a0e0a',
-  spiderEye: '#ffd166',
+  spiderA: '#4aa9d9',
+  spiderB: '#2f5b9a',
+  spiderC: '#182448',
+  spiderEye: '#e0f8ff',
 
   // Stone golem
-  golemA: '#9c8a85',
-  golemB: '#6f5e58',
-  golemC: '#4a3d3a',
-  golemD: '#2a201d',
+  golemA: '#9da892',
+  golemB: '#667064',
+  golemC: '#414a43',
+  golemD: '#1e2824',
   golemCrack: '#ff8c3a',
   golemEye: '#ffd166',
 

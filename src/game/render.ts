@@ -23,6 +23,9 @@ function difficultyAuraColor(mode: DifficultyMode): string | null {
 }
 
 const SPRITE_SCALE = 2;
+const HERO_SCALE = 3;
+const TOWER_SCALE = 3;
+const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
@@ -52,6 +55,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     state.worldTime,
     ['cloud', 'flame', 'cloud', 'shield'],
   );
+  drawDangerRim(ctx, state);
   drawRunePoints(ctx, state);
   drawFirePools(ctx, state);
   drawReactionPools(ctx, state);
@@ -98,10 +102,10 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.save();
     ctx.translate(rp.pos.x, rp.pos.y);
 
-    const baseAlpha = isActive ? 0.55 : 0.18;
-    ctx.strokeStyle = isActive ? COLORS.aetherB : COLORS.stoneHi;
+    const baseAlpha = isActive ? 0.75 : 0.18;
+    ctx.strokeStyle = isActive ? COLORS.brassHi : COLORS.stoneHi;
     ctx.fillStyle = isActive
-      ? `rgba(125, 249, 255, ${0.10 + 0.06 * Math.sin(state.worldTime * 3)})`
+      ? `rgba(255, 241, 172, ${0.13 + 0.08 * Math.sin(state.worldTime * 3)})`
       : 'rgba(160, 160, 180, 0.05)';
     ctx.globalAlpha = baseAlpha;
     ctx.lineWidth = 1.5;
@@ -147,6 +151,23 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 }
 
+function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.phase !== 'wave') return;
+  const { x, y } = state.mannequin.pos;
+  const pulse = 0.55 + 0.25 * Math.sin(state.worldTime * 4);
+  ctx.save();
+  ctx.strokeStyle = RIM_RED;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = pulse;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 4, 300, 158, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.14 * pulse;
+  ctx.lineWidth = 16;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
   for (const t of state.towers) {
@@ -166,7 +187,7 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
 
     // Drop shadow under base.
-    drawShadow(ctx, t.pos.x, t.pos.y + 16, 18, 5, 0.4);
+    drawShadow(ctx, t.pos.x, t.pos.y + 22, 24, 7, 0.42);
 
     // Base glow
     ctx.save();
@@ -184,15 +205,15 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
     else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
     else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
-    drawSprite(ctx, base, t.pos.x, t.pos.y, SPRITE_SCALE);
+    drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
 
     // Rotating barrel sprite
-    drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 4, t.aimAngle, SPRITE_SCALE);
+    drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
 
     // Muzzle flash when recently fired
     if (t.fireTimer < 0.08) {
-      const flashX = t.pos.x + Math.cos(t.aimAngle) * 16;
-      const flashY = t.pos.y - 4 + Math.sin(t.aimAngle) * 16;
+      const flashX = t.pos.x + Math.cos(t.aimAngle) * 24;
+      const flashY = t.pos.y - 6 + Math.sin(t.aimAngle) * 24;
       ctx.save();
       ctx.globalAlpha = 0.6;
       ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
@@ -205,9 +226,9 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Level pips: small brass dots beneath the base
     for (let i = 0; i < t.level; i++) {
       ctx.fillStyle = COLORS.brassHi;
-      ctx.fillRect(t.pos.x - 8 + i * 6, t.pos.y + 22, 3, 3);
+      ctx.fillRect(t.pos.x - 10 + i * 8, t.pos.y + 29, 4, 4);
       ctx.fillStyle = COLORS.brass;
-      ctx.fillRect(t.pos.x - 8 + i * 6, t.pos.y + 25, 3, 1);
+      ctx.fillRect(t.pos.x - 10 + i * 8, t.pos.y + 33, 4, 1);
     }
   }
 }
@@ -227,7 +248,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 
   // Drop shadow
-  drawShadow(ctx, m.pos.x, m.pos.y + 18, 20, 6, 0.5);
+  drawShadow(ctx, m.pos.x, m.pos.y + 28, 32, 9, 0.52);
 
   // Core glow pulse
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
@@ -251,20 +272,20 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   const drawY = m.pos.y + bob + lunge.y;
 
   if (m.damageFlash > 0) {
-    drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
+    drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
     ctx.fillStyle = COLORS.fireC;
     ctx.fillRect(
-      drawX - sprite.anchor.x * SPRITE_SCALE,
-      drawY - sprite.anchor.y * SPRITE_SCALE,
-      sprite.width * SPRITE_SCALE,
-      sprite.height * SPRITE_SCALE,
+      drawX - sprite.anchor.x * HERO_SCALE,
+      drawY - sprite.anchor.y * HERO_SCALE,
+      sprite.width * HERO_SCALE,
+      sprite.height * HERO_SCALE,
     );
     ctx.restore();
   } else {
-    drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
+    drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
   }
 }
 
@@ -711,4 +732,3 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
 export function getRenderCamera(width: number, height: number): Camera {
   return { cx: width / 2, cy: height / 2, scale: 1 };
 }
-

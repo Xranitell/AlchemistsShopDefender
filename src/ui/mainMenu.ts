@@ -24,10 +24,10 @@ export class MainMenu {
     const topBar = document.createElement('div');
     topBar.className = 'mm-top-bar';
     topBar.innerHTML = `
-      <span class="mm-currency gold" title="Синяя эссенция">💎 <strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency essence" title="Древняя эссенция">🔮 <strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="mm-currency epic-key" title="Эпический ключ">🗝️ <strong>${opts.meta.epicKeys}</strong></span>
-      <span class="mm-currency ancient-key" title="Древний ключ">🗝 <strong>${opts.meta.ancientKeys}</strong></span>
+      <span class="mm-currency gold" title="Синяя эссенция"><span class="mm-res-icon coin"></span><strong>${opts.meta.blueEssence}</strong></span>
+      <span class="mm-currency essence" title="Древняя эссенция"><span class="mm-res-icon essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="mm-currency epic-key" title="Эпический ключ"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
+      <span class="mm-currency ancient-key" title="Древний ключ"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
     `;
     wrap.appendChild(topBar);
 
@@ -43,16 +43,25 @@ export class MainMenu {
     const shopSection = document.createElement('div');
     shopSection.className = 'mm-section mm-shop';
     const shopTitle = document.createElement('div');
-    shopTitle.className = 'mm-section-title';
-    shopTitle.textContent = 'Моя лавка';
+    shopTitle.className = 'mm-section-title mm-title-with-icon';
+    shopTitle.innerHTML = '<span class="mm-shop-icon"></span><span>MY SHOP</span><span class="mm-info-dot">i</span>';
     shopSection.appendChild(shopTitle);
+    const slotRow = document.createElement('div');
+    slotRow.className = 'mm-shop-slots';
+    for (let i = 0; i < 4; i++) {
+      const slot = document.createElement('div');
+      slot.className = `mm-shop-slot ${i === 0 ? 'filled' : ''}`;
+      if (i === 0) slot.innerHTML = '<span class="mm-slot-potion"></span>';
+      slotRow.appendChild(slot);
+    }
+    shopSection.appendChild(slotRow);
     const craftLevel = document.createElement('div');
     craftLevel.className = 'mm-craft-level';
-    craftLevel.textContent = `Ур. крафта ${opts.meta.craftingLevel}`;
+    craftLevel.innerHTML = `<span>CRAFTING LEVEL ${opts.meta.craftingLevel}</span><span class="mm-craft-bar"><i style="width:${Math.min(100, 24 + opts.meta.craftingLevel * 8)}%"></i></span>`;
     shopSection.appendChild(craftLevel);
     const statsRow = document.createElement('div');
     statsRow.className = 'mm-stats';
-    statsRow.innerHTML = `<span>Забегов: ${opts.meta.totalRuns}</span><span>Лучшая: ${opts.meta.bestWave}</span>`;
+    statsRow.innerHTML = `<span>RUNS ${opts.meta.totalRuns}</span><span>BEST WAVE ${opts.meta.bestWave}</span>`;
     shopSection.appendChild(statsRow);
     leftCol.appendChild(shopSection);
 
@@ -61,11 +70,20 @@ export class MainMenu {
     labBtn.className = 'mm-section mm-lab-btn';
     const labTitle = document.createElement('div');
     labTitle.className = 'mm-section-title';
-    labTitle.textContent = 'Лаборатория';
+    labTitle.innerHTML = '<span class="mm-flask-icon"></span><span>LABORATORY</span>';
     labBtn.appendChild(labTitle);
     const labDesc = document.createElement('div');
     labDesc.className = 'mm-lab-desc';
-    labDesc.textContent = 'Дерево Манекена';
+    const hpNode = opts.meta.purchased.includes('hp_1') ? 10 : 0;
+    const damageNode = opts.meta.purchased.includes('potion_damage_1') ? 5 : 0;
+    labDesc.innerHTML = `
+      <span class="mm-lab-tree">
+        <span class="node core"></span>
+        <span class="branch left"></span><span class="branch right"></span>
+        <span class="node hp">HP<br>+${hpNode}%</span>
+        <span class="node dmg">DMG<br>+${damageNode}%</span>
+      </span>
+    `;
     labBtn.appendChild(labDesc);
     labBtn.addEventListener('click', opts.onLaboratory);
     leftCol.appendChild(labBtn);
@@ -75,7 +93,7 @@ export class MainMenu {
     settingsBtn.className = 'mm-section mm-settings-btn';
     const settingsTitle = document.createElement('div');
     settingsTitle.className = 'mm-section-title';
-    settingsTitle.textContent = 'Настройки';
+    settingsTitle.innerHTML = '<span class="mm-gear-icon"></span><span>SETTINGS</span>';
     settingsBtn.addEventListener('click', opts.onSettings);
     settingsBtn.appendChild(settingsTitle);
     leftCol.appendChild(settingsBtn);
@@ -98,7 +116,7 @@ export class MainMenu {
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
-    battleBtn.textContent = 'В бой!';
+    battleBtn.textContent = 'TO BATTLE';
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
 
@@ -112,11 +130,11 @@ export class MainMenu {
     bpBtn.className = 'mm-section mm-bp-btn';
     const bpTitle = document.createElement('div');
     bpTitle.className = 'mm-section-title';
-    bpTitle.textContent = 'Battle Pass';
+    bpTitle.innerHTML = '<span>BATTLE PASS</span><span class="mm-chest-icon"></span>';
     bpBtn.appendChild(bpTitle);
     const bpSub = document.createElement('div');
     bpSub.className = 'mm-bp-sub';
-    bpSub.textContent = `Ур. ${opts.meta.bpLevel}`;
+    bpSub.innerHTML = `<span>LEVEL ${opts.meta.bpLevel}</span><span class="mm-mini-progress"><i style="width:${Math.min(100, (opts.meta.bpLevel / 50) * 100)}%"></i></span>`;
     bpBtn.appendChild(bpSub);
     bpBtn.addEventListener('click', opts.onBattlePass);
     rightCol.appendChild(bpBtn);
@@ -125,7 +143,7 @@ export class MainMenu {
     dailyBtn.className = 'mm-section mm-daily-btn';
     const dailyTitle = document.createElement('div');
     dailyTitle.className = 'mm-section-title';
-    dailyTitle.textContent = 'Награды';
+    dailyTitle.innerHTML = '<span>DAILY<br>REWARDS</span><span class="mm-calendar-icon"></span>';
     dailyBtn.appendChild(dailyTitle);
     if (canClaimDaily(opts.meta)) {
       const badge = document.createElement('div');
@@ -153,11 +171,11 @@ export class MainMenu {
 // potions + warm lantern glow).
 function shopIllustrationSVG(): string {
   return `<svg viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-    <!-- Sky / twilight behind shop -->
     <defs>
-      <radialGradient id="sky" cx="50%" cy="90%" r="80%">
-        <stop offset="0%" stop-color="#3b2f52"/>
-        <stop offset="100%" stop-color="#110a1f"/>
+      <radialGradient id="sky" cx="50%" cy="48%" r="72%">
+        <stop offset="0%" stop-color="#27445b"/>
+        <stop offset="58%" stop-color="#121a2a"/>
+        <stop offset="100%" stop-color="#080b12"/>
       </radialGradient>
       <radialGradient id="glow" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#ffd27a" stop-opacity="0.8"/>
@@ -165,65 +183,31 @@ function shopIllustrationSVG(): string {
       </radialGradient>
     </defs>
     <rect width="220" height="180" fill="url(#sky)"/>
-    <!-- Moon -->
-    <circle cx="178" cy="30" r="10" fill="#f5e0a0"/>
-    <circle cx="174" cy="26" r="3" fill="#c6aa6a" opacity="0.6"/>
-
-    <!-- Shop building -->
-    <!-- roof -->
-    <polygon points="28,78 110,38 192,78" fill="#5b3a22" stroke="#2b1a10" stroke-width="2"/>
-    <polygon points="36,80 110,44 184,80" fill="#7a4f30"/>
-    <!-- walls -->
-    <rect x="40" y="78" width="140" height="84" fill="#d6b17a" stroke="#3f2d1a" stroke-width="2"/>
-    <!-- timber frame -->
-    <rect x="40" y="78" width="140" height="6" fill="#3f2d1a"/>
-    <rect x="40" y="156" width="140" height="6" fill="#3f2d1a"/>
-    <rect x="40" y="78" width="6" height="84" fill="#3f2d1a"/>
-    <rect x="174" y="78" width="6" height="84" fill="#3f2d1a"/>
-    <rect x="102" y="84" width="6" height="72" fill="#3f2d1a"/>
-    <rect x="46" y="116" width="134" height="4" fill="#3f2d1a"/>
-
-    <!-- Big shop window -->
-    <rect x="52" y="90" width="44" height="22" fill="#223c52" stroke="#1a2a3a" stroke-width="1"/>
-    <line x1="74" y1="90" x2="74" y2="112" stroke="#4a718f" stroke-width="1"/>
-    <line x1="52" y1="101" x2="96" y2="101" stroke="#4a718f" stroke-width="1"/>
-    <!-- tiny potion silhouettes in window -->
-    <circle cx="62" cy="104" r="3" fill="#7df9ff"/>
-    <circle cx="72" cy="106" r="2" fill="#ff6a3d"/>
-    <circle cx="82" cy="104" r="3" fill="#c084fc"/>
-    <circle cx="90" cy="106" r="2" fill="#a3e36a"/>
-
-    <!-- Door -->
-    <rect x="116" y="100" width="44" height="56" fill="#4a2e1a" stroke="#2b1a10" stroke-width="2"/>
-    <rect x="120" y="104" width="36" height="6" fill="#7a4f30"/>
-    <circle cx="154" cy="128" r="2" fill="#ffd166"/>
-    <!-- hanging sign -->
-    <rect x="124" y="78" width="28" height="14" fill="#3f2d1a"/>
-    <rect x="126" y="80" width="24" height="10" fill="#d6b17a"/>
-    <text x="138" y="88" text-anchor="middle" font-size="7" font-family="monospace" fill="#3f2d1a">⚗</text>
-
-    <!-- Lantern glow -->
-    <circle cx="100" cy="96" r="18" fill="url(#glow)"/>
-    <circle cx="100" cy="96" r="2" fill="#ffd166"/>
-
-    <!-- Chimney + smoke -->
-    <rect x="150" y="52" width="10" height="18" fill="#3f2d1a"/>
-    <ellipse cx="154" cy="48" rx="6" ry="3" fill="#8a8a9e" opacity="0.5"/>
-    <ellipse cx="160" cy="40" rx="5" ry="2.5" fill="#8a8a9e" opacity="0.35"/>
-
-    <!-- Barrel + crates outside door -->
-    <rect x="30" y="140" width="16" height="20" fill="#6a4020" stroke="#2b1a10" stroke-width="1"/>
-    <line x1="30" y1="146" x2="46" y2="146" stroke="#2b1a10"/>
-    <line x1="30" y1="154" x2="46" y2="154" stroke="#2b1a10"/>
-    <rect x="172" y="142" width="18" height="18" fill="#a87a46" stroke="#2b1a10" stroke-width="1"/>
-    <line x1="172" y1="151" x2="190" y2="151" stroke="#2b1a10"/>
-    <line x1="181" y1="142" x2="181" y2="160" stroke="#2b1a10"/>
-
-    <!-- Cobblestone ground -->
-    <rect x="0" y="160" width="220" height="20" fill="#2b2236"/>
-    <ellipse cx="30" cy="170" rx="10" ry="3" fill="#3a3148"/>
-    <ellipse cx="70" cy="172" rx="14" ry="3" fill="#3a3148"/>
-    <ellipse cx="120" cy="170" rx="12" ry="3" fill="#3a3148"/>
-    <ellipse cx="170" cy="172" rx="14" ry="3" fill="#3a3148"/>
+    <ellipse cx="110" cy="139" rx="76" ry="26" fill="#151c2c"/>
+    <polygon points="56,122 110,96 164,122 110,154" fill="#4d596f"/>
+    <polygon points="56,122 110,154 110,166 48,132" fill="#2c3448"/>
+    <polygon points="164,122 110,154 110,166 172,132" fill="#242b3d"/>
+    <polygon points="62,120 110,98 158,120 110,147" fill="#758096"/>
+    <polyline points="72,122 110,104 148,122" fill="none" stroke="#9ba6bb" stroke-width="2"/>
+    <polyline points="82,128 110,115 138,128" fill="none" stroke="#59657f" stroke-width="2"/>
+    <polygon points="74,92 110,64 146,92 110,112" fill="#9a5a2a" stroke="#2a1810" stroke-width="3"/>
+    <polygon points="82,92 110,70 138,92 110,107" fill="#c07a3e"/>
+    <polygon points="78,94 110,111 110,143 78,126" fill="#6b4026" stroke="#2a1810" stroke-width="2"/>
+    <polygon points="142,94 110,111 110,143 142,126" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
+    <polygon points="92,102 110,111 110,136 92,127" fill="#2a1810"/>
+    <polygon points="119,106 134,99 134,122 119,130" fill="#24445d" stroke="#182436" stroke-width="2"/>
+    <rect x="74" y="113" width="9" height="28" fill="#5a3622"/>
+    <rect x="137" y="112" width="8" height="27" fill="#5a3622"/>
+    <rect x="100" y="53" width="9" height="16" fill="#454a60" stroke="#1a1d28" stroke-width="2"/>
+    <ellipse cx="103" cy="49" rx="7" ry="3" fill="#9c8a90" opacity="0.6"/>
+    <circle cx="126" cy="112" r="12" fill="url(#glow)"/>
+    <rect x="124" y="111" width="4" height="7" fill="#ffd166"/>
+    <rect x="65" y="128" width="12" height="19" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
+    <rect x="145" y="130" width="18" height="17" fill="#b78250" stroke="#2a1810" stroke-width="2"/>
+    <circle cx="89" cy="136" r="3" fill="#7df9ff"/>
+    <circle cx="133" cy="132" r="3" fill="#c084fc"/>
+    <circle cx="153" cy="139" r="3" fill="#4fd36a"/>
+    <rect x="44" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
+    <rect x="154" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
   </svg>`;
 }
