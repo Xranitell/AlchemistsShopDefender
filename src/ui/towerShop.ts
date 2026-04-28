@@ -46,8 +46,12 @@ export class TowerShop {
         right.className = 'cost';
         const isFirst = this.state.towers.length === 0;
         const discount = isFirst ? this.state.metaTowerDiscount : 0;
-        const displayCost = Math.max(0, kind.cost - discount);
-        right.textContent = discount > 0 ? `${displayCost} зол. (-${discount})` : `${kind.cost} зол.`;
+        const archmaster = this.state.modifiers.archmasterActive;
+        const baseCost = Math.max(0, kind.cost - discount);
+        const displayCost = archmaster ? Math.ceil(baseCost * 1.25) : baseCost;
+        right.textContent = archmaster
+          ? `${displayCost} зол. (Архимастер +25%)`
+          : (discount > 0 ? `${displayCost} зол. (-${discount})` : `${kind.cost} зол.`);
         btn.appendChild(left);
         btn.appendChild(right);
         btn.disabled = this.state.gold < displayCost;

@@ -9,6 +9,9 @@ import type { Element } from './types';
  *  with a fixed priority so the most "specialised" recipe wins. */
 function selectPotionElement(state: GameState): Element {
   const m = state.modifiers;
+  // Salamander legendary forces every potion to be fire-element regardless of
+  // any other recipe layered on top.
+  if (m.salamanderActive) return 'fire';
   if (m.potionFrostActive) return 'frost';
   if (m.potionPoisonActive) return 'poison';
   if (m.potionAcidActive) return 'acid';

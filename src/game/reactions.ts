@@ -49,7 +49,7 @@ export function checkElementalReaction(
   ) {
     spawnPool(state, 'caustic_vapor', enemy.pos, 55, 3.0);
     spawnFloatingText(state, 'Едкий пар!', enemy.pos, '#d2f55a');
-    if (state.modifiers.aetherEngineActive) addOverload(state, 15);
+    chargeOverloadOnReaction(state, 15);
   }
 
   // Mercury + Aether = Time Rift
@@ -59,7 +59,7 @@ export function checkElementalReaction(
   ) {
     spawnPool(state, 'time_rift', enemy.pos, 65, 2.5);
     spawnFloatingText(state, 'Временной разлом!', enemy.pos, '#7df9ff');
-    if (state.modifiers.aetherEngineActive) addOverload(state, 15);
+    chargeOverloadOnReaction(state, 15);
   }
 
   // Fire + Aether = Spark Cascade — instant chain to up to 3 nearby enemies.
@@ -69,7 +69,7 @@ export function checkElementalReaction(
   ) {
     triggerSparkCascade(state, enemy);
     spawnFloatingText(state, 'Искровой каскад!', enemy.pos, '#a78bfa');
-    if (state.modifiers.aetherEngineActive) addOverload(state, 12);
+    chargeOverloadOnReaction(state, 12);
   }
 
   // Acid + Frost = Brittle Frost — strong armor break + freeze pool.
@@ -81,6 +81,7 @@ export function checkElementalReaction(
     enemy.status.armorBreakFactor = Math.min(enemy.status.armorBreakFactor, 0.3);
     enemy.status.armorBreakTime = Math.max(enemy.status.armorBreakTime, 3.5);
     spawnFloatingText(state, 'Хрупкая глазурь!', enemy.pos, '#7dd3fc');
+    chargeOverloadOnReaction(state, 8);
   }
 
   // Mercury + Frost = Glass Shatter — burst damage to slow + chilled enemies.
@@ -90,6 +91,7 @@ export function checkElementalReaction(
   ) {
     spawnPool(state, 'glass_shatter', enemy.pos, 45, 0.6);
     spawnFloatingText(state, 'Стекло вдребезги!', enemy.pos, '#c0e8ff');
+    chargeOverloadOnReaction(state, 8);
   }
 
   // Acid + Poison = Mutagen Burst — heavy DoT around target.
@@ -99,6 +101,7 @@ export function checkElementalReaction(
   ) {
     spawnPool(state, 'mutagen_burst', enemy.pos, 60, 4.0);
     spawnFloatingText(state, 'Мутаген!', enemy.pos, '#9be36b');
+    chargeOverloadOnReaction(state, 10);
   }
 
   // Fire + Frost = Flash Steam — clears chill, deals AoE burn.
@@ -109,7 +112,21 @@ export function checkElementalReaction(
     spawnPool(state, 'flash_steam', enemy.pos, 70, 1.5);
     enemy.status.frostMarkTime = 0;
     spawnFloatingText(state, 'Пар!', enemy.pos, '#f4a261');
+    chargeOverloadOnReaction(state, 8);
   }
+}
+
+/** Aether Engine catalyst card and Crown of Elements legendary both grant
+ *  Overload charge on reactions; the legendary stacks additively on top.
+ *  This helper centralises that so individual reactions don't need to know
+ *  which sources are active. */
+function chargeOverloadOnReaction(state: GameState, baseAmount: number): void {
+  let total = 0;
+  if (state.modifiers.aetherEngineActive) total += baseAmount;
+  if (state.modifiers.reactionOverloadCharge > 0) {
+    total += state.modifiers.reactionOverloadCharge;
+  }
+  if (total > 0) addOverload(state, total);
 }
 
 function hasAetherMark(enemy: Enemy): boolean {

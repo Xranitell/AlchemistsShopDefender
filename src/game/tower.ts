@@ -28,15 +28,21 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   if (!kind) return false;
   const isFirst = state.towers.length === 0;
   const discount = isFirst ? state.metaTowerDiscount : 0;
-  const cost = Math.max(0, kind.cost - discount);
+  // Archmaster legendary: +25% cost on every new tower.
+  const archmaster = state.modifiers.archmasterActive;
+  const baseCost = Math.max(0, kind.cost - discount);
+  const cost = archmaster ? Math.ceil(baseCost * 1.25) : baseCost;
   if (state.gold < cost) return false;
   state.gold -= cost;
+  const baseLevel = isFirst ? state.metaTowerStartLevel : 1;
+  // Archmaster legendary: every new tower spawns at least at level 2.
+  const startLevel = archmaster ? Math.max(baseLevel, 2) : baseLevel;
   const tower: Tower = {
     id: newId(state),
     kind,
     pos: { ...rp.pos },
     runePointId,
-    level: isFirst ? state.metaTowerStartLevel : 1,
+    level: startLevel,
     fireTimer: 0,
     aimAngle: 0,
     shotCount: 0,

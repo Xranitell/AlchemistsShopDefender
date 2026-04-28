@@ -166,6 +166,18 @@ export interface Modifiers {
   mercuryRingActive: boolean;
   reactionDamageMult: number;
   aetherEngineActive: boolean;
+  /** Reactions also charge Overload (+10) when crown_of_elements is active. */
+  reactionOverloadCharge: number;
+  /** Triple Throw card: every `tripleThrowInterval` seconds the mannequin
+   *  spawns a 3-potion fan toward the nearest enemy. 0 = inactive. */
+  tripleThrowActive: boolean;
+  tripleThrowTimer: number;
+  tripleThrowInterval: number;
+  /** Salamander legendary: forces every potion to be fire-element and leaves
+   *  a fire pool. Cooldown is increased once at apply-time (mq.basePotionCooldown ×= 1.20). */
+  salamanderActive: boolean;
+  /** Archmaster legendary: new towers spawn at +1 level (min 2) and cost +25%. */
+  archmasterActive: boolean;
 }
 
 export const newModifiers = (): Modifiers => ({
@@ -195,6 +207,12 @@ export const newModifiers = (): Modifiers => ({
   mercuryRingActive: false,
   reactionDamageMult: 1,
   aetherEngineActive: false,
+  reactionOverloadCharge: 0,
+  tripleThrowActive: false,
+  tripleThrowTimer: 0,
+  tripleThrowInterval: 8,
+  salamanderActive: false,
+  archmasterActive: false,
 });
 
 export interface WaveState {
@@ -215,6 +233,17 @@ export interface CardChoice {
   rerollCost: number;
   /** Whether the free rewarded-ad reroll was already used this draft. */
   freeRerollUsed: boolean;
+  /** GDD §8.3: number of drafts the player has been through during this run.
+   *  Used together with `lastNonCommonDraft` to guarantee at least one
+   *  non-Common offering every 3 drafts, and with `lastLegendaryWave` to cap
+   *  Legendary offerings to no more than once every 5 waves. */
+  draftCount: number;
+  /** Last draft index where at least one non-Common card was OFFERED (not
+   *  necessarily picked). -1 if no such draft has happened yet. */
+  lastNonCommonDraft: number;
+  /** 1-based wave number when a Legendary card was last offered. -10 means
+   *  "never" so the first 5 waves are eligible. */
+  lastLegendaryWave: number;
 }
 
 export interface OverloadState {
@@ -280,6 +309,10 @@ export interface GameState {
   tempShieldTime: number;
   /** Damage reduction applied while `tempShieldTime > 0` (e.g. 0.5 = -50% dmg). */
   tempShieldReduction: number;
+  /** Golem Heart legendary card: number of charges remaining. While >0, a
+   *  lethal hit to the mannequin is converted into a 1-HP survival + a strong
+   *  6-second shield. Set to 1 when the card is picked, decremented to 0 on use. */
+  golemHeartCharges: number;
 }
 
 export function newId(state: GameState): number {
