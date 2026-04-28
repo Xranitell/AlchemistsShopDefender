@@ -55,7 +55,15 @@ export const TOWERS: Record<string, TowerKind> = {
   },
 };
 
-export const TOWER_UPGRADE_COST = 70;
-export const TOWER_UPGRADE_DAMAGE_MULT = 1.6;
-export const TOWER_UPGRADE_RATE_MULT = 1.15;
-export const TOWER_MAX_LEVEL = 3;
+export const TOWER_UPGRADE_DAMAGE_MULT = 1.45;
+export const TOWER_UPGRADE_RATE_MULT = 1.10;
+export const TOWER_MAX_LEVEL = 5;
+
+/** Gold cost to upgrade a tower currently at `currentLevel` to the next level.
+ *  Cost grows with level so late upgrades are an investment. */
+export function towerUpgradeCost(currentLevel: number): number {
+  // L1→L2: 60, L2→L3: 100, L3→L4: 160, L4→L5: 240
+  const TABLE = [60, 100, 160, 240];
+  const i = Math.max(0, Math.min(TABLE.length - 1, currentLevel - 1));
+  return TABLE[i]!;
+}

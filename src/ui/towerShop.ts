@@ -1,7 +1,14 @@
-import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_COST } from '../data/towers';
+import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost } from '../data/towers';
 import type { GameState } from '../game/state';
 import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower } from '../game/tower';
 
+/**
+ * Popup that opens when the player clicks a rune point on the arena. It shows
+ * either the build menu (if the rune is empty) or the upgrade menu (if a
+ * tower is already there). Mannequin-only actions (repair / temporary shield)
+ * live in MannequinShop instead — the tower popup is now strictly about the
+ * tower on this rune.
+ */
 export class TowerShop {
   private root: HTMLElement;
   private el: HTMLDivElement | null = null;
@@ -66,19 +73,25 @@ export class TowerShop {
 
       const upgrade = document.createElement('button');
       const left = document.createElement('span');
-      left.textContent = 'Улучшить';
       const right = document.createElement('span');
       right.className = 'cost';
-      right.textContent = `${TOWER_UPGRADE_COST} зол.`;
+      if (tower.level >= TOWER_MAX_LEVEL) {
+        left.textContent = 'Максимум';
+        right.textContent = '—';
+        upgrade.disabled = true;
+      } else {
+        const cost = towerUpgradeCost(tower.level);
+        left.textContent = `Улучшить → Lv ${tower.level + 1}`;
+        right.textContent = `${cost} зол.`;
+        upgrade.disabled = this.state.gold < cost;
+        upgrade.addEventListener('click', () => {
+          if (!this.state) return;
+          upgradeTower(this.state, tower.id);
+          this.close();
+        });
+      }
       upgrade.appendChild(left);
       upgrade.appendChild(right);
-      const canUp = tower.level < TOWER_MAX_LEVEL && this.state.gold >= TOWER_UPGRADE_COST;
-      upgrade.disabled = !canUp;
-      upgrade.addEventListener('click', () => {
-        if (!this.state) return;
-        upgradeTower(this.state, tower.id);
-        this.close();
-      });
       el.appendChild(upgrade);
 
       // Targeting mode cycle — closes on click so the player re-opens to
@@ -103,73 +116,8 @@ export class TowerShop {
       el.appendChild(cancel);
     }
 
-    // Mannequin repair + temporary shield (available any time the shop is open).
-    this.appendRepairButton(el);
-    this.appendShieldButton(el);
-
     this.root.appendChild(el);
     this.el = el;
-  }
-
-  private appendRepairButton(el: HTMLDivElement): void {
-    if (!this.state) return;
-    const m = this.state.mannequin;
-    if (m.hp >= m.maxHp) return;
-    const repairCost = 80;
-    const repairAmount = Math.round(m.maxHp * 0.2);
-    const btn = document.createElement('button');
-    const left = document.createElement('span');
-    left.textContent = `Ремонт (+${repairAmount} HP)`;
-    const right = document.createElement('span');
-    right.className = 'cost';
-    right.textContent = `${repairCost} зол.`;
-    btn.appendChild(left);
-    btn.appendChild(right);
-    btn.disabled = this.state.gold < repairCost;
-    btn.addEventListener('click', () => {
-      if (!this.state) return;
-      if (this.state.gold < repairCost) return;
-      this.state.gold -= repairCost;
-      this.state.mannequin.hp = Math.min(
-        this.state.mannequin.maxHp,
-        this.state.mannequin.hp + repairAmount,
-      );
-      this.close();
-    });
-    el.appendChild(btn);
-  }
-
-  private appendShieldButton(el: HTMLDivElement): void {
-    if (!this.state) return;
-    const cost = 120;
-    // Already shielded? show a decayed "active" indicator instead of selling
-    // another one to avoid stacking weirdness.
-    if (this.state.tempShieldTime > 0) {
-      const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
-      info.textContent = `Щит активен ${this.state.tempShieldTime.toFixed(1)} с`;
-      el.appendChild(info);
-      return;
-    }
-    const btn = document.createElement('button');
-    const left = document.createElement('span');
-    left.textContent = 'Щит (-50% урона 10 с)';
-    const right = document.createElement('span');
-    right.className = 'cost';
-    right.textContent = `${cost} зол.`;
-    btn.appendChild(left);
-    btn.appendChild(right);
-    btn.disabled = this.state.gold < cost;
-    btn.addEventListener('click', () => {
-      if (!this.state) return;
-      if (this.state.gold < cost) return;
-      this.state.gold -= cost;
-      this.state.tempShieldTime = 10;
-      this.state.tempShieldReduction = 0.5;
-      this.close();
-    });
-    el.appendChild(btn);
   }
 
   close(): void {

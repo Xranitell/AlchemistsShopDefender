@@ -1,10 +1,24 @@
-import { META_UPGRADES, type MetaUpgrade } from '../data/metaTree';
+import { META_BY_ID, META_UPGRADES, type MetaUpgrade } from '../data/metaTree';
 import type { MetaSave } from './save';
 import type { GameState } from './state';
+import { runeUnlockSlotToIndex } from './world';
+
+/** Always-allocated ids that don't need to be in the save file (the root
+ *  is granted for free). Keeping them in a single place lets the UI and the
+ *  effect application agree on what is pre-allocated. */
+export const ROOT_NODE_ID = 'heart_root';
+
+/** Snapshot the set of allocated upgrade ids. Includes the implicit root. */
+export function allocatedSet(meta: MetaSave): Set<string> {
+  const s = new Set(meta.purchased);
+  s.add(ROOT_NODE_ID);
+  return s;
+}
 
 export function applyMetaUpgrades(state: GameState, meta: MetaSave): void {
-  for (const id of meta.purchased) {
-    const upg = META_UPGRADES.find((u) => u.id === id);
+  const allocated = allocatedSet(meta);
+  for (const id of allocated) {
+    const upg = META_BY_ID[id];
     if (!upg) continue;
     applyEffect(state, upg);
   }
@@ -12,38 +26,54 @@ export function applyMetaUpgrades(state: GameState, meta: MetaSave): void {
 
 function applyEffect(state: GameState, upg: MetaUpgrade): void {
   const e = upg.effect;
+  const m = state.modifiers;
   switch (e.kind) {
+    // Potions
     case 'potionCooldown':
-      state.modifiers.potionCooldownMult *= e.value;
+      m.potionCooldownMult *= e.value;
       break;
     case 'potionDamage':
-      state.modifiers.potionDamageMult *= e.value;
+      m.potionDamageMult *= e.value;
       break;
     case 'potionRadius':
-      state.modifiers.potionRadiusMult *= e.value;
+      m.potionRadiusMult *= e.value;
       break;
     case 'potionEchoChance':
-      state.modifiers.potionEchoExplode = Math.max(state.modifiers.potionEchoExplode, e.value);
+      m.potionEchoExplode = Math.max(m.potionEchoExplode, e.value);
       break;
     case 'potionAimBonus':
       state.metaPotionAimBonus += e.value;
       break;
+    case 'potionLeavesFire':
+      m.potionLeavesFire = true;
+      break;
+
+    // Engineering
     case 'towerDiscount':
-      state.metaTowerDiscount = e.value;
+      state.metaTowerDiscount += e.value;
       break;
     case 'towerStartLevel':
-      state.metaTowerStartLevel = e.value;
+      state.metaTowerStartLevel = Math.max(state.metaTowerStartLevel, e.value);
       break;
     case 'towerFireRate':
-      state.modifiers.towerFireRateMult *= e.value;
+      m.towerFireRateMult *= e.value;
+      break;
+    case 'towerDamage':
+      m.towerDamageMult *= e.value;
+      break;
+    case 'towerRange':
+      m.towerRangeMult *= e.value;
       break;
     case 'runePointUnlock': {
-      const idx = e.value - 1;
-      if (idx < state.runePoints.length) {
-        state.runePoints[idx]!.active = true;
-      }
+      // `e.value` is a 1-based slot id (1..4) for the unlockable points so
+      // callers don't have to know about the underlying ring layout.
+      const idx = runeUnlockSlotToIndex(e.value);
+      const rp = state.runePoints[idx];
+      if (rp) rp.active = true;
       break;
     }
+
+    // Core / arcanum
     case 'overloadRate':
       state.metaOverloadRateMult = (state.metaOverloadRateMult ?? 1) * e.value;
       break;
@@ -53,9 +83,14 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
     case 'auraRadius':
       state.metaAuraRadiusMult *= e.value;
       break;
+    case 'reactionDamage':
+      m.reactionDamageMult *= e.value;
+      break;
     case 'catalystSlot':
       // Reserved for future catalyst system
       break;
+
+    // Survival
     case 'maxHp':
       state.mannequin.maxHp += e.value;
       state.mannequin.hp += e.value;
@@ -64,35 +99,99 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
       state.metaMannequinArmor = (state.metaMannequinArmor ?? 0) + e.value;
       break;
     case 'autoRepair':
-      state.metaAutoRepairRate = e.value;
+      state.metaAutoRepairRate = (state.metaAutoRepairRate ?? 0) + e.value;
       break;
     case 'bossShield':
-      state.metaBossShield = e.value;
+      state.metaBossShield = Math.max(state.metaBossShield, e.value);
       break;
+    case 'thornyShell':
+      m.thornyShell = true;
+      break;
+
+    // Economy
     case 'essenceBonus':
       // Applied when awarding essence at end of run
       break;
     case 'startGold':
       state.gold += e.value;
       break;
+    case 'goldDrop':
+      m.goldDropMult *= e.value;
+      break;
     case 'lootRadius':
-      state.modifiers.lootRadiusMult *= e.value;
+      m.lootRadiusMult *= e.value;
       break;
   }
 }
 
-export function buyMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
+/** Can the player allocate this node right now?
+ *  - already owned ⇒ false
+ *  - cost not affordable ⇒ false
+ *  - root node ⇒ always true (but `buy` is a no-op since it's pre-allocated)
+ *  - otherwise: at least one neighbour must already be allocated. */
+export function canAllocate(meta: MetaSave, upg: MetaUpgrade): boolean {
   if (meta.purchased.includes(upg.id)) return false;
-  if (upg.requires && !meta.purchased.includes(upg.requires)) return false;
+  if (upg.kind === 'root') return false;
+  const allocated = allocatedSet(meta);
+  const reachable = upg.connects.some((id) => allocated.has(id));
+  if (!reachable) return false;
+  if (upg.currency === 'blue') return meta.blueEssence >= upg.cost;
+  return meta.ancientEssence >= upg.cost;
+}
+
+/** Is this node *reachable* (a neighbour is allocated) regardless of price? */
+export function isReachable(meta: MetaSave, upg: MetaUpgrade): boolean {
+  if (meta.purchased.includes(upg.id)) return true;
+  if (upg.kind === 'root') return true;
+  const allocated = allocatedSet(meta);
+  return upg.connects.some((id) => allocated.has(id));
+}
+
+export function buyMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
+  if (!canAllocate(meta, upg)) return false;
   if (upg.currency === 'blue') {
-    if (meta.blueEssence < upg.cost) return false;
     meta.blueEssence -= upg.cost;
   } else {
-    if (meta.ancientEssence < upg.cost) return false;
     meta.ancientEssence -= upg.cost;
   }
   meta.purchased.push(upg.id);
   return true;
+}
+
+/** Remove an allocated node and refund its cost, but only if doing so keeps
+ *  the rest of the allocated tree connected to the root. This is the standard
+ *  PoE "respec a single node" behaviour. */
+export function refundMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
+  if (!meta.purchased.includes(upg.id)) return false;
+  if (upg.kind === 'root') return false;
+
+  // After removal, every other allocated node must still have a path to the
+  // root through allocated edges only.
+  const after = new Set(meta.purchased.filter((id) => id !== upg.id));
+  after.add(ROOT_NODE_ID);
+  if (!isAllocationConnected(after)) return false;
+
+  meta.purchased = meta.purchased.filter((id) => id !== upg.id);
+  if (upg.currency === 'blue') meta.blueEssence += upg.cost;
+  else meta.ancientEssence += upg.cost;
+  return true;
+}
+
+function isAllocationConnected(allocated: Set<string>): boolean {
+  if (!allocated.has(ROOT_NODE_ID)) return false;
+  const visited = new Set<string>();
+  const queue: string[] = [ROOT_NODE_ID];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    const node = META_BY_ID[id];
+    if (!node) continue;
+    for (const n of node.connects) {
+      if (allocated.has(n) && !visited.has(n)) queue.push(n);
+    }
+  }
+  return visited.size === allocated.size;
 }
 
 export function calcRunEssence(
@@ -101,15 +200,30 @@ export function calcRunEssence(
   totalKills: number,
   victory: boolean,
 ): { blue: number; ancient: number } {
-  const hasBonus = meta.purchased.includes('essence_bonus');
-  const mult = hasBonus ? 1.25 : 1;
+  // Sum every allocated essenceBonus effect (multiplicative).
+  let mult = 1;
+  for (const id of meta.purchased) {
+    const u = META_BY_ID[id];
+    if (u && u.effect.kind === 'essenceBonus') mult *= u.effect.value;
+  }
 
-  let blue = Math.floor(waveReached * 2 + totalKills * 0.3);
-  if (victory) blue += 15;
+  // Reward curve tuned so a casual full clear funds ~3-4 small talents and
+  // 2-3 fully-lost early runs are still enough to taste a notable.
+  //   Wave 1 fail with 8 kills    →  1*8 + 8*0.6 + 12 = ~25 blue
+  //   Wave 5 victory + 60 kills   →  5*8 + 60*0.6 + 12 + 40 = ~128 blue
+  //   Wave 10 fail with 90 kills  →  10*8 + 90*0.6 + 12   = ~146 blue
+  //   Wave 15 victory + 140 kills →  15*8 + 140*0.6 + 12 + 40 = ~256 blue
+  let blue = Math.floor(waveReached * 8 + totalKills * 0.6 + 12);
+  if (victory) blue += 40;
   blue = Math.round(blue * mult);
 
+  // Ancient essence: 1 per victory, +1 if cleared past wave 10.
   let ancient = 0;
   if (victory) ancient = 1;
+  if (waveReached >= 10) ancient += 1;
 
   return { blue, ancient };
 }
+
+// Ensure no dead-code warning for full export coverage.
+export { META_UPGRADES };

@@ -101,6 +101,21 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'aether_engine':
       m.aetherEngineActive = true;
       break;
+    case 'frost_brew':
+      m.potionFrostActive = true;
+      break;
+    case 'acid_brew':
+      m.potionAcidActive = true;
+      break;
+    case 'mercury_brew':
+      m.potionMercuryActive = true;
+      break;
+    case 'aether_brew':
+      m.potionAetherActive = true;
+      break;
+    case 'mutagen_brew':
+      m.potionPoisonActive = true;
+      break;
     default:
       break;
   }

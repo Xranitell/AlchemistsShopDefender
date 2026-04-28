@@ -1,6 +1,6 @@
 import type { Vec2 } from '../engine/math';
 
-export type Element = 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether';
+export type Element = 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether' | 'frost' | 'poison';
 
 export interface StatusEffects {
   /** Burn applies damage over time, in HP/sec, while remaining > 0. */
@@ -14,6 +14,11 @@ export interface StatusEffects {
   armorBreakTime: number;
   /** Aether mark: tracks recent aether damage for reaction triggers. */
   aetherMarkTime: number;
+  /** Frost mark: enemy is "chilled" (slowed AND vulnerable to brittle). */
+  frostMarkTime: number;
+  /** Poison damage-over-time, similar to burn but armor-piercing. */
+  poisonDps: number;
+  poisonTime: number;
 }
 
 export const newStatus = (): StatusEffects => ({
@@ -24,6 +29,9 @@ export const newStatus = (): StatusEffects => ({
   armorBreakFactor: 1,
   armorBreakTime: 0,
   aetherMarkTime: 0,
+  frostMarkTime: 0,
+  poisonDps: 0,
+  poisonTime: 0,
 });
 
 export interface EnemyKind {

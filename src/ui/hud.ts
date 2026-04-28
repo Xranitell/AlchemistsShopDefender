@@ -1,5 +1,5 @@
 import type { GameState } from '../game/state';
-import { totalWaves } from '../game/wave';
+import { totalWaves, currentWaveDuration, currentPauseDuration } from '../game/wave';
 import { getSprites } from '../render/sprites';
 import type { BakedSprite } from '../render/sprite';
 import { DIFFICULTY_MODES } from '../data/difficulty';
@@ -49,6 +49,11 @@ export class Hud {
   private hint!: HTMLDivElement;
   private skipBtn!: HTMLButtonElement;
 
+  // Wave / pause timer bar (just below the WAVE badge)
+  private timerBar!: HTMLDivElement;
+  private timerFill!: HTMLDivElement;
+  private timerLabel!: HTMLSpanElement;
+
   constructor(root: HTMLElement, handlers: HudHandlers) {
     this.root = root;
     this.handlers = handlers;
@@ -84,6 +89,19 @@ export class Hud {
     this.difficultyBadge = document.createElement('div');
     this.difficultyBadge.className = 'hud-difficulty-badge';
     waveStack.appendChild(this.difficultyBadge);
+
+    // Wave / pause progress bar — shows time-left during a wave and a
+    // count-down to the next wave during the preparing phase.
+    this.timerBar = document.createElement('div');
+    this.timerBar.className = 'hud-timer-bar';
+    this.timerFill = document.createElement('div');
+    this.timerFill.className = 'hud-timer-fill';
+    this.timerLabel = document.createElement('span');
+    this.timerLabel.className = 'hud-timer-label';
+    this.timerBar.appendChild(this.timerFill);
+    this.timerBar.appendChild(this.timerLabel);
+    waveStack.appendChild(this.timerBar);
+
     top.appendChild(waveStack);
 
     // Top-center: HP bar in metal frame
@@ -259,10 +277,38 @@ export class Hud {
         ? 'Кликни по руне, чтобы поставить стойку. Готов? Жми «В БОЙ».'
         : `Готовься к волне ${next + 1}. Покупай и улучшай стойки на рунах.`;
     } else if (state.phase === 'wave') {
-      const left = ws.timeInWave;
-      this.hint.textContent = `Волна ${idx + 1}/${total} • ЛКМ — бросок • Q — Overload • ${left.toFixed(1)} с`;
+      this.hint.textContent = `Волна ${idx + 1}/${total} • ЛКМ — бросок (можно зажимать) • Q — Overload`;
     } else {
       this.hint.textContent = '';
+    }
+
+    // Wave / pause progress bar. Shown during 'wave' and 'preparing' only.
+    this.updateTimerBar(state);
+  }
+
+  private updateTimerBar(state: GameState): void {
+    const ws = state.waveState;
+    if (state.phase === 'wave') {
+      const total = currentWaveDuration(state);
+      const elapsed = Math.max(0, ws.timeInWave);
+      const ratio = total > 0 ? Math.min(1, elapsed / total) : 0;
+      this.timerBar.style.display = '';
+      this.timerBar.classList.remove('pause');
+      this.timerBar.classList.add('wave');
+      this.timerFill.style.width = `${ratio * 100}%`;
+      const left = Math.max(0, total - elapsed);
+      this.timerLabel.textContent = `Бой · ${left.toFixed(1)} с`;
+    } else if (state.phase === 'preparing') {
+      const total = currentPauseDuration(state);
+      const left = Math.max(0, ws.pauseDurationLeft);
+      const ratio = total > 0 ? 1 - Math.min(1, left / total) : 0;
+      this.timerBar.style.display = '';
+      this.timerBar.classList.remove('wave');
+      this.timerBar.classList.add('pause');
+      this.timerFill.style.width = `${ratio * 100}%`;
+      this.timerLabel.textContent = `Перерыв · ${left.toFixed(1)} с`;
+    } else {
+      this.timerBar.style.display = 'none';
     }
   }
 }

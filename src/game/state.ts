@@ -1,6 +1,6 @@
 import type { Vec2 } from '../engine/math';
 import { Rng } from '../engine/rng';
-import type { CardDef, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
+import type { CardDef, Element, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
 import { newStatus } from './types';
 import type { ReactionPool } from './reactions';
 import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
@@ -93,7 +93,7 @@ export interface Projectile {
   /** Optional homing target id. */
   targetId: number | null;
   /** Element tag applied on hit. */
-  element: 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether';
+  element: Element;
   life: number;
   /** Whether this potion should leave a fire pool on impact (Flammable Mix). */
   leaveFire: boolean;
@@ -141,6 +141,15 @@ export interface Modifiers {
   potionCooldownMult: number;
   potionEchoExplode: number;
   potionLeavesFire: boolean;
+  /** Card-driven elemental conversion of the base potion. Highest-priority
+   *  flag wins (frost > acid > mercury > fire > neutral). The default
+   *  potion is `neutral`; `potionLeavesFire` and `fireRubyActive` still
+   *  layer on top to leave a fire pool. */
+  potionFrostActive: boolean;
+  potionAcidActive: boolean;
+  potionMercuryActive: boolean;
+  potionAetherActive: boolean;
+  potionPoisonActive: boolean;
   towerFireRateMult: number;
   towerRangeMult: number;
   towerDamageMult: number;
@@ -165,6 +174,11 @@ export const newModifiers = (): Modifiers => ({
   potionCooldownMult: 1,
   potionEchoExplode: 0,
   potionLeavesFire: false,
+  potionFrostActive: false,
+  potionAcidActive: false,
+  potionMercuryActive: false,
+  potionAetherActive: false,
+  potionPoisonActive: false,
   towerFireRateMult: 1,
   towerRangeMult: 1,
   towerDamageMult: 1,

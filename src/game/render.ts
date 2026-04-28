@@ -13,7 +13,7 @@ import {
 } from '../render/effects';
 import { COLORS } from '../render/palette';
 import { applyIsoTransform, type Camera } from '../render/camera';
-import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS } from '../render/particles';
+import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -452,6 +452,9 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
     fire: FIRE_COLORS,
     mercury: MERCURY_COLORS,
     acid: ACID_COLORS,
+    aether: AETHER_COLORS,
+    frost: FROST_COLORS,
+    poison: POISON_COLORS,
   };
   for (const p of state.projectiles) {
     const trailColors = trailColorMap[p.element] ?? AETHER_COLORS;
@@ -486,6 +489,9 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
         fire: 'rgba(255, 140, 58, 0.35)',
         mercury: 'rgba(201, 201, 216, 0.3)',
         acid: 'rgba(210, 245, 90, 0.3)',
+        aether: 'rgba(167, 139, 250, 0.35)',
+        frost: 'rgba(125, 211, 252, 0.35)',
+        poison: 'rgba(155, 227, 107, 0.35)',
       };
       ctx.save();
       ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
@@ -560,23 +566,55 @@ function drawReactionPools(ctx: CanvasRenderingContext2D, state: GameState): voi
     const alpha = fadeIn * fadeOut * 0.6;
     ctx.save();
     ctx.globalAlpha = alpha;
-    if (rp.kind === 'caustic_vapor') {
-      const flicker = 0.5 + 0.5 * Math.sin(state.worldTime * 8);
-      ctx.fillStyle = `rgba(210, 245, 90, ${0.3 + flicker * 0.15})`;
-      ctx.beginPath();
-      ctx.arc(rp.pos.x, rp.pos.y, rp.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(156, 204, 46, ${0.2 + flicker * 0.1})`;
-      ctx.beginPath();
-      ctx.arc(rp.pos.x, rp.pos.y, rp.radius * 0.6, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
-      ctx.fillStyle = `rgba(125, 249, 255, ${0.15 + pulse * 0.1})`;
-      ctx.beginPath();
-      ctx.arc(rp.pos.x, rp.pos.y, rp.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(189, 246, 255, ${0.4 + pulse * 0.2})`;
+    const flicker = 0.5 + 0.5 * Math.sin(state.worldTime * 8);
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
+    let fill = 'rgba(125, 249, 255, 0.25)';
+    let inner = 'rgba(125, 249, 255, 0.15)';
+    let stroke: string | null = null;
+    switch (rp.kind) {
+      case 'caustic_vapor':
+        fill = `rgba(210, 245, 90, ${0.3 + flicker * 0.15})`;
+        inner = `rgba(156, 204, 46, ${0.2 + flicker * 0.1})`;
+        break;
+      case 'time_rift':
+        fill = `rgba(125, 249, 255, ${0.15 + pulse * 0.1})`;
+        inner = `rgba(189, 246, 255, ${0.2 + pulse * 0.1})`;
+        stroke = `rgba(189, 246, 255, ${0.4 + pulse * 0.2})`;
+        break;
+      case 'spark_cascade':
+        // Brief electric flash — tinted purple with a hot core.
+        fill = `rgba(167, 139, 250, ${0.25 + flicker * 0.2})`;
+        inner = `rgba(220, 200, 255, ${0.4 + flicker * 0.15})`;
+        break;
+      case 'brittle_frost':
+        fill = `rgba(125, 211, 252, ${0.25 + pulse * 0.1})`;
+        inner = `rgba(180, 230, 255, ${0.3 + pulse * 0.1})`;
+        stroke = `rgba(180, 230, 255, 0.4)`;
+        break;
+      case 'glass_shatter':
+        // Single bright flash that shrinks rapidly.
+        fill = `rgba(192, 232, 255, ${0.35 + pulse * 0.2})`;
+        inner = `rgba(255, 255, 255, ${0.3})`;
+        break;
+      case 'mutagen_burst':
+        fill = `rgba(155, 227, 107, ${0.3 + flicker * 0.1})`;
+        inner = `rgba(220, 255, 160, ${0.2 + flicker * 0.1})`;
+        break;
+      case 'flash_steam':
+        fill = `rgba(244, 162, 97, ${0.25 + flicker * 0.15})`;
+        inner = `rgba(255, 220, 180, ${0.3 + flicker * 0.1})`;
+        break;
+    }
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.arc(rp.pos.x, rp.pos.y, rp.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = inner;
+    ctx.beginPath();
+    ctx.arc(rp.pos.x, rp.pos.y, rp.radius * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(rp.pos.x, rp.pos.y, rp.radius * 0.8, 0, Math.PI * 2);

@@ -6,6 +6,22 @@ import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import type { EnemyAbility } from '../data/difficulty';
 
+/** Configured length of the active wave in seconds, or 0 if no wave is set. */
+export function currentWaveDuration(state: GameState): number {
+  const def = WAVES[state.waveState.currentIndex];
+  return def?.durationSec ?? 0;
+}
+
+/** Configured length of the upcoming pause (used while the game is in the
+ *  'preparing' phase). Falls back to a sensible default when no wave has run
+ *  yet (e.g. just after starting a new run). */
+export function currentPauseDuration(state: GameState): number {
+  const idx = state.waveState.currentIndex;
+  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, 6);
+  const def = WAVES[idx];
+  return def?.pauseAfterSec ?? 6;
+}
+
 export function startNextWave(state: GameState): void {
   const ws = state.waveState;
   ws.currentIndex += 1;

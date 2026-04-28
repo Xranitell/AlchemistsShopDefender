@@ -122,4 +122,6 @@ export const FIRE_COLORS = ['#ffd166', '#ff8c3a', '#d24f1c', '#ffee88'];
 export const MERCURY_COLORS = ['#c9c9d8', '#8a8aa0', '#bdf6ff', '#e0e0f0'];
 export const ACID_COLORS = ['#d2f55a', '#9ccc2e', '#a3e36a', '#e0ff88'];
 export const AETHER_COLORS = ['#bdf6ff', '#7df9ff', '#3ab3c9', '#e0f8ff'];
+export const FROST_COLORS = ['#bdf6ff', '#7dd3fc', '#a5e9ff', '#dff5ff'];
+export const POISON_COLORS = ['#9be36b', '#5fa845', '#c4ec88', '#3f7727'];
 export const GOLD_COLORS = ['#ffd166', '#e8c98c', '#c9941a'];

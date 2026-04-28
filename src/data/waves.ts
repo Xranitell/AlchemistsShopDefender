@@ -4,7 +4,13 @@ import type { WaveDef } from '../game/types';
 // walls + cardinal-only entrances were removed enemies come from any angle
 // and the hero can pick them off long before they connect, so we also spawn
 // EXTRA ghost copies at half-beats between the authored entries.
-const DENSITY = 0.35;
+//
+// Density was bumped from 0.35 to 0.6 so a single wave actually feels like a
+// fight: spawns are still close together, but the wave plays out over a
+// longer window of time (~70% longer) which gives the player more room to
+// reposition, manage cooldowns, and react to elites before the next set
+// hits the mannequin.
+const DENSITY = 0.6;
 const DOUBLE_SPAWNS = true;
 
 const wave = (

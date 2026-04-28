@@ -148,4 +148,41 @@ export const CARDS: CardDef[] = [
     rarity: 'epic',
     desc: 'Каждая стихийная реакция заряжает +15 Overload.',
   },
+
+  // --- New elemental brews ---
+  {
+    id: 'frost_brew',
+    name: 'Морозная склянка',
+    category: 'recipe',
+    rarity: 'rare',
+    desc: 'Базовая склянка получает стихию Мороза (сильное замедление, метка холода).',
+  },
+  {
+    id: 'acid_brew',
+    name: 'Кислотная склянка',
+    category: 'recipe',
+    rarity: 'rare',
+    desc: 'Базовая склянка получает стихию Кислоты (–50% брони на 4 сек).',
+  },
+  {
+    id: 'mercury_brew',
+    name: 'Ртутная склянка',
+    category: 'recipe',
+    rarity: 'rare',
+    desc: 'Базовая склянка получает стихию Ртути (сильное замедление 2.5 сек).',
+  },
+  {
+    id: 'aether_brew',
+    name: 'Эфирная склянка',
+    category: 'recipe',
+    rarity: 'epic',
+    desc: 'Базовая склянка получает стихию Эфира (метка эфира, открывает реакции).',
+  },
+  {
+    id: 'mutagen_brew',
+    name: 'Мутагенная склянка',
+    category: 'recipe',
+    rarity: 'epic',
+    desc: 'Базовая склянка отравляет врагов: 4 урона/сек 5 сек, игнорирует броню.',
+  },
 ];

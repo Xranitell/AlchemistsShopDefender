@@ -17,6 +17,7 @@ import { screenToWorld } from './render/camera';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
+import { MannequinShop } from './ui/mannequinShop';
 import { MetaOverlay } from './ui/metaOverlay';
 import { MainMenu } from './ui/mainMenu';
 import { DailyRewardsOverlay } from './ui/dailyRewardsOverlay';
@@ -28,7 +29,7 @@ import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
-import { applyMetaUpgrades, buyMetaUpgrade, calcRunEssence } from './game/meta';
+import { applyMetaUpgrades, calcRunEssence } from './game/meta';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -55,6 +56,8 @@ const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
+const mannequinShop = new MannequinShop(hudRoot);
+mannequinShop.attach(state);
 
 const hud = new Hud(hudRoot, {
   onPause: () => {},
@@ -92,10 +95,25 @@ function tick(dt: number): void {
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
 
-  // Click handling.
+  // Click handling. The first frame of a press handles UI: rune points,
+  // mannequin popup, etc. Subsequent held frames during a wave keep firing
+  // potions ("hold to throw") so the player doesn't have to spam-click.
   if (interactive && input.state.mousePressedThisFrame) {
     const worldClick = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
     handleClick(worldClick);
+  } else if (
+    interactive
+    && input.state.mouseDown
+    && state.phase === 'wave'
+    && !towerShop.isOpen()
+    && !mannequinShop.isOpen()
+  ) {
+    const worldAt = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
+    // Don't auto-fire if the cursor is hovering a clickable game object —
+    // otherwise pressing on a rune / the mannequin would also throw a potion.
+    if (!isHoveringInteractive(worldAt)) {
+      state.manualFireRequested = true;
+    }
   }
 
   // Hotkeys.
@@ -164,23 +182,44 @@ function tick(dt: number): void {
   hud.update(state);
 }
 
+/** True when the cursor is over an in-world UI hot-spot (rune point or the
+ *  mannequin) and a click would trigger a popup rather than throwing. */
+function isHoveringInteractive(at: { x: number; y: number }): boolean {
+  for (const rp of state.runePoints) {
+    if (!rp.active) continue;
+    if (dist(at, rp.pos) < 22) return true;
+  }
+  if (dist(at, state.mannequin.pos) < 32) return true;
+  return false;
+}
+
 function handleClick(at: { x: number; y: number }): void {
   // Rune point click → tower shop.
   for (const rp of state.runePoints) {
     if (!rp.active) continue;
     if (dist(at, rp.pos) < 22) {
       const screen = canvasToScreen(canvas!, rp.pos);
+      mannequinShop.close();
       towerShop.open(rp.id, screen);
       return;
     }
+  }
+
+  // Mannequin click → repair / shield popup. Only useful between waves.
+  if (dist(at, state.mannequin.pos) < 32) {
+    const screen = canvasToScreen(canvas!, state.mannequin.pos);
+    towerShop.close();
+    mannequinShop.open(screen);
+    return;
   }
 
   // Otherwise, throw potion (only during wave or just before).
   if (state.phase === 'wave') {
     state.manualFireRequested = true;
   }
-  // If shop was open and user clicked elsewhere, close it.
+  // If shops were open and user clicked elsewhere, close them.
   if (towerShop.isOpen()) towerShop.close();
+  if (mannequinShop.isOpen()) mannequinShop.close();
 }
 
 function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
@@ -427,6 +466,7 @@ function startRun(mode: DifficultyMode): void {
   state = buildInitialState(undefined, mode);
   applyMetaUpgrades(state, meta);
   towerShop.attach(state);
+  mannequinShop.attach(state);
   startNextWave(state);
   yandex.gameplayStart();
 }
@@ -434,11 +474,7 @@ function startRun(mode: DifficultyMode): void {
 function showLaboratory(): void {
   metaOverlay.show({
     meta,
-    onBuy: (upg) => {
-      const ok = buyMetaUpgrade(meta, upg);
-      if (ok) saveMeta(meta);
-      return ok;
-    },
+    onSave: () => saveMeta(meta),
     onStart: () => {
       metaOverlay.hide();
       showMainMenu();
