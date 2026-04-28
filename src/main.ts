@@ -9,7 +9,7 @@ import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts 
 import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
-import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier } from './game/wave';
+import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier, INITIAL_PREP_DURATION } from './game/wave';
 import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
@@ -176,7 +176,7 @@ function tick(dt: number): void {
   if (state.phase === 'preparing') {
     state.waveState.pauseTime += dt;
     state.waveState.pauseDurationLeft -= dt;
-    if (state.waveState.pauseDurationLeft <= 0 && state.waveState.currentIndex >= 0) {
+    if (state.waveState.pauseDurationLeft <= 0) {
       towerShop.close();
       startNextWave(state);
     }
@@ -590,8 +590,12 @@ function startRun(mode: DifficultyMode): void {
   } else {
     tutorial.stop();
   }
-  // startNextWave handles the music switch + wave-start stinger itself.
-  startNextWave(state);
+  // Begin the run with a preparation window so the player can read the scene,
+  // buy a starter tower, and pick targets before the first wave hits. The
+  // main loop auto-promotes 'preparing' → wave 1 once the timer expires.
+  state.phase = 'preparing';
+  state.waveState.pauseDurationLeft = INITIAL_PREP_DURATION;
+  state.waveState.pauseTime = 0;
   yandex.gameplayStart();
 }
 

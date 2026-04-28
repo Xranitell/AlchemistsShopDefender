@@ -96,17 +96,55 @@ export function updateEnemies(state: GameState, dt: number): void {
       updateHomunculus(state, e, dt);
     }
 
-    // Move toward mannequin (or away while dashed back).
-    const dir = norm(sub(m.pos, e.pos));
-    const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
-    // Homunculus phase 3 gets +35% speed.
-    const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.35 : 1;
-    // Frenzied elite: ×1.5 speed.
-    const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
-    const speed = e.kind.speed * e.status.slowFactor
-      * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult;
-    e.pos.x += dir.x * speed * dt;
-    e.pos.y += dir.y * speed * dt;
+    // Boss specials: tick cooldowns and run boss-kind specific behaviour.
+    if (e.kind.isBoss) {
+      if (e.bossSpecialCooldown > 0) e.bossSpecialCooldown -= dt;
+      if (e.bossDodgeTimer > 0) e.bossDodgeTimer -= dt;
+      if (e.bossSlamWindup > 0) {
+        e.bossSlamWindup -= dt;
+        e.hitFlash = Math.max(e.hitFlash, 0.18);
+        if (e.bossSlamWindup <= 0) {
+          minibossSlimeSlam(state, e);
+        }
+      }
+      // Miniboss slime: trigger slam wind-up when ready.
+      if (e.kind.id === 'miniboss_slime'
+          && e.bossSpecialCooldown <= 0 && e.bossSlamWindup <= 0) {
+        e.bossSlamWindup = 0.7;
+        e.bossSpecialCooldown = 7;
+        spawnFloatingText(state, '⚡', e.pos, '#ffd166');
+      }
+      // Homunculus: teleport in phases 2+, on cooldown.
+      if (e.kind.id === 'boss_homunculus'
+          && e.bossPhase >= 2 && e.bossSpecialCooldown <= 0) {
+        homunculusTeleport(state, e);
+        e.bossSpecialCooldown = 10;
+      }
+    }
+
+    // Move: while dodging, follow the perpendicular dash direction;
+    // while sapper-fused, freeze (handled above); otherwise toward the mannequin
+    // (or away during a dash-back impulse).
+    if (e.bossDodgeTimer > 0) {
+      e.pos.x += e.bossDodgeDir.x * e.bossDodgeSpeed * dt;
+      e.pos.y += e.bossDodgeDir.y * e.bossDodgeSpeed * dt;
+    } else {
+      // Miniboss slam wind-up freezes the boss in place for the wind-up window.
+      if (e.bossSlamWindup > 0) {
+        // Skip the regular movement step so the slam telegraphs cleanly.
+      } else {
+        const dir = norm(sub(m.pos, e.pos));
+        const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
+        // Homunculus phase 3 gets +50% speed.
+        const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.5 : 1;
+        // Frenzied elite: ×1.5 speed.
+        const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
+        const speed = e.kind.speed * e.status.slowFactor
+          * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult;
+        e.pos.x += dir.x * speed * dt;
+        e.pos.y += dir.y * speed * dt;
+      }
+    }
 
     // Mercury ring: slow enemies near mannequin.
     if (state.modifiers.mercuryRingActive) {
@@ -230,7 +268,7 @@ function updateHomunculus(state: GameState, e: Enemy, dt: number): void {
   // (the boss is already brutal from the speed buff).
   e.minionSummonTimer -= dt;
   if (e.minionSummonTimer <= 0) {
-    const period = e.bossPhase === 1 ? 3.5 : e.bossPhase === 2 ? 4.5 : 6;
+    const period = e.bossPhase === 1 ? 3 : e.bossPhase === 2 ? 3.5 : 4.5;
     e.minionSummonTimer = period;
     summonHomunculusMinions(state, e);
   }
@@ -256,6 +294,66 @@ function summonHomunculusMinions(state: GameState, e: Enemy): void {
     spawnEnemy(state, kind, pos);
   }
   spawnFloatingText(state, t('floating.summon'), e.pos, '#c084fc');
+}
+
+/** Miniboss slime "slam": after a brief wind-up, deal AoE damage in a radius
+ *  around the boss. Hurts the mannequin if it's within reach and lights a
+ *  short fire pool for visual feedback. */
+function minibossSlimeSlam(state: GameState, e: Enemy): void {
+  const m = state.mannequin;
+  const radius = 110;
+  state.firePools.push({
+    id: newId(state),
+    pos: { x: e.pos.x, y: e.pos.y },
+    radius: radius * 0.7,
+    dps: 6,
+    time: 0.8,
+  });
+  if (dist(m.pos, e.pos) < radius) {
+    const scaled = e.kind.damage * state.difficultyModifier.damageMult * 0.6;
+    const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
+    const dmg = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult);
+    m.hp -= dmg;
+    m.damageFlash = 0.3;
+    state.metaAutoRepairCooldown = 5;
+    spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+  }
+  spawnFloatingText(state, t('floating.slam'), e.pos, '#ffd166');
+}
+
+/** Homunculus teleport: jump to a point 220-260px from the mannequin in a
+ *  random direction. Used in phase 2+ to keep the player honest about
+ *  positioning. */
+function homunculusTeleport(state: GameState, e: Enemy): void {
+  const m = state.mannequin;
+  const angle = state.rng.range(0, Math.PI * 2);
+  const r = 220 + state.rng.range(0, 40);
+  const nx = Math.max(40, Math.min(state.arena.width - 40, m.pos.x + Math.cos(angle) * r));
+  const ny = Math.max(40, Math.min(state.arena.height - 40, m.pos.y + Math.sin(angle) * r));
+  e.pos.x = nx;
+  e.pos.y = ny;
+  e.hitFlash = 0.25;
+  spawnFloatingText(state, t('floating.teleport'), e.pos, '#c084fc');
+}
+
+/** Boss perpendicular dodge: triggered from `applyDamageToEnemy` when a boss
+ *  with active-dodge ability takes damage and its cooldown is ready. */
+export function tryBossDodge(state: GameState, e: Enemy): void {
+  if (!e.kind.isBoss) return;
+  // Only the rat-king and homunculus actively dodge — slime miniboss is bulky.
+  if (e.kind.id !== 'boss_rat_king' && e.kind.id !== 'boss_homunculus') return;
+  if (e.bossDodgeTimer > 0 || e.bossSpecialCooldown > 0) return;
+  // Don't dodge above 80% HP (let the player learn the fight first).
+  if (e.hp / e.maxHp > 0.8) return;
+  const m = state.mannequin;
+  const toMan = norm(sub(m.pos, e.pos));
+  // Pick perpendicular direction: rotate +90° or -90° at random.
+  const sign = state.rng.chance(0.5) ? 1 : -1;
+  e.bossDodgeDir = { x: -toMan.y * sign, y: toMan.x * sign };
+  e.bossDodgeTimer = 0.45;
+  e.bossDodgeSpeed = 280;
+  e.bossSpecialCooldown = e.kind.id === 'boss_rat_king' ? 4.5 : 6;
+  spawnFloatingText(state, t('floating.dodge'), e.pos, '#9be3ff');
 }
 
 export function updateGoldPickups(state: GameState, dt: number): void {
@@ -341,7 +439,7 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
     life: 12,
   });
   state.totalKills += 1;
-  state.essence += e.kind.isBoss ? 5 : 1;
+  state.essence += e.kind.isBoss ? 3 : 1;
   addOverload(state, e.kind.isBoss ? 25 : 6);
 
   // Split-on-death: spawn N smaller slimes (2 the first generation, 1 the

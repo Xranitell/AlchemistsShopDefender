@@ -21,12 +21,17 @@ export function currentWaveDuration(state: GameState): number {
   return def?.durationSec ?? 0;
 }
 
+/** Length of the prep window shown BEFORE the very first wave of a run.
+ *  Gives the player a moment to read the scene, place a starter tower, and
+ *  pick a target before slimes arrive. */
+export const INITIAL_PREP_DURATION = 12;
+
 /** Configured length of the upcoming pause (used while the game is in the
  *  'preparing' phase). Falls back to a sensible default when no wave has run
  *  yet (e.g. just after starting a new run). */
 export function currentPauseDuration(state: GameState): number {
   const idx = state.waveState.currentIndex;
-  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, 6);
+  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, INITIAL_PREP_DURATION);
   const waves = activeWaves(state);
   const def = waves[idx];
   return def?.pauseAfterSec ?? 6;
@@ -208,6 +213,14 @@ export function spawnEnemy(
     elite,
     etherealTimer: elite === 'ethereal' ? 4 : 0,
     etherealActive: false,
+    // Boss active-ability fields (only used when isBoss=true).
+    bossSpecialCooldown: kind.isBoss
+      ? (kind.id === 'miniboss_slime' ? 6 : kind.id === 'boss_rat_king' ? 4 : 5)
+      : 0,
+    bossDodgeTimer: 0,
+    bossDodgeDir: { x: 0, y: 0 },
+    bossDodgeSpeed: 0,
+    bossSlamWindup: 0,
   });
 }
 
@@ -216,9 +229,9 @@ export function spawnEnemy(
 function rollEliteMod(state: GameState, kind: EnemyKind): EliteModId | null {
   if (kind.isBoss) return null;
   const waveIdx = state.waveState.currentIndex;
-  if (waveIdx < 5) return null; // wave 6+ (0-based index 5)
-  // 10 % base, scaling up to ~25 % by wave 15.
-  const chance = 0.10 + Math.min(0.15, (waveIdx - 5) * 0.015);
+  if (waveIdx < 3) return null; // wave 4+ (0-based index 3)
+  // 12 % base, scaling up to ~30 % by wave 15.
+  const chance = 0.12 + Math.min(0.18, (waveIdx - 3) * 0.015);
   if (state.rng.range(0, 1) >= chance) return null;
   return ELITE_MOD_IDS[state.rng.int(0, ELITE_MOD_IDS.length)]!;
 }
