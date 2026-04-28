@@ -90,6 +90,15 @@ function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void
   }
 }
 
+/** Color used to paint a rune-point's halo + star, keyed by kind. */
+const RUNE_KIND_COLOR: Record<string, string> = {
+  normal: 'rgba(255, 241, 172,',     // pale brass — same as before
+  reinforced: 'rgba(255, 138, 60,',  // warm orange
+  unstable: 'rgba(192, 132, 252,',   // unstable purple
+  resonant: 'rgba(125, 249, 255,',   // cyan resonance
+  defensive: 'rgba(163, 227, 106,',  // pale green
+};
+
 function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Iso-plane y-compression so the chalk circles read as painted on the
   // floor and not floating perpendicular to the camera.
@@ -103,10 +112,15 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.save();
     ctx.translate(rp.pos.x, rp.pos.y);
 
+    // Per-kind halo color — pulses with worldTime, with `unstable` flickering
+    // sharper than the rest to read as "unstable".
+    const colorBase = RUNE_KIND_COLOR[rp.kind] ?? RUNE_KIND_COLOR.normal!;
+    const pulseSpeed = rp.kind === 'unstable' ? 6 : 3;
+    const pulse = 0.13 + 0.08 * Math.sin(state.worldTime * pulseSpeed + rp.unstablePhase);
     const baseAlpha = isActive ? 0.75 : 0.18;
     ctx.strokeStyle = isActive ? COLORS.brassHi : COLORS.stoneHi;
     ctx.fillStyle = isActive
-      ? `rgba(255, 241, 172, ${0.13 + 0.08 * Math.sin(state.worldTime * 3)})`
+      ? `${colorBase} ${pulse})`
       : 'rgba(160, 160, 180, 0.05)';
     ctx.globalAlpha = baseAlpha;
     ctx.lineWidth = 1.5;

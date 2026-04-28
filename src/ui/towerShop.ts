@@ -32,6 +32,15 @@ export class TowerShop {
     el.style.left = `${screenPos.x + 24}px`;
     el.style.top = `${screenPos.y - 20}px`;
 
+    // Rune-kind banner — tells the player up-front what kind of bonus the
+    // tower placed here will get. Hidden for plain `normal` runes.
+    if (rp.kind !== 'normal') {
+      const banner = document.createElement('div');
+      banner.className = 'tower-shop-rune-banner';
+      banner.textContent = `${runeKindLabel(rp.kind)} — ${runeKindDesc(rp.kind)}`;
+      el.appendChild(banner);
+    }
+
     const tower = rp.towerId !== null
       ? this.state.towers.find((t) => t.id === rp.towerId) ?? null
       : null;
@@ -136,4 +145,26 @@ export class TowerShop {
   }
 
   isOpen(): boolean { return this.el !== null; }
+}
+
+function runeKindLabel(k: import('../game/state').RunePointKind): string {
+  switch (k) {
+    case 'reinforced': return 'Усиленная руна';
+    case 'unstable': return 'Нестабильная руна';
+    case 'resonant': return 'Резонансная руна';
+    case 'defensive': return 'Защитная руна';
+    case 'normal':
+    default: return 'Обычная руна';
+  }
+}
+
+function runeKindDesc(k: import('../game/state').RunePointKind): string {
+  switch (k) {
+    case 'reinforced': return '+20% урона стойке';
+    case 'unstable': return 'каждые 4 сек +40% урона / +40% скорострел. / +30% дальности';
+    case 'resonant': return '+10% дальности; реакции рядом мощнее';
+    case 'defensive': return '+20% дальности, −5% скорострел.';
+    case 'normal':
+    default: return 'без бонусов';
+  }
 }

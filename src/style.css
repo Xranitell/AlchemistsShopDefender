@@ -599,6 +599,16 @@ body {
 }
 .tower-shop button:disabled { opacity: 0.4; cursor: not-allowed; }
 .tower-shop .cost { color: var(--gold); }
+.tower-shop-rune-banner {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  border: 1px dashed rgba(125, 249, 255, 0.4);
+  border-radius: 3px;
+  background: rgba(125, 249, 255, 0.06);
+}
 
 /* Meta-progression overlay */
 .meta-panel {
