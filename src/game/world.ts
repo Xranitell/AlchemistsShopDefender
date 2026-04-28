@@ -204,7 +204,24 @@ export function buildInitialState(
     // Crown of Elements legendary.
     catalystSlots: 2,
     equippedCatalysts: [],
+    reviveUsed: false,
+    revivePaused: false,
   };
+}
+
+/** Deterministic seed from today's date (YYYYMMDD) so every player gets
+ *  the same Daily Experiment run. */
+export function dailySeed(): number {
+  const d = new Date();
+  const n = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  return n >>> 0;
+}
+
+/** Board id for today's daily leaderboard: `daily_YYYYMMDD`. */
+export function dailyBoardId(): string {
+  const d = new Date();
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `daily_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
 /** Apply passive biome modifiers to the state. Call once after

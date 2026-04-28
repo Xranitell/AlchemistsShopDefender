@@ -2521,3 +2521,220 @@ body {
   color: #1a1a22;
   border-color: var(--accent, #f5c453);
 }
+
+/* ============ Mode buttons in main menu ============ */
+.mm-mode-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.mm-mode-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border-soft, #3a3a4a);
+  color: var(--fg-dim, #a0a0b0);
+  background: rgba(10, 5, 20, 0.65);
+  transition: background 120ms, border-color 120ms;
+}
+.mm-mode-btn:hover {
+  border-color: var(--accent, #f5c453);
+  color: var(--fg, #e6e6f0);
+  background: rgba(245, 196, 83, 0.12);
+}
+.mm-daily-exp { border-color: #f9c74f; color: #f9c74f; }
+.mm-daily-exp:hover { background: rgba(249, 199, 79, 0.18); }
+.mm-boss-challenge { border-color: #ef476f; color: #ef476f; }
+.mm-boss-challenge:hover { background: rgba(239, 71, 111, 0.18); }
+.mm-leaderboards { border-color: #8ecae6; color: #8ecae6; }
+.mm-leaderboards:hover { background: rgba(142, 202, 230, 0.18); }
+
+/* ============ Leaderboard overlay ============ */
+.lb-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 2000;
+}
+.lb-panel {
+  background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
+  border: 2px solid #8ecae6;
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 460px;
+  width: min(92vw, 460px);
+  box-shadow: 0 0 36px rgba(142, 202, 230, 0.25);
+}
+.lb-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  color: #8ecae6;
+  text-align: center;
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+}
+.lb-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.lb-tab {
+  all: unset;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  padding: 6px 4px;
+  border-radius: 4px;
+  color: var(--fg-dim, #a0a0b0);
+  border: 1px solid transparent;
+  transition: background 120ms, border-color 120ms;
+}
+.lb-tab:hover { border-color: rgba(142, 202, 230, 0.35); }
+.lb-tab.active {
+  border-color: #8ecae6;
+  color: #8ecae6;
+  background: rgba(142, 202, 230, 0.10);
+}
+.lb-body {
+  min-height: 180px;
+}
+.lb-loading, .lb-empty {
+  text-align: center;
+  color: var(--fg-dim, #a0a0b0);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 48px 0;
+}
+.lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.lb-row:nth-child(1) { background: rgba(255, 215, 0, 0.08); }
+.lb-row:nth-child(2) { background: rgba(192, 192, 192, 0.06); }
+.lb-row:nth-child(3) { background: rgba(205, 127, 50, 0.06); }
+.lb-rank {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  color: #8ecae6;
+  width: 36px;
+  text-align: right;
+}
+.lb-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+.lb-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.lb-name {
+  flex: 1;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg, #e6e6f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-score {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  color: var(--gold, #f5c453);
+}
+.lb-close {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 28px;
+  border-radius: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border: 2px solid #8ecae6;
+  color: #8ecae6;
+  background: rgba(142, 202, 230, 0.10);
+}
+.lb-close:hover { background: rgba(142, 202, 230, 0.22); }
+
+/* ============ Revive overlay ============ */
+.revive-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  z-index: 2000;
+}
+.revive-panel {
+  background: linear-gradient(180deg, #2a1018 0%, #110a1c 100%);
+  border: 2px solid #ef476f;
+  border-radius: 10px;
+  padding: 28px 24px;
+  max-width: 400px;
+  width: min(90vw, 400px);
+  text-align: center;
+  box-shadow: 0 0 36px rgba(239, 71, 111, 0.3);
+}
+.revive-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  color: #ef476f;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+.revive-desc {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg-dim, #a0a0b0);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+.revive-btn {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  transition: background 120ms;
+}
+.revive-ad {
+  border: 2px solid #06d6a0;
+  color: #06d6a0;
+  background: rgba(6, 214, 160, 0.10);
+}
+.revive-ad:hover { background: rgba(6, 214, 160, 0.22); }
+.revive-ad-icon::before { content: '▶ '; }
+.revive-give-up {
+  border: 2px solid rgba(239, 71, 111, 0.5);
+  color: var(--fg-dim, #a0a0b0);
+  background: transparent;
+}
+.revive-give-up:hover { background: rgba(239, 71, 111, 0.12); }

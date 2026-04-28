@@ -3,7 +3,7 @@ import { Input } from './engine/input';
 import { Loop } from './engine/loop';
 import { dist } from './engine/math';
 import { yandex } from './yandex';
-import { buildInitialState, applyBiomeModifiers } from './game/world';
+import { buildInitialState, applyBiomeModifiers, dailySeed, dailyBoardId } from './game/world';
 import { updateMannequin } from './game/mannequin';
 import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts } from './game/enemy';
 import { updateReactionPools } from './game/reactions';
@@ -26,6 +26,8 @@ import { SettingsOverlay } from './ui/settingsOverlay';
 import { DifficultyOverlay } from './ui/difficultyOverlay';
 import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
+import { LeaderboardOverlay } from './ui/leaderboardOverlay';
+import { ReviveOverlay } from './ui/reviveOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
@@ -77,6 +79,8 @@ const settingsOverlay = new SettingsOverlay(overlayRoot);
 const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
+const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
+const reviveOverlay = new ReviveOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -178,7 +182,7 @@ function tick(dt: number): void {
     }
   }
 
-  if (state.phase === 'wave') {
+  if (state.phase === 'wave' && !state.revivePaused) {
     updateMannequin(state, dt);
     updateTowers(state, dt);
     updateProjectiles(state, dt);
@@ -214,6 +218,9 @@ function tick(dt: number): void {
   }
   if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
     showEndlessModifierOverlay();
+  }
+  if (state.revivePaused && !reviveOverlay.isVisible()) {
+    showReviveOverlay();
   }
   if (state.phase === 'victory' && !overlay.isVisible()) {
     showVictory();
@@ -363,6 +370,17 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpX
   const bpXp = wave * BP_XP_PER_WAVE + state.totalKills * BP_XP_PER_KILL + (victory ? BP_XP_VICTORY : 0);
   addBpXp(meta, bpXp);
   saveMeta(meta);
+
+  // Submit scores to leaderboards
+  void yandex.setLeaderboardScore('best_wave', wave);
+  const score = wave * 1000 + state.totalKills;
+  void yandex.setLeaderboardScore('best_score', score);
+  if (state.difficulty === 'daily') {
+    void yandex.setLeaderboardScore(dailyBoardId(), score);
+  } else if (state.difficulty === 'boss_challenge') {
+    void yandex.setLeaderboardScore('boss_challenge', score);
+  }
+
   return { blue: reward.blue, ancient: reward.ancient, bpXp };
 }
 
@@ -495,6 +513,18 @@ function showMainMenu(): void {
       mainMenu.hide();
       showSettings();
     },
+    onDailyExperiment: () => {
+      mainMenu.hide();
+      startRun('daily');
+    },
+    onBossChallenge: () => {
+      mainMenu.hide();
+      startRun('boss_challenge');
+    },
+    onLeaderboards: () => {
+      mainMenu.hide();
+      showLeaderboards();
+    },
   });
 }
 
@@ -546,7 +576,8 @@ function consumeKey(mode: DifficultyMode): boolean {
 }
 
 function startRun(mode: DifficultyMode): void {
-  state = buildInitialState(undefined, mode);
+  const seed = mode === 'daily' ? dailySeed() : undefined;
+  state = buildInitialState(seed, mode);
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
   towerShop.attach(state);
@@ -612,6 +643,45 @@ function showSettings(): void {
       settingsOverlay.hide();
       meta = loadMeta();
       showMainMenu();
+    },
+  });
+}
+
+function showLeaderboards(): void {
+  leaderboardOverlay.show({
+    onClose: () => {
+      leaderboardOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function showReviveOverlay(): void {
+  yandex.gameplayStop();
+  reviveOverlay.show({
+    onRevive: () => {
+      reviveOverlay.hide();
+      void yandex.showRewarded().then((ok) => {
+        if (!ok) {
+          // Ad failed or was skipped — game over.
+          state.revivePaused = false;
+          state.reviveUsed = true;
+          state.phase = 'gameover';
+          return;
+        }
+        state.reviveUsed = true;
+        state.revivePaused = false;
+        state.mannequin.hp = Math.round(state.mannequin.maxHp * 0.5);
+        state.tempShieldTime = 4;
+        state.tempShieldReduction = 0.8;
+        yandex.gameplayStart();
+      });
+    },
+    onGiveUp: () => {
+      reviveOverlay.hide();
+      state.revivePaused = false;
+      state.reviveUsed = true;
+      state.phase = 'gameover';
     },
   });
 }

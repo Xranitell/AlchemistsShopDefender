@@ -116,5 +116,7 @@ function modeIcon(mode: DifficultyMode): string {
     case 'epic': return '✦';
     case 'ancient': return '☀';
     case 'endless': return '∞';
+    case 'daily': return '📅';
+    case 'boss_challenge': return '💀';
   }
 }
