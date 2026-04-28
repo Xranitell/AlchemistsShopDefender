@@ -10,7 +10,7 @@ import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves } from './game/wave';
-import { applyCard, rollCardOptions } from './game/cards';
+import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect } from './game/overload';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld } from './render/camera';
@@ -196,25 +196,13 @@ function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number })
 
 function showCardOverlay(): void {
   yandex.gameplayStop();
-  const options = rollCardOptions(state);
-  state.cardChoice.options = options;
-  const idx = state.waveState.currentIndex;
-  overlay.show({
-    title: `Волна ${idx + 1} пройдена`,
-    subtitle: options.length > 0
-      ? 'Выбери одну карту улучшения. Между волнами можно докупить стойки.'
-      : 'Все карты MVP уже получены.',
-    cards: options,
-    onPick: (card) => {
-      applyCard(state, card);
-      overlay.hide();
-      startPause(state);
-      yandex.gameplayStart();
-    },
-  });
+  beginNewDraft(state);
+  state.cardChoice.options = rollCardOptions(state);
+  renderCardOverlay();
 
-  if (options.length === 0) {
+  if (state.cardChoice.options.length === 0) {
     // Auto-continue if no cards left.
+    const idx = state.waveState.currentIndex;
     overlay.showSimple({
       title: `Волна ${idx + 1} пройдена`,
       subtitle: 'Карт улучшений не осталось. Готовься к следующей волне.',
@@ -229,7 +217,42 @@ function showCardOverlay(): void {
   }
 }
 
-function awardRunEssence(victory: boolean): void {
+/** Re-render the card overlay from the current `state.cardChoice`. Called
+ *  when the draft is first shown and after every reroll. */
+function renderCardOverlay(): void {
+  const options = state.cardChoice.options;
+  const idx = state.waveState.currentIndex;
+  overlay.show({
+    title: `Волна ${idx + 1} пройдена`,
+    subtitle: options.length > 0
+      ? 'Выбери одну карту улучшения. Между волнами можно докупить стойки.'
+      : 'Все карты MVP уже получены.',
+    cards: options,
+    onPick: (card) => {
+      applyCard(state, card);
+      overlay.hide();
+      startPause(state);
+      yandex.gameplayStart();
+    },
+    rerollGold: options.length > 0 ? {
+      cost: state.cardChoice.rerollCost,
+      canAfford: state.gold >= state.cardChoice.rerollCost,
+      onReroll: () => {
+        if (rerollForGold(state)) renderCardOverlay();
+      },
+    } : undefined,
+    rerollAd: options.length > 0 && !state.cardChoice.freeRerollUsed ? {
+      onReroll: () => {
+        void yandex.showRewarded().then((ok) => {
+          if (!ok) return;
+          if (rerollForAd(state)) renderCardOverlay();
+        });
+      },
+    } : undefined,
+  });
+}
+
+function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpXp: number } {
   const wave = state.waveState.currentIndex + 1;
   const reward = calcRunEssence(meta, wave, state.totalKills, victory);
   meta.blueEssence += reward.blue;
@@ -240,40 +263,88 @@ function awardRunEssence(victory: boolean): void {
   const bpXp = wave * BP_XP_PER_WAVE + state.totalKills * BP_XP_PER_KILL + (victory ? BP_XP_VICTORY : 0);
   addBpXp(meta, bpXp);
   saveMeta(meta);
+  return { blue: reward.blue, ancient: reward.ancient, bpXp };
+}
+
+/** Compose a reward-breakdown subtitle string for victory/defeat screens. */
+function rewardBreakdown(r: { blue: number; ancient: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
+  const parts = [
+    `Волна ${wave}/${totalWaves()}`,
+    `Убийств: ${kills}`,
+    `+${r.blue} СЭ`,
+  ];
+  if (r.ancient > 0) parts.push(`+${r.ancient} ДЭ`);
+  parts.push(`+${r.bpXp} BP-опыта`);
+  if (victory) parts.unshift('Сундук вскрыт.');
+  return parts.join(' • ');
+}
+
+/** Award the same reward payload again (chest doubling via rewarded ad). */
+function doubleRewards(r: { blue: number; ancient: number; bpXp: number }): void {
+  meta.blueEssence += r.blue;
+  meta.ancientEssence += r.ancient;
+  addBpXp(meta, r.bpXp);
+  saveMeta(meta);
 }
 
 function showVictory(): void {
   yandex.gameplayStop();
-  awardRunEssence(true);
+  const reward = awardRunEssence(true);
   const wave = state.waveState.currentIndex + 1;
-  const reward = calcRunEssence(meta, wave, state.totalKills, true);
-  overlay.showSimple({
-    title: 'Победа!',
-    subtitle: `Все ${totalWaves()} волн пройдены! Убийств: ${state.totalKills}. +${reward.blue} СЭ${reward.ancient > 0 ? `, +${reward.ancient} ДЭ` : ''}.`,
-    buttons: [
-      {
-        label: 'Улучшения',
-        primary: true,
-        onClick: () => restart(),
+  let doubled = false;
+  const buttons: { label: string; primary?: boolean; onClick: () => void }[] = [
+    {
+      label: 'Удвоить награду (реклама)',
+      primary: true,
+      onClick: () => {
+        if (doubled) return;
+        void yandex.showRewarded().then((ok) => {
+          if (!ok) return;
+          doubled = true;
+          doubleRewards(reward);
+          overlay.showSimple({
+            title: 'Сундук удвоен!',
+            subtitle: `Итог: +${reward.blue * 2} СЭ${reward.ancient > 0 ? `, +${reward.ancient * 2} ДЭ` : ''}.`,
+            buttons: [
+              { label: 'В меню', primary: true, onClick: () => restart() },
+            ],
+          });
+        });
       },
-    ],
+    },
+    { label: 'В меню', onClick: () => restart() },
+  ];
+  overlay.showSimple({
+    title: `Победа! Сундук алхимика`,
+    subtitle: rewardBreakdown(reward, state.totalKills, wave, true),
+    buttons,
   });
 }
 
 function showGameOver(): void {
   yandex.gameplayStop();
-  awardRunEssence(false);
+  const reward = awardRunEssence(false);
   const wave = state.waveState.currentIndex + 1;
-  const reward = calcRunEssence(meta, wave, state.totalKills, false);
   overlay.showSimple({
     title: 'Манекен пал',
-    subtitle: `Волна ${wave}. Убийств: ${state.totalKills}. +${reward.blue} СЭ. Улучши манекена и попробуй снова!`,
+    subtitle: rewardBreakdown(reward, state.totalKills, wave, false) + ' • Улучши манекена и попробуй снова.',
     buttons: [
       {
-        label: 'Улучшения',
+        label: 'Удвоить награду (реклама)',
         primary: true,
-        onClick: () => restart(),
+        onClick: () => {
+          void yandex.showRewarded().then((ok) => {
+            if (!ok) return;
+            doubleRewards(reward);
+            overlay.showSimple({
+              title: 'Награда удвоена',
+              subtitle: `Итог: +${reward.blue * 2} СЭ.`,
+              buttons: [{ label: 'В меню', primary: true, onClick: () => restart() }],
+            });
+          });
+        },
       },
+      { label: 'В меню', onClick: () => restart() },
     ],
   });
 }

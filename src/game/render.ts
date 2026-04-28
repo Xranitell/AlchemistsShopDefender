@@ -321,6 +321,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     } else if (e.kind.id === 'boss_rat_king') {
       sprite = s.ratKing;
       bob = Math.round(Math.sin(state.worldTime * 2 + e.id) * 1);
+    } else if (e.kind.id === 'sapper') {
+      sprite = s.sapper;
+      // Jitter hard if the fuse is burning down, otherwise a slight waddle.
+      bob = e.sapperFuse > 0
+        ? Math.round(Math.sin(state.worldTime * 40 + e.id) * 2)
+        : Math.round(Math.sin(state.worldTime * 6 + e.id) * 1);
+    } else if (e.kind.id === 'boss_homunculus') {
+      sprite = s.homunculus;
+      bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
     } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
       sprite = s.slimeBoss;
       bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);

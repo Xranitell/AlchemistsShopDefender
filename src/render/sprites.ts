@@ -50,6 +50,8 @@ export interface Sprites {
   flyingFlask: BakedSprite;
   shaman: BakedSprite;
   ratKing: BakedSprite;
+  sapper: BakedSprite;
+  homunculus: BakedSprite;
   // Crystal altar (sits atop dais)
   crystalAltar: BakedSprite;
 }
@@ -840,6 +842,78 @@ function bakeAll(): Sprites {
         },
       },
       { x: 6.5, y: 9 },
+    ),
+
+    // Sapper — short round bomb-bot with a lit fuse on top. Orange shell with
+    // a red "danger" band, yellow fuse spark.
+    sapper: bakeSprite(
+      {
+        rows: [
+          '.....Ff.....',
+          '....FFFf....',
+          '....FFF.....',
+          '....OOO.....',
+          '...OOOOO....',
+          '..OOoOOoOO..',
+          '.OOoooOooOO.',
+          'OOoOOOOOOOOO',
+          'OOOoRRRRoOOO',
+          'OoOOOOOOOOOo',
+          'OoOoOOOOOoOo',
+          '.OOoOOOOoOO.',
+          '..OOOoooOO..',
+          '...SSSSSS...',
+        ],
+        legend: {
+          F: 'fireA',
+          f: 'fireB',
+          O: 'fireC',
+          o: 'fireD',
+          R: 'hudHpRed',
+          S: 'shadow',
+        },
+      },
+      { x: 6, y: 13 },
+    ),
+
+    // Homunculus — tall gaunt figure with a glass dome head, purple essence
+    // inside, and flayed-looking muscle body. 3 phases retint via hitFlash.
+    homunculus: bakeSprite(
+      {
+        rows: [
+          '......EEEE......',
+          '.....EeeeeE.....',
+          '....EeppppeE....',
+          '...EeppPPppeE...',
+          '...EpPPPPPPpE...',
+          '...EeppPPppeE...',
+          '....EeppppeE....',
+          '.....EEEEEE.....',
+          '......nnnn......',
+          '.....RRRRRR.....',
+          '....RPPPPPPR....',
+          '...RPRRRRRRPR...',
+          '...RPRrrrrRPR...',
+          '...RPRrppreRPR..',
+          '...RPPPPPPPPR...',
+          '....RPRRRRRPR...',
+          '.....RrrrrrR....',
+          '.....RrrrrrR....',
+          '.....RRRRRRR....',
+          '.....LLL.LLL....',
+        ],
+        legend: {
+          E: 'crystalB',
+          e: 'crystalA',
+          p: 'essenceA',
+          P: 'essenceB',
+          n: 'alchSkinShadow',
+          R: 'essenceD',
+          r: 'essenceC',
+          L: 'alchBoot',
+        },
+      },
+      { x: 8, y: 19 },
     ),
 
     // Crystal altar atop the dais. Hex-cut cyan crystal on a stone base.

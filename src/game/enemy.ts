@@ -41,11 +41,41 @@ export function updateEnemies(state: GameState, dt: number): void {
       e.dashBackTimer -= dt;
     }
 
+    // --- Per-kind pre-move behaviours ---
+    // Sapper: once it gets close enough to the mannequin, freeze in place and
+    // tick a short fuse; explode radially when the fuse reaches zero.
+    if (e.kind.id === 'sapper') {
+      const d2m = dist(e.pos, m.pos);
+      if (e.sapperFuse > 0 || d2m < e.kind.radius + 48) {
+        if (e.sapperFuse <= 0) {
+          e.sapperFuse = 0.55;
+          spawnFloatingText(state, '!', e.pos, '#ff5a5a');
+        }
+        e.sapperFuse -= dt;
+        // Pulse by flashing hitFlash so the sprite visibly blinks red.
+        e.hitFlash = Math.max(e.hitFlash, 0.12);
+        if (e.sapperFuse <= 0) {
+          sapperDetonate(state, e);
+          remove.push(i);
+          continue;
+        }
+        // Frozen: don't run the normal move step this frame.
+        continue;
+      }
+    }
+
+    // Homunculus: phase transitions on HP thresholds and periodic minion summon.
+    if (e.kind.id === 'boss_homunculus') {
+      updateHomunculus(state, e, dt);
+    }
+
     // Move toward mannequin (or away while dashed back).
     const dir = norm(sub(m.pos, e.pos));
     const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
+    // Homunculus phase 3 gets +35% speed.
+    const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.35 : 1;
     const speed = e.kind.speed * e.status.slowFactor
-      * state.difficultyModifier.speedMult * dashMult;
+      * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost;
     e.pos.x += dir.x * speed * dt;
     e.pos.y += dir.y * speed * dt;
 
@@ -62,7 +92,8 @@ export function updateEnemies(state: GameState, dt: number): void {
     const d = dist(e.pos, m.pos);
     if (d < e.kind.radius + 22) {
       const scaledDamage = e.kind.damage * state.difficultyModifier.damageMult;
-      const dmgReduced = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor));
+      const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
+      const dmgReduced = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor) * shieldMult);
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
@@ -87,11 +118,101 @@ export function updateEnemies(state: GameState, dt: number): void {
 
   for (let i = remove.length - 1; i >= 0; i--) state.enemies.splice(remove[i]!, 1);
 
+  // Tick the temporary shield countdown while we're in the update loop.
+  if (state.tempShieldTime > 0) {
+    state.tempShieldTime = Math.max(0, state.tempShieldTime - dt);
+  }
+
   // Mannequin death check.
   if (m.hp <= 0) {
     m.hp = 0;
     state.phase = 'gameover';
   }
+}
+
+/** Sapper hit zero on its fuse — do big AoE damage and splash minions. */
+function sapperDetonate(state: GameState, e: Enemy): void {
+  const m = state.mannequin;
+  const radius = 72;
+  // Spawn a visible fire pool at the blast point for feedback.
+  state.firePools.push({
+    id: newId(state),
+    pos: { x: e.pos.x, y: e.pos.y },
+    radius: radius * 0.6,
+    dps: 14,
+    time: 1.2,
+  });
+  // Damage to mannequin.
+  if (dist(m.pos, e.pos) < radius) {
+    const scaled = e.kind.damage * state.difficultyModifier.damageMult;
+    const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
+    const dmg = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult);
+    m.hp -= dmg;
+    m.damageFlash = 0.3;
+    state.metaAutoRepairCooldown = 5;
+    spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+  }
+  // Damage to nearby enemies.
+  for (const other of state.enemies) {
+    if (other.id === e.id) continue;
+    if (dist(other.pos, e.pos) < radius) {
+      applyDamageToEnemy(state, other, 10, 'fire');
+    }
+  }
+  // Kill counter + currency (no gold drop here — sapper is a nuisance not a reward).
+  state.totalKills += 1;
+}
+
+/**
+ * Drive the 3-phase final boss. Phase transitions at 66% and 33% HP mark
+ * visual state (sprite tint via hitFlash) and adjust mechanics. While
+ * the boss is alive it periodically spawns minions (slimes/rats) at
+ * its current location so the player always has chip-damage threats.
+ */
+function updateHomunculus(state: GameState, e: Enemy, dt: number): void {
+  const hpRatio = e.hp / e.maxHp;
+  const desiredPhase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  if (desiredPhase > e.bossPhase) {
+    e.bossPhase = desiredPhase;
+    e.minionSummonTimer = 0.5;
+    if (desiredPhase === 2) {
+      spawnFloatingText(state, 'Броня!', e.pos, '#c9c9d8');
+    } else if (desiredPhase === 3) {
+      spawnFloatingText(state, 'Ярость!', e.pos, '#ff6a3d');
+    }
+    e.hitFlash = 0.35;
+  }
+
+  // Tick the minion-summon timer. Phase 1 summons the fastest, phase 3 slowest
+  // (the boss is already brutal from the speed buff).
+  e.minionSummonTimer -= dt;
+  if (e.minionSummonTimer <= 0) {
+    const period = e.bossPhase === 1 ? 3.5 : e.bossPhase === 2 ? 4.5 : 6;
+    e.minionSummonTimer = period;
+    summonHomunculusMinions(state, e);
+  }
+}
+
+function summonHomunculusMinions(state: GameState, e: Enemy): void {
+  const phase = e.bossPhase;
+  // Pool per phase: 1 spawns slimes, 2 spawns rats (kite), 3 spawns sappers (panic).
+  const kindId =
+    phase === 1 ? 'slime' :
+    phase === 2 ? 'rat' :
+    'sapper';
+  const count = phase === 1 ? 3 : phase === 2 ? 4 : 2;
+  const kind = ENEMIES[kindId];
+  if (!kind) return;
+  for (let i = 0; i < count; i++) {
+    const angle = state.rng.range(0, Math.PI * 2);
+    const r = 40 + state.rng.range(0, 24);
+    const pos = {
+      x: e.pos.x + Math.cos(angle) * r,
+      y: e.pos.y + Math.sin(angle) * r,
+    };
+    spawnEnemy(state, kind, pos);
+  }
+  spawnFloatingText(state, 'Призыв!', e.pos, '#c084fc');
 }
 
 export function updateGoldPickups(state: GameState, dt: number): void {

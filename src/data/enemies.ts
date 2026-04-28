@@ -80,4 +80,27 @@ export const ENEMIES: Record<string, EnemyKind> = {
     color: '#c9a96b',
     isBoss: true,
   },
+  sapper: {
+    id: 'sapper',
+    name: 'Подрывник',
+    hp: 26,
+    speed: 74,
+    armor: 0,
+    goldDrop: [6, 10],
+    damage: 28, // big blast on mannequin contact
+    radius: 14,
+    color: '#ff8c3a',
+  },
+  boss_homunculus: {
+    id: 'boss_homunculus',
+    name: 'Нестабильный Гомункул',
+    hp: 1200,
+    speed: 26,
+    armor: 0.15,
+    goldDrop: [260, 380],
+    damage: 22,
+    radius: 34,
+    color: '#c084fc',
+    isBoss: true,
+  },
 };

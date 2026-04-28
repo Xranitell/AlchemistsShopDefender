@@ -9,6 +9,31 @@ export function rollCardOptions(state: GameState): CardDef[] {
   return shuffled.slice(0, Math.min(3, shuffled.length));
 }
 
+/** Reset reroll state at the start of a fresh draft. */
+export function beginNewDraft(state: GameState): void {
+  state.cardChoice.rerollCost = 50;
+  state.cardChoice.freeRerollUsed = false;
+}
+
+/** Attempt a paid reroll. Returns true on success. Increases the cost for
+ *  subsequent rerolls within the same draft. */
+export function rerollForGold(state: GameState): boolean {
+  const cost = state.cardChoice.rerollCost;
+  if (state.gold < cost) return false;
+  state.gold -= cost;
+  state.cardChoice.rerollCost = cost + 25;
+  state.cardChoice.options = rollCardOptions(state);
+  return true;
+}
+
+/** One free reroll per draft, granted after watching a rewarded ad. */
+export function rerollForAd(state: GameState): boolean {
+  if (state.cardChoice.freeRerollUsed) return false;
+  state.cardChoice.freeRerollUsed = true;
+  state.cardChoice.options = rollCardOptions(state);
+  return true;
+}
+
 export function applyCard(state: GameState, card: CardDef): void {
   const m = state.modifiers;
   const mq = state.mannequin;
