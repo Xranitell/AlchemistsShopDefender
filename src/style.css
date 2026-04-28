@@ -631,12 +631,20 @@ body {
   cursor: pointer;
   width: 100%;
   aspect-ratio: 3 / 4;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6));
+  /* Two chained drop-shadows: the dark one underneath the card, plus a
+   * rarity-colored bloom that's visible OUTSIDE the clipped frame (because
+   * `clip-path` on `.card-rh-frame` would otherwise eat any outer
+   * box-shadow on the frame itself). */
+  filter:
+    drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 12px var(--rh-glow, rgba(255, 255, 255, 0.18)));
   transition: transform 120ms ease, filter 120ms ease;
 }
 .card-rh:hover {
   transform: translateY(-6px) scale(1.03);
-  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7));
+  filter:
+    drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.28)));
 }
 
 .card-rh-frame {
@@ -654,10 +662,11 @@ body {
     14px 0, calc(100% - 14px) 0, 100% 14px,
     100% 100%, 0 100%, 0 14px
   );
+  /* Inner glows only — the outer rarity bloom lives on `.card-rh` as a
+   * `filter: drop-shadow()` so `clip-path` doesn't eat it. */
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.18)) inset,
-    0 0 24px var(--rh-glow, rgba(255, 255, 255, 0.18));
+    0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.18)) inset;
 }
 
 /* Per-rarity glow + border colors. */
@@ -669,13 +678,22 @@ body {
   --rh-glow: rgba(255, 184, 107, 0.45);
 }
 
-/* Animated legendary border-shimmer. */
+/* Animated legendary border-shimmer. The pulsing inset glow stays on the
+ * frame; the outer pulsing bloom lives on the parent `.card-rh` so it isn't
+ * clipped by the frame's clip-path. */
 .card-rh.rarity-legendary .card-rh-frame {
-  animation: rh-leg-pulse 2.4s ease-in-out infinite;
+  animation: rh-leg-frame-pulse 2.4s ease-in-out infinite;
 }
-@keyframes rh-leg-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 0 22px rgba(255, 184, 107, 0.32) inset, 0 0 24px rgba(255, 184, 107, 0.45); }
-  50%      { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10) inset, 0 0 32px rgba(255, 184, 107, 0.55) inset, 0 0 36px rgba(255, 184, 107, 0.70); }
+.card-rh.rarity-legendary {
+  animation: rh-leg-glow-pulse 2.4s ease-in-out infinite;
+}
+@keyframes rh-leg-frame-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 0 22px rgba(255, 184, 107, 0.32) inset; }
+  50%      { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10) inset, 0 0 32px rgba(255, 184, 107, 0.55) inset; }
+}
+@keyframes rh-leg-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 12px rgba(255, 184, 107, 0.45)); }
+  50%      { filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px rgba(255, 184, 107, 0.85)); }
 }
 
 /* Top: glyph badge centered. */
