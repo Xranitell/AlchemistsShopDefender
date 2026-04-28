@@ -26,8 +26,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = '#0a0810';
   ctx.fillRect(0, 0, width, height);
 
-  // Apply isometric camera
-  const camera: Camera = { cx: width / 2, cy: height / 2, scale: 1.05 };
+  // Flat 2D camera (identity transform). Kept as save/restore so per-frame
+  // world drawing can still freely mutate the canvas state.
+  const camera: Camera = { cx: width / 2, cy: height / 2, scale: 1 };
   ctx.save();
   applyIsoTransform(ctx, camera);
 
@@ -213,25 +214,31 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillRect(m.pos.x - 40, m.pos.y - 44, 80, 80);
   ctx.restore();
 
-  // Idle bob
+  // Idle bob (slow breathing); throw window lunges forward one pixel toward
+  // the aim direction to sell the motion without needing extra sprite frames.
   const bob = Math.round(Math.sin(state.worldTime * 2.4) * 1);
+  const lunge = m.throwAnim > 0
+    ? { x: Math.round(m.throwDir.x * 2), y: Math.round(m.throwDir.y * 2) }
+    : { x: 0, y: 0 };
+  const sprite = m.throwAnim > 0 ? s.mannequinThrow : s.mannequin;
+  const drawX = m.pos.x + lunge.x;
+  const drawY = m.pos.y + bob + lunge.y;
 
   if (m.damageFlash > 0) {
-    // Tint by drawing a red overlay on top of the sprite.
-    drawSprite(ctx, s.mannequin, m.pos.x, m.pos.y + bob, SPRITE_SCALE);
+    drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
     ctx.fillStyle = COLORS.fireC;
     ctx.fillRect(
-      m.pos.x - s.mannequin.anchor.x * SPRITE_SCALE,
-      m.pos.y + bob - s.mannequin.anchor.y * SPRITE_SCALE,
-      s.mannequin.width * SPRITE_SCALE,
-      s.mannequin.height * SPRITE_SCALE,
+      drawX - sprite.anchor.x * SPRITE_SCALE,
+      drawY - sprite.anchor.y * SPRITE_SCALE,
+      sprite.width * SPRITE_SCALE,
+      sprite.height * SPRITE_SCALE,
     );
     ctx.restore();
   } else {
-    drawSprite(ctx, s.mannequin, m.pos.x, m.pos.y + bob, SPRITE_SCALE);
+    drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
   }
 }
 
@@ -364,7 +371,25 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
     spawnTrail(p.pos.x, p.pos.y, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
 
     if (p.kind === 'potion') {
-      // Glowing trail behind potion
+      // Arc height (z) is a visual-only offset so the potion appears airborne.
+      const z = p.arc?.height ?? 0;
+
+      // Ground shadow: stays at the projectile's ground-plane position and
+      // shrinks as the potion rises. This sells the parabola in 2D.
+      if (z > 0.5) {
+        ctx.save();
+        const shrink = Math.max(0.35, 1 - z / 180);
+        ctx.globalAlpha = 0.45 * shrink;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(p.pos.x, p.pos.y + 2, 7 * shrink, 3 * shrink, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Glowing trail behind potion (uses airborne draw position).
+      const drawX = p.pos.x;
+      const drawY = p.pos.y - z;
       const trailGlow: Record<string, string> = {
         fire: 'rgba(255, 140, 58, 0.35)',
         mercury: 'rgba(201, 201, 216, 0.3)',
@@ -372,19 +397,17 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       };
       ctx.save();
       ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
-      ctx.fillRect(
-        Math.round(p.pos.x - 4 - p.vel.x * 0.03),
-        Math.round(p.pos.y - 4 - p.vel.y * 0.03),
-        8,
-        8,
-      );
+      // Tail direction: derive from ground-plane motion (start→target).
+      const tx = p.arc ? (p.arc.target.x - p.arc.start.x) : p.vel.x;
+      const ty = p.arc ? (p.arc.target.y - p.arc.start.y) : p.vel.y;
+      ctx.fillRect(Math.round(drawX - 4 - tx * 0.008), Math.round(drawY - 4 - ty * 0.008), 8, 8);
       ctx.restore();
 
       let sprite = s.potionBottle;
       if (p.element === 'fire') sprite = s.potionBottleFire;
       else if (p.element === 'mercury') sprite = s.potionBottleMercury;
       else if (p.element === 'acid') sprite = s.potionBottleAcid;
-      drawSprite(ctx, sprite, p.pos.x, p.pos.y, SPRITE_SCALE);
+      drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
     } else {
       const angle = Math.atan2(p.vel.y, p.vel.x);
       // Muzzle flash trail
@@ -624,6 +647,6 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
 
 // Export camera config for input system
 export function getRenderCamera(width: number, height: number): Camera {
-  return { cx: width / 2, cy: height / 2, scale: 1.05 };
+  return { cx: width / 2, cy: height / 2, scale: 1 };
 }
 

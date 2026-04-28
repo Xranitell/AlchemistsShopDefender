@@ -1,4 +1,3 @@
-import { dist } from '../engine/math';
 import type { GameState } from './state';
 import { throwPotion } from './projectile';
 import { tryActivateOverload } from './overload';
@@ -6,22 +5,21 @@ import { tryActivateOverload } from './overload';
 export function updateMannequin(state: GameState, dt: number): void {
   const m = state.mannequin;
   if (m.damageFlash > 0) m.damageFlash -= dt;
+  if (m.throwAnim > 0) m.throwAnim -= dt;
   m.potionTimer -= dt;
 
-  // Manual fire (mouse/touch click). Manual aim grants centre-bonus damage.
+  // Manual fire only — player must click to throw a potion. (No auto-aim.)
   if (state.manualFireRequested && m.potionTimer <= 0) {
     const aim = clampAim(state, state.aim);
     tickFireRuby(state);
     throwPotion(state, aim, /*manual*/ true);
     m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult;
-  } else if (m.potionTimer <= 0 && state.enemies.length > 0) {
-    // Auto fire at nearest enemy.
-    const target = nearestEnemyTo(state);
-    if (target) {
-      tickFireRuby(state);
-      throwPotion(state, target.pos, /*manual*/ false);
-      m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult;
-    }
+    // Face the throw and trigger the mid-throw pose briefly.
+    const dx = aim.x - m.pos.x;
+    const dy = aim.y - m.pos.y;
+    const len = Math.hypot(dx, dy) || 1;
+    m.throwDir = { x: dx / len, y: dy / len };
+    m.throwAnim = 0.22;
   }
 
   if (state.overloadRequested) {
@@ -30,16 +28,6 @@ export function updateMannequin(state: GameState, dt: number): void {
 
   state.manualFireRequested = false;
   state.overloadRequested = false;
-}
-
-function nearestEnemyTo(state: GameState) {
-  let best = null;
-  let bestD = Infinity;
-  for (const e of state.enemies) {
-    const d = dist(e.pos, state.mannequin.pos);
-    if (d < bestD) { bestD = d; best = e; }
-  }
-  return best;
 }
 
 function tickFireRuby(state: GameState): void {

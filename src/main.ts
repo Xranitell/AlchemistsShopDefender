@@ -60,6 +60,13 @@ const hud = new Hud(hudRoot, {
     }
   },
   onActivateOverload: () => { state.overloadRequested = true; },
+  onActivateMagnet: () => {
+    // Short magnet pulse: for the next ~1.2s every gold pickup on the map is
+    // yanked hard toward the hero regardless of the base loot radius.
+    if (state.phase === 'wave' || state.phase === 'preparing') {
+      state.magnetTimer = Math.max(state.magnetTimer, 1.2);
+    }
+  },
 });
 
 const loop = new Loop((dt) => tick(dt));

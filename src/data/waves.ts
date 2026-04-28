@@ -1,12 +1,23 @@
 import type { WaveDef } from '../game/types';
 
+// Compress spawn times by this factor so enemies arrive more frequently.
+// Waves got rebalanced after the walls were removed — enemies walk from
+// off-screen and were being killed long before reaching the hero.
+const DENSITY = 0.55;
+
 const wave = (
   index: number,
   duration: number,
   pause: number,
   spawns: WaveDef['spawns'],
   isBoss = false,
-): WaveDef => ({ index, durationSec: duration, pauseAfterSec: pause, spawns, isBoss });
+): WaveDef => ({
+  index,
+  durationSec: duration * DENSITY + 3,
+  pauseAfterSec: pause,
+  spawns: spawns.map((s) => ({ ...s, at: s.at * DENSITY })),
+  isBoss,
+});
 
 // Stage 2: 10 waves.
 // Entrances are indexed 0..3 (top, right, bottom, left).

@@ -37,23 +37,31 @@ export function throwPotion(
   const m = state.mannequin;
   const damage = m.basePotionDamage * state.modifiers.potionDamageMult;
   const radius = m.basePotionRadius * state.modifiers.potionRadiusMult;
-  const dir = norm(sub(to, m.pos));
-  const speed = 520;
 
-  // Manual aim grants a bonus on the centre of the explosion.
+  // Parabolic arc: potion follows a ballistic curve from the alchemist to the
+  // aim point, landing in `duration` seconds. Flight time scales mildly with
+  // distance so short tosses feel snappy and long ones feel hefty.
+  const start: Vec2 = { ...m.pos };
+  const target: Vec2 = { ...to };
+  const d = dist(start, target);
+  const duration = Math.min(0.85, Math.max(0.32, d / 900));
+  // Bigger throws arc higher so the curve is visible even on short tosses.
+  const peakHeight = Math.min(140, 40 + d * 0.18);
+
   state.projectiles.push({
     id: newId(state),
     kind: 'potion',
-    pos: { ...m.pos },
-    vel: scale(dir, speed),
+    pos: { ...start },
+    vel: { x: 0, y: 0 },
     damage,
     splashRadius: radius,
     targetId: null,
     element: (state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive) ? 'fire' : 'neutral',
-    life: 1.6,
+    life: duration + 0.1,
     leaveFire: state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive,
     echoExplosion: state.modifiers.potionEchoExplode > 0 && state.rng.chance(state.modifiers.potionEchoExplode),
     bonusFromManualAim: manual,
+    arc: { start, target, t: 0, duration, peakHeight, height: 0 },
   });
 }
 
@@ -61,11 +69,34 @@ export function updateProjectiles(state: GameState, dt: number): void {
   const remove: number[] = [];
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]!;
-    p.pos.x += p.vel.x * dt;
-    p.pos.y += p.vel.y * dt;
     p.life -= dt;
 
     let hit: Enemy | null = null;
+
+    if (p.kind === 'potion' && p.arc) {
+      // Parabolic flight: interpolate along the ground plane while tracking a
+      // vertical (z) height offset used only for rendering. The potion is
+      // "in the air" and will not collide with enemies until it lands.
+      p.arc.t += dt / p.arc.duration;
+      const t = Math.min(1, p.arc.t);
+      p.pos.x = p.arc.start.x + (p.arc.target.x - p.arc.start.x) * t;
+      p.pos.y = p.arc.start.y + (p.arc.target.y - p.arc.start.y) * t;
+      // sin-shaped arc peaks at t=0.5.
+      p.arc.height = Math.sin(t * Math.PI) * p.arc.peakHeight;
+      if (p.arc.t >= 1) {
+        // Landed: explode at the aim point. Find nearest enemy for splash to
+        // center on (optional) otherwise just use the target point.
+        resolveImpact(state, p, p.arc.target);
+        remove.push(i);
+        continue;
+      }
+      // During flight the potion is still airborne — no mid-air hits.
+      continue;
+    }
+
+    // Linear projectiles (towers).
+    p.pos.x += p.vel.x * dt;
+    p.pos.y += p.vel.y * dt;
 
     if (p.kind === 'tower') {
       // Track target if alive.
@@ -84,7 +115,8 @@ export function updateProjectiles(state: GameState, dt: number): void {
         }
       }
     } else if (p.kind === 'potion') {
-      // Potions explode either on first enemy contact or at travel limit.
+      // Echo-explosion secondary blasts do not have an arc — they sit still
+      // and just wait out their tiny life before detonating.
       for (const e of state.enemies) {
         if (dist2(e.pos, p.pos) < (e.kind.radius + 6) ** 2) {
           hit = e; break;
@@ -97,7 +129,6 @@ export function updateProjectiles(state: GameState, dt: number): void {
       p.pos.y < -50 || p.pos.y > state.arena.height + 50;
 
     if (hit || p.life <= 0 || offscreen) {
-      // Resolve impact at the projectile's position (or potion centre).
       resolveImpact(state, p, hit?.pos ?? p.pos);
       remove.push(i);
     }

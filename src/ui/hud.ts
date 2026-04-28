@@ -7,6 +7,7 @@ export interface HudHandlers {
   onPause(): void;
   onSkipPause(): void;
   onActivateOverload(): void;
+  onActivateMagnet(): void;
 }
 
 // HUD layout matches the supplied reference image:
@@ -136,13 +137,15 @@ export class Hud {
     const bottom = document.createElement('div');
     bottom.className = 'hud-bottom-row';
 
-    // Bottom-left: MAGNET round button (loot radius indicator).
+    // Bottom-left: MAGNET round button — pulls every gold pickup on the floor
+    // toward the hero when clicked.
     this.magnetButton = roundIconButton('hud-icon-magnet');
     this.magnetButton.appendChild(spriteEl(getSprites().iconMagnet, 4));
     const magLabel = document.createElement('span');
     magLabel.className = 'hud-icon-label';
     magLabel.textContent = 'MAGNET';
     this.magnetButton.appendChild(magLabel);
+    this.magnetButton.addEventListener('click', () => this.handlers.onActivateMagnet());
     bottom.appendChild(this.magnetButton);
 
     // Bottom-center: hint + skip-wave button (during preparing phase only)
