@@ -1,5 +1,5 @@
 import { dist } from '../engine/math';
-import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_COST, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT } from '../data/towers';
+import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost } from '../data/towers';
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
 import { fireTowerProjectile } from './projectile';
@@ -52,8 +52,9 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
   const t = state.towers.find((x) => x.id === towerId);
   if (!t) return false;
   if (t.level >= TOWER_MAX_LEVEL) return false;
-  if (state.gold < TOWER_UPGRADE_COST) return false;
-  state.gold -= TOWER_UPGRADE_COST;
+  const cost = towerUpgradeCost(t.level);
+  if (state.gold < cost) return false;
+  state.gold -= cost;
   t.level += 1;
   spawnFloatingText(state, `Lv ${t.level}`, t.pos, '#7df9ff');
   return true;

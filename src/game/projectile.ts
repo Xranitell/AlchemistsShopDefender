@@ -2,6 +2,21 @@ import { dist, dist2, norm, scale, sub, type Vec2 } from '../engine/math';
 import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
+import type { Element } from './types';
+
+/** Pick the element of a thrown potion based on currently-active recipe
+ *  modifiers. Cards can layer multiple flags on the same potion — we resolve
+ *  with a fixed priority so the most "specialised" recipe wins. */
+function selectPotionElement(state: GameState): Element {
+  const m = state.modifiers;
+  if (m.potionFrostActive) return 'frost';
+  if (m.potionPoisonActive) return 'poison';
+  if (m.potionAcidActive) return 'acid';
+  if (m.potionMercuryActive) return 'mercury';
+  if (m.potionAetherActive) return 'aether';
+  if (m.potionLeavesFire || m.fireRubyActive) return 'fire';
+  return 'neutral';
+}
 
 export function fireTowerProjectile(
   state: GameState,
@@ -56,7 +71,7 @@ export function throwPotion(
     damage,
     splashRadius: radius,
     targetId: null,
-    element: (state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive) ? 'fire' : 'neutral',
+    element: selectPotionElement(state),
     life: duration + 0.1,
     leaveFire: state.modifiers.potionLeavesFire || state.modifiers.fireRubyActive,
     echoExplosion: state.modifiers.potionEchoExplode > 0 && state.rng.chance(state.modifiers.potionEchoExplode),
@@ -252,6 +267,17 @@ export function applyDamageToEnemy(
     e.status.armorBreakTime = Math.max(e.status.armorBreakTime, 4);
   } else if (element === 'aether') {
     e.status.aetherMarkTime = Math.max(e.status.aetherMarkTime, 3);
+  } else if (element === 'frost') {
+    // Frost: stronger slow than mercury but shorter, plus marks the enemy
+    // as "chilled" so frost-based reactions can fire.
+    e.status.slowFactor = Math.min(e.status.slowFactor, 0.4);
+    e.status.slowTime = Math.max(e.status.slowTime, 2.0);
+    e.status.frostMarkTime = Math.max(e.status.frostMarkTime, 2.5);
+  } else if (element === 'poison') {
+    // Poison: armor-piercing DoT (handled in enemy update) — half DPS of
+    // burn but double duration, and ignores armor.
+    e.status.poisonDps = Math.max(e.status.poisonDps, 4 * state.modifiers.potionDamageMult);
+    e.status.poisonTime = Math.max(e.status.poisonTime, 5.0);
   }
 
   // Mercury Coating card: all tower hits apply mild slow.

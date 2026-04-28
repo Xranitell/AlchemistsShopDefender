@@ -26,28 +26,51 @@ export function buildEntrances(): Entrance[] {
 }
 
 export function buildRunePoints(): RunePoint[] {
-  // 6 points on a ring around the centre. Only every OTHER slot is active at
-  // the start (3 active, 3 locked) so the player can't wall off every angle
-  // of approach — the remaining slots unlock via meta-progression / shop.
-  // Indices 0, 2, 4 are active; 1, 3, 5 are locked.
+  // 8 points on a ring around the centre, of which the first 4 (indices 0..3
+  // in unlock order) are active by default. The remaining 4 slots unlock via
+  // meta-progression — see `runePointUnlock` upgrades. The unlock order is
+  // separate from the visual angle so each unlock opens a slot on a different
+  // side of the arena rather than them all clustering together.
   const points: RunePoint[] = [];
   const cx = ARENA_W / 2;
   const cy = ARENA_H / 2;
-  // Iso-plane: visually the ring is a 2:1 ellipse. Use a wider x-radius and
-  // half y-radius so slot positions land on an iso-oval, matching the dais.
-  const rx = 220;
-  const ry = 110;
-  const total = 6;
-  for (let i = 0; i < total; i++) {
-    const angle = (-Math.PI / 2) + (i / total) * Math.PI * 2;
+  const rx = 250;
+  const ry = 130;
+  // Visual angles around the dais.
+  const angles = [
+    -Math.PI / 2,                  // 0  top         (active)
+    -Math.PI / 2 + Math.PI / 4,    // 1  top-right   (locked)
+    0,                              // 2  right       (active)
+    Math.PI / 4,                    // 3  bottom-right(locked)
+    Math.PI / 2,                    // 4  bottom      (active)
+    Math.PI / 2 + Math.PI / 4,      // 5  bottom-left (locked)
+    Math.PI,                        // 6  left        (active)
+    -Math.PI / 2 - Math.PI / 4,     // 7  top-left    (locked)
+  ];
+  // Indices that start active. Other indices are revealed by meta upgrades —
+  // `runePointUnlock` effects use 1-based slot numbers matching this list:
+  // unlock 1 → index 1, unlock 2 → index 3, unlock 3 → index 5, unlock 4 → 7.
+  const startActive = new Set([0, 2, 4, 6]);
+  for (let i = 0; i < angles.length; i++) {
+    const angle = angles[i]!;
     points.push({
       id: i,
       pos: { x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry },
-      active: i % 2 === 0,
+      active: startActive.has(i),
       towerId: null,
     });
   }
   return points;
+}
+
+/** Map a 1-based "rune unlock slot" (the value carried by a `runePointUnlock`
+ *  meta effect) to the actual rune-point array index that should be opened.
+ *  The mapping points only to the slots that start LOCKED, so an unlock can
+ *  never be a no-op. */
+export function runeUnlockSlotToIndex(slot: number): number {
+  const LOCKED = [1, 3, 5, 7];
+  const i = Math.max(0, Math.min(LOCKED.length - 1, slot - 1));
+  return LOCKED[i]!;
 }
 
 export function buildMannequin(): Mannequin {

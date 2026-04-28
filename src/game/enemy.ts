@@ -33,6 +33,17 @@ export function updateEnemies(state: GameState, dt: number): void {
     if (e.status.aetherMarkTime > 0) {
       e.status.aetherMarkTime -= dt;
     }
+    if (e.status.frostMarkTime > 0) {
+      e.status.frostMarkTime -= dt;
+    }
+    if (e.status.poisonTime > 0) {
+      e.status.poisonTime -= dt;
+      // Poison ignores armour — apply DoT directly.
+      e.hp -= e.status.poisonDps * dt;
+      e.hitFlash = Math.max(e.hitFlash, 0.03);
+    } else {
+      e.status.poisonDps = 0;
+    }
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
     // Dash-back: while this timer is >0 the enemy is pushed away from the
