@@ -273,6 +273,8 @@ export function applyDamageToEnemy(
   if (e.elite === 'fire_resistant' && element === 'fire') {
     dmg *= 0.4;
   }
+  // Re-apply minimum damage floor after elite multipliers.
+  dmg = Math.max(1, dmg);
 
   // Engineering: +30% damage to burning enemies.
   if (state.modifiers.towerBonusVsBurning && e.status.burnTime > 0) {
