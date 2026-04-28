@@ -1,20 +1,15 @@
 import { dist } from '../engine/math';
-import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost, WATCH_TOWER_AURA, ETHER_COIL_CHAIN } from '../data/towers';
+import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost, WATCH_TOWER_AURA, ETHER_COIL_CHAIN, towerName } from '../data/towers';
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
 import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
 import { tutorial } from '../ui/tutorial';
+import { t } from '../i18n';
 
 export const TARGETING_MODES: TargetingMode[] = ['nearest', 'strongest', 'fastest', 'debuffed', 'first'];
 
 export function targetingModeLabel(m: TargetingMode): string {
-  switch (m) {
-    case 'nearest': return 'Ближайший';
-    case 'strongest': return 'Сильнейший';
-    case 'fastest': return 'Быстрейший';
-    case 'debuffed': return 'Под дебаффом';
-    case 'first': return 'Первый по маршруту';
-  }
+  return t(`ui.tower.targeting.${m}`);
 }
 
 export function cycleTargetingMode(t: Tower): void {
@@ -51,7 +46,7 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   };
   state.towers.push(tower);
   rp.towerId = tower.id;
-  spawnFloatingText(state, kind.name, rp.pos, '#7df9ff');
+  spawnFloatingText(state, towerName(kind), rp.pos, '#7df9ff');
   tutorial.notify('towerPlaced');
   return true;
 }

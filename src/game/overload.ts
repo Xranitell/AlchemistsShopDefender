@@ -4,6 +4,7 @@ import { applyDamageToEnemy } from './projectile';
 import { spawnFloatingText } from './state';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
+import { t } from '../i18n';
 import {
   ALCH_DOME_DURATION,
   ALCH_DOME_REDUCTION,
@@ -75,7 +76,7 @@ function runLightning(state: GameState): boolean {
     .slice(0, LIGHTNING_TARGETS);
 
   if (candidates.length === 0) {
-    spawnFloatingText(state, 'Громоотвод', state.mannequin.pos, '#7df9ff');
+    spawnFloatingText(state, t('floating.lightning'), state.mannequin.pos, '#7df9ff');
     return true;
   }
 
@@ -89,7 +90,7 @@ function runLightning(state: GameState): boolean {
     ],
     age: 0,
   };
-  spawnFloatingText(state, 'Громоотвод!', state.mannequin.pos, '#7df9ff');
+  spawnFloatingText(state, t('floating.lightning.ex'), state.mannequin.pos, '#7df9ff');
   return true;
 }
 
@@ -98,14 +99,14 @@ function runChronos(state: GameState): boolean {
     e.status.slowFactor = Math.min(e.status.slowFactor, 0.4);
     e.status.slowTime = Math.max(e.status.slowTime, CHRONOS_DURATION);
   }
-  spawnFloatingText(state, 'Хронос!', state.mannequin.pos, '#c084fc');
+  spawnFloatingText(state, t('floating.chronos'), state.mannequin.pos, '#c084fc');
   return true;
 }
 
 function runTransmute(state: GameState): boolean {
   state.transmuteTimer = Math.max(state.transmuteTimer, TRANSMUTE_DURATION);
   state.transmuteGoldMult = Math.max(state.transmuteGoldMult, TRANSMUTE_GOLD_MULT);
-  spawnFloatingText(state, 'Трансмутация!', state.mannequin.pos, '#ffd166');
+  spawnFloatingText(state, t('floating.transmute'), state.mannequin.pos, '#ffd166');
   return true;
 }
 
@@ -113,6 +114,6 @@ function runAlchDome(state: GameState): boolean {
   // Layered with the regular shield system: pick whichever is stronger.
   state.tempShieldTime = Math.max(state.tempShieldTime, ALCH_DOME_DURATION);
   state.tempShieldReduction = Math.max(state.tempShieldReduction, ALCH_DOME_REDUCTION);
-  spawnFloatingText(state, 'Купол алхимика!', state.mannequin.pos, '#7df9ff');
+  spawnFloatingText(state, t('floating.alch_dome'), state.mannequin.pos, '#7df9ff');
   return true;
 }

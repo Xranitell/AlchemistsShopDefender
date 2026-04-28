@@ -1,4 +1,16 @@
 import type { TowerKind } from '../game/types';
+import { tWithFallback } from '../i18n';
+
+/** Localised display name for a tower; falls back to the source-of-truth
+ *  Russian name from this file when no translation is registered. */
+export function towerName(kind: TowerKind): string {
+  return tWithFallback(`towers.${kind.id}.name`, kind.name);
+}
+
+/** Localised tower description (one-liner shown in the build menu). */
+export function towerDesc(kind: TowerKind): string {
+  return tWithFallback(`towers.${kind.id}.desc`, kind.desc);
+}
 
 export const TOWERS: Record<string, TowerKind> = {
   needler: {

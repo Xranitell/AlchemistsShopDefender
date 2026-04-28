@@ -1,6 +1,7 @@
 import { BP_LEVELS, BP_MAX_LEVEL, bpRewardLabel } from '../data/battlePass';
 import type { MetaSave } from '../game/save';
 import { saveMeta } from '../game/save';
+import { t } from '../i18n';
 
 export class BattlePassOverlay {
   private root: HTMLElement;
@@ -30,7 +31,7 @@ export class BattlePassOverlay {
     const levelInfo = document.createElement('div');
     levelInfo.className = 'bp-level-info';
     const lvText = document.createElement('span');
-    lvText.textContent = `Уровень ${opts.meta.bpLevel}/${BP_MAX_LEVEL}`;
+    lvText.textContent = t('ui.bp.level', { lvl: opts.meta.bpLevel, max: BP_MAX_LEVEL });
     levelInfo.appendChild(lvText);
 
     const currentLevelDef = BP_LEVELS[Math.min(opts.meta.bpLevel, BP_MAX_LEVEL - 1)]!;
@@ -64,7 +65,7 @@ export class BattlePassOverlay {
     freeRow.className = 'bp-row bp-free';
     const freeLabel = document.createElement('div');
     freeLabel.className = 'bp-track-label';
-    freeLabel.textContent = 'Бесплатно';
+    freeLabel.textContent = t('ui.bp.free');
     freeRow.appendChild(freeLabel);
 
     // Premium track row
@@ -72,7 +73,7 @@ export class BattlePassOverlay {
     premiumRow.className = 'bp-row bp-premium';
     const premLabel = document.createElement('div');
     premLabel.className = 'bp-track-label premium';
-    premLabel.textContent = 'Премиум';
+    premLabel.textContent = t('ui.bp.premium');
     premiumRow.appendChild(premLabel);
 
     const visibleStart = Math.max(0, opts.meta.bpLevel - 2);
@@ -145,7 +146,7 @@ export class BattlePassOverlay {
 
     const claimAllBtn = document.createElement('button');
     claimAllBtn.className = 'bp-claim-all';
-    claimAllBtn.textContent = 'Забрать всё';
+    claimAllBtn.textContent = t('ui.bp.claimAll');
     const hasUnclaimed = hasAnyUnclaimedRewards(opts.meta);
     claimAllBtn.disabled = !hasUnclaimed;
     if (hasUnclaimed) {

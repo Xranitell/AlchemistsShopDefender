@@ -5,6 +5,7 @@ import { checkElementalReaction } from './reactions';
 import type { Element } from './types';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
+import { t } from '../i18n';
 
 /** Pick the element of a thrown potion based on currently-active recipe
  *  modifiers. Cards can layer multiple flags on the same potion — we resolve
@@ -248,7 +249,7 @@ export function applyDamageToEnemy(
     e.shieldCharges -= 1;
     e.hitFlash = 0.18;
     // Spawn a small visual cue via floating text so the player reads it.
-    spawnFloatingText(state, 'Щит!', e.pos, '#ffd166');
+    spawnFloatingText(state, t('floating.shieldHit'), e.pos, '#ffd166');
     return;
   }
 

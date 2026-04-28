@@ -1,6 +1,7 @@
 import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardIcon } from '../data/dailyRewards';
 import type { MetaSave } from '../game/save';
 import { canClaimDaily, todayString, saveMeta } from '../game/save';
+import { t } from '../i18n';
 
 export class DailyRewardsOverlay {
   private root: HTMLElement;
@@ -17,12 +18,12 @@ export class DailyRewardsOverlay {
     const header = document.createElement('div');
     header.className = 'daily-header';
     const h = document.createElement('h2');
-    h.textContent = 'Ежедневные награды';
+    h.textContent = t('ui.daily.title');
     header.appendChild(h);
     const weekNum = Math.floor(opts.meta.dailyDay / 7) + 1;
     const weekLabel = document.createElement('span');
     weekLabel.className = 'daily-week';
-    weekLabel.textContent = `Неделя ${weekNum}`;
+    weekLabel.textContent = t('ui.daily.week', { n: weekNum });
     header.appendChild(weekLabel);
     const closeBtn = document.createElement('button');
     closeBtn.className = 'overlay-close';
@@ -53,7 +54,7 @@ export class DailyRewardsOverlay {
 
       const dayLabel = document.createElement('div');
       dayLabel.className = 'daily-day-label';
-      dayLabel.textContent = isToday ? 'Сегодня' : `День ${dayIdx + 1}`;
+      dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
       cell.appendChild(dayLabel);
 
       const icon = document.createElement('div');
@@ -76,7 +77,7 @@ export class DailyRewardsOverlay {
 
     const claimBtn = document.createElement('button');
     claimBtn.className = 'daily-claim-btn';
-    claimBtn.textContent = claimable ? 'Забрать' : 'Уже получено';
+    claimBtn.textContent = claimable ? t('ui.daily.claim') : t('ui.daily.claimed');
     claimBtn.disabled = !claimable;
     if (claimable) {
       claimBtn.addEventListener('click', () => {

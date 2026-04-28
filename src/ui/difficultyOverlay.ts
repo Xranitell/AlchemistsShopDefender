@@ -1,5 +1,6 @@
 import type { MetaSave } from '../game/save';
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { t, tWithFallback } from '../i18n';
 
 export class DifficultyOverlay {
   private root: HTMLElement;
@@ -20,11 +21,11 @@ export class DifficultyOverlay {
     const header = document.createElement('div');
     header.className = 'difficulty-header';
     const h = document.createElement('h2');
-    h.textContent = 'Выбери подземелье';
+    h.textContent = t('ui.difficulty.title');
     header.appendChild(h);
     const sub = document.createElement('p');
     sub.className = 'difficulty-subtitle';
-    sub.textContent = 'Выше сложность — больше ключей и золота, но враги сильнее.';
+    sub.textContent = t('ui.difficulty.subtitle');
     header.appendChild(sub);
     const closeBtn = document.createElement('button');
     closeBtn.className = 'overlay-close';
@@ -46,7 +47,7 @@ export class DifficultyOverlay {
       // Top ribbon / label
       const label = document.createElement('div');
       label.className = 'difficulty-label';
-      label.textContent = def.shortName.toUpperCase();
+      label.textContent = t(`ui.difficulty.${modeId}.short`).toUpperCase();
       card.appendChild(label);
 
       // Icon / large sigil
@@ -58,24 +59,24 @@ export class DifficultyOverlay {
       // Name
       const name = document.createElement('div');
       name.className = 'difficulty-name';
-      name.textContent = def.name;
+      name.textContent = tWithFallback(`ui.difficulty.${modeId}.name`, def.name);
       card.appendChild(name);
 
       // Flavour
       const flav = document.createElement('div');
       flav.className = 'difficulty-flavor';
-      flav.textContent = def.flavor;
+      flav.textContent = tWithFallback(`ui.difficulty.${modeId}.flavor`, def.flavor);
       card.appendChild(flav);
 
       // Cost footer
       const cost = document.createElement('div');
       cost.className = 'difficulty-cost';
       if (def.keyCost === 'none') {
-        cost.textContent = 'Без ключа';
+        cost.textContent = t('ui.difficulty.noKey');
       } else if (def.keyCost === 'epic') {
-        cost.innerHTML = `<span>🗝️ Эпический ключ</span><span class="key-count">${opts.meta.epicKeys}</span>`;
+        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.epicKey')}</span><span class="key-count">${opts.meta.epicKeys}</span>`;
       } else {
-        cost.innerHTML = `<span>🗝️ Древний ключ</span><span class="key-count">${opts.meta.ancientKeys}</span>`;
+        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.ancientKey')}</span><span class="key-count">${opts.meta.ancientKeys}</span>`;
       }
       card.appendChild(cost);
 
@@ -84,7 +85,7 @@ export class DifficultyOverlay {
         card.disabled = true;
         const lock = document.createElement('div');
         lock.className = 'difficulty-lock';
-        lock.textContent = 'Нужен ключ';
+        lock.textContent = t('ui.difficulty.lock');
         card.appendChild(lock);
       } else {
         card.addEventListener('click', () => opts.onSelect(modeId));

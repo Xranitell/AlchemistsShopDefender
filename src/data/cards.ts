@@ -1,4 +1,16 @@
 import type { CardDef } from '../game/types';
+import { tWithFallback } from '../i18n';
+
+/** Localised display name for a card. Falls back to the source-of-truth
+ *  Russian string in `CARDS` if the active locale doesn't translate it. */
+export function cardName(card: CardDef): string {
+  return tWithFallback(`cards.${card.id}.name`, card.name);
+}
+
+/** Localised description for a card (effects shown below the title). */
+export function cardDesc(card: CardDef): string {
+  return tWithFallback(`cards.${card.id}.desc`, card.desc);
+}
 
 export const CARDS: CardDef[] = [
   // --- Recipes (potions) ---
@@ -277,7 +289,7 @@ export function pickedSynergyNames(cardId: string, pickedIds: readonly string[])
   for (const id of partners) {
     if (!taken.has(id)) continue;
     const def = CARDS.find((c) => c.id === id);
-    if (def) names.push(def.name);
+    if (def) names.push(cardName(def));
   }
   return names;
 }

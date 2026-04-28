@@ -1,4 +1,5 @@
 import type { GameState } from '../game/state';
+import { t } from '../i18n';
 
 /**
  * Popup attached to the Mannequin (the centre of the arena). Exposes the
@@ -26,14 +27,14 @@ export class MannequinShop {
     const title = document.createElement('div');
     title.style.color = 'var(--fg-dim)';
     title.style.fontSize = '12px';
-    title.textContent = 'Манекен';
+    title.textContent = t('ui.mannequin.title');
     el.appendChild(title);
 
     this.appendRepairButton(el);
     this.appendShieldButton(el);
 
     const cancel = document.createElement('button');
-    cancel.textContent = 'Закрыть';
+    cancel.textContent = t('ui.mannequin.close');
     cancel.addEventListener('click', () => this.close());
     el.appendChild(cancel);
 
@@ -48,10 +49,10 @@ export class MannequinShop {
     const repairAmount = Math.round(m.maxHp * 0.2);
     const btn = document.createElement('button');
     const left = document.createElement('span');
-    left.textContent = `Ремонт (+${repairAmount} HP)`;
+    left.textContent = t('ui.mannequin.repair', { n: repairAmount });
     const right = document.createElement('span');
     right.className = 'cost';
-    right.textContent = `${repairCost} зол.`;
+    right.textContent = t('ui.mannequin.gold', { n: repairCost });
     btn.appendChild(left);
     btn.appendChild(right);
     btn.disabled = this.state.gold < repairCost || m.hp >= m.maxHp;
@@ -74,16 +75,16 @@ export class MannequinShop {
       const info = document.createElement('div');
       info.style.color = 'var(--fg-dim)';
       info.style.fontSize = '12px';
-      info.textContent = `Щит активен ${this.state.tempShieldTime.toFixed(1)} с`;
+      info.textContent = t('ui.mannequin.shieldActive', { sec: this.state.tempShieldTime.toFixed(1) });
       el.appendChild(info);
       return;
     }
     const btn = document.createElement('button');
     const left = document.createElement('span');
-    left.textContent = 'Щит (-50% урона 10 с)';
+    left.textContent = t('ui.mannequin.shieldBuy');
     const right = document.createElement('span');
     right.className = 'cost';
-    right.textContent = `${cost} зол.`;
+    right.textContent = t('ui.mannequin.gold', { n: cost });
     btn.appendChild(left);
     btn.appendChild(right);
     btn.disabled = this.state.gold < cost;

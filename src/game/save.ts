@@ -41,6 +41,8 @@ export interface MetaSave {
   /** First-time-user-experience flag (GDD §18). True once the player has
    *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
   tutorialDone: boolean;
+  /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
+  locale: 'ru' | 'en';
 }
 
 export function newMetaSave(): MetaSave {
@@ -69,7 +71,13 @@ export function newMetaSave(): MetaSave {
     sfxVolume: 0.6,
     musicVolume: 0.4,
     tutorialDone: false,
+    locale: defaultLocale(),
   };
+}
+
+function defaultLocale(): 'ru' | 'en' {
+  const lang = (typeof navigator !== 'undefined' && navigator.language) || 'ru';
+  return lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
 }
 
 export function loadMeta(): MetaSave {
@@ -115,6 +123,7 @@ export function loadMeta(): MetaSave {
       tutorialDone: typeof data.tutorialDone === 'boolean'
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
+      locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {

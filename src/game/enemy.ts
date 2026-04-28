@@ -5,6 +5,7 @@ import { ENEMIES } from '../data/enemies';
 import { spawnEnemy } from './wave';
 import { applyDamageToEnemy } from './projectile';
 import { audio } from '../audio/audio';
+import { t } from '../i18n';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -145,7 +146,7 @@ export function updateEnemies(state: GameState, dt: number): void {
       state.tempShieldTime = 6;
       state.tempShieldReduction = 0.8;
       m.damageFlash = 0.4;
-      spawnFloatingText(state, 'Сердце Голема!', m.pos, '#ffb86b');
+      spawnFloatingText(state, t('floating.golemHeart'), m.pos, '#ffb86b');
     } else {
       m.hp = 0;
       state.phase = 'gameover';

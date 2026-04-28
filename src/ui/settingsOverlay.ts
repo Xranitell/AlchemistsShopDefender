@@ -1,6 +1,7 @@
 import type { MetaSave } from '../game/save';
 import { resetMeta, saveMeta } from '../game/save';
 import { audio } from '../audio/audio';
+import { t, getLocale, setLocale, type Locale } from '../i18n';
 
 export class SettingsOverlay {
   private root: HTMLElement;
@@ -17,7 +18,7 @@ export class SettingsOverlay {
     const header = document.createElement('div');
     header.className = 'settings-header';
     const h = document.createElement('h2');
-    h.textContent = 'Настройки';
+    h.textContent = t('ui.settings.title');
     header.appendChild(h);
     const closeBtn = document.createElement('button');
     closeBtn.className = 'overlay-close';
@@ -37,16 +38,19 @@ export class SettingsOverlay {
     // chosen levels survive a reload.
     body.appendChild(buildAudioSection(opts.meta));
 
+    // Language section (PR-9 i18n).
+    body.appendChild(buildLanguageSection(opts.meta));
+
     // Stats section
     const stats = document.createElement('div');
     stats.className = 'settings-section';
     stats.innerHTML = `
-      <h3>Статистика</h3>
-      <div class="settings-stat">Забегов: <strong>${opts.meta.totalRuns}</strong></div>
-      <div class="settings-stat">Лучшая волна: <strong>${opts.meta.bestWave}</strong></div>
-      <div class="settings-stat">СЭ: <strong>${opts.meta.blueEssence}</strong></div>
-      <div class="settings-stat">ДЭ: <strong>${opts.meta.ancientEssence}</strong></div>
-      <div class="settings-stat">Ключи: <strong>${opts.meta.keys}</strong></div>
+      <h3>${t('ui.settings.stats')}</h3>
+      <div class="settings-stat">${t('ui.settings.stat.runs')}<strong>${opts.meta.totalRuns}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.bestWave')}<strong>${opts.meta.bestWave}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.blue')}<strong>${opts.meta.blueEssence}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.ancient')}<strong>${opts.meta.ancientEssence}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.keys')}<strong>${opts.meta.keys}</strong></div>
     `;
     body.appendChild(stats);
 
@@ -55,10 +59,10 @@ export class SettingsOverlay {
     resetSection.className = 'settings-section settings-danger';
     const resetBtn = document.createElement('button');
     resetBtn.className = 'settings-reset-btn';
-    resetBtn.textContent = 'Сбросить прогресс';
+    resetBtn.textContent = t('ui.settings.reset');
     resetBtn.addEventListener('click', () => {
       audio.playSfx('uiClick');
-      if (confirm('Сбросить весь прогресс? Это действие нельзя отменить.')) {
+      if (confirm(t('ui.settings.resetConfirm'))) {
         resetMeta();
         opts.onReset();
       }
@@ -71,10 +75,45 @@ export class SettingsOverlay {
     this.root.classList.add('visible');
   }
 
+  isVisible(): boolean {
+    return this.root.classList.contains('visible');
+  }
+
   hide(): void {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
+}
+
+/** Language picker: small RU/EN button row. Updates the locale immediately
+ *  and persists via saveMeta. Other UI re-renders via the global
+ *  `onLocaleChange` listener wired in main.ts. */
+function buildLanguageSection(meta: MetaSave): HTMLElement {
+  const section = document.createElement('div');
+  section.className = 'settings-section';
+  const title = document.createElement('h3');
+  title.textContent = t('ui.settings.language');
+  section.appendChild(title);
+
+  const row = document.createElement('div');
+  row.className = 'settings-lang-row';
+  const codes: Locale[] = ['ru', 'en'];
+  for (const code of codes) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'settings-lang-btn' + (getLocale() === code ? ' active' : '');
+    btn.textContent = t(`ui.lang.${code}`);
+    btn.addEventListener('click', () => {
+      audio.playSfx('uiClick');
+      if (getLocale() === code) return;
+      setLocale(code);
+      meta.locale = code;
+      saveMeta(meta);
+    });
+    row.appendChild(btn);
+  }
+  section.appendChild(row);
+  return section;
 }
 
 /** Build the "Звук" section of the settings panel: two range sliders for
@@ -86,12 +125,12 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
   const section = document.createElement('div');
   section.className = 'settings-section';
   const title = document.createElement('h3');
-  title.textContent = 'Звук';
+  title.textContent = t('ui.settings.audio');
   section.appendChild(title);
 
   section.appendChild(
     buildVolumeSlider({
-      label: 'SFX',
+      label: t('ui.settings.sfx'),
       initial: meta.sfxVolume,
       onInput: (v) => {
         meta.sfxVolume = v;
@@ -108,7 +147,7 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
 
   section.appendChild(
     buildVolumeSlider({
-      label: 'Музыка',
+      label: t('ui.settings.music'),
       initial: meta.musicVolume,
       onInput: (v) => {
         meta.musicVolume = v;
