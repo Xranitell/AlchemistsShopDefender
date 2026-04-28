@@ -147,6 +147,9 @@ export function updateEnemies(state: GameState, dt: number): void {
       state.tempShieldReduction = 0.8;
       m.damageFlash = 0.4;
       spawnFloatingText(state, t('floating.golemHeart'), m.pos, '#ffb86b');
+    } else if (!state.reviveUsed) {
+      m.hp = 0;
+      state.revivePaused = true;
     } else {
       m.hp = 0;
       state.phase = 'gameover';

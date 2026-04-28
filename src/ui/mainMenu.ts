@@ -16,6 +16,9 @@ export class MainMenu {
     onBattlePass: () => void;
     onDailyRewards: () => void;
     onSettings: () => void;
+    onDailyExperiment: () => void;
+    onBossChallenge: () => void;
+    onLeaderboards: () => void;
   }): void {
     this.root.innerHTML = '';
     const wrap = document.createElement('div');
@@ -122,6 +125,30 @@ export class MainMenu {
     battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
+
+    // Special mode buttons
+    const modeBtns = document.createElement('div');
+    modeBtns.className = 'mm-mode-btns';
+
+    const dailyBtn2 = document.createElement('button');
+    dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
+    dailyBtn2.textContent = t('ui.menu.dailyExperiment');
+    dailyBtn2.addEventListener('click', opts.onDailyExperiment);
+    modeBtns.appendChild(dailyBtn2);
+
+    const bossBtn = document.createElement('button');
+    bossBtn.className = 'mm-mode-btn mm-boss-challenge';
+    bossBtn.textContent = t('ui.menu.bossChallenge');
+    bossBtn.addEventListener('click', opts.onBossChallenge);
+    modeBtns.appendChild(bossBtn);
+
+    const lbBtn = document.createElement('button');
+    lbBtn.className = 'mm-mode-btn mm-leaderboards';
+    lbBtn.textContent = t('ui.menu.leaderboards');
+    lbBtn.addEventListener('click', opts.onLeaderboards);
+    modeBtns.appendChild(lbBtn);
+
+    midCol.appendChild(modeBtns);
 
     center.appendChild(midCol);
 

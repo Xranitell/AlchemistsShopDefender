@@ -8,7 +8,7 @@ import { t } from '../i18n';
 // in data (not scattered through the code) so the preview popup, the
 // difficulty selector, and the wave logic all read from the same source.
 
-export type DifficultyMode = 'normal' | 'epic' | 'ancient' | 'endless';
+export type DifficultyMode = 'normal' | 'epic' | 'ancient' | 'endless' | 'daily' | 'boss_challenge';
 
 export type EnemyAbility =
   // Slimes split into a smaller version on death.
@@ -125,6 +125,47 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       'Не требует ключа',
     ],
     color: '#8ecae6',
+  },
+  daily: {
+    id: 'daily',
+    name: 'Дневной эксперимент',
+    shortName: 'Дневной',
+    flavor: 'Фиксированный seed дня — у всех одинаковый забег.',
+    keyCost: 'none',
+    modifier: {
+      hpMult: 1,
+      speedMult: 1,
+      damageMult: 1,
+      goldMult: 1,
+      abilities: [],
+    },
+    previewLines: [
+      'Seed забега одинаковый для всех игроков',
+      'Детерминированные карты и волны',
+      'Свой лидерборд каждый день',
+    ],
+    color: '#f9c74f',
+  },
+  boss_challenge: {
+    id: 'boss_challenge',
+    name: 'Испытание боссов',
+    shortName: 'Боссы',
+    flavor: 'Только боссовые волны — покажи свой навык!',
+    keyCost: 'none',
+    modifier: {
+      hpMult: 1.2,
+      speedMult: 1.1,
+      damageMult: 1.1,
+      goldMult: 1.5,
+      abilities: [],
+    },
+    previewLines: [
+      'Только волны 5, 10, 15 + финальный босс',
+      '+20% здоровья, +10% скорости врагов',
+      'Золота на 50% больше',
+      'Свой лидерборд',
+    ],
+    color: '#ef476f',
   },
 };
 

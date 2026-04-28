@@ -28,6 +28,9 @@ export const RU: Record<string, string> = {
   'ui.menu.tooltip.ancientEssence': 'Древняя эссенция',
   'ui.menu.tooltip.epicKey': 'Эпический ключ',
   'ui.menu.tooltip.ancientKey': 'Древний ключ',
+  'ui.menu.dailyExperiment': 'ДНЕВНОЙ ЭКСПЕРИМЕНТ',
+  'ui.menu.bossChallenge': 'ИСПЫТАНИЕ БОССОВ',
+  'ui.menu.leaderboards': 'ЛИДЕРБОРДЫ',
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'WAVE',
@@ -70,6 +73,7 @@ export const RU: Record<string, string> = {
   'ui.defeat.doubledTitle': 'Награда удвоена',
   'ui.defeat.doubledSubtitle': 'Итог: +{blue} СЭ.',
   'ui.common.toMenu': 'В меню',
+  'ui.common.close': 'Закрыть',
   'ui.reward.kills': 'Убийств: {n}',
   'ui.reward.wave': 'Волна {wave}/{total}',
   'ui.reward.blueGain': '+{n} СЭ',
@@ -112,6 +116,12 @@ export const RU: Record<string, string> = {
   'ui.difficulty.endless.name': 'Бесконечный режим',
   'ui.difficulty.endless.short': 'Бесконечный',
   'ui.difficulty.endless.flavor': 'Без потолка волн. Сколько продержишься?',
+  'ui.difficulty.daily.name': 'Дневной эксперимент',
+  'ui.difficulty.daily.short': 'Дневной',
+  'ui.difficulty.daily.flavor': 'Фиксированный seed — у всех одинаковый забег.',
+  'ui.difficulty.boss_challenge.name': 'Испытание боссов',
+  'ui.difficulty.boss_challenge.short': 'Боссы',
+  'ui.difficulty.boss_challenge.flavor': 'Только боссовые волны — покажи навык!',
 
   // ── Modifier preview ─────────────────────────────────────────────────
   'ui.preview.subtitle': 'Враги получат следующие модификаторы:',
@@ -477,4 +487,18 @@ Object.assign(RU, {
   'meta.node.eco_gold_2.desc': "+30 стартового золота",
   'meta.node.eco_loot_1.name': "Магнит",
   'meta.node.eco_loot_1.desc': "+15% радиус подбора золота",
+
+  // ── Leaderboards ────────────────────────────────────────────────────
+  'ui.lb.title': 'Лидерборды',
+  'ui.lb.tab.bestWave': 'Лучшая волна',
+  'ui.lb.tab.daily': 'Дневной',
+  'ui.lb.tab.bossChallenge': 'Боссы',
+  'ui.lb.loading': 'Загрузка…',
+  'ui.lb.empty': 'Пока записей нет.',
+
+  // ── Revive overlay ──────────────────────────────────────────────────
+  'ui.revive.title': 'Манекен разрушен!',
+  'ui.revive.desc': 'Посмотри рекламу — возродись с 50% HP и щитом на 4 секунды.',
+  'ui.revive.adButton': 'Реклама — Возродить',
+  'ui.revive.giveUp': 'Сдаться',
 });

@@ -27,6 +27,9 @@ export const EN: Record<string, string> = {
   'ui.menu.tooltip.ancientEssence': 'Ancient essence',
   'ui.menu.tooltip.epicKey': 'Epic key',
   'ui.menu.tooltip.ancientKey': 'Ancient key',
+  'ui.menu.dailyExperiment': 'DAILY EXPERIMENT',
+  'ui.menu.bossChallenge': 'BOSS CHALLENGE',
+  'ui.menu.leaderboards': 'LEADERBOARDS',
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'WAVE',
@@ -69,6 +72,7 @@ export const EN: Record<string, string> = {
   'ui.defeat.doubledTitle': 'Reward doubled',
   'ui.defeat.doubledSubtitle': 'Total: +{blue} BE.',
   'ui.common.toMenu': 'Main menu',
+  'ui.common.close': 'Close',
   'ui.reward.kills': 'Kills: {n}',
   'ui.reward.wave': 'Wave {wave}/{total}',
   'ui.reward.blueGain': '+{n} BE',
@@ -111,6 +115,12 @@ export const EN: Record<string, string> = {
   'ui.difficulty.endless.name': 'Endless Mode',
   'ui.difficulty.endless.short': 'Endless',
   'ui.difficulty.endless.flavor': 'No wave ceiling. How far can you push?',
+  'ui.difficulty.daily.name': 'Daily Experiment',
+  'ui.difficulty.daily.short': 'Daily',
+  'ui.difficulty.daily.flavor': 'Fixed seed — everyone gets the same run today.',
+  'ui.difficulty.boss_challenge.name': 'Boss Challenge',
+  'ui.difficulty.boss_challenge.short': 'Bosses',
+  'ui.difficulty.boss_challenge.flavor': 'Boss waves only — prove your skill!',
 
   // ── Modifier preview ─────────────────────────────────────────────────
   'ui.preview.subtitle': 'Enemies will receive the following modifiers:',
@@ -476,4 +486,18 @@ Object.assign(EN, {
   'meta.node.eco_gold_2.desc': "+30 starting gold",
   'meta.node.eco_loot_1.name': "Magnet",
   'meta.node.eco_loot_1.desc': "+15% gold pickup radius",
+
+  // ── Leaderboards ────────────────────────────────────────────────────
+  'ui.lb.title': 'Leaderboards',
+  'ui.lb.tab.bestWave': 'Best Wave',
+  'ui.lb.tab.daily': 'Daily',
+  'ui.lb.tab.bossChallenge': 'Bosses',
+  'ui.lb.loading': 'Loading…',
+  'ui.lb.empty': 'No entries yet.',
+
+  // ── Revive overlay ──────────────────────────────────────────────────
+  'ui.revive.title': 'Mannequin destroyed!',
+  'ui.revive.desc': 'Watch an ad to revive at 50% HP with a 4-second shield.',
+  'ui.revive.adButton': 'Ad — Revive',
+  'ui.revive.giveUp': 'Give up',
 });

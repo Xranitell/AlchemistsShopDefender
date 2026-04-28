@@ -4,12 +4,19 @@ import { newStatus, type EnemyKind } from './types';
 import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
+import { BOSS_WAVES } from '../data/bossWaves';
 import type { EnemyAbility } from '../data/difficulty';
 import { audio } from '../audio/audio';
 
+/** Return the active wave list for the current difficulty mode. */
+function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
+  return state.difficulty === 'boss_challenge' ? BOSS_WAVES : WAVES;
+}
+
 /** Configured length of the active wave in seconds, or 0 if no wave is set. */
 export function currentWaveDuration(state: GameState): number {
-  const def = WAVES[state.waveState.currentIndex];
+  const waves = activeWaves(state);
+  const def = waves[state.waveState.currentIndex];
   return def?.durationSec ?? 0;
 }
 
@@ -19,14 +26,16 @@ export function currentWaveDuration(state: GameState): number {
 export function currentPauseDuration(state: GameState): number {
   const idx = state.waveState.currentIndex;
   if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, 6);
-  const def = WAVES[idx];
+  const waves = activeWaves(state);
+  const def = waves[idx];
   return def?.pauseAfterSec ?? 6;
 }
 
 export function startNextWave(state: GameState): void {
   const ws = state.waveState;
   ws.currentIndex += 1;
-  if (ws.currentIndex >= WAVES.length) {
+  const waves = activeWaves(state);
+  if (ws.currentIndex >= waves.length) {
     if (state.difficulty === 'endless') {
       // Endless: loop back to wave 0 with stiffer modifiers + random
       // modifier from the pool. Show the modifier selector overlay first.
@@ -50,7 +59,8 @@ export function startNextWave(state: GameState): void {
 /** Shared wave-start logic used by both startNextWave and confirmEndlessModifier. */
 function doStartWave(state: GameState): void {
   const ws = state.waveState;
-  const def = WAVES[ws.currentIndex]!;
+  const waves = activeWaves(state);
+  const def = waves[ws.currentIndex]!;
   ws.timeInWave = 0;
   ws.spawnedCount = 0;
 
@@ -62,8 +72,8 @@ function doStartWave(state: GameState): void {
     const template = baseSpawns[i % baseSpawns.length]!;
     extra.push({
       kind: template.kind,
-      at: (def.durationSec - 1) * Math.random(),
-      entrance: state.rng.int(0, 3),
+      at: state.rng.range(0, def.durationSec - 1),
+      entrance: state.rng.int(0, 4),
     });
   }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
@@ -97,7 +107,8 @@ function doStartWave(state: GameState): void {
 
 export function startPause(state: GameState): void {
   const ws = state.waveState;
-  const def = WAVES[ws.currentIndex];
+  const waves = activeWaves(state);
+  const def = waves[ws.currentIndex];
   ws.pauseTime = 0;
   ws.pauseDurationLeft = def?.pauseAfterSec ?? 6;
   state.entrances.forEach((e) => { e.active = false; });
@@ -107,7 +118,8 @@ export function startPause(state: GameState): void {
 export function updateWave(state: GameState, dt: number): void {
   const ws = state.waveState;
   if (state.phase !== 'wave') return;
-  const def = WAVES[ws.currentIndex];
+  const waves = activeWaves(state);
+  const def = waves[ws.currentIndex];
   if (!def) return;
   ws.timeInWave += dt;
 
@@ -139,7 +151,7 @@ export function updateWave(state: GameState, dt: number): void {
       const reward = 25 + ws.currentIndex * 8;
       state.gold += reward;
       state.phase = 'card_select';
-    } else if (ws.currentIndex >= WAVES.length - 1) {
+    } else if (ws.currentIndex >= waves.length - 1) {
       state.phase = 'victory';
     } else {
       // Award end-of-wave gold and trigger card draft.
@@ -254,7 +266,8 @@ export function confirmEndlessModifier(state: GameState): void {
   doStartWave(state);
 }
 
-export function totalWaves(): number {
+export function totalWaves(state?: GameState): number {
+  if (state) return activeWaves(state).length;
   return WAVES.length;
 }
 

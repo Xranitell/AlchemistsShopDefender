@@ -389,6 +389,10 @@ export interface GameState {
   /** IDs of catalyst cards currently equipped, in pick order. The renderer
    *  uses this list to draw orbiting icons around the Mannequin. */
   equippedCatalysts: string[];
+  /** Whether the player has already used the revive-via-ad option this run. */
+  reviveUsed: boolean;
+  /** While true, the world is frozen (e.g. waiting for a rewarded ad). */
+  revivePaused: boolean;
 }
 
 export function newId(state: GameState): number {
