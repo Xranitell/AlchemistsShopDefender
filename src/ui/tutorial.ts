@@ -236,6 +236,11 @@ class TutorialController {
   private tryFireImmediate(triggerKind: 'firstManualHit' | 'firstCardPicked'): void {
     for (const step of TUTORIAL_STEPS) {
       if (this.completed.has(step.id)) continue;
+      // Skip if this step is already the active one — re-calling showStep
+      // would tear down its DOM, restart the auto-dismiss timer and prevent
+      // the timeout from ever expiring while the player keeps producing the
+      // triggering event (e.g. landing manual hits in quick succession).
+      if (this.currentStep?.id === step.id) return;
       if (step.trigger.kind !== triggerKind) continue;
       this.showStep(step);
       return;
