@@ -65,6 +65,16 @@ export class AudioEngine {
   private music: { track: MusicTrack; nodes: AudioNode[]; stopAt: number } | null = null;
   private musicLoopTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Looping HTMLAudioElement used for the sample-based ambient track
+   *  (`The Copper Crucible`). Routed through a MediaElementAudioSourceNode
+   *  so it shares the music gain bus and the user volume slider works.
+   *  Kept null until the first time we play a sample-based track. */
+  private ambientEl: HTMLAudioElement | null = null;
+  private ambientNode: MediaElementAudioSourceNode | null = null;
+  /** Tracks which sample track is currently selected (or null). Lets the
+   *  engine skip redundant assignments and stop / resume cleanly. */
+  private currentSampleTrack: MusicTrack = null;
+
   /** Recent fire times per SFX id (ms since context start) for rate-limiting. */
   private recentFires: Map<SfxId, number[]> = new Map();
 
@@ -217,17 +227,43 @@ export class AudioEngine {
     }
   }
 
-  /** Switch the ambient music loop. Pass null to stop. */
+  /** Switch the ambient music loop. Pass null to stop.
+   *
+   *  Track routing:
+   *    - 'menu' / 'battle' → looping MP3 ambient (`audio/ambient.mp3`).
+   *      The user explicitly asked for The Copper Crucible to be the
+   *      ambient track for both the main menu and the active run.
+   *    - 'boss'            → procedural synth loop (kept for contrast —
+   *      we still want a tense, dissonant track during boss waves).
+   *    - null              → stop everything. */
   playMusic(track: MusicTrack): void {
     if (!this.ctx || !this.musicGain) return;
-    if (this.music && this.music.track === track) return;
-    this.stopMusic();
-    if (track === null) return;
-    this.music = { track, nodes: [], stopAt: 0 };
-    this.scheduleMusicLoop(track);
+    if (track === null) {
+      this.stopProceduralMusic();
+      this.stopSampleMusic();
+      return;
+    }
+    if (track === 'boss') {
+      // Boss waves swap to the procedural track. Stop the sample first so
+      // we don't double-stack.
+      this.stopSampleMusic();
+      if (this.music && this.music.track === 'boss') return;
+      this.stopProceduralMusic();
+      this.music = { track: 'boss', nodes: [], stopAt: 0 };
+      this.scheduleMusicLoop('boss');
+      return;
+    }
+    // menu / battle → sample-based ambient.
+    this.stopProceduralMusic();
+    this.startSampleMusic(track);
   }
 
   stopMusic(): void {
+    this.stopProceduralMusic();
+    this.stopSampleMusic();
+  }
+
+  private stopProceduralMusic(): void {
     if (this.musicLoopTimer !== null) {
       clearTimeout(this.musicLoopTimer);
       this.musicLoopTimer = null;
@@ -248,6 +284,50 @@ export class AudioEngine {
       }
       this.music = null;
     }
+  }
+
+  private stopSampleMusic(): void {
+    if (this.ambientEl) {
+      try {
+        this.ambientEl.pause();
+        this.ambientEl.currentTime = 0;
+      } catch {
+        // ignore
+      }
+    }
+    this.currentSampleTrack = null;
+  }
+
+  /** Start (or resume) the looping MP3 ambient. The same audio element is
+   *  reused across menu ↔ battle transitions — we don't restart playback
+   *  when switching from menu to battle so the loop stays seamless across
+   *  scene changes. */
+  private startSampleMusic(track: MusicTrack): void {
+    if (!this.ctx || !this.musicGain) return;
+    if (!this.ambientEl) {
+      const el = new Audio('audio/ambient.mp3');
+      el.loop = true;
+      el.preload = 'auto';
+      // crossOrigin not required — file is same-origin from public/.
+      this.ambientEl = el;
+      try {
+        this.ambientNode = this.ctx.createMediaElementSource(el);
+        this.ambientNode.connect(this.musicGain);
+      } catch {
+        // Some browsers throw if createMediaElementSource is called twice
+        // on the same element — we already guarded with `!this.ambientEl`,
+        // but swallow defensively anyway.
+      }
+    }
+    if (this.currentSampleTrack === track && !this.ambientEl.paused) {
+      // Already playing this exact sample track — keep the loop running.
+      return;
+    }
+    this.currentSampleTrack = track;
+    // play() returns a Promise that rejects if autoplay is blocked. We
+    // already gate `playMusic` on `ensureStarted` (which itself only fires
+    // from a user gesture), but swallow defensively.
+    void this.ambientEl.play().catch(() => {});
   }
 
   // ---------------------------------------------------------------------
