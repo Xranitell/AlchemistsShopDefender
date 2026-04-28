@@ -2,6 +2,12 @@ import { dist } from '../engine/math';
 import type { GameState } from './state';
 import { applyDamageToEnemy } from './projectile';
 import { spawnFloatingText } from './state';
+import {
+  ALCH_DOME_DURATION,
+  ALCH_DOME_REDUCTION,
+  TRANSMUTE_DURATION,
+  TRANSMUTE_GOLD_MULT,
+} from '../data/modules';
 
 const LIGHTNING_TARGETS = 6;
 const LIGHTNING_RANGE = 380;
@@ -29,10 +35,25 @@ export function tryActivateOverload(state: GameState): boolean {
   if (o.charge < o.maxCharge) return false;
   o.charge = 0;
 
-  if (state.modifiers.overloadType === 'lightning') {
-    return runLightning(state);
-  } else {
-    return runChronos(state);
+  switch (state.activeModuleId) {
+    case 'chronos':
+      return runChronos(state);
+    case 'transmute':
+      return runTransmute(state);
+    case 'alch_dome':
+      return runAlchDome(state);
+    case 'lightning':
+    default:
+      return runLightning(state);
+  }
+}
+
+/** Tick down active-module timers (transmute, etc). Called once per frame
+ *  from the main update loop. */
+export function tickModuleTimers(state: GameState, dt: number): void {
+  if (state.transmuteTimer > 0) {
+    state.transmuteTimer = Math.max(0, state.transmuteTimer - dt);
+    if (state.transmuteTimer === 0) state.transmuteGoldMult = 1;
   }
 }
 
@@ -74,5 +95,20 @@ function runChronos(state: GameState): boolean {
     e.status.slowTime = Math.max(e.status.slowTime, CHRONOS_DURATION);
   }
   spawnFloatingText(state, 'Хронос!', state.mannequin.pos, '#c084fc');
+  return true;
+}
+
+function runTransmute(state: GameState): boolean {
+  state.transmuteTimer = Math.max(state.transmuteTimer, TRANSMUTE_DURATION);
+  state.transmuteGoldMult = Math.max(state.transmuteGoldMult, TRANSMUTE_GOLD_MULT);
+  spawnFloatingText(state, 'Трансмутация!', state.mannequin.pos, '#ffd166');
+  return true;
+}
+
+function runAlchDome(state: GameState): boolean {
+  // Layered with the regular shield system: pick whichever is stronger.
+  state.tempShieldTime = Math.max(state.tempShieldTime, ALCH_DOME_DURATION);
+  state.tempShieldReduction = Math.max(state.tempShieldReduction, ALCH_DOME_REDUCTION);
+  spawnFloatingText(state, 'Купол алхимика!', state.mannequin.pos, '#7df9ff');
   return true;
 }

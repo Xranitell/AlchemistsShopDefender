@@ -172,7 +172,6 @@ export interface Modifiers {
   towerAcidBreak: boolean;
   towerSyncVolley: boolean;
   lootRadiusMult: number;
-  overloadType: 'lightning' | 'chronos';
   thornyShell: boolean;
   goldDropMult: number;
   fireRubyCounter: number;
@@ -213,7 +212,6 @@ export const newModifiers = (): Modifiers => ({
   towerAcidBreak: false,
   towerSyncVolley: false,
   lootRadiusMult: 1,
-  overloadType: 'lightning',
   thornyShell: false,
   goldDropMult: 1,
   fireRubyCounter: 0,
@@ -330,6 +328,15 @@ export interface GameState {
    *  lethal hit to the mannequin is converted into a 1-HP survival + a strong
    *  6-second shield. Set to 1 when the card is picked, decremented to 0 on use. */
   golemHeartCharges: number;
+  /** Mannequin module loadout for THIS run. Mirrored from the meta save at
+   *  run start; cards (e.g. `chronos`) may temporarily override the active
+   *  slot for the duration of the run. */
+  activeModuleId: string;
+  auraModuleId: string;
+  /** Трансмутация active-module timer (seconds). While >0 enemy gold drops
+   *  are multiplied by `transmuteGoldMult`. */
+  transmuteTimer: number;
+  transmuteGoldMult: number;
 }
 
 export function newId(state: GameState): number {

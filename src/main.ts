@@ -11,7 +11,7 @@ import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves } from './game/wave';
 import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
-import { tickOverloadEffect } from './game/overload';
+import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld } from './render/camera';
 import { Hud } from './ui/hud';
@@ -148,6 +148,7 @@ function tick(dt: number): void {
     updateGoldPickups(state, dt);
     updateFloatingTexts(state, dt);
     tickOverloadEffect(dt);
+    tickModuleTimers(state, dt);
     updateWave(state, dt);
   } else if (state.phase === 'preparing') {
     // Allow projectile and gold pickup decay during pause for clean transitions.

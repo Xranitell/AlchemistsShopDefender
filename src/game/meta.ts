@@ -1,4 +1,15 @@
 import { META_BY_ID, META_UPGRADES, type MetaUpgrade } from '../data/metaTree';
+import {
+  ACTIVE_MODULES,
+  AURA_MODULES,
+  DEFAULT_ACTIVE_MODULE,
+  DEFAULT_AURA_MODULE,
+  ETHER_AMP_FIRE_RATE,
+  ELEM_RESON_DAMAGE,
+  MAGNET_RES_LOOT_RADIUS,
+  isActiveModule,
+  isAuraModule,
+} from '../data/modules';
 import type { MetaSave } from './save';
 import type { GameState } from './state';
 import { runeUnlockSlotToIndex } from './world';
@@ -22,6 +33,45 @@ export function applyMetaUpgrades(state: GameState, meta: MetaSave): void {
     if (!upg) continue;
     applyEffect(state, upg);
   }
+  applyModuleLoadout(state, meta);
+}
+
+/** Mirror the chosen module loadout into the run state and apply the aura's
+ *  passive effects. Active modules don't apply anything until Overload is
+ *  triggered — they're handled by `tryActivateOverload` reading
+ *  `state.activeModuleId`. */
+export function applyModuleLoadout(state: GameState, meta: MetaSave): void {
+  const active = isActiveModule(meta.selectedActiveModule)
+    ? meta.selectedActiveModule
+    : DEFAULT_ACTIVE_MODULE;
+  const aura = isAuraModule(meta.selectedAuraModule)
+    ? meta.selectedAuraModule
+    : DEFAULT_AURA_MODULE;
+  state.activeModuleId = active;
+  state.auraModuleId = aura;
+
+  const m = state.modifiers;
+  switch (aura) {
+    case 'magnet_res':
+      m.lootRadiusMult *= MAGNET_RES_LOOT_RADIUS;
+      break;
+    case 'ether_amp':
+      m.towerFireRateMult *= ETHER_AMP_FIRE_RATE;
+      break;
+    case 'thorn_shell':
+      m.thornyShell = true;
+      break;
+    case 'elem_reson':
+      m.reactionDamageMult *= ELEM_RESON_DAMAGE;
+      break;
+  }
+}
+
+/** Lookup a module by id from either pool. */
+export function getModuleDef(id: string): { name: string; desc: string; slot: 'active' | 'aura' } | null {
+  if (id in ACTIVE_MODULES) return ACTIVE_MODULES[id as keyof typeof ACTIVE_MODULES];
+  if (id in AURA_MODULES) return AURA_MODULES[id as keyof typeof AURA_MODULES];
+  return null;
 }
 
 function applyEffect(state: GameState, upg: MetaUpgrade): void {

@@ -197,7 +197,9 @@ export function applyCard(state: GameState, card: CardDef): void {
       m.lootRadiusMult *= 1.5;
       break;
     case 'chronos':
-      m.overloadType = 'chronos';
+      // Card overrides the active module slot for the run, regardless of what
+      // the player picked in the meta menu.
+      state.activeModuleId = 'chronos';
       break;
     case 'thorny_shell':
       m.thornyShell = true;
