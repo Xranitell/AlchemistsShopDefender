@@ -305,7 +305,9 @@ export function addOverload(state: GameState, amount: number): void {
  * (slime split / explode-on-death).
  */
 function onEnemyDeath(state: GameState, e: Enemy): void {
-  const goldMult = state.modifiers.goldDropMult * state.difficultyModifier.goldMult;
+  const goldMult = state.modifiers.goldDropMult
+    * state.difficultyModifier.goldMult
+    * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1);
   const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * goldMult);
   state.goldPickups.push({
     id: newId(state),

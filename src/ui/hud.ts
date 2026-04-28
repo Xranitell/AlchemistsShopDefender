@@ -44,6 +44,7 @@ export class Hud {
   private abilityButton!: HTMLButtonElement;
   private overloadButton!: HTMLButtonElement;
   private overloadFill!: HTMLDivElement;
+  private overloadModule!: HTMLSpanElement;
 
   // Center-bottom hint + skip-wave (only during preparing phase)
   private hint!: HTMLDivElement;
@@ -210,6 +211,9 @@ export class Hud {
     olLabel.className = 'hud-icon-label';
     olLabel.textContent = 'OVERLOAD';
     this.overloadButton.appendChild(olLabel);
+    this.overloadModule = document.createElement('span');
+    this.overloadModule.className = 'hud-overload-module';
+    this.overloadButton.appendChild(this.overloadModule);
     // Charge ring (visualised as a circular progress underneath)
     this.overloadFill = document.createElement('div');
     this.overloadFill.className = 'hud-overload-charge';
@@ -269,6 +273,7 @@ export class Hud {
     // Overload button enabled when fully charged
     this.overloadButton.disabled = state.overload.charge < state.overload.maxCharge;
     this.overloadButton.classList.toggle('ready', state.overload.charge >= state.overload.maxCharge);
+    this.overloadModule.textContent = activeModuleShortLabel(state.activeModuleId);
 
     // Hints
     if (state.phase === 'preparing') {
@@ -337,4 +342,14 @@ function spriteEl(sprite: BakedSprite, scale: number): HTMLCanvasElement {
   out.style.width = `${sprite.width * scale}px`;
   out.style.height = `${sprite.height * scale}px`;
   return out;
+}
+
+function activeModuleShortLabel(id: string): string {
+  switch (id) {
+    case 'lightning': return 'Громоотвод';
+    case 'chronos': return 'Хронос';
+    case 'transmute': return 'Трансмут.';
+    case 'alch_dome': return 'Купол';
+    default: return '';
+  }
 }

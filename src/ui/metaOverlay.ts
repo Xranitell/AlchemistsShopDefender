@@ -8,6 +8,14 @@ import {
   refundMetaUpgrade,
 } from '../game/meta';
 import type { MetaSave } from '../game/save';
+import {
+  ACTIVE_MODULES,
+  AURA_MODULES,
+  isActiveModule,
+  isAuraModule,
+  type ActiveModuleId,
+  type AuraModuleId,
+} from '../data/modules';
 
 const BRANCH_COLORS: Record<MetaBranch, string> = {
   potions: '#c084fc',     // purple
@@ -78,6 +86,29 @@ export class MetaOverlay {
     header.appendChild(currencies);
 
     panel.appendChild(header);
+
+    // Module loadout (GDD §11.2): two slots — Active (Q-Overload behavior)
+    // and Aura (passive). Re-rendered in place so the player can swap modules
+    // without leaving the meta menu.
+    const loadout = document.createElement('div');
+    loadout.className = 'meta-loadout';
+    panel.appendChild(loadout);
+    const renderLoadout = () => {
+      loadout.innerHTML = '';
+      loadout.appendChild(
+        buildModuleSlot('Активный модуль (Q)', 'active', opts.meta, () => {
+          opts.onSave();
+          renderLoadout();
+        }),
+      );
+      loadout.appendChild(
+        buildModuleSlot('Ауро-модуль', 'aura', opts.meta, () => {
+          opts.onSave();
+          renderLoadout();
+        }),
+      );
+    };
+    renderLoadout();
 
     // Body: graph (left) + info side panel (right). The side panel is always
     // present so the player has a stable place to read details on touch
@@ -358,4 +389,59 @@ function branchLabel(b: MetaBranch): string {
     case 'core': return 'Аркана';
     case 'survival': return 'Живучесть';
   }
+}
+
+/** Build the UI for one module slot (active or aura). The slot lists the
+ *  available modules as buttons and visually marks the currently-selected
+ *  one. Picking another button updates the meta save in-place and calls
+ *  `onChange` so the host overlay can persist + re-render. */
+function buildModuleSlot(
+  label: string,
+  slot: 'active' | 'aura',
+  meta: MetaSave,
+  onChange: () => void,
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'meta-loadout-slot';
+
+  const title = document.createElement('div');
+  title.className = 'meta-loadout-title';
+  title.textContent = label;
+  wrap.appendChild(title);
+
+  const grid = document.createElement('div');
+  grid.className = 'meta-loadout-grid';
+  wrap.appendChild(grid);
+
+  const desc = document.createElement('div');
+  desc.className = 'meta-loadout-desc';
+  wrap.appendChild(desc);
+
+  const pool = slot === 'active' ? ACTIVE_MODULES : AURA_MODULES;
+  const currentRaw = slot === 'active' ? meta.selectedActiveModule : meta.selectedAuraModule;
+  const valid = slot === 'active' ? isActiveModule(currentRaw) : isAuraModule(currentRaw);
+  const current = valid ? currentRaw : Object.keys(pool)[0]!;
+
+  const updateDesc = (id: string) => {
+    const def = (pool as Record<string, { desc: string }>)[id];
+    desc.textContent = def ? def.desc : '';
+  };
+
+  for (const def of Object.values(pool)) {
+    const btn = document.createElement('button');
+    btn.className = 'meta-loadout-btn';
+    btn.textContent = def.name;
+    if (def.id === current) btn.classList.add('selected');
+    btn.addEventListener('click', () => {
+      if (slot === 'active') meta.selectedActiveModule = def.id as ActiveModuleId;
+      else meta.selectedAuraModule = def.id as AuraModuleId;
+      onChange();
+    });
+    btn.addEventListener('mouseenter', () => updateDesc(def.id));
+    btn.addEventListener('mouseleave', () => updateDesc(current));
+    grid.appendChild(btn);
+  }
+
+  updateDesc(current);
+  return wrap;
 }

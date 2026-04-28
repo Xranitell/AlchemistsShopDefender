@@ -1,3 +1,10 @@
+import {
+  DEFAULT_ACTIVE_MODULE,
+  DEFAULT_AURA_MODULE,
+  isActiveModule,
+  isAuraModule,
+} from '../data/modules';
+
 const SAVE_KEY = 'asd_meta_v2';
 
 export interface MetaSave {
@@ -24,6 +31,10 @@ export interface MetaSave {
   bonusRerolls: number;
   // Crafting level (shop upgrades)
   craftingLevel: number;
+  /** Mannequin module loadout (GDD §11.2). One active + one aura. Defaults
+   *  preserve pre-loadout behaviour: lightning Overload + magnet aura. */
+  selectedActiveModule: string;
+  selectedAuraModule: string;
 }
 
 export function newMetaSave(): MetaSave {
@@ -47,6 +58,8 @@ export function newMetaSave(): MetaSave {
     bpClaimedPremium: [],
     bonusRerolls: 0,
     craftingLevel: 1,
+    selectedActiveModule: DEFAULT_ACTIVE_MODULE,
+    selectedAuraModule: DEFAULT_AURA_MODULE,
   };
 }
 
@@ -76,6 +89,15 @@ export function loadMeta(): MetaSave {
       bpClaimedPremium: Array.isArray(data.bpClaimedPremium) ? data.bpClaimedPremium : [],
       bonusRerolls: data.bonusRerolls ?? 0,
       craftingLevel: data.craftingLevel ?? 1,
+      // Migration: existing saves predate the loadout. Default to the
+      // pre-loadout behaviour (lightning + magnet) and validate against the
+      // current module catalog so removed ids fall back gracefully.
+      selectedActiveModule: isActiveModule(data.selectedActiveModule ?? '')
+        ? (data.selectedActiveModule as string)
+        : DEFAULT_ACTIVE_MODULE,
+      selectedAuraModule: isAuraModule(data.selectedAuraModule ?? '')
+        ? (data.selectedAuraModule as string)
+        : DEFAULT_AURA_MODULE,
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {

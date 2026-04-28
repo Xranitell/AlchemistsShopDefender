@@ -162,5 +162,10 @@ export function buildInitialState(
     tempShieldTime: 0,
     tempShieldReduction: 0,
     golemHeartCharges: 0,
+    // Default loadout — overwritten by `applyMetaUpgrades` at run start.
+    activeModuleId: 'lightning',
+    auraModuleId: 'magnet_res',
+    transmuteTimer: 0,
+    transmuteGoldMult: 1,
   };
 }
