@@ -25,19 +25,24 @@ export function buildEntrances(): Entrance[] {
 }
 
 export function buildRunePoints(): RunePoint[] {
-  // 6 points on a ring around the centre. The first 4 are "active" in the
-  // vertical slice; the last 2 are placeholders for meta-progression.
+  // 6 points on a ring around the centre. Only every OTHER slot is active at
+  // the start (3 active, 3 locked) so the player can't wall off every angle
+  // of approach — the remaining slots unlock via meta-progression / shop.
+  // Indices 0, 2, 4 are active; 1, 3, 5 are locked.
   const points: RunePoint[] = [];
   const cx = ARENA_W / 2;
   const cy = ARENA_H / 2;
-  const r = 170;
+  // Iso-plane: visually the ring is a 2:1 ellipse. Use a wider x-radius and
+  // half y-radius so slot positions land on an iso-oval, matching the dais.
+  const rx = 220;
+  const ry = 110;
   const total = 6;
   for (let i = 0; i < total; i++) {
     const angle = (-Math.PI / 2) + (i / total) * Math.PI * 2;
     points.push({
       id: i,
-      pos: { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r },
-      active: i < 4,
+      pos: { x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry },
+      active: i % 2 === 0,
       towerId: null,
     });
   }

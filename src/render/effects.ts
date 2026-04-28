@@ -20,8 +20,13 @@ export function drawShadow(
   ctx.restore();
 }
 
-// Pixel-art fire pool: cluster of flickering vertical "flame" pixels.
-// `time` is the pool's age (newer = brighter, older = fade).
+// Iso-plane Y-compression: the game renders on a flat 2D camera but the art
+// style treats the floor as viewed from an iso angle, so "floor-plane" AoE
+// shapes (fire pools, rune slots, dais) use 2:1 ellipses rather than circles.
+export const FLOOR_Y_SCALE = 0.5;
+
+// Pixel-art fire pool rendered as an iso-plane ellipse (2:1) so the AoE sits
+// on the same plane as the floor tiles, matching the hero's dais.
 export function drawFirePool(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -37,21 +42,22 @@ export function drawFirePool(
 
   ctx.save();
   ctx.globalAlpha = finalAlpha;
-  // Outer hot ring
+  // Outer hot ring — elliptical so it reads as a puddle on the floor.
   ctx.fillStyle = COLORS.fireD;
-  drawDisk(ctx, cx, cy, radius);
+  drawFloorEllipse(ctx, cx, cy, radius);
   ctx.fillStyle = COLORS.fireC;
-  drawDisk(ctx, cx, cy, radius * 0.85);
+  drawFloorEllipse(ctx, cx, cy, radius * 0.85);
   ctx.fillStyle = COLORS.fireB;
-  drawDisk(ctx, cx, cy, radius * 0.6);
+  drawFloorEllipse(ctx, cx, cy, radius * 0.6);
 
-  // Pixel-art flames bobbing on top
+  // Pixel-art flames bobbing on top, positioned along the iso ellipse.
   const flameCount = Math.max(3, Math.floor(radius / 8));
   for (let i = 0; i < flameCount; i++) {
     const a = (i / flameCount) * Math.PI * 2 + worldTime * 1.5;
-    const dist = radius * 0.4;
-    const px = Math.round(cx + Math.cos(a) * dist);
-    const py = Math.round(cy + Math.sin(a) * dist);
+    const rx = radius * 0.55;
+    const ry = radius * 0.55 * FLOOR_Y_SCALE;
+    const px = Math.round(cx + Math.cos(a) * rx);
+    const py = Math.round(cy + Math.sin(a) * ry);
     const ph = 4 + Math.round(Math.sin(worldTime * 8 + i) * 2 + 2);
     ctx.fillStyle = COLORS.fireB;
     ctx.fillRect(px - 1, py - ph, 2, ph);
@@ -59,6 +65,30 @@ export function drawFirePool(
     ctx.fillRect(px - 1, py - ph, 2, 2);
   }
   ctx.restore();
+}
+
+// Filled 2:1 ellipse centred at (cx, cy) with horizontal radius r.
+export function drawFloorEllipse(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+): void {
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r, r * FLOOR_Y_SCALE, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Stroked 2:1 ellipse — useful for rune circles / range indicators.
+export function strokeFloorEllipse(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+): void {
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, r, r * FLOOR_Y_SCALE, 0, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 // Pixel-art zigzag lightning bolt between two points. Each segment is a few
@@ -173,12 +203,6 @@ export function drawPixelFloatingText(
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
   ctx.restore();
-}
-
-function drawDisk(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]): void {
