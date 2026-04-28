@@ -2,6 +2,7 @@ import { dist, dist2, norm, scale, sub, type Vec2 } from '../engine/math';
 import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
+import { tryBossDodge } from './enemy';
 import type { Element } from './types';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
@@ -262,8 +263,15 @@ export function applyDamageToEnemy(
   // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
   const baseArmor = e.kind.armor
     + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
-  const armor = baseArmor * e.status.armorBreakFactor;
+  // Meta armour penetration scales the effective armour value down.
+  const armor = baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen);
   let dmg = Math.max(1, rawDamage * (1 - armor));
+
+  // Meta crit chance: doubled damage on a successful roll.
+  if (state.metaCritChance > 0 && state.rng.chance(state.metaCritChance)) {
+    dmg *= 2;
+    spawnFloatingText(state, t('floating.crit'), e.pos, '#ffd166');
+  }
 
   // Armored elite: ×0.6 physical damage, aether unaffected.
   if (e.elite === 'armored' && element !== 'aether') {
@@ -289,6 +297,11 @@ export function applyDamageToEnemy(
   // a brief period so the projectile knocks them back slightly.
   if (e.abilities.includes('dash_back_on_hit')) {
     e.dashBackTimer = Math.max(e.dashBackTimer, 0.25);
+  }
+
+  // Boss perpendicular dodge: triggered on hits when ready.
+  if (e.kind.isBoss) {
+    tryBossDodge(state, e);
   }
 
   // Check elemental reactions before applying new status (order matters).

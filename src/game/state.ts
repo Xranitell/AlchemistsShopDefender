@@ -65,6 +65,17 @@ export interface Enemy {
   etherealTimer: number;
   /** Ethereal elite: whether currently in the immune (phased-out) window. */
   etherealActive: boolean;
+  /** Boss-only: cooldown until next active special ability. */
+  bossSpecialCooldown: number;
+  /** Boss-only: seconds left on a perpendicular dodge dash. While > 0 the
+   *  enemy moves along `bossDodgeDir` instead of toward the mannequin. */
+  bossDodgeTimer: number;
+  /** Boss-only: unit vector for the active dodge dash. */
+  bossDodgeDir: Vec2;
+  /** Boss-only: dash speed used while dodgeTimer > 0 (px/sec). */
+  bossDodgeSpeed: number;
+  /** Miniboss slime: seconds left on the slam wind-up animation. */
+  bossSlamWindup: number;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';
@@ -356,6 +367,10 @@ export interface GameState {
   metaAutoRepairCooldown: number;
   metaPotionAimBonus: number;
   metaAuraRadiusMult: number;
+  /** Multiplier applied to enemy armour: 0 = no penetration, 1 = full ignore. */
+  metaArmorPen: number;
+  /** Per-shot crit chance (0..1) for both potions and tower projectiles. */
+  metaCritChance: number;
   // --- Difficulty / dungeon mode ---
   /** Which dungeon difficulty was picked for this run. */
   difficulty: DifficultyMode;

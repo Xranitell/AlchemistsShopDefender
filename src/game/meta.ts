@@ -172,6 +172,16 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
     case 'lootRadius':
       m.lootRadiusMult *= e.value;
       break;
+
+    // Combat extras (v2)
+    case 'armorPen':
+      // Stack additively, capped at 0.85 so even fully-invested players still
+      // see an armour effect on plated bosses.
+      state.metaArmorPen = Math.min(0.85, state.metaArmorPen + e.value);
+      break;
+    case 'critChance':
+      state.metaCritChance = Math.min(0.5, state.metaCritChance + e.value);
+      break;
   }
 }
 
@@ -258,20 +268,23 @@ export function calcRunEssence(
     if (u && u.effect.kind === 'essenceBonus') mult *= u.effect.value;
   }
 
-  // Reward curve tuned so a casual full clear funds ~3-4 small talents and
-  // 2-3 fully-lost early runs are still enough to taste a notable.
-  //   Wave 1 fail with 8 kills    →  1*8 + 8*0.6 + 12 = ~25 blue
-  //   Wave 5 victory + 60 kills   →  5*8 + 60*0.6 + 12 + 40 = ~128 blue
-  //   Wave 10 fail with 90 kills  →  10*8 + 90*0.6 + 12   = ~146 blue
-  //   Wave 15 victory + 140 kills →  15*8 + 140*0.6 + 12 + 40 = ~256 blue
-  let blue = Math.floor(waveReached * 8 + totalKills * 0.6 + 12);
-  if (victory) blue += 40;
+  // v2 reward curve: ~½ of v1 so the talent tree (~70+ nodes, mostly 8-22 СЭ
+  // small + 55-80 СЭ notables + 2-АЭ keystones) takes 15-25 runs to fully
+  // explore instead of 4-5.
+  //   Wave 1 fail with 8 kills    →  1*5 + 8*0.35 + 6  ≈ 14 blue
+  //   Wave 5 victory + 60 kills   →  5*5 + 60*0.35 + 6 + 25 ≈ 77 blue
+  //   Wave 10 fail with 90 kills  →  10*5 + 90*0.35 + 6 ≈ 87 blue
+  //   Wave 15 victory + 140 kills →  15*5 + 140*0.35 + 6 + 25 ≈ 155 blue
+  let blue = Math.floor(waveReached * 5 + totalKills * 0.35 + 6);
+  if (victory) blue += 25;
   blue = Math.round(blue * mult);
 
-  // Ancient essence: 1 per victory, +1 if cleared past wave 10.
+  // Ancient essence: scarcer in v2 — only on a full victory, +1 if you also
+  // cleared past wave 12 (so ancient keystones cost 2 and require multiple
+  // full runs to stack up).
   let ancient = 0;
   if (victory) ancient = 1;
-  if (waveReached >= 10) ancient += 1;
+  if (waveReached >= 12 && victory) ancient += 1;
 
   return { blue, ancient };
 }

@@ -10,7 +10,7 @@ import type { WaveDef } from '../game/types';
 // longer window of time (~70% longer) which gives the player more room to
 // reposition, manage cooldowns, and react to elites before the next set
 // hits the mannequin.
-const DENSITY = 0.6;
+const DENSITY = 0.55;
 const DOUBLE_SPAWNS = true;
 
 const wave = (
@@ -219,6 +219,8 @@ export const WAVES: WaveDef[] = [
     { kind: 'flying_flask', at: 25, entrance: 1 },
     { kind: 'golem',        at: 28, entrance: 2 },
     { kind: 'sapper',       at: 31, entrance: 3 },
+    { kind: 'sapper',       at: 33, entrance: 0 },
+    { kind: 'golem',        at: 34, entrance: 2 },
   ]),
   wave(12, 38, 6, [
     { kind: 'golem',        at: 0.5, entrance: 0 },
@@ -238,6 +240,8 @@ export const WAVES: WaveDef[] = [
     { kind: 'golem',        at: 25, entrance: 1 },
     { kind: 'flying_flask', at: 28, entrance: 3 },
     { kind: 'golem',        at: 32, entrance: 0 },
+    { kind: 'golem',        at: 34, entrance: 2 },
+    { kind: 'sapper',       at: 36, entrance: 1 },
   ]),
   wave(13, 40, 8, [
     { kind: 'sapper',       at: 0.5, entrance: 0 },

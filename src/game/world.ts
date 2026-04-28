@@ -186,6 +186,8 @@ export function buildInitialState(
     metaAutoRepairCooldown: 0,
     metaPotionAimBonus: 0,
     metaAuraRadiusMult: 1,
+    metaArmorPen: 0,
+    metaCritChance: 0,
     difficulty,
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
     endlessLoop: 0,
