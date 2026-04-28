@@ -106,7 +106,7 @@ export function buildInitialState(
     totalKills: 0,
     modifiers: newModifiers(),
     waveState: buildWaveState(),
-    cardChoice: { options: [], pickedIds: [] },
+    cardChoice: { options: [], pickedIds: [], rerollCost: 50, freeRerollUsed: false },
     overload: { charge: 0, maxCharge: 100 },
     aim: v2(ARENA_W / 2, ARENA_H / 2 - 200),
     manualFireRequested: false,
@@ -127,5 +127,7 @@ export function buildInitialState(
     difficulty,
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
     endlessLoop: 0,
+    tempShieldTime: 0,
+    tempShieldReduction: 0,
   };
 }

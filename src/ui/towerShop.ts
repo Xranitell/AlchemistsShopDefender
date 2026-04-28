@@ -1,6 +1,6 @@
 import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_COST } from '../data/towers';
 import type { GameState } from '../game/state';
-import { buyTower, upgradeTower } from '../game/tower';
+import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower } from '../game/tower';
 
 export class TowerShop {
   private root: HTMLElement;
@@ -81,14 +81,31 @@ export class TowerShop {
       });
       el.appendChild(upgrade);
 
+      // Targeting mode cycle — closes on click so the player re-opens to
+      // see the new label, keeping the UI stateless.
+      const tgt = document.createElement('button');
+      const tgtLeft = document.createElement('span');
+      tgtLeft.textContent = 'Цель';
+      const tgtRight = document.createElement('span');
+      tgtRight.className = 'cost';
+      tgtRight.textContent = targetingModeLabel(tower.targetingMode);
+      tgt.appendChild(tgtLeft);
+      tgt.appendChild(tgtRight);
+      tgt.addEventListener('click', () => {
+        cycleTargetingMode(tower);
+        tgtRight.textContent = targetingModeLabel(tower.targetingMode);
+      });
+      el.appendChild(tgt);
+
       const cancel = document.createElement('button');
       cancel.textContent = 'Закрыть';
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     }
 
-    // Mannequin repair (always available)
+    // Mannequin repair + temporary shield (available any time the shop is open).
     this.appendRepairButton(el);
+    this.appendShieldButton(el);
 
     this.root.appendChild(el);
     this.el = el;
@@ -98,11 +115,11 @@ export class TowerShop {
     if (!this.state) return;
     const m = this.state.mannequin;
     if (m.hp >= m.maxHp) return;
-    const repairCost = 30;
-    const repairAmount = Math.round(m.maxHp * 0.3);
+    const repairCost = 80;
+    const repairAmount = Math.round(m.maxHp * 0.2);
     const btn = document.createElement('button');
     const left = document.createElement('span');
-    left.textContent = `Починить (+${repairAmount} HP)`;
+    left.textContent = `Ремонт (+${repairAmount} HP)`;
     const right = document.createElement('span');
     right.className = 'cost';
     right.textContent = `${repairCost} зол.`;
@@ -117,6 +134,39 @@ export class TowerShop {
         this.state.mannequin.maxHp,
         this.state.mannequin.hp + repairAmount,
       );
+      this.close();
+    });
+    el.appendChild(btn);
+  }
+
+  private appendShieldButton(el: HTMLDivElement): void {
+    if (!this.state) return;
+    const cost = 120;
+    // Already shielded? show a decayed "active" indicator instead of selling
+    // another one to avoid stacking weirdness.
+    if (this.state.tempShieldTime > 0) {
+      const info = document.createElement('div');
+      info.style.color = 'var(--fg-dim)';
+      info.style.fontSize = '12px';
+      info.textContent = `Щит активен ${this.state.tempShieldTime.toFixed(1)} с`;
+      el.appendChild(info);
+      return;
+    }
+    const btn = document.createElement('button');
+    const left = document.createElement('span');
+    left.textContent = 'Щит (-50% урона 10 с)';
+    const right = document.createElement('span');
+    right.className = 'cost';
+    right.textContent = `${cost} зол.`;
+    btn.appendChild(left);
+    btn.appendChild(right);
+    btn.disabled = this.state.gold < cost;
+    btn.addEventListener('click', () => {
+      if (!this.state) return;
+      if (this.state.gold < cost) return;
+      this.state.gold -= cost;
+      this.state.tempShieldTime = 10;
+      this.state.tempShieldReduction = 0.5;
       this.close();
     });
     el.appendChild(btn);

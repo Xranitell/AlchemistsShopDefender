@@ -113,6 +113,8 @@ export function spawnEnemy(
   const mod = state.difficultyModifier;
   const maxHp = Math.round(kind.hp * mod.hpMult);
   const abilities = pickEnemyAbilities(kind.id, mod.abilities);
+  // Homunculus enters phase 1 and starts summoning minions every 4 sec.
+  const isHomunculus = kind.id === 'boss_homunculus';
   state.enemies.push({
     id: newId(state),
     kind,
@@ -127,6 +129,9 @@ export function spawnEnemy(
     dashBackTimer: 0,
     splitGeneration,
     damageTaken: 1,
+    sapperFuse: 0,
+    bossPhase: isHomunculus ? 1 : 0,
+    minionSummonTimer: isHomunculus ? 4 : 0,
   });
 }
 

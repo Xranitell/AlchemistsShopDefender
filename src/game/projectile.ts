@@ -217,7 +217,10 @@ export function applyDamageToEnemy(
     return;
   }
 
-  const armor = e.kind.armor * e.status.armorBreakFactor;
+  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
+  const baseArmor = e.kind.armor
+    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
+  const armor = baseArmor * e.status.armorBreakFactor;
   let dmg = Math.max(1, rawDamage * (1 - armor));
 
   // Engineering: +30% damage to burning enemies.

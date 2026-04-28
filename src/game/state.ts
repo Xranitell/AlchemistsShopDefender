@@ -50,7 +50,15 @@ export interface Enemy {
   /** Multiplier applied to the damage dealt to this enemy. Goes to <1 only
    *  while the one-hit shield is absorbing, currently always 0 or 1. */
   damageTaken: number;
+  /** Sapper-only: seconds left on the "about to blow" fuse. 0 = not armed. */
+  sapperFuse: number;
+  /** Boss-only phase counter (1..3). Used by the homunculus for mechanics. */
+  bossPhase: number;
+  /** Boss-only: seconds left on the current phase's minion-summon timer. */
+  minionSummonTimer: number;
 }
+
+export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';
 
 export interface Tower {
   id: number;
@@ -61,6 +69,9 @@ export interface Tower {
   fireTimer: number;
   aimAngle: number;
   shotCount: number;
+  /** Which enemy this tower picks out of candidates in range. Default 'nearest'
+   * = closest to mannequin, matching the historical behaviour. */
+  targetingMode: TargetingMode;
 }
 
 export interface RunePoint {
@@ -184,6 +195,12 @@ export interface WaveState {
 export interface CardChoice {
   options: CardDef[];
   pickedIds: string[]; // ids picked across the run (so we don't show same card twice)
+  /** Gold cost of the next reroll during the current card-draft. Grows by
+   * +25 every time a reroll is spent (starts at 50). Resets to 50 at the
+   * start of each draft. */
+  rerollCost: number;
+  /** Whether the free rewarded-ad reroll was already used this draft. */
+  freeRerollUsed: boolean;
 }
 
 export interface OverloadState {
@@ -244,6 +261,11 @@ export interface GameState {
   difficultyModifier: DifficultyModifier;
   /** In endless mode, how many full wave-lists we have already completed. */
   endlessLoop: number;
+  /** Seconds left on the active "Temporary Shield" buy. While >0 incoming
+   * damage to the mannequin is reduced by `tempShieldReduction`. */
+  tempShieldTime: number;
+  /** Damage reduction applied while `tempShieldTime > 0` (e.g. 0.5 = -50% dmg). */
+  tempShieldReduction: number;
 }
 
 export function newId(state: GameState): number {

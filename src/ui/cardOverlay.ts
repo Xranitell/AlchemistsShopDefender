@@ -12,6 +12,10 @@ export class CardOverlay {
     subtitle: string;
     cards: CardDef[];
     onPick: (card: CardDef) => void;
+    /** When provided, the overlay renders a "reroll for gold" button. */
+    rerollGold?: { cost: number; canAfford: boolean; onReroll: () => void };
+    /** When provided, the overlay renders a "free reroll via ad" button. */
+    rerollAd?: { onReroll: () => void };
   }): void {
     this.root.innerHTML = '';
     const panel = document.createElement('div');
@@ -53,6 +57,33 @@ export class CardOverlay {
       empty.style.color = 'var(--fg-dim)';
       empty.textContent = 'Все карты MVP уже получены — жми «Дальше».';
       panel.appendChild(empty);
+    }
+
+    // Reroll row under the cards.
+    if (options.cards.length > 0 && (options.rerollGold || options.rerollAd)) {
+      const row = document.createElement('div');
+      row.className = 'card-reroll-row';
+      row.style.display = 'flex';
+      row.style.gap = '12px';
+      row.style.justifyContent = 'center';
+      row.style.marginTop = '14px';
+
+      if (options.rerollGold) {
+        const btn = document.createElement('button');
+        btn.textContent = `Реролл · ${options.rerollGold.cost} g`;
+        btn.disabled = !options.rerollGold.canAfford;
+        btn.addEventListener('click', () => options.rerollGold!.onReroll());
+        row.appendChild(btn);
+      }
+      if (options.rerollAd) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Реролл · реклама';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+        btn.addEventListener('click', () => options.rerollAd!.onReroll());
+        row.appendChild(btn);
+      }
+      panel.appendChild(row);
     }
 
     this.root.appendChild(panel);
