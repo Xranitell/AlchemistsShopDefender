@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export interface DailyReward {
   day: number;
   type: 'gold' | 'blue_essence' | 'ancient_essence' | 'keys' | 'rerolls';
@@ -24,13 +26,7 @@ export const DAILY_REWARDS: DailyReward[] = [
 ];
 
 export function rewardLabel(r: DailyReward): string {
-  switch (r.type) {
-    case 'gold': return `${r.amount} зол.`;
-    case 'blue_essence': return `${r.amount} СЭ`;
-    case 'ancient_essence': return `${r.amount} ДЭ`;
-    case 'keys': return `${r.amount} кл.`;
-    case 'rerolls': return `${r.amount} рер.`;
-  }
+  return t(`reward.${r.type}`, { n: r.amount });
 }
 
 export function rewardIcon(type: DailyReward['type']): string {

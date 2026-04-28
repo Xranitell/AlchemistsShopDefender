@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 // Difficulty / dungeon mode definitions.
 //
 // The game can be started in one of four modes. Each mode has its own stat
@@ -127,11 +129,5 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
 };
 
 export function abilityLabel(ability: EnemyAbility): string {
-  switch (ability) {
-    case 'split_on_death': return 'Распад при смерти';
-    case 'one_hit_shield': return 'Щит на первый удар';
-    case 'dash_back_on_hit': return 'Отскок при попадании';
-    case 'explode_on_death': return 'Взрыв при смерти';
-    case 'aura_heal': return 'Аура лечения';
-  }
+  return t(`ui.ability.${ability}`);
 }

@@ -200,9 +200,9 @@ function updateHomunculus(state: GameState, e: Enemy, dt: number): void {
     e.bossPhase = desiredPhase;
     e.minionSummonTimer = 0.5;
     if (desiredPhase === 2) {
-      spawnFloatingText(state, 'Броня!', e.pos, '#c9c9d8');
+      spawnFloatingText(state, t('floating.armor'), e.pos, '#c9c9d8');
     } else if (desiredPhase === 3) {
-      spawnFloatingText(state, 'Ярость!', e.pos, '#ff6a3d');
+      spawnFloatingText(state, t('floating.rage'), e.pos, '#ff6a3d');
     }
     e.hitFlash = 0.35;
   }
@@ -236,7 +236,7 @@ function summonHomunculusMinions(state: GameState, e: Enemy): void {
     };
     spawnEnemy(state, kind, pos);
   }
-  spawnFloatingText(state, 'Призыв!', e.pos, '#c084fc');
+  spawnFloatingText(state, t('floating.summon'), e.pos, '#c084fc');
 }
 
 export function updateGoldPickups(state: GameState, dt: number): void {
