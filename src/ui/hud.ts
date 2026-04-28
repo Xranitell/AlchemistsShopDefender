@@ -267,7 +267,7 @@ export class Hud {
 
     const ws = state.waveState;
     const idx = ws.currentIndex;
-    const total = totalWaves();
+    const total = totalWaves(state);
     if (state.difficulty === 'endless') {
       // Show loop count instead of total so the player sees progress across
       // wave loops (waves reset to 0 each loop).

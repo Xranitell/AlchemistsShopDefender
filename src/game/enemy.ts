@@ -294,13 +294,16 @@ export function updateFirePools(state: GameState, dt: number): void {
     fp.time -= dt;
     if (fp.time <= 0) { remove.push(i); continue; }
     for (const e of state.enemies) {
+      if (e.elite === 'ethereal' && e.etherealActive) continue;
       const d = dist(fp.pos, e.pos);
       if (d <= fp.radius + e.kind.radius) {
-        e.hp -= fp.dps * dt;
+        const fireMult = e.elite === 'fire_resistant' ? 0.4 : 1;
+        e.hp -= fp.dps * dt * fireMult;
         e.hitFlash = Math.max(e.hitFlash, 0.04);
-        // Apply mild burn ticking too.
-        e.status.burnDps = Math.max(e.status.burnDps, fp.dps * 0.5);
-        e.status.burnTime = Math.max(e.status.burnTime, 1);
+        if (e.elite !== 'fire_resistant') {
+          e.status.burnDps = Math.max(e.status.burnDps, fp.dps * 0.5);
+          e.status.burnTime = Math.max(e.status.burnTime, 1);
+        }
       }
     }
   }
