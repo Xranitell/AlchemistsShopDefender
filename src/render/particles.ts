@@ -82,6 +82,8 @@ export function updateParticles(dt: number): void {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vy += p.gravity * dt;
+    p.vx *= 0.992;
+    p.vy *= 0.992;
   }
 }
 
