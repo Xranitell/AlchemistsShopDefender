@@ -2225,6 +2225,78 @@ body {
   background: color-mix(in srgb, var(--dif-color) 28%, transparent);
 }
 
+/* ============ Endless modifier overlay ============ */
+.endless-modifier-panel {
+  max-width: 480px;
+  width: min(92vw, 480px);
+  border: 2px solid #8ecae6;
+  box-shadow: 0 0 36px rgba(142, 202, 230, 0.25);
+  text-align: center;
+}
+.em-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  color: #8ecae6;
+  margin: 0 0 6px 0;
+  letter-spacing: 1px;
+}
+.em-subtitle {
+  color: var(--fg-dim);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  margin: 0 0 16px 0;
+}
+.em-card {
+  background: linear-gradient(180deg, rgba(142, 202, 230, 0.12), rgba(142, 202, 230, 0.04));
+  border: 2px solid rgba(142, 202, 230, 0.4);
+  border-radius: 6px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+}
+.em-card-label {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 13px;
+  color: #8ecae6;
+  margin-bottom: 4px;
+}
+.em-card-desc {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg);
+}
+.em-active-header {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--fg-dim);
+  margin: 0 0 6px 0;
+  text-align: left;
+}
+.em-active-list {
+  margin: 0 0 14px 0;
+  padding-left: 20px;
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: var(--fg);
+  line-height: 1.45;
+  text-align: left;
+}
+.em-active-list li::marker { color: #8ecae6; }
+.em-confirm {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 32px;
+  border-radius: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border: 2px solid #8ecae6;
+  color: #8ecae6;
+  background: rgba(142, 202, 230, 0.10);
+}
+.em-confirm:hover {
+  background: rgba(142, 202, 230, 0.22);
+}
+
 /* ============ HUD difficulty ribbon ============ */
 .hud-wave-stack {
   display: flex;

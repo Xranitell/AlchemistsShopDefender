@@ -1,5 +1,5 @@
 import type { GameState } from './state';
-import { newId } from './state';
+import { newId, ENDLESS_MODIFIER_POOL } from './state';
 import { newStatus, type EnemyKind } from './types';
 import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
@@ -28,21 +28,45 @@ export function startNextWave(state: GameState): void {
   ws.currentIndex += 1;
   if (ws.currentIndex >= WAVES.length) {
     if (state.difficulty === 'endless') {
-      // Endless: loop back to wave 0 with stiffer modifiers.
+      // Endless: loop back to wave 0 with stiffer modifiers + random
+      // modifier from the pool. Show the modifier selector overlay first.
       state.endlessLoop += 1;
-      state.difficultyModifier.hpMult *= 1.1;
-      state.difficultyModifier.speedMult *= 1.05;
-      state.difficultyModifier.damageMult *= 1.05;
       ws.currentIndex = 0;
+
+      // Roll a random modifier from the pool.
+      const pool = ENDLESS_MODIFIER_POOL;
+      const idx = state.rng.int(0, pool.length);
+      state.pendingEndlessModifier = pool[idx]!.id;
+      state.phase = 'endless_modifier_select';
+      return;
     } else {
       state.phase = 'victory';
       return;
     }
   }
+  doStartWave(state);
+}
+
+/** Shared wave-start logic used by both startNextWave and confirmEndlessModifier. */
+function doStartWave(state: GameState): void {
+  const ws = state.waveState;
   const def = WAVES[ws.currentIndex]!;
   ws.timeInWave = 0;
   ws.spawnedCount = 0;
-  ws.pendingSpawns = def.spawns.slice();
+
+  // Clone spawns; add +2 extra enemies per `extra_enemies` modifier accumulated.
+  const extraCount = state.endlessModifiers.filter((m) => m.id === 'extra_enemies').length * 2;
+  const baseSpawns = def.spawns.slice();
+  const extra: typeof baseSpawns = [];
+  for (let i = 0; i < extraCount; i++) {
+    const template = baseSpawns[i % baseSpawns.length]!;
+    extra.push({
+      kind: template.kind,
+      at: (def.durationSec - 1) * Math.random(),
+      entrance: state.rng.int(0, 3),
+    });
+  }
+  ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
 
   // Boss waves swap to the dedicated boss music track and play a stinger;
   // otherwise we just bump the regular waveStart fanfare.
@@ -55,7 +79,7 @@ export function startNextWave(state: GameState): void {
   }
 
   // Light up the entrances used by this wave so the player can read threats.
-  const used = new Set(def.spawns.map((s) => s.entrance));
+  const used = new Set(ws.pendingSpawns.map((s) => s.entrance));
   state.entrances.forEach((e, i) => {
     e.active = used.has(i);
   });
@@ -189,6 +213,45 @@ function pickEnemyAbilities(kindId: string, abilities: EnemyAbility[]): EnemyAbi
     }
   }
   return out;
+}
+
+/** Apply the pending endless modifier, push it to the cumulative list,
+ *  and start the next wave cycle. Called from the UI after the player
+ *  sees the modifier selector. */
+export function confirmEndlessModifier(state: GameState): void {
+  const modId = state.pendingEndlessModifier;
+  if (!modId) return;
+  const mod = ENDLESS_MODIFIER_POOL.find((m) => m.id === modId);
+  if (mod) state.endlessModifiers.push(mod);
+
+  // Apply the modifier to the difficulty bundle.
+  switch (modId) {
+    case 'hp_x125':
+      state.difficultyModifier.hpMult *= 1.25;
+      break;
+    case 'speed_x110':
+      state.difficultyModifier.speedMult *= 1.10;
+      break;
+    case 'gold_minus10':
+      state.difficultyModifier.goldMult *= 0.90;
+      break;
+    case 'extra_enemies':
+      // Handled at spawn time — flag stored in endlessModifiers list.
+      break;
+    case 'elites_on_normal':
+      // Handled at spawn time — adds elite abilities on non-boss waves.
+      if (!state.difficultyModifier.abilities.includes('one_hit_shield')) {
+        state.difficultyModifier.abilities.push('one_hit_shield');
+      }
+      if (!state.difficultyModifier.abilities.includes('dash_back_on_hit')) {
+        state.difficultyModifier.abilities.push('dash_back_on_hit');
+      }
+      break;
+  }
+
+  state.pendingEndlessModifier = null;
+  // Resume: start the first wave of the new cycle.
+  doStartWave(state);
 }
 
 export function totalWaves(): number {

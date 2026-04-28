@@ -2,7 +2,7 @@ import type { GameState } from './state';
 import { getActiveEffect } from './overload';
 import { getSprites } from '../render/sprites';
 import { drawSprite, drawSpriteRotated } from '../render/sprite';
-import { drawActiveDoor, getRoomBackdrop } from '../render/room';
+import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
 import {
   drawFirePool,
@@ -32,8 +32,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, width, height);
 
+  // Set biome so the room backdrop picks the right palette.
+  setBiome(state.biomeId);
+
   // Dark background fill (visible at corners due to rotation)
-  ctx.fillStyle = '#0a0810';
+  const pal = getActiveBiomePalette();
+  ctx.fillStyle = pal.bg;
   ctx.fillRect(0, 0, width, height);
 
   // Flat 2D camera (identity transform). Kept as save/restore so per-frame
@@ -894,7 +898,8 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
   // Spawn new particles periodically
   if (t - lastAmbientSpawn > 0.08) {
     lastAmbientSpawn = t;
-    const colors = ['rgba(125, 249, 255, 0.3)', 'rgba(255, 209, 102, 0.25)', 'rgba(189, 246, 255, 0.2)'];
+    const biomePal = getActiveBiomePalette();
+    const colors = biomePal.ambientColors;
     ambientParticles.push({
       x: Math.random() * width,
       y: Math.random() * height,
