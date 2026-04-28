@@ -1,6 +1,7 @@
-import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost } from '../data/towers';
+import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost, towerName } from '../data/towers';
 import type { GameState } from '../game/state';
 import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower } from '../game/tower';
+import { t } from '../i18n';
 
 /**
  * Popup that opens when the player clicks a rune point on the arena. It shows
@@ -50,7 +51,7 @@ export class TowerShop {
       for (const kind of Object.values(TOWERS)) {
         const btn = document.createElement('button');
         const left = document.createElement('span');
-        left.textContent = kind.name;
+        left.textContent = towerName(kind);
         const right = document.createElement('span');
         right.className = 'cost';
         const isFirst = this.state.towers.length === 0;
@@ -59,8 +60,10 @@ export class TowerShop {
         const baseCost = Math.max(0, kind.cost - discount);
         const displayCost = archmaster ? Math.ceil(baseCost * 1.25) : baseCost;
         right.textContent = archmaster
-          ? `${displayCost} зол. (Архимастер +25%)`
-          : (discount > 0 ? `${displayCost} зол. (-${discount})` : `${kind.cost} зол.`);
+          ? t('ui.tower.cost.archmaster', { n: displayCost })
+          : (discount > 0
+              ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
+              : t('ui.tower.cost.plain', { n: kind.cost }));
         btn.appendChild(left);
         btn.appendChild(right);
         btn.disabled = this.state.gold < displayCost;
@@ -73,7 +76,7 @@ export class TowerShop {
         el.appendChild(btn);
       }
       const cancel = document.createElement('button');
-      cancel.textContent = 'Отмена';
+      cancel.textContent = t('ui.tower.cancel');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     } else {
@@ -81,7 +84,11 @@ export class TowerShop {
       const info = document.createElement('div');
       info.style.color = 'var(--fg-dim)';
       info.style.fontSize = '12px';
-      info.textContent = `${tower.kind.name} · уровень ${tower.level}/${TOWER_MAX_LEVEL}`;
+      info.textContent = t('ui.tower.info', {
+        name: towerName(tower.kind),
+        lvl: tower.level,
+        max: TOWER_MAX_LEVEL,
+      });
       el.appendChild(info);
 
       const upgrade = document.createElement('button');
@@ -89,13 +96,13 @@ export class TowerShop {
       const right = document.createElement('span');
       right.className = 'cost';
       if (tower.level >= TOWER_MAX_LEVEL) {
-        left.textContent = 'Максимум';
+        left.textContent = t('ui.tower.upgrade.max');
         right.textContent = '—';
         upgrade.disabled = true;
       } else {
         const cost = towerUpgradeCost(tower.level);
-        left.textContent = `Улучшить → Lv ${tower.level + 1}`;
-        right.textContent = `${cost} зол.`;
+        left.textContent = t('ui.tower.upgrade.next', { n: tower.level + 1 });
+        right.textContent = t('ui.tower.cost.plain', { n: cost });
         upgrade.disabled = this.state.gold < cost;
         upgrade.addEventListener('click', () => {
           if (!this.state) return;
@@ -113,7 +120,7 @@ export class TowerShop {
       if (tower.kind.behavior !== 'aura') {
         const tgt = document.createElement('button');
         const tgtLeft = document.createElement('span');
-        tgtLeft.textContent = 'Цель';
+        tgtLeft.textContent = t('ui.tower.target');
         const tgtRight = document.createElement('span');
         tgtRight.className = 'cost';
         tgtRight.textContent = targetingModeLabel(tower.targetingMode);
@@ -127,7 +134,7 @@ export class TowerShop {
       }
 
       const cancel = document.createElement('button');
-      cancel.textContent = 'Закрыть';
+      cancel.textContent = t('ui.tower.close');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     }
@@ -149,22 +156,22 @@ export class TowerShop {
 
 function runeKindLabel(k: import('../game/state').RunePointKind): string {
   switch (k) {
-    case 'reinforced': return 'Усиленная руна';
-    case 'unstable': return 'Нестабильная руна';
-    case 'resonant': return 'Резонансная руна';
-    case 'defensive': return 'Защитная руна';
+    case 'reinforced': return t('ui.rune.reinforced');
+    case 'unstable': return t('ui.rune.unstable');
+    case 'resonant': return t('ui.rune.resonant');
+    case 'defensive': return t('ui.rune.defensive');
     case 'normal':
-    default: return 'Обычная руна';
+    default: return t('ui.rune.normal');
   }
 }
 
 function runeKindDesc(k: import('../game/state').RunePointKind): string {
   switch (k) {
-    case 'reinforced': return '+20% урона стойке';
-    case 'unstable': return 'каждые 4 сек +40% урона / +40% скорострел. / +30% дальности';
-    case 'resonant': return '+10% дальности; реакции рядом мощнее';
-    case 'defensive': return '+20% дальности, −5% скорострел.';
+    case 'reinforced': return t('ui.rune.bonus.reinforced');
+    case 'unstable': return t('ui.rune.bonus.unstable');
+    case 'resonant': return t('ui.rune.bonus.resonant');
+    case 'defensive': return t('ui.rune.bonus.defensive');
     case 'normal':
-    default: return 'без бонусов';
+    default: return t('ui.rune.bonus.normal');
   }
 }

@@ -1,6 +1,7 @@
 import type { CardDef } from '../game/types';
-import { pickedSynergyNames } from '../data/cards';
+import { pickedSynergyNames, cardName, cardDesc } from '../data/cards';
 import { audio } from '../audio/audio';
+import { t } from '../i18n';
 
 export class CardOverlay {
   private root: HTMLElement;
@@ -50,7 +51,7 @@ export class CardOverlay {
     if (options.cards.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'cards-empty';
-      empty.textContent = 'Все карты уже получены — жми «Дальше».';
+      empty.textContent = t('ui.cards.empty');
       stage.appendChild(empty);
     }
 
@@ -64,7 +65,7 @@ export class CardOverlay {
       if (options.rerollGold) {
         row.appendChild(
           buildActionPill({
-            label: 'Реролл',
+            label: t('ui.cards.reroll'),
             counter: `${options.rerollGold.cost}`,
             disabled: !options.rerollGold.canAfford,
             onClick: () => options.rerollGold!.onReroll(),
@@ -74,7 +75,7 @@ export class CardOverlay {
       if (options.rerollAd) {
         row.appendChild(
           buildActionPill({
-            label: 'Реролл реклама',
+            label: t('ui.cards.rerollAd'),
             counter: '1',
             accent: true,
             onClick: () => options.rerollAd!.onReroll(),
@@ -147,7 +148,7 @@ function buildCardElement(
 ): HTMLElement {
   const c = document.createElement('button');
   c.className = `card-rh rarity-${card.rarity} cat-${card.category}`;
-  c.setAttribute('aria-label', card.name);
+  c.setAttribute('aria-label', cardName(card));
 
   const frame = document.createElement('div');
   frame.className = 'card-rh-frame';
@@ -166,14 +167,14 @@ function buildCardElement(
   if (card.rarity === 'legendary') {
     const tag = document.createElement('div');
     tag.className = 'card-rh-tag';
-    tag.textContent = 'НОВОЕ!';
+    tag.textContent = t('ui.cards.new');
     frame.appendChild(tag);
   }
 
   // Title (small caps).
   const title = document.createElement('div');
   title.className = 'card-rh-title';
-  title.textContent = card.name;
+  title.textContent = cardName(card);
   frame.appendChild(title);
 
   // Divider line
@@ -185,7 +186,7 @@ function buildCardElement(
   // numeric tokens with a bright value chip so the chrome reads at a glance.
   const ul = document.createElement('ul');
   ul.className = 'card-rh-effects';
-  for (const line of splitDesc(card.desc)) {
+  for (const line of splitDesc(cardDesc(card))) {
     const li = document.createElement('li');
     li.innerHTML = formatEffectLine(line);
     ul.appendChild(li);
@@ -198,7 +199,7 @@ function buildCardElement(
   if (synergies.length > 0) {
     const syn = document.createElement('div');
     syn.className = 'card-rh-synergy';
-    syn.textContent = `Синергирует с: ${synergies.slice(0, 2).join(', ')}`;
+    syn.textContent = t('ui.cards.synergy', { names: synergies.slice(0, 2).join(', ') });
     frame.appendChild(syn);
     c.classList.add('has-synergy');
   }

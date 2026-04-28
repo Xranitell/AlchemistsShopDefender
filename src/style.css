@@ -2402,3 +2402,50 @@ body {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(4px); }
 }
+
+/* ── PR-9: RU/EN locale switcher ───────────────────────────────────── */
+.mm-lang-switcher {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--border-soft, #3a3a4a);
+  border-radius: 6px;
+  background: rgba(20, 18, 26, 0.55);
+}
+.mm-lang-btn {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim, #a0a0b0);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: background 120ms, color 120ms;
+}
+.mm-lang-btn:hover { color: var(--fg, #e6e6f0); }
+.mm-lang-btn.active {
+  background: var(--accent, #f5c453);
+  color: #1a1a22;
+}
+
+.settings-lang-row { display: inline-flex; gap: 6px; margin-top: 6px; }
+.settings-lang-btn {
+  background: transparent;
+  border: 1px solid var(--border-soft, #3a3a4a);
+  color: var(--fg-dim, #a0a0b0);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.settings-lang-btn:hover { color: var(--fg, #e6e6f0); border-color: var(--accent, #f5c453); }
+.settings-lang-btn.active {
+  background: var(--accent, #f5c453);
+  color: #1a1a22;
+  border-color: var(--accent, #f5c453);
+}

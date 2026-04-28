@@ -4,6 +4,7 @@ import { newId, spawnFloatingText } from './state';
 import type { Element } from './types';
 import { addOverload } from './enemy';
 import { audio } from '../audio/audio';
+import { t } from '../i18n';
 
 /** GDD §7.4: a reaction occurring within `RESONANT_RANGE` of any active
  *  resonant rune deals +25% damage. Multipliers stack per rune in range. */
@@ -63,7 +64,7 @@ export function checkElementalReaction(
     (newElement === 'acid' && s.burnTime > 0)
   ) {
     spawnPool(state, 'caustic_vapor', enemy.pos, 55, 3.0);
-    spawnFloatingText(state, 'Едкий пар!', enemy.pos, '#d2f55a');
+    spawnFloatingText(state, t('floating.reactions.acidVapor'), enemy.pos, '#d2f55a');
     chargeOverloadOnReaction(state, 15);
     audio.playSfx('reactionAcid');
   }
@@ -74,7 +75,7 @@ export function checkElementalReaction(
     (newElement === 'aether' && s.slowTime > 0)
   ) {
     spawnPool(state, 'time_rift', enemy.pos, 65, 2.5);
-    spawnFloatingText(state, 'Временной разлом!', enemy.pos, '#7df9ff');
+    spawnFloatingText(state, t('floating.reactions.timeRift'), enemy.pos, '#7df9ff');
     chargeOverloadOnReaction(state, 15);
     audio.playSfx('reactionFreeze');
   }
@@ -85,7 +86,7 @@ export function checkElementalReaction(
     (newElement === 'aether' && s.burnTime > 0)
   ) {
     triggerSparkCascade(state, enemy);
-    spawnFloatingText(state, 'Искровой каскад!', enemy.pos, '#a78bfa');
+    spawnFloatingText(state, t('floating.reactions.sparkCascade'), enemy.pos, '#a78bfa');
     chargeOverloadOnReaction(state, 12);
     audio.playSfx('reactionFire', { detune: 1.2 });
   }
@@ -98,7 +99,7 @@ export function checkElementalReaction(
     spawnPool(state, 'brittle_frost', enemy.pos, 50, 2.5);
     enemy.status.armorBreakFactor = Math.min(enemy.status.armorBreakFactor, 0.3);
     enemy.status.armorBreakTime = Math.max(enemy.status.armorBreakTime, 3.5);
-    spawnFloatingText(state, 'Хрупкая глазурь!', enemy.pos, '#7dd3fc');
+    spawnFloatingText(state, t('floating.reactions.brittleGlaze'), enemy.pos, '#7dd3fc');
     chargeOverloadOnReaction(state, 8);
     audio.playSfx('reactionFreeze');
   }
@@ -109,7 +110,7 @@ export function checkElementalReaction(
     (newElement === 'frost' && s.slowTime > 0)
   ) {
     spawnPool(state, 'glass_shatter', enemy.pos, 45, 0.6);
-    spawnFloatingText(state, 'Стекло вдребезги!', enemy.pos, '#c0e8ff');
+    spawnFloatingText(state, t('floating.reactions.shatter'), enemy.pos, '#c0e8ff');
     chargeOverloadOnReaction(state, 8);
     audio.playSfx('reactionFreeze', { detune: 0.85 });
   }
@@ -120,7 +121,7 @@ export function checkElementalReaction(
     (newElement === 'poison' && s.armorBreakTime > 0)
   ) {
     spawnPool(state, 'mutagen_burst', enemy.pos, 60, 4.0);
-    spawnFloatingText(state, 'Мутаген!', enemy.pos, '#9be36b');
+    spawnFloatingText(state, t('floating.reactions.mutagen'), enemy.pos, '#9be36b');
     chargeOverloadOnReaction(state, 10);
     audio.playSfx('reactionAcid', { detune: 0.9 });
   }
@@ -132,7 +133,7 @@ export function checkElementalReaction(
   ) {
     spawnPool(state, 'flash_steam', enemy.pos, 70, 1.5);
     enemy.status.frostMarkTime = 0;
-    spawnFloatingText(state, 'Пар!', enemy.pos, '#f4a261');
+    spawnFloatingText(state, t('floating.reactions.steam'), enemy.pos, '#f4a261');
     chargeOverloadOnReaction(state, 8);
     audio.playSfx('reactionFire');
   }

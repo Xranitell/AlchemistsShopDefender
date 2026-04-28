@@ -2,6 +2,7 @@ import { TUTORIAL_STEPS, type TutorialDismiss, type TutorialStep, type TutorialT
 import type { GameState } from '../game/state';
 import { worldToScreen } from '../render/camera';
 import { getRenderCamera } from '../game/render';
+import { t, tWithFallback } from '../i18n';
 
 /**
  * Game-side events the tutorial reacts to. Emitted from gameplay code via
@@ -254,12 +255,12 @@ class TutorialController {
     this.currentStep = step;
     if (!this.tooltipText || !this.tooltipActions || !this.root || !this.arrowEl) return;
 
-    this.tooltipText.textContent = step.text;
+    this.tooltipText.textContent = tWithFallback(`tutorial.${step.id}`, step.text);
     this.tooltipActions.innerHTML = '';
     if (step.showSkip) {
       const skipBtn = document.createElement('button');
       skipBtn.className = 'tutorial-skip-btn';
-      skipBtn.textContent = 'Пропустить тьюториал';
+      skipBtn.textContent = t('ui.tutorial.skip');
       skipBtn.addEventListener('click', () => {
         this.skipAll();
       });
@@ -270,7 +271,7 @@ class TutorialController {
     if (step.dismiss.kind === 'auto') {
       const okBtn = document.createElement('button');
       okBtn.className = 'tutorial-ok-btn';
-      okBtn.textContent = 'Понятно';
+      okBtn.textContent = t('ui.tutorial.ok');
       okBtn.addEventListener('click', () => this.completeStep());
       this.tooltipActions.appendChild(okBtn);
     }

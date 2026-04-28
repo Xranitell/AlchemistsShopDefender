@@ -1,5 +1,6 @@
 import type { MetaSave } from '../game/save';
-import { canClaimDaily } from '../game/save';
+import { canClaimDaily, saveMeta } from '../game/save';
+import { t, getLocale, setLocale, type Locale } from '../i18n';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -24,11 +25,13 @@ export class MainMenu {
     const topBar = document.createElement('div');
     topBar.className = 'mm-top-bar';
     topBar.innerHTML = `
-      <span class="mm-currency blue-essence" title="Синяя эссенция"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency ancient-essence" title="Древняя эссенция"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="mm-currency epic-key" title="Эпический ключ"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
-      <span class="mm-currency ancient-key" title="Древний ключ"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
+      <span class="mm-currency blue-essence" title="${t('ui.menu.tooltip.blueEssence')}"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
+      <span class="mm-currency ancient-essence" title="${t('ui.menu.tooltip.ancientEssence')}"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="mm-currency epic-key" title="${t('ui.menu.tooltip.epicKey')}"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
+      <span class="mm-currency ancient-key" title="${t('ui.menu.tooltip.ancientKey')}"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
     `;
+    // RU/EN switcher in the top-right corner of the main menu (PR-9 i18n).
+    topBar.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
     wrap.appendChild(topBar);
 
     // Center content
@@ -44,7 +47,7 @@ export class MainMenu {
     shopSection.className = 'mm-section mm-shop';
     const shopTitle = document.createElement('div');
     shopTitle.className = 'mm-section-title mm-title-with-icon';
-    shopTitle.innerHTML = '<span class="mm-shop-icon"></span><span>MY SHOP</span><span class="mm-info-dot">i</span>';
+    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span><span class="mm-info-dot">i</span>`;
     shopSection.appendChild(shopTitle);
     const slotRow = document.createElement('div');
     slotRow.className = 'mm-shop-slots';
@@ -57,11 +60,11 @@ export class MainMenu {
     shopSection.appendChild(slotRow);
     const craftLevel = document.createElement('div');
     craftLevel.className = 'mm-craft-level';
-    craftLevel.innerHTML = `<span>CRAFTING LEVEL ${opts.meta.craftingLevel}</span><span class="mm-craft-bar"><i style="width:${Math.min(100, 24 + opts.meta.craftingLevel * 8)}%"></i></span>`;
+    craftLevel.innerHTML = `<span>${t('ui.menu.craftingLevel', { level: opts.meta.craftingLevel })}</span><span class="mm-craft-bar"><i style="width:${Math.min(100, 24 + opts.meta.craftingLevel * 8)}%"></i></span>`;
     shopSection.appendChild(craftLevel);
     const statsRow = document.createElement('div');
     statsRow.className = 'mm-stats';
-    statsRow.innerHTML = `<span>RUNS ${opts.meta.totalRuns}</span><span>BEST WAVE ${opts.meta.bestWave}</span>`;
+    statsRow.innerHTML = `<span>${t('ui.menu.runs', { n: opts.meta.totalRuns })}</span><span>${t('ui.menu.bestWave', { n: opts.meta.bestWave })}</span>`;
     shopSection.appendChild(statsRow);
     leftCol.appendChild(shopSection);
 
@@ -70,7 +73,7 @@ export class MainMenu {
     labBtn.className = 'mm-section mm-lab-btn';
     const labTitle = document.createElement('div');
     labTitle.className = 'mm-section-title';
-    labTitle.innerHTML = '<span class="mm-flask-icon"></span><span>LABORATORY</span>';
+    labTitle.innerHTML = `<span class="mm-flask-icon"></span><span>${t('ui.menu.laboratory')}</span>`;
     labBtn.appendChild(labTitle);
     const labDesc = document.createElement('div');
     labDesc.className = 'mm-lab-desc';
@@ -93,7 +96,7 @@ export class MainMenu {
     settingsBtn.className = 'mm-section mm-settings-btn';
     const settingsTitle = document.createElement('div');
     settingsTitle.className = 'mm-section-title';
-    settingsTitle.innerHTML = '<span class="mm-gear-icon"></span><span>SETTINGS</span>';
+    settingsTitle.innerHTML = `<span class="mm-gear-icon"></span><span>${t('ui.menu.settings')}</span>`;
     settingsBtn.addEventListener('click', opts.onSettings);
     settingsBtn.appendChild(settingsTitle);
     leftCol.appendChild(settingsBtn);
@@ -105,7 +108,7 @@ export class MainMenu {
     midCol.className = 'mm-mid';
     const title = document.createElement('div');
     title.className = 'mm-title';
-    title.innerHTML = "<span class=\"mm-title-top\">Alchemist's Shop</span><span class=\"mm-title-bottom\">Defender</span>";
+    title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
     midCol.appendChild(title);
 
     // Central illustration — pixel-art style alchemist's shop with hero in front.
@@ -116,7 +119,7 @@ export class MainMenu {
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
-    battleBtn.textContent = 'TO BATTLE';
+    battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
 
@@ -130,11 +133,11 @@ export class MainMenu {
     bpBtn.className = 'mm-section mm-bp-btn';
     const bpTitle = document.createElement('div');
     bpTitle.className = 'mm-section-title';
-    bpTitle.innerHTML = '<span>BATTLE PASS</span><span class="mm-chest-icon"></span>';
+    bpTitle.innerHTML = `<span>${t('ui.menu.battlePass')}</span><span class="mm-chest-icon"></span>`;
     bpBtn.appendChild(bpTitle);
     const bpSub = document.createElement('div');
     bpSub.className = 'mm-bp-sub';
-    bpSub.innerHTML = `<span>LEVEL ${opts.meta.bpLevel}</span><span class="mm-mini-progress"><i style="width:${Math.min(100, (opts.meta.bpLevel / 50) * 100)}%"></i></span>`;
+    bpSub.innerHTML = `<span>${t('ui.menu.bpLevel', { level: opts.meta.bpLevel })}</span><span class="mm-mini-progress"><i style="width:${Math.min(100, (opts.meta.bpLevel / 50) * 100)}%"></i></span>`;
     bpBtn.appendChild(bpSub);
     bpBtn.addEventListener('click', opts.onBattlePass);
     rightCol.appendChild(bpBtn);
@@ -143,12 +146,12 @@ export class MainMenu {
     dailyBtn.className = 'mm-section mm-daily-btn';
     const dailyTitle = document.createElement('div');
     dailyTitle.className = 'mm-section-title';
-    dailyTitle.innerHTML = '<span>DAILY<br>REWARDS</span><span class="mm-calendar-icon"></span>';
+    dailyTitle.innerHTML = `<span>${t('ui.menu.dailyRewards').replace(/\n/g, '<br>')}</span><span class="mm-calendar-icon"></span>`;
     dailyBtn.appendChild(dailyTitle);
     if (canClaimDaily(opts.meta)) {
       const badge = document.createElement('div');
       badge.className = 'mm-daily-badge';
-      badge.textContent = 'Забрать!';
+      badge.textContent = t('ui.menu.dailyClaim');
       dailyBtn.appendChild(badge);
     }
     dailyBtn.addEventListener('click', opts.onDailyRewards);
@@ -158,6 +161,10 @@ export class MainMenu {
     wrap.appendChild(center);
     this.root.appendChild(wrap);
     this.root.classList.add('visible');
+  }
+
+  isVisible(): boolean {
+    return this.root.classList.contains('visible');
   }
 
   hide(): void {
@@ -210,4 +217,34 @@ function shopIllustrationSVG(): string {
     <rect x="44" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
     <rect x="154" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
   </svg>`;
+}
+
+/** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).
+ *  Mirrors the slider in the Settings overlay so the player can flip the
+ *  language without diving into a sub-menu. */
+function buildLangSwitcher(meta: MetaSave, _onSettings: () => void): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'mm-lang-switcher';
+  wrap.title = t('ui.lang.tooltip');
+  const buttons: { code: Locale; label: string }[] = [
+    { code: 'ru', label: t('ui.lang.ru') },
+    { code: 'en', label: t('ui.lang.en') },
+  ];
+  for (const { code, label } of buttons) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mm-lang-btn' + (getLocale() === code ? ' active' : '');
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      if (getLocale() === code) return;
+      setLocale(code);
+      meta.locale = code;
+      saveMeta(meta);
+      // Re-render the menu by re-dispatching the existing onSettings hook —
+      // safer than holding a ref to the original render fn. Caller refreshes.
+      window.dispatchEvent(new CustomEvent('asd-locale-changed'));
+    });
+    wrap.appendChild(b);
+  }
+  return wrap;
 }

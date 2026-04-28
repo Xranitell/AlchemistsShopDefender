@@ -1,4 +1,5 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { t, tWithFallback } from '../i18n';
 
 export class ModifierPreviewOverlay {
   private root: HTMLElement;
@@ -22,11 +23,11 @@ export class ModifierPreviewOverlay {
     const header = document.createElement('div');
     header.className = 'mp-header';
     const h = document.createElement('h2');
-    h.textContent = def.name;
+    h.textContent = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
     header.appendChild(h);
     const sub = document.createElement('p');
     sub.className = 'mp-subtitle';
-    sub.textContent = 'Враги получат следующие модификаторы:';
+    sub.textContent = t('ui.preview.subtitle');
     header.appendChild(sub);
     panel.appendChild(header);
 
@@ -34,18 +35,18 @@ export class ModifierPreviewOverlay {
     const stats = document.createElement('div');
     stats.className = 'mp-stats';
     const mod = def.modifier;
-    stats.appendChild(statBar('❤', 'Здоровье', mod.hpMult, '#ff6a3d'));
-    stats.appendChild(statBar('⚡', 'Скорость', mod.speedMult, '#8ecae6'));
-    stats.appendChild(statBar('🗡', 'Урон', mod.damageMult, '#ffd166'));
-    stats.appendChild(statBar('💰', 'Золото', mod.goldMult, '#c084fc'));
+    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d'));
+    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6'));
+    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166'));
+    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc'));
     panel.appendChild(stats);
 
     // Bullet list — human-friendly description
     const list = document.createElement('ul');
     list.className = 'mp-lines';
-    for (const line of def.previewLines) {
+    for (let i = 0; i < def.previewLines.length; i++) {
       const li = document.createElement('li');
-      li.textContent = line;
+      li.textContent = tWithFallback(`ui.preview.${opts.mode}.line${i}`, def.previewLines[i]!);
       list.appendChild(li);
     }
     panel.appendChild(list);
@@ -54,8 +55,8 @@ export class ModifierPreviewOverlay {
     const warn = document.createElement('div');
     warn.className = 'mp-warn';
     warn.textContent = def.keyCost === 'ancient'
-      ? 'Подтверждая, ты тратишь 1 Древний ключ.'
-      : 'Подтверждая, ты тратишь 1 Эпический ключ.';
+      ? t('ui.preview.consumeAncient')
+      : t('ui.preview.consumeEpic');
     panel.appendChild(warn);
 
     // Actions
@@ -63,12 +64,12 @@ export class ModifierPreviewOverlay {
     actions.className = 'mp-actions';
     const cancel = document.createElement('button');
     cancel.className = 'mp-btn mp-cancel';
-    cancel.textContent = 'Отмена';
+    cancel.textContent = t('ui.preview.cancel');
     cancel.addEventListener('click', opts.onCancel);
     actions.appendChild(cancel);
     const go = document.createElement('button');
     go.className = 'mp-btn mp-confirm';
-    go.textContent = 'В бой!';
+    go.textContent = t('ui.preview.confirm');
     go.addEventListener('click', opts.onConfirm);
     actions.appendChild(go);
     panel.appendChild(actions);

@@ -1,4 +1,5 @@
 import { META_UPGRADES, type MetaBranch } from '../data/metaTree';
+import { t } from '../i18n';
 import {
   ROOT_NODE_ID,
   allocatedSet,
@@ -73,15 +74,15 @@ export class MetaOverlay {
     header.className = 'meta-tree-header';
 
     const h = document.createElement('h2');
-    h.textContent = 'Дерево Манекена';
+    h.textContent = t('ui.meta.title');
     header.appendChild(h);
 
     const currencies = document.createElement('div');
     currencies.className = 'meta-currencies';
     currencies.innerHTML = `
-      <span class="meta-currency blue">СЭ: <strong>${opts.meta.blueEssence}</strong></span>
-      <span class="meta-currency ancient">ДЭ: <strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="meta-stats">Забегов: ${opts.meta.totalRuns} · Лучшая волна: ${opts.meta.bestWave}</span>
+      <span class="meta-currency blue">${t('ui.meta.blue')}<strong>${opts.meta.blueEssence}</strong></span>
+      <span class="meta-currency ancient">${t('ui.meta.ancient')}<strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="meta-stats">${t('ui.meta.statsLine', { runs: opts.meta.totalRuns, wave: opts.meta.bestWave })}</span>
     `;
     header.appendChild(currencies);
 
@@ -96,13 +97,13 @@ export class MetaOverlay {
     const renderLoadout = () => {
       loadout.innerHTML = '';
       loadout.appendChild(
-        buildModuleSlot('Активный модуль (Q)', 'active', opts.meta, () => {
+        buildModuleSlot(t('ui.meta.activeModule'), 'active', opts.meta, () => {
           opts.onSave();
           renderLoadout();
         }),
       );
       loadout.appendChild(
-        buildModuleSlot('Ауро-модуль', 'aura', opts.meta, () => {
+        buildModuleSlot(t('ui.meta.auraModule'), 'aura', opts.meta, () => {
           opts.onSave();
           renderLoadout();
         }),
@@ -145,7 +146,7 @@ export class MetaOverlay {
       if (!node) {
         const hint = document.createElement('div');
         hint.className = 'meta-side-hint';
-        hint.textContent = 'Выберите узел дерева, чтобы увидеть его эффект и стоимость.';
+        hint.textContent = t('ui.meta.hint.pickNode');
         sidePanel.appendChild(hint);
         return;
       }
@@ -174,23 +175,23 @@ export class MetaOverlay {
       const cost = document.createElement('div');
       cost.className = 'meta-side-cost';
       if (node.cost <= 0) {
-        cost.textContent = 'Стоимость: бесплатно';
+        cost.textContent = t('ui.meta.cost.free');
       } else {
-        const label = node.currency === 'blue' ? 'Синяя эссенция' : 'Древняя эссенция';
-        cost.innerHTML = `Стоимость: <strong>${node.cost}</strong> ${label}`;
+        const label = node.currency === 'blue' ? t('ui.meta.blueEssence') : t('ui.meta.ancientEssence');
+        cost.innerHTML = t('ui.meta.cost.amount', { n: node.cost, label });
       }
       sidePanel.appendChild(cost);
 
       const status = document.createElement('div');
       status.className = 'meta-side-status';
       if (owned) {
-        status.innerHTML = '<span class="meta-tip-owned">Изучено</span>';
+        status.innerHTML = `<span class="meta-tip-owned">${t('ui.meta.status.owned')}</span>`;
       } else if (affordable) {
-        status.innerHTML = '<span class="meta-tip-available">Доступно для изучения</span>';
+        status.innerHTML = `<span class="meta-tip-available">${t('ui.meta.status.available')}</span>`;
       } else if (!reachable) {
-        status.innerHTML = '<span class="meta-tip-locked">Нет связи с изученным узлом</span>';
+        status.innerHTML = `<span class="meta-tip-locked">${t('ui.meta.status.notConnected')}</span>`;
       } else {
-        status.innerHTML = '<span class="meta-tip-locked">Не хватает эссенции</span>';
+        status.innerHTML = `<span class="meta-tip-locked">${t('ui.meta.status.notEnough')}</span>`;
       }
       sidePanel.appendChild(status);
 
@@ -200,7 +201,7 @@ export class MetaOverlay {
       if (!owned) {
         const learn = document.createElement('button');
         learn.className = 'meta-side-learn';
-        learn.textContent = 'Изучить';
+        learn.textContent = t('ui.meta.learn');
         learn.disabled = !affordable;
         learn.addEventListener('click', () => {
           if (buyMetaUpgrade(opts.meta, node)) {
@@ -212,7 +213,7 @@ export class MetaOverlay {
       } else if (node.id !== ROOT_NODE_ID) {
         const undo = document.createElement('button');
         undo.className = 'meta-side-refund';
-        undo.textContent = 'Вернуть';
+        undo.textContent = t('ui.meta.refund');
         undo.addEventListener('click', () => {
           if (refundMetaUpgrade(opts.meta, node)) {
             saveCallback();
@@ -339,16 +340,16 @@ export class MetaOverlay {
 
     const startBtn = document.createElement('button');
     startBtn.className = 'meta-start';
-    startBtn.textContent = 'Назад';
+    startBtn.textContent = t('ui.meta.back');
     startBtn.addEventListener('click', opts.onStart);
     actions.appendChild(startBtn);
 
     if (opts.onReset) {
       const resetBtn = document.createElement('button');
       resetBtn.className = 'meta-reset';
-      resetBtn.textContent = 'Сбросить дерево';
+      resetBtn.textContent = t('ui.meta.resetTree');
       resetBtn.addEventListener('click', () => {
-        if (confirm('Сбросить весь мета-прогресс?')) {
+        if (confirm(t('ui.meta.resetConfirm'))) {
           opts.onReset!();
         }
       });
@@ -359,7 +360,7 @@ export class MetaOverlay {
 
     const help = document.createElement('div');
     help.className = 'meta-tree-help';
-    help.textContent = 'Нажмите узел, чтобы увидеть детали справа · повторное нажатие — изучить · ПКМ — вернуть.';
+    help.textContent = t('ui.meta.help');
     panel.appendChild(help);
 
     this.root.appendChild(panel);
@@ -374,20 +375,20 @@ export class MetaOverlay {
 
 function kindLabel(k: string): string {
   switch (k) {
-    case 'root': return 'Корень';
-    case 'small': return 'Малый узел';
-    case 'notable': return 'Заметный узел';
-    case 'keystone': return 'Краеугольный камень';
+    case 'root': return t('ui.meta.kind.root');
+    case 'small': return t('ui.meta.kind.small');
+    case 'notable': return t('ui.meta.kind.notable');
+    case 'keystone': return t('ui.meta.kind.keystone');
     default: return '';
   }
 }
 
 function branchLabel(b: MetaBranch): string {
   switch (b) {
-    case 'potions': return 'Алхимия';
-    case 'engineering': return 'Инженерия';
-    case 'core': return 'Аркана';
-    case 'survival': return 'Живучесть';
+    case 'potions': return t('ui.meta.branch.potions');
+    case 'engineering': return t('ui.meta.branch.engineering');
+    case 'core': return t('ui.meta.branch.core');
+    case 'survival': return t('ui.meta.branch.survival');
   }
 }
 

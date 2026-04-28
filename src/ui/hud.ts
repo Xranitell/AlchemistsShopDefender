@@ -3,6 +3,7 @@ import { totalWaves, currentWaveDuration, currentPauseDuration } from '../game/w
 import { getSprites } from '../render/sprites';
 import type { BakedSprite } from '../render/sprite';
 import { DIFFICULTY_MODES } from '../data/difficulty';
+import { t } from '../i18n';
 
 export interface HudHandlers {
   onPause(): void;
@@ -168,7 +169,7 @@ export class Hud {
     this.catalystBadge.className = 'hud-catalyst-badge';
     const catLab = document.createElement('div');
     catLab.className = 'hud-tag-label';
-    catLab.textContent = 'КАТАЛИЗАТОРЫ';
+    catLab.textContent = t('ui.hud.catalysts');
     this.catalystValue = document.createElement('span');
     this.catalystValue.className = 'hud-resource-value';
     this.catalystValue.textContent = '0/0';
@@ -200,7 +201,7 @@ export class Hud {
     this.hint.className = 'hud-hint';
     this.skipBtn = document.createElement('button');
     this.skipBtn.className = 'hud-skip-btn';
-    this.skipBtn.textContent = 'В БОЙ';
+    this.skipBtn.textContent = t('ui.hud.toBattle');
     this.skipBtn.addEventListener('click', () => this.handlers.onSkipPause());
     center.appendChild(this.hint);
     center.appendChild(this.skipBtn);
@@ -271,7 +272,7 @@ export class Hud {
       // Show loop count instead of total so the player sees progress across
       // wave loops (waves reset to 0 each loop).
       const loop = state.endlessLoop;
-      this.waveValue.textContent = `${idx + 1} • круг ${loop + 1}`;
+      this.waveValue.textContent = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
     } else if (idx < 0) {
       this.waveValue.textContent = `0 / ${total}`;
     } else {
@@ -279,7 +280,7 @@ export class Hud {
     }
 
     const difDef = DIFFICULTY_MODES[state.difficulty];
-    this.difficultyBadge.textContent = difDef.shortName;
+    this.difficultyBadge.textContent = t(`ui.difficulty.${state.difficulty}.short`);
     this.difficultyBadge.style.color = difDef.color;
     this.difficultyBadge.style.borderColor = difDef.color;
     this.difficultyBadge.style.display = state.difficulty === 'normal' ? 'none' : '';
@@ -289,9 +290,9 @@ export class Hud {
     this.skipBtn.style.display = showSkip ? '' : 'none';
     this.skipBtn.disabled = !showSkip;
     if (showSkip && idx < 0) {
-      this.skipBtn.textContent = 'В БОЙ!';
+      this.skipBtn.textContent = t('ui.hud.toBattleNow');
     } else {
-      this.skipBtn.textContent = 'СЛЕДУЮЩАЯ ВОЛНА';
+      this.skipBtn.textContent = t('ui.hud.nextWave');
     }
 
     // Overload button enabled when fully charged
@@ -303,10 +304,10 @@ export class Hud {
     if (state.phase === 'preparing') {
       const next = idx + 1;
       this.hint.textContent = next === 0
-        ? 'Кликни по руне, чтобы поставить стойку. Готов? Жми «В БОЙ».'
-        : `Готовься к волне ${next + 1}. Покупай и улучшай стойки на рунах.`;
+        ? t('ui.hud.hint.first')
+        : t('ui.hud.hint.next', { n: next + 1 });
     } else if (state.phase === 'wave') {
-      this.hint.textContent = `Волна ${idx + 1}/${total} • ЛКМ — бросок (можно зажимать) • Q — Overload`;
+      this.hint.textContent = t('ui.hud.hint.wave', { idx: idx + 1, total });
     } else {
       this.hint.textContent = '';
     }
@@ -326,7 +327,7 @@ export class Hud {
       this.timerBar.classList.add('wave');
       this.timerFill.style.width = `${ratio * 100}%`;
       const left = Math.max(0, total - elapsed);
-      this.timerLabel.textContent = `Бой · ${left.toFixed(1)} с`;
+      this.timerLabel.textContent = t('ui.hud.timer.battle', { sec: left.toFixed(1) });
     } else if (state.phase === 'preparing') {
       const total = currentPauseDuration(state);
       const left = Math.max(0, ws.pauseDurationLeft);
@@ -335,7 +336,7 @@ export class Hud {
       this.timerBar.classList.remove('wave');
       this.timerBar.classList.add('pause');
       this.timerFill.style.width = `${ratio * 100}%`;
-      this.timerLabel.textContent = `Перерыв · ${left.toFixed(1)} с`;
+      this.timerLabel.textContent = t('ui.hud.timer.pause', { sec: left.toFixed(1) });
     } else {
       this.timerBar.style.display = 'none';
     }
@@ -370,10 +371,10 @@ function spriteEl(sprite: BakedSprite, scale: number): HTMLCanvasElement {
 
 function activeModuleShortLabel(id: string): string {
   switch (id) {
-    case 'lightning': return 'Громоотвод';
-    case 'chronos': return 'Хронос';
-    case 'transmute': return 'Трансмут.';
-    case 'alch_dome': return 'Купол';
+    case 'lightning': return t('ui.hud.module.lightning');
+    case 'chronos': return t('ui.hud.module.chronos');
+    case 'transmute': return t('ui.hud.module.transmute');
+    case 'alch_dome': return t('ui.hud.module.alch_dome');
     default: return '';
   }
 }

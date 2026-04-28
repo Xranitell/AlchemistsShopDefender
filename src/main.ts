@@ -32,6 +32,7 @@ import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
 import { audio } from './audio/audio';
 import { tutorial } from './ui/tutorial';
+import { setLocale, t, onLocaleChange } from './i18n';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -46,6 +47,9 @@ if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
 let meta: MetaSave = loadMeta();
+// Apply the saved locale before any UI is rendered so the very first
+// frames already show the player's language preference.
+setLocale(meta.locale);
 let state: GameState = buildInitialState();
 
 // Initialise the audio engine on the first user gesture (click / keydown).
@@ -98,6 +102,14 @@ const loop = new Loop((dt) => tick(dt));
 
 // Attach the FTUE tutorial overlay once the canvas is in the DOM. The
 // controller stays dormant until startRun() decides to call .start().
+// Re-render the visible top-level overlay when the player flips RU/EN, so
+// labels update without requiring a navigation. We rebuild whichever
+// screen is currently mounted (main menu, settings, or difficulty pick).
+onLocaleChange(() => {
+  if (mainMenu.isVisible?.()) showMainMenu();
+  else if (settingsOverlay.isVisible?.()) showSettings();
+});
+
 tutorial.attach(canvas, {
   onSkip: () => {
     meta.tutorialDone = true;
@@ -271,10 +283,10 @@ function showCardOverlay(): void {
     // Auto-continue if no cards left.
     const idx = state.waveState.currentIndex;
     overlay.showSimple({
-      title: `Волна ${idx + 1} пройдена`,
-      subtitle: 'Карт улучшений не осталось. Готовься к следующей волне.',
+      title: t('ui.cards.waveCleared', { n: idx + 1 }),
+      subtitle: t('ui.cards.subtitle.none'),
       buttons: [
-        { label: 'Дальше', primary: true, onClick: () => {
+        { label: t('ui.cards.next'), primary: true, onClick: () => {
           overlay.hide();
           startPause(state);
           yandex.gameplayStart();
@@ -290,10 +302,10 @@ function renderCardOverlay(): void {
   const options = state.cardChoice.options;
   const idx = state.waveState.currentIndex;
   overlay.show({
-    title: `Волна ${idx + 1} пройдена`,
+    title: t('ui.cards.waveCleared', { n: idx + 1 }),
     subtitle: options.length > 0
-      ? 'Выбери одну карту улучшения. Между волнами можно докупить стойки.'
-      : 'Все карты MVP уже получены.',
+      ? t('ui.cards.subtitle.has')
+      : t('ui.cards.subtitle.empty'),
     cards: options,
     pickedIds: state.cardChoice.pickedIds,
     onPick: (card) => {
@@ -338,13 +350,13 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpX
 /** Compose a reward-breakdown subtitle string for victory/defeat screens. */
 function rewardBreakdown(r: { blue: number; ancient: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
   const parts = [
-    `Волна ${wave}/${totalWaves()}`,
-    `Убийств: ${kills}`,
-    `+${r.blue} СЭ`,
+    t('ui.reward.wave', { wave, total: totalWaves() }),
+    t('ui.reward.kills', { n: kills }),
+    t('ui.reward.blueGain', { n: r.blue }),
   ];
-  if (r.ancient > 0) parts.push(`+${r.ancient} ДЭ`);
-  parts.push(`+${r.bpXp} BP-опыта`);
-  if (victory) parts.unshift('Сундук вскрыт.');
+  if (r.ancient > 0) parts.push(t('ui.reward.ancientGain', { n: r.ancient }));
+  parts.push(t('ui.reward.bpGain', { n: r.bpXp }));
+  if (victory) parts.unshift(t('ui.reward.chestOpened'));
   return parts.join(' • ');
 }
 
@@ -369,7 +381,7 @@ function showVictory(): void {
   let doubled = false;
   const buttons: { label: string; primary?: boolean; onClick: () => void }[] = [
     {
-      label: 'Удвоить награду (реклама)',
+      label: t('ui.victory.doubleAd'),
       primary: true,
       onClick: () => {
         if (doubled) return;
@@ -378,19 +390,24 @@ function showVictory(): void {
           doubled = true;
           doubleRewards(reward);
           overlay.showSimple({
-            title: 'Сундук удвоен!',
-            subtitle: `Итог: +${reward.blue * 2} СЭ${reward.ancient > 0 ? `, +${reward.ancient * 2} ДЭ` : ''}.`,
+            title: t('ui.victory.doubled'),
+            subtitle: t('ui.victory.doubledSubtitle', {
+              blue: reward.blue * 2,
+              ancient: reward.ancient > 0
+                ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
+                : '',
+            }),
             buttons: [
-              { label: 'В меню', primary: true, onClick: () => restart() },
+              { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
             ],
           });
         });
       },
     },
-    { label: 'В меню', onClick: () => restart() },
+    { label: t('ui.common.toMenu'), onClick: () => restart() },
   ];
   overlay.showSimple({
-    title: `Победа! Сундук алхимика`,
+    title: t('ui.victory.title'),
     subtitle: rewardBreakdown(reward, state.totalKills, wave, true),
     buttons,
   });
@@ -410,25 +427,25 @@ function showGameOver(): void {
   }
   const reward = awardRunEssence(false);
   overlay.showSimple({
-    title: 'Манекен пал',
-    subtitle: rewardBreakdown(reward, state.totalKills, wave, false) + ' • Улучши манекена и попробуй снова.',
+    title: t('ui.defeat.title'),
+    subtitle: rewardBreakdown(reward, state.totalKills, wave, false) + t('ui.defeat.subtitleSuffix'),
     buttons: [
       {
-        label: 'Удвоить награду (реклама)',
+        label: t('ui.victory.doubleAd'),
         primary: true,
         onClick: () => {
           void yandex.showRewarded().then((ok) => {
             if (!ok) return;
             doubleRewards(reward);
             overlay.showSimple({
-              title: 'Награда удвоена',
-              subtitle: `Итог: +${reward.blue * 2} СЭ.`,
-              buttons: [{ label: 'В меню', primary: true, onClick: () => restart() }],
+              title: t('ui.defeat.doubledTitle'),
+              subtitle: t('ui.defeat.doubledSubtitle', { blue: reward.blue * 2 }),
+              buttons: [{ label: t('ui.common.toMenu'), primary: true, onClick: () => restart() }],
             });
           });
         },
       },
-      { label: 'В меню', onClick: () => restart() },
+      { label: t('ui.common.toMenu'), onClick: () => restart() },
     ],
   });
 }
