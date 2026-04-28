@@ -537,6 +537,277 @@ body {
   margin-top: 20px;
   flex-wrap: wrap;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SELECT POWERUP overlay (Reaper-Hunt-inspired card draft).
+ *
+ * The overlay (#overlay) becomes a full-screen vignette stage when the
+ * `cards-mode` class is on it. Cards are 3:4 vertical panels with a neon
+ * frame in the rarity color, a category glyph at the top, the name in
+ * small caps, a divider, and a bullet list of effects. Numeric tokens
+ * inside the effects get wrapped in `.card-rh-val` chips so they pop.
+ *
+ * The bottom strip mirrors the screenshot's "Реролл / Забанить / Пропустить"
+ * row — we reuse it for our reroll buttons (gold + ad) since those are
+ * the actual mechanics in this game.
+ * ────────────────────────────────────────────────────────────────────── */
+
+#overlay.cards-mode {
+  background:
+    radial-gradient(ellipse at center, rgba(20, 18, 32, 0.65), rgba(8, 6, 14, 0.9) 70%),
+    linear-gradient(180deg, rgba(8, 6, 14, 0.9), rgba(8, 6, 14, 0.95));
+  align-items: center;
+  justify-content: center;
+}
+
+.cards-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 32px;
+  max-width: min(96vw, 960px);
+  width: 100%;
+}
+
+.cards-stage-title {
+  margin: 0;
+  color: #f6f0e0;
+  letter-spacing: 6px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 22px;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 16px rgba(125, 249, 255, 0.18),
+    -1px -1px 0 #141018, 2px 2px 0 #141018;
+  position: relative;
+  padding: 6px 28px;
+}
+.cards-stage-title::before,
+.cards-stage-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+.cards-stage-title::before { right: 100%; }
+.cards-stage-title::after { left: 100%; }
+
+.cards-stage-subtitle {
+  margin: 0 0 4px;
+  color: var(--fg-dim);
+  font-size: 16px;
+  font-family: 'VT323', monospace;
+  letter-spacing: 0.5px;
+}
+
+.cards-empty {
+  color: var(--fg-dim);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  padding: 32px;
+}
+
+.cards-rh {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 240px));
+  gap: 18px;
+  align-items: stretch;
+}
+@media (max-width: 720px) {
+  .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* Single card. Frame is a flex column so the title / divider / effects
+ * stack with the divider taking the natural width. The card itself adds
+ * the glow and angled clip-path corners. */
+.card-rh {
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6));
+  transition: transform 120ms ease, filter 120ms ease;
+}
+.card-rh:hover {
+  transform: translateY(-6px) scale(1.03);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7));
+}
+
+.card-rh-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px 14px 18px;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(34, 30, 50, 0.95), rgba(18, 14, 28, 0.95));
+  border: 2px solid var(--rh-color, #888);
+  /* Cut top corners so the silhouette matches the reference. */
+  clip-path: polygon(
+    14px 0, calc(100% - 14px) 0, 100% 14px,
+    100% 100%, 0 100%, 0 14px
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.18)) inset,
+    0 0 24px var(--rh-glow, rgba(255, 255, 255, 0.18));
+}
+
+/* Per-rarity glow + border colors. */
+.card-rh.rarity-common  { --rh-color: #6d8a64; --rh-glow: rgba(132, 220, 100, 0.22); }
+.card-rh.rarity-rare    { --rh-color: #6ec1ff; --rh-glow: rgba(110, 193, 255, 0.28); }
+.card-rh.rarity-epic    { --rh-color: #c084fc; --rh-glow: rgba(192, 132, 252, 0.32); }
+.card-rh.rarity-legendary {
+  --rh-color: #ffb86b;
+  --rh-glow: rgba(255, 184, 107, 0.45);
+}
+
+/* Animated legendary border-shimmer. */
+.card-rh.rarity-legendary .card-rh-frame {
+  animation: rh-leg-pulse 2.4s ease-in-out infinite;
+}
+@keyframes rh-leg-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 0 22px rgba(255, 184, 107, 0.32) inset, 0 0 24px rgba(255, 184, 107, 0.45); }
+  50%      { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.10) inset, 0 0 32px rgba(255, 184, 107, 0.55) inset, 0 0 36px rgba(255, 184, 107, 0.70); }
+}
+
+/* Top: glyph badge centered. */
+.card-rh-top {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+.card-rh-glyph {
+  width: 44px;
+  height: 44px;
+  color: var(--rh-color);
+  filter: drop-shadow(0 0 6px var(--rh-glow));
+}
+.card-rh-glyph svg { width: 100%; height: 100%; }
+
+.card-rh-tag {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--rh-color);
+  text-shadow: 0 0 6px var(--rh-glow);
+}
+
+.card-rh-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-align: center;
+  color: #f6f0e0;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 #141018, 0 0 6px var(--rh-glow);
+  padding: 0 4px;
+  /* Allow up to 3 lines so longer card names like "Великий рецепт
+   * Саламандры" don't get clipped or truncated. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-rh-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rh-color), transparent);
+  opacity: 0.55;
+  margin: 4px 8px 6px;
+}
+
+.card-rh-effects {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #d8d2c0;
+  text-align: center;
+  flex: 1 1 auto;
+}
+.card-rh-effects li {
+  line-height: 1.25;
+}
+.card-rh-val {
+  display: inline-block;
+  color: var(--rh-color);
+  font-weight: bold;
+  text-shadow: 0 0 4px var(--rh-glow);
+  margin-right: 3px;
+}
+
+.card-rh-synergy {
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  text-align: center;
+  border-top: 1px dashed rgba(125, 249, 255, 0.45);
+  margin: 4px 6px 0;
+  padding-top: 4px;
+}
+
+/* Bottom action strip. */
+.cards-action-row {
+  display: flex;
+  gap: 22px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.cards-action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px;
+  background: rgba(20, 18, 32, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  color: #f6f0e0;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.cards-action-pill:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.cards-action-pill:disabled { opacity: 0.45; cursor: not-allowed; }
+.cards-action-pill.accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cards-action-counter {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  /* Diamond-ish chip — slight rotation echoes the reference shape. */
+  transform: skewX(-12deg);
+}
+.cards-action-counter::after { content: ''; }
+
 .menu-buttons button {
   flex: 1 1 180px;
   padding: 12px 16px;
