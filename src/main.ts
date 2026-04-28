@@ -401,8 +401,14 @@ function showGameOver(): void {
   audio.playSfx('runDefeat');
   audio.playMusic('menu');
   tutorial.stop();
-  const reward = awardRunEssence(false);
   const wave = state.waveState.currentIndex + 1;
+  // FTUE: clearing wave 5 satisfies the tutorial even if the player
+  // dies on a later wave — otherwise the entire script would replay on
+  // their next run, since `tutorial.start()` resets the per-run state.
+  if (!meta.tutorialDone && wave >= 5) {
+    meta.tutorialDone = true;
+  }
+  const reward = awardRunEssence(false);
   overlay.showSimple({
     title: 'Манекен пал',
     subtitle: rewardBreakdown(reward, state.totalKills, wave, false) + ' • Улучши манекена и попробуй снова.',
