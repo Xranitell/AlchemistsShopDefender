@@ -67,13 +67,22 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
 }
 
 export function towerStats(state: GameState, t: Tower) {
-  const damage = t.kind.damage *
+  let damage = t.kind.damage *
     Math.pow(TOWER_UPGRADE_DAMAGE_MULT, t.level - 1) *
     state.modifiers.towerDamageMult;
-  const baseRate = t.kind.fireRate *
+  let baseRate = t.kind.fireRate *
     Math.pow(TOWER_UPGRADE_RATE_MULT, t.level - 1) *
     state.modifiers.towerFireRateMult;
-  const baseRange = t.kind.range * state.modifiers.towerRangeMult;
+  let baseRange = t.kind.range * state.modifiers.towerRangeMult;
+
+  // GDD §7.4: rune-point kind buffs the tower placed on it.
+  const rp = state.runePoints.find((r) => r.id === t.runePointId);
+  if (rp) {
+    const bonus = runeKindMultipliers(rp, state.worldTime);
+    damage *= bonus.damage;
+    baseRate *= bonus.rate;
+    baseRange *= bonus.range;
+  }
 
   // Сторожевой фонарь aura: each watch tower whose range covers `t` adds its
   // multipliers. Aura towers don't buff themselves and don't stack with copies
@@ -89,6 +98,38 @@ export function towerStats(state: GameState, t: Tower) {
     rangeMult *= WATCH_TOWER_AURA.rangeMult;
   }
   return { damage, rate: baseRate * rateMult, range: baseRange * rangeMult };
+}
+
+/** Lookup the multipliers granted by a rune point's kind. The `unstable`
+ *  kind cycles three buffs every `UNSTABLE_PERIOD` seconds. Other kinds
+ *  return a fixed multiplier triple. */
+export function runeKindMultipliers(
+  rp: { kind: import('./state').RunePointKind; unstablePhase: number },
+  worldTime: number,
+): { damage: number; rate: number; range: number } {
+  switch (rp.kind) {
+    case 'reinforced':
+      return { damage: 1.20, rate: 1.0, range: 1.0 };
+    case 'resonant':
+      // Range buff so reaction-prone elemental towers reach further; the
+      // reaction damage bonus is handled in reactions.ts.
+      return { damage: 1.0, rate: 1.0, range: 1.10 };
+    case 'defensive':
+      // Defensive runes trade attack for area control: slightly slower but
+      // bigger range so towers cover more of the path.
+      return { damage: 1.0, rate: 0.95, range: 1.20 };
+    case 'unstable': {
+      // 3 buffs of 4s each → 12s cycle. Each window favours one stat.
+      const period = 12;
+      const t = ((worldTime + rp.unstablePhase) % period + period) % period;
+      if (t < 4) return { damage: 1.40, rate: 1.0, range: 1.0 };
+      if (t < 8) return { damage: 1.0, rate: 1.40, range: 1.0 };
+      return { damage: 1.0, rate: 1.0, range: 1.30 };
+    }
+    case 'normal':
+    default:
+      return { damage: 1, rate: 1, range: 1 };
+  }
 }
 
 function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | null {

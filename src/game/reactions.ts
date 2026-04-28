@@ -4,6 +4,20 @@ import { newId, spawnFloatingText } from './state';
 import type { Element } from './types';
 import { addOverload } from './enemy';
 
+/** GDD §7.4: a reaction occurring within `RESONANT_RANGE` of any active
+ *  resonant rune deals +25% damage. Multipliers stack per rune in range. */
+const RESONANT_RANGE = 200;
+const RESONANT_BONUS = 0.25;
+function resonantBonus(state: GameState, pos: Vec2): number {
+  let mult = 1;
+  for (const rp of state.runePoints) {
+    if (rp.kind !== 'resonant' || !rp.active) continue;
+    if (dist(rp.pos, pos) > RESONANT_RANGE) continue;
+    mult += RESONANT_BONUS;
+  }
+  return mult;
+}
+
 export interface ReactionPool {
   id: number;
   kind:
@@ -159,7 +173,7 @@ function triggerSparkCascade(state: GameState, source: Enemy): void {
     .filter((x) => x.d < 180)
     .sort((a, b) => a.d - b.d)
     .slice(0, 3);
-  const dmg = 14 * state.modifiers.reactionDamageMult;
+  const dmg = 14 * state.modifiers.reactionDamageMult * resonantBonus(state, source.pos);
   for (const c of candidates) {
     c.e.hp -= dmg;
     c.e.hitFlash = Math.max(c.e.hitFlash, 0.1);
@@ -178,7 +192,7 @@ export function updateReactionPools(state: GameState, dt: number): void {
       const d = dist(rp.pos, e.pos);
       if (d > rp.radius + e.kind.radius) continue;
 
-      const dmgMult = state.modifiers.reactionDamageMult;
+      const dmgMult = state.modifiers.reactionDamageMult * resonantBonus(state, rp.pos);
       switch (rp.kind) {
         case 'caustic_vapor':
           e.hp -= 6 * dt * dmgMult;

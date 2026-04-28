@@ -47,6 +47,29 @@ export function buildRunePoints(): RunePoint[] {
     Math.PI,                        // 6  left        (active)
     -Math.PI / 2 - Math.PI / 4,     // 7  top-left    (locked)
   ];
+  // GDD §7.4: each rune point has a kind that buffs whatever tower is placed
+  // on it. The default arena layout mixes one of every kind across both the
+  // four starting points and the four meta-unlocked points so the player
+  // sees variety from wave 1 and gets new types as they progress.
+  // Index → kind:
+  //   0 (top, active)    : reinforced
+  //   1 (top-r, locked)  : unstable
+  //   2 (right, active)  : resonant
+  //   3 (br, locked)     : defensive
+  //   4 (bottom, active) : normal
+  //   5 (bl, locked)     : reinforced
+  //   6 (left, active)   : defensive
+  //   7 (tl, locked)     : resonant
+  const KIND_BY_INDEX: import('./state').RunePointKind[] = [
+    'reinforced',
+    'unstable',
+    'resonant',
+    'defensive',
+    'normal',
+    'reinforced',
+    'defensive',
+    'resonant',
+  ];
   // Indices that start active. Other indices are revealed by meta upgrades —
   // `runePointUnlock` effects use 1-based slot numbers matching this list:
   // unlock 1 → index 1, unlock 2 → index 3, unlock 3 → index 5, unlock 4 → 7.
@@ -58,6 +81,9 @@ export function buildRunePoints(): RunePoint[] {
       pos: { x: cx + Math.cos(angle) * rx, y: cy + Math.sin(angle) * ry },
       active: startActive.has(i),
       towerId: null,
+      kind: KIND_BY_INDEX[i] ?? 'normal',
+      // Stagger phase so neighbouring unstable runes don't pulse in lockstep.
+      unstablePhase: i * 0.7,
     });
   }
   return points;

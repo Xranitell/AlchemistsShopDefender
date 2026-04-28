@@ -74,11 +74,25 @@ export interface Tower {
   targetingMode: TargetingMode;
 }
 
+/** Type of a rune point (GDD §7.4). Each kind grants a distinct in-run
+ *  bonus to whatever tower is placed on it. `unstable` rotates between
+ *  three short buffs every few seconds so its tower always feels alive
+ *  but never gives a permanent advantage. */
+export type RunePointKind =
+  | 'normal'
+  | 'reinforced'
+  | 'unstable'
+  | 'resonant'
+  | 'defensive';
+
 export interface RunePoint {
   id: number;
   pos: Vec2;
   active: boolean; // unlocked by meta-progression (always true in MVP)
   towerId: number | null;
+  kind: RunePointKind;
+  /** Phase used by `unstable` rune points to time their rotating buff. */
+  unstablePhase: number;
 }
 
 export type ProjectileKind = 'potion' | 'tower';
