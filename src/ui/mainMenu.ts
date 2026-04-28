@@ -24,8 +24,8 @@ export class MainMenu {
     const topBar = document.createElement('div');
     topBar.className = 'mm-top-bar';
     topBar.innerHTML = `
-      <span class="mm-currency gold" title="Синяя эссенция"><span class="mm-res-icon coin"></span><strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency essence" title="Древняя эссенция"><span class="mm-res-icon essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="mm-currency blue-essence" title="Синяя эссенция"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
+      <span class="mm-currency ancient-essence" title="Древняя эссенция"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
       <span class="mm-currency epic-key" title="Эпический ключ"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
       <span class="mm-currency ancient-key" title="Древний ключ"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
     `;
