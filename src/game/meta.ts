@@ -137,7 +137,8 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
       m.reactionDamageMult *= e.value;
       break;
     case 'catalystSlot':
-      // Reserved for future catalyst system
+      // GDD §7.5: each allocation grants one extra orbital catalyst slot.
+      state.catalystSlots += e.value;
       break;
 
     // Survival

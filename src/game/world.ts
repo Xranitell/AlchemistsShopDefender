@@ -167,5 +167,9 @@ export function buildInitialState(
     auraModuleId: 'magnet_res',
     transmuteTimer: 0,
     transmuteGoldMult: 1,
+    // Default catalyst capacity per GDD §7.5: 2 slots, expanded by meta and
+    // Crown of Elements legendary.
+    catalystSlots: 2,
+    equippedCatalysts: [],
   };
 }

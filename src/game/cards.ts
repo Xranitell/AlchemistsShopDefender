@@ -36,6 +36,14 @@ export function rollCardOptions(state: GameState): CardDef[] {
   // Filter out already-picked cards.
   let pool = CARDS.filter((c) => !taken.has(c.id));
 
+  // Catalyst slot cap (GDD §7.5): if the player has filled every catalyst
+  // slot, stop offering catalyst cards. The Crown of Elements legendary
+  // grants its own bonus slot when equipped, so it's still drawable until
+  // the slot count is also exceeded.
+  if (state.equippedCatalysts.length >= state.catalystSlots) {
+    pool = pool.filter((c) => c.category !== 'catalyst');
+  }
+
   // Legendary cooldown window — drop legendaries if we offered one too recently.
   const wavesSinceLegendary = currentWave - cc.lastLegendaryWave;
   if (wavesSinceLegendary < LEGENDARY_WAVE_COOLDOWN) {
@@ -154,6 +162,14 @@ export function applyCard(state: GameState, card: CardDef): void {
   const m = state.modifiers;
   const mq = state.mannequin;
 
+  // Track equipped catalysts so the renderer can orbit icons around the
+  // Mannequin and so the draft pool can stop offering them once the slot
+  // cap is reached. Crown of Elements is itself a catalyst card AND grants
+  // an extra slot — that bonus is applied below once the card resolves.
+  if (card.category === 'catalyst' && !state.equippedCatalysts.includes(card.id)) {
+    state.equippedCatalysts.push(card.id);
+  }
+
   switch (card.id) {
     case 'heavy_brew':
       m.potionDamageMult *= 1.25;
@@ -256,9 +272,8 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'crown_of_elements':
       m.reactionDamageMult *= 1.5;
       m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
-      // The "+1 catalyst slot" sub-effect is reserved for the catalyst slot
-      // system (PR4); for now the damage + overload bonuses already make this
-      // a strong pick.
+      // GDD §8.2: Crown grants +1 catalyst slot on top of its reaction bonus.
+      state.catalystSlots += 1;
       break;
 
     default:
