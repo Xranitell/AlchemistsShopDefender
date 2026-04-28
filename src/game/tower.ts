@@ -99,7 +99,9 @@ function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | nul
           const hasDebuff = e.status.burnTime > 0
             || e.status.slowTime > 0
             || e.status.armorBreakTime > 0
-            || e.status.aetherMarkTime > 0;
+            || e.status.aetherMarkTime > 0
+            || e.status.frostMarkTime > 0
+            || e.status.poisonTime > 0;
           score = (hasDebuff ? 10000 : 0) - dist(e.pos, state.mannequin.pos);
         }
         break;

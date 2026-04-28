@@ -365,6 +365,11 @@ body {
 }
 #overlay.visible { display: grid; }
 
+/* When any full-screen overlay is visible (main menu, dailies, settings,
+ * battle pass, meta-tree, victory/gameover, card-pick), hide the in-game
+ * HUD so the HP bar / wave badge / etc. don't bleed through the menu. */
+#app:has(#overlay.visible) #hud { display: none; }
+
 .panel {
   background:
     linear-gradient(180deg, rgba(55, 65, 92, 0.98), rgba(23, 29, 47, 0.98)),
@@ -683,12 +688,18 @@ body {
   margin-bottom: 6px;
 }
 .meta-tree-header h2 { margin: 0; }
+.meta-tree-body {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: stretch;
+}
 .meta-tree-canvas {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   background: radial-gradient(ellipse at center, #14101f 0%, #0a0810 70%, #060509 100%);
   border: 1px solid var(--bg-frame-mid);
   border-radius: 4px;
-  margin-bottom: 12px;
   overflow: hidden;
 }
 .meta-tree-svg {
@@ -696,6 +707,96 @@ body {
   height: 70vh;
   max-height: 720px;
   display: block;
+}
+/* Right side panel with the currently-selected node's details. Always
+   visible (even on touch) so the player has a stable place to read what
+   each node does and to tap "Изучить" / "Вернуть". */
+.meta-tree-side {
+  flex: 0 0 280px;
+  background: rgba(10, 8, 16, 0.85);
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg);
+}
+.meta-side-hint {
+  color: var(--fg-dim);
+  font-size: 14px;
+  font-style: italic;
+}
+.meta-side-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+.meta-side-meta {
+  color: var(--fg-dim);
+  font-size: 13px;
+}
+.meta-side-desc {
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.4;
+  min-height: 3em;
+}
+.meta-side-cost {
+  color: #7df9ff;
+  font-size: 14px;
+}
+.meta-side-cost strong { color: #ffd166; font-weight: normal; }
+.meta-side-status { font-size: 13px; }
+.meta-side-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+}
+.meta-side-learn,
+.meta-side-refund {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  border: 2px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(40, 50, 80, 0.9), rgba(20, 24, 40, 0.9));
+  color: var(--fg);
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #07080e;
+}
+.meta-side-learn { color: var(--gold); border-color: var(--gold); }
+.meta-side-learn:disabled {
+  color: var(--fg-dim);
+  border-color: var(--bg-frame-mid);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.meta-side-learn:not(:disabled):hover { background: rgba(255, 209, 102, 0.18); }
+.meta-side-refund { color: #d24f1c; border-color: #4a2820; }
+.meta-side-refund:hover { background: rgba(210, 79, 28, 0.18); }
+.meta-node-selection {
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: meta-node-selection-pulse 1.4s ease-in-out infinite;
+}
+@keyframes meta-node-selection-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.4; }
+}
+.meta-node.selected circle:nth-child(2) {
+  filter: brightness(1.3) drop-shadow(0 0 5px currentColor);
+}
+@media (max-width: 900px) {
+  .meta-tree-body { flex-direction: column; }
+  .meta-tree-side { flex: 0 0 auto; }
+  .meta-tree-svg { height: 55vh; }
 }
 .meta-edge {
   stroke: #2a2438;
@@ -801,22 +902,29 @@ body {
     inset 0 -3px 0 rgba(0,0,0,0.45);
   text-shadow: 2px 2px 0 #07080e;
 }
-.mm-currency.gold strong { color: var(--gold); }
-.mm-currency.essence strong { color: #7df9ff; }
+.mm-currency.blue-essence strong { color: #7df9ff; }
+.mm-currency.ancient-essence strong { color: #ffd166; }
 .mm-currency.keys strong { color: #c084fc; }
 .mm-res-icon { position: relative; display: inline-block; width: 22px; height: 22px; image-rendering: pixelated; }
-.mm-res-icon.coin {
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 28%, #fff1a8 0 14%, #ffd166 15% 48%, #c9941a 49% 72%, #7a5b14 73%);
-  box-shadow: inset -2px -2px 0 #7a5b14, 0 0 8px rgba(255, 209, 102, 0.28);
-}
-.mm-res-icon.essence {
+/* Blue Essence — cyan crystal vial. Replaces the misleading "coin" icon
+   that used to be shown in the main-menu top bar. */
+.mm-res-icon.blue-essence {
   width: 17px;
   height: 23px;
-  border: 3px solid #3a1c5e;
+  border: 3px solid #1a2845;
   border-radius: 8px 8px 10px 10px;
-  background: linear-gradient(180deg, #e6c2ff, #7df9ff 38%, #3a86b5 100%);
-  box-shadow: 0 -5px 0 -2px #bdf6ff, 0 0 9px rgba(125, 249, 255, 0.35);
+  background: linear-gradient(180deg, #e0faff, #7df9ff 38%, #2c6cd6 100%);
+  box-shadow: 0 -5px 0 -2px #bdf6ff, 0 0 9px rgba(125, 249, 255, 0.45);
+}
+/* Ancient Essence — golden / amber crystal. Used to be the cyan "essence"
+   icon, which read identically to the blue one. */
+.mm-res-icon.ancient-essence {
+  width: 17px;
+  height: 23px;
+  border: 3px solid #4a2a08;
+  border-radius: 8px 8px 10px 10px;
+  background: linear-gradient(180deg, #fff1a8, #ffd166 38%, #a86a14 100%);
+  box-shadow: 0 -5px 0 -2px #ffe9a8, 0 0 9px rgba(255, 209, 102, 0.45);
 }
 .mm-res-icon.key::before {
   content: '';
