@@ -996,3 +996,300 @@ body {
   width: 100%;
 }
 .settings-reset-btn:hover { background: rgba(210, 79, 28, 0.15); }
+
+/* ============ Main menu illustration ============ */
+.mm-illustration {
+  width: min(90%, 440px);
+  aspect-ratio: 11/9;
+  background: linear-gradient(180deg, #110a1f 0%, #1a1229 100%);
+  border: 2px solid var(--bg-frame-mid);
+  border-radius: 6px;
+  padding: 6px;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6);
+}
+.mm-illustration svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Extra currencies shown at top of the menu */
+.mm-currency.epic-key strong { color: #c084fc; }
+.mm-currency.ancient-key strong { color: #ffd166; }
+
+/* ============ Difficulty select overlay ============ */
+.difficulty-panel {
+  max-width: 860px;
+  width: min(96vw, 860px);
+  padding: 20px 24px;
+}
+.difficulty-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.difficulty-header h2 {
+  grid-row: 1;
+  grid-column: 1;
+  margin: 0;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+.difficulty-header .overlay-close { grid-row: 1; grid-column: 2; }
+.difficulty-subtitle {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  margin: 4px 0 0 0;
+  color: var(--fg-dim);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+}
+.difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.difficulty-card {
+  position: relative;
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  min-height: 240px;
+  border-radius: 8px;
+  border: 2px solid var(--dif-color, var(--bg-frame-mid));
+  background: linear-gradient(180deg, rgba(40, 22, 60, 0.7), rgba(10, 5, 20, 0.9));
+  color: var(--fg);
+  text-align: center;
+  align-items: center;
+  justify-content: flex-start;
+  transition: transform 120ms, box-shadow 120ms, border-color 120ms;
+}
+.difficulty-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px -8px var(--dif-color);
+}
+.difficulty-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+.difficulty-label {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dif-color);
+  padding: 3px 8px;
+  border: 1px solid var(--dif-color);
+  border-radius: 3px;
+  margin-top: -22px;
+  background: #0d0812;
+}
+.difficulty-icon {
+  font-size: 52px;
+  line-height: 1;
+  margin: 8px 0;
+  color: var(--dif-color);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--dif-color) 50%, transparent);
+}
+.difficulty-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  color: var(--fg);
+}
+.difficulty-flavor {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: var(--fg-dim);
+  line-height: 1.25;
+  min-height: 38px;
+}
+.difficulty-cost {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--dif-color) 40%, transparent);
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+}
+.difficulty-cost .key-count {
+  color: var(--dif-color);
+  font-weight: bold;
+}
+.difficulty-lock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: #ff6a3d;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* ============ Modifier preview popup ============ */
+.modifier-preview-panel {
+  max-width: 520px;
+  width: min(94vw, 520px);
+  border: 2px solid var(--dif-color, var(--accent));
+  box-shadow: 0 0 36px color-mix(in srgb, var(--dif-color, var(--accent)) 35%, transparent);
+}
+.mp-header h2 {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 15px;
+  color: var(--dif-color);
+  margin: 0 0 4px 0;
+  letter-spacing: 1px;
+}
+.mp-subtitle {
+  color: var(--fg-dim);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  margin: 0 0 14px 0;
+}
+.mp-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.mp-stat {
+  display: grid;
+  grid-template-columns: 28px 100px 1fr 60px;
+  align-items: center;
+  gap: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+}
+.mp-stat-icon { font-size: 20px; }
+.mp-stat-bar {
+  position: relative;
+  height: 14px;
+  background: #1a1229;
+  border: 1px solid var(--bg-frame-mid);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.mp-stat-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  transition: width 200ms;
+}
+.mp-stat-mark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+}
+.mp-stat-value.up { color: #ff6a3d; font-weight: bold; }
+.mp-stat-value.down { color: #7df9ff; }
+
+.mp-lines {
+  margin: 0 0 14px 0;
+  padding-left: 20px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg);
+  line-height: 1.45;
+}
+.mp-lines li::marker { color: var(--dif-color); }
+
+.mp-warn {
+  padding: 8px 12px;
+  border-left: 3px solid var(--dif-color);
+  background: rgba(0, 0, 0, 0.3);
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: var(--fg-dim);
+  margin-bottom: 14px;
+}
+.mp-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.mp-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border: 2px solid var(--bg-frame-mid);
+  color: var(--fg);
+}
+.mp-btn.mp-cancel:hover { border-color: #ff6a3d; color: #ff6a3d; }
+.mp-btn.mp-confirm {
+  border-color: var(--dif-color);
+  color: var(--dif-color);
+  background: color-mix(in srgb, var(--dif-color) 14%, transparent);
+}
+.mp-btn.mp-confirm:hover {
+  background: color-mix(in srgb, var(--dif-color) 28%, transparent);
+}
+
+/* ============ HUD difficulty ribbon ============ */
+.hud-wave-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.hud-difficulty-badge {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: rgba(10, 5, 20, 0.85);
+  text-transform: uppercase;
+  text-shadow: 0 0 6px currentColor;
+}
+
+/* ============ Battle Pass polish ============ */
+.bp-panel {
+  max-width: 820px;
+  width: min(96vw, 820px);
+}
+.bp-header h2 {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+
+/* ============ Daily rewards polish ============ */
+.daily-cell {
+  background: linear-gradient(180deg, #1a1229 0%, #0d0812 100%);
+  position: relative;
+  overflow: hidden;
+}
+.daily-cell.today {
+  box-shadow: 0 0 16px rgba(255, 215, 90, 0.35);
+}
+.daily-cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%);
+}

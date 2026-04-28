@@ -4,6 +4,10 @@ export interface MetaSave {
   blueEssence: number;
   ancientEssence: number;
   keys: number;
+  /** Unlocks Epic difficulty — one consumed per run. */
+  epicKeys: number;
+  /** Unlocks Ancient difficulty — one consumed per run. */
+  ancientKeys: number;
   purchased: string[];
   bestWave: number;
   totalRuns: number;
@@ -27,6 +31,10 @@ export function newMetaSave(): MetaSave {
     blueEssence: 0,
     ancientEssence: 0,
     keys: 0,
+    // Give the player 1 of each at the very start so the new difficulty
+    // modes are reachable without waiting for shop progression.
+    epicKeys: 1,
+    ancientKeys: 1,
     purchased: [],
     bestWave: 0,
     totalRuns: 0,
@@ -54,6 +62,8 @@ export function loadMeta(): MetaSave {
       blueEssence: data.blueEssence ?? 0,
       ancientEssence: data.ancientEssence ?? 0,
       keys: data.keys ?? 0,
+      epicKeys: data.epicKeys ?? 1,
+      ancientKeys: data.ancientKeys ?? 1,
       purchased: Array.isArray(data.purchased) ? data.purchased : [],
       bestWave: data.bestWave ?? 0,
       totalRuns: data.totalRuns ?? 0,

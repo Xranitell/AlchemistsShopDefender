@@ -207,6 +207,16 @@ export function applyDamageToEnemy(
   rawDamage: number,
   element: Projectile['element'],
 ): void {
+  // Difficulty abilities:
+  // One-hit shield absorbs the first hit completely and breaks.
+  if (e.shieldCharges > 0) {
+    e.shieldCharges -= 1;
+    e.hitFlash = 0.18;
+    // Spawn a small visual cue via floating text so the player reads it.
+    spawnFloatingText(state, 'Щит!', e.pos, '#ffd166');
+    return;
+  }
+
   const armor = e.kind.armor * e.status.armorBreakFactor;
   let dmg = Math.max(1, rawDamage * (1 - armor));
 
@@ -217,6 +227,12 @@ export function applyDamageToEnemy(
 
   e.hp -= dmg;
   e.hitFlash = 0.12;
+
+  // Dash-back: on a successful hit push the enemy away from the hero for
+  // a brief period so the projectile knocks them back slightly.
+  if (e.abilities.includes('dash_back_on_hit')) {
+    e.dashBackTimer = Math.max(e.dashBackTimer, 0.25);
+  }
 
   // Check elemental reactions before applying new status (order matters).
   checkElementalReaction(state, e, element);

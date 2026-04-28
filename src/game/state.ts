@@ -3,6 +3,7 @@ import { Rng } from '../engine/rng';
 import type { CardDef, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
 import { newStatus } from './types';
 import type { ReactionPool } from './reactions';
+import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
 
 export type Phase =
   | 'menu'
@@ -37,6 +38,18 @@ export interface Enemy {
   status: StatusEffects;
   hitFlash: number;
   goldPending: number;
+  /** Extra per-enemy behaviour attached by the current dungeon difficulty. */
+  abilities: EnemyAbility[];
+  /** Remaining "one-hit shield" charges. Attached by ancient/epic modes. */
+  shieldCharges: number;
+  /** Seconds left of the backstep impulse; while >0 movement is pushed
+   *  away from the hero instead of toward them. */
+  dashBackTimer: number;
+  /** Generation counter — used so split-on-death only chains twice. */
+  splitGeneration: number;
+  /** Multiplier applied to the damage dealt to this enemy. Goes to <1 only
+   *  while the one-hit shield is absorbing, currently always 0 or 1. */
+  damageTaken: number;
 }
 
 export interface Tower {
@@ -223,6 +236,14 @@ export interface GameState {
   metaAutoRepairCooldown: number;
   metaPotionAimBonus: number;
   metaAuraRadiusMult: number;
+  // --- Difficulty / dungeon mode ---
+  /** Which dungeon difficulty was picked for this run. */
+  difficulty: DifficultyMode;
+  /** The modifier bundle for the active difficulty, already scaled up for
+   *  the current endless loop count. */
+  difficultyModifier: DifficultyModifier;
+  /** In endless mode, how many full wave-lists we have already completed. */
+  endlessLoop: number;
 }
 
 export function newId(state: GameState): number {

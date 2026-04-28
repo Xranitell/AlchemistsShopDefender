@@ -14,6 +14,13 @@ import {
 import { COLORS } from '../render/palette';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS } from '../render/particles';
+import type { DifficultyMode } from '../data/difficulty';
+import { DIFFICULTY_MODES } from '../data/difficulty';
+
+function difficultyAuraColor(mode: DifficultyMode): string | null {
+  if (mode === 'normal') return null;
+  return DIFFICULTY_MODES[mode].color;
+}
 
 const SPRITE_SCALE = 2;
 
@@ -263,9 +270,41 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
 
 function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
+  const difAura = difficultyAuraColor(state.difficulty);
   for (const e of state.enemies) {
     // Drop shadow
     drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
+
+    // Difficulty aura — a soft tinted ellipse under the enemy so buffed
+    // dungeons read at a glance. Pulses slightly with worldTime.
+    if (difAura) {
+      const pulse = 0.75 + Math.sin(state.worldTime * 3 + e.id) * 0.15;
+      ctx.save();
+      ctx.globalAlpha = 0.35 * pulse;
+      ctx.fillStyle = difAura;
+      ctx.beginPath();
+      ctx.ellipse(
+        e.pos.x,
+        e.pos.y + e.kind.radius * 0.65,
+        e.kind.radius * 1.05,
+        e.kind.radius * 0.45,
+        0, 0, Math.PI * 2,
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Shield glow for enemies that still have an unbroken one-hit shield.
+    if (e.shieldCharges > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#ffd166';
+      ctx.globalAlpha = 0.8;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Choose sprite based on enemy kind.
     let sprite = s.slime;
