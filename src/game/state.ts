@@ -22,6 +22,10 @@ export interface Mannequin {
   potionTimer: number;
   baseLootRadius: number;
   damageFlash: number;
+  /** Seconds remaining on the throw-pose animation. Counts down to 0. */
+  throwAnim: number;
+  /** Screen-space offset direction of the last throw (for arm-aim + lean). */
+  throwDir: Vec2;
 }
 
 export interface Enemy {
@@ -72,6 +76,15 @@ export interface Projectile {
   /** Whether potion should fire a secondary mini-explosion shortly after. */
   echoExplosion: boolean;
   bonusFromManualAim: boolean;
+  /** Parabolic-arc fields (only populated for thrown potions). */
+  arc?: {
+    start: Vec2;
+    target: Vec2;
+    t: number;          // 0..1 progress along the ground-plane path
+    duration: number;   // total flight time in seconds
+    peakHeight: number; // visual apex above the ground plane (pixels)
+    height: number;     // current visual height (z), updated each frame
+  };
 }
 
 export interface FirePool {
@@ -194,6 +207,9 @@ export interface GameState {
   overloadRequested: boolean;
   /** Active rune point being targeted in tower-shop UI. */
   activeRunePoint: number | null;
+  /** Seconds remaining on the magnet pulse — while >0 all gold pickups are
+   * yanked hard toward the hero regardless of loot radius. */
+  magnetTimer: number;
   /** Time accumulator (debug + status effects). */
   worldTime: number;
   nextEntityId: number;

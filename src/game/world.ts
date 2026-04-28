@@ -13,12 +13,14 @@ const ARENA_W = 1280;
 const ARENA_H = 720;
 
 export function buildEntrances(): Entrance[] {
-  // Top, right, bottom, left.
+  // Enemies spawn just off-screen (beyond the canvas edges) and walk onto
+  // the arena floor. Order: top, right, bottom, left.
+  const OFFSCREEN = 30;
   return [
-    { pos: v2(ARENA_W / 2, 30), active: false },
-    { pos: v2(ARENA_W - 30, ARENA_H / 2), active: false },
-    { pos: v2(ARENA_W / 2, ARENA_H - 30), active: false },
-    { pos: v2(30, ARENA_H / 2), active: false },
+    { pos: v2(ARENA_W / 2, -OFFSCREEN), active: false },
+    { pos: v2(ARENA_W + OFFSCREEN, ARENA_H / 2), active: false },
+    { pos: v2(ARENA_W / 2, ARENA_H + OFFSCREEN), active: false },
+    { pos: v2(-OFFSCREEN, ARENA_H / 2), active: false },
   ];
 }
 
@@ -53,6 +55,8 @@ export function buildMannequin(): Mannequin {
     potionTimer: 0,
     baseLootRadius: 110,
     damageFlash: 0,
+    throwAnim: 0,
+    throwDir: v2(0, -1),
   };
 }
 
@@ -98,6 +102,7 @@ export function buildInitialState(seed?: number): GameState {
     manualFireRequested: false,
     overloadRequested: false,
     activeRunePoint: null,
+    magnetTimer: 0,
     worldTime: 0,
     nextEntityId: 1,
     metaTowerDiscount: 0,

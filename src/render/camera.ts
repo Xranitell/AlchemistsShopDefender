@@ -1,11 +1,12 @@
-// Isometric camera: rotates the world 45 degrees and compresses Y to create
-// a classic isometric top-down view like Alien Shooter / Diablo.
-// The game logic stays in flat 2D; this transform is only applied during rendering.
-
-const ISO_ANGLE = Math.PI / 4; // 45 degrees
-const ISO_Y_SCALE = 0.55; // Y compression for depth effect
-const COS = Math.cos(ISO_ANGLE);
-const SIN = Math.sin(ISO_ANGLE);
+// Flat 2D top-down camera (no rotation, no Y compression).
+//
+// The game art is pixel-art drawn in a 2.5D style (walls/buildings show a
+// visible top face + front face, but the camera itself is orthographic and
+// looks straight down at the floor). Older revisions used to apply a runtime
+// 45° + Y-scale isometric transform, but that made the scene feel 3D-extruded
+// along Z. All rendering code still goes through `applyIsoTransform` /
+// `screenToWorld` so the call-sites stay stable even though the transform is
+// now identity (with optional uniform zoom around the canvas centre).
 
 export interface Camera {
   cx: number;
@@ -17,31 +18,22 @@ export function applyIsoTransform(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
 ): void {
+  if (camera.scale === 1) return;
   ctx.translate(camera.cx, camera.cy);
   ctx.scale(camera.scale, camera.scale);
-  // Rotate 45 degrees and compress Y
-  ctx.transform(COS, SIN * ISO_Y_SCALE, -SIN, COS * ISO_Y_SCALE, 0, 0);
-  ctx.translate(-camera.cx / camera.scale, -camera.cy / camera.scale);
+  ctx.translate(-camera.cx, -camera.cy);
 }
 
-// Convert screen coordinates (mouse position) to world coordinates
-// by inverting the isometric transform.
 export function screenToWorld(
   sx: number,
   sy: number,
   camera: Camera,
 ): { x: number; y: number } {
-  // Undo translate to center
-  const dx = (sx - camera.cx) / camera.scale;
-  const dy = (sy - camera.cy) / camera.scale;
-  // Invert the rotation + y-scale matrix
-  // Forward: [COS, SIN*ISO_Y_SCALE; -SIN, COS*ISO_Y_SCALE]
-  // Determinant = COS*COS*ISO_Y_SCALE + SIN*SIN*ISO_Y_SCALE = ISO_Y_SCALE
-  const det = ISO_Y_SCALE;
-  const wx = (dy * SIN + dx * COS * ISO_Y_SCALE) / det;
-  const wy = (dy * COS - dx * SIN * ISO_Y_SCALE) / det;
+  if (camera.scale === 1) {
+    return { x: sx, y: sy };
+  }
   return {
-    x: wx + camera.cx / camera.scale,
-    y: wy + camera.cy / camera.scale,
+    x: camera.cx + (sx - camera.cx) / camera.scale,
+    y: camera.cy + (sy - camera.cy) / camera.scale,
   };
 }

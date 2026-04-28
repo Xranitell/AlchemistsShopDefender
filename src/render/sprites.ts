@@ -12,6 +12,7 @@ let _baked: Sprites | null = null;
 
 export interface Sprites {
   mannequin: BakedSprite;
+  mannequinThrow: BakedSprite;
   slime: BakedSprite;
   slimeBoss: BakedSprite;
   rat: BakedSprite;
@@ -61,54 +62,97 @@ export function getSprites(): Sprites {
 
 function bakeAll(): Sprites {
   return {
-    // Wooden mech mannequin v3: larger, more detailed with shading.
-    // Brass helmet with glowing cyan core, articulated limbs, detailed chest.
+    // Alchemist grandpa (hero). Bearded wizard with pointed hat and a green
+    // potion flask in the left hand. Drawn in a 2.5D-ish front-quarter view.
     mannequin: bakeSprite(
       {
         rows: [
-          '......BBBBBBB......',
-          '.....BgBBBBBgB.....',
-          '....BgHHHHHHHgB....',
-          '...BgHIIIIIIIHgB...',
-          '...BgHIcCCCcIHgB...',
-          '...BgHIIcwcIIHgB...',
-          '...BgHIIIIIIIHgB...',
-          '...BgiHHHHHHHigB...',
-          '....iiBHHHHHBii....',
-          '..PPPiBmMMMmBiPPP..',
-          '..PWWmMmCCCmMmWWP..',
-          '..PWWmmCcXcCmmWWP..',
-          '..PWWmmCCwCCmmWWP..',
-          '..PWWmmmCCCmmmWWP..',
-          '..PPPMMMmmmMMMPPP..',
-          '...iiBmmwwmmBii....',
-          '....bbWWWWWWbb.....',
-          '...llLLmmmmmLLll...',
-          '...llLLmm.mmLLll...',
-          '...llLLmm.mmLLll...',
-          '..bblLLmm.mmLLlbb..',
-          '..BBLLLww.wwLLLBB..',
+          '........C........',
+          '.......CcC.......',
+          '......CCCcC......',
+          '.....CCCCCCC.....',
+          '....CCCcCCCCC....',
+          '....DDDDDDDDD....',
+          '...DDDDDDDDDDD...',
+          '.....kkkkkkk.....',
+          '.....kFkkkFk.....',
+          '.....kknnkkk.....',
+          '....kkkkkkkkk....',
+          '...WWkkkkkkkWW...',
+          '...WWWWWWWWWWW...',
+          '..WWWWWWwWWWWWW..',
+          '...WWWWwwWwwWW...',
+          '...WWWWWWWWWWW...',
+          '..RRRWWWWWWWRRR..',
+          '.RRRRRRRRRRRRRRR.',
+          '.RrrrGGrrrrrrrrR.',
+          '.RrrrGgGrrrrrrrR.',
+          '.RrrrGGGrrrrrrrR.',
+          '.RRrrrrrrrrrrrRR.',
+          '..LLL.......LLL..',
         ],
         legend: {
-          B: 'brass',
-          g: 'brassGlow',
-          i: 'brassDark',
-          H: 'mechMid',
-          I: 'mechDark',
-          c: 'mechCore',
-          C: 'mechCoreHi',
-          P: 'mechIron',
-          W: 'mechIronHi',
-          m: 'mechMid',
-          M: 'mechLight',
-          w: 'mechCore',
-          X: 'brassHi',
-          l: 'mechShadow',
-          L: 'mechMid',
-          b: 'brassDark',
+          C: 'alchHat',
+          c: 'alchHatHi',
+          D: 'alchHatDark',
+          k: 'alchSkin',
+          F: 'alchSkinShadow',
+          n: 'alchSkinShadow',
+          W: 'alchBeard',
+          w: 'alchBeardShadow',
+          R: 'alchRobe',
+          r: 'alchRobeHi',
+          G: 'alchPotionG',
+          g: 'alchPotionGHi',
+          L: 'alchBoot',
         },
       },
-      { x: 9.5, y: 21 },
+      { x: 8.5, y: 22 },
+    ),
+
+    // Alchemist mid-throw frame: leans forward, arm extended without potion.
+    mannequinThrow: bakeSprite(
+      {
+        rows: [
+          '........C........',
+          '.......CcC.......',
+          '......CCCcC......',
+          '.....CCCCCCC.....',
+          '....CCCcCCCCC....',
+          '....DDDDDDDDD....',
+          '...DDDDDDDDDDD...',
+          '.....kkkkkkk.....',
+          '.....kFkkkFk.....',
+          '.....kknnkkk.....',
+          '....kkkkkkkkk....',
+          '...WWkkkkkkkWW...',
+          '...WWWWWWWWWWW...',
+          '..WWWWWWwWWWWWW..',
+          '...WWWWwwWwwWW...',
+          '...WWWWWWWWWWW...',
+          '..RRRWWWWWWWRRRk.',
+          '.RRRRRRRRRRRRRRk.',
+          '.RrrrrrrrrrrrrrR.',
+          '.RrrrrrrrrrrrrrR.',
+          '.RrrrrrrrrrrrrrR.',
+          '.RRrrrrrrrrrrrRR.',
+          '..LLL.......LLL..',
+        ],
+        legend: {
+          C: 'alchHat',
+          c: 'alchHatHi',
+          D: 'alchHatDark',
+          k: 'alchSkin',
+          F: 'alchSkinShadow',
+          n: 'alchSkinShadow',
+          W: 'alchBeard',
+          w: 'alchBeardShadow',
+          R: 'alchRobe',
+          r: 'alchRobeHi',
+          L: 'alchBoot',
+        },
+      },
+      { x: 8.5, y: 22 },
     ),
 
     slime: bakeSprite(
@@ -626,21 +670,29 @@ function bakeAll(): Sprites {
       },
     ),
 
+    // 2.5D shelf: visible top plank + front face with potion bottles, so it
+    // reads like a wooden shelf pressed against the wall rather than a flat
+    // colour block.
     shelf: bakeSprite(
       {
         rows: [
-          'WWWWWWWWWWWW',
-          'W..........W',
-          'W.aB.cC.fF.W',
-          'W.aB.cC.fF.W',
-          'WWWWWWWWWWWW',
-          'W..........W',
-          'W.gG.hH.iI..',
-          'W.gG.hH.iI..',
-          'WWWWWWWWWWWW',
+          'wwwwwwwwwwwwww',
+          'WWWWWWWWWWWWWW',
+          'W.aB.cC.fF.gG.',
+          'W.aB.cC.fF.gG.',
+          'WWWWWWWWWWWWWW',
+          '..............',
+          'wwwwwwwwwwwwww',
+          'WWWWWWWWWWWWWW',
+          'W.hH.iI.cC.aB.',
+          'W.hH.iI.cC.aB.',
+          'WWWWWWWWWWWWWW',
+          'ssssssssssssss',
         ],
         legend: {
-          W: 'woodDark',
+          w: 'woodHi',       // top plank (lit)
+          W: 'woodDark',     // plank front face
+          s: 'shadowSoft',   // drop shadow under shelf
           a: 'aetherC',
           B: 'aetherB',
           c: 'fireC',
@@ -657,48 +709,63 @@ function bakeAll(): Sprites {
       },
     ),
 
+    // 2.5D cauldron: round iron pot seen at a 3/4 angle with visible top
+    // opening (ellipse) and a short log pedestal.
     cauldron: bakeSprite(
       {
         rows: [
-          '.kkkkkkkk.',
-          'kBBBBBBBBk',
-          'kBaaaaaaBk',
-          'kBaWaWaaBk',
-          'kBaaaaaaBk',
-          'kBBBBBBBBk',
-          'WMMMMMMMMW',
-          'WdMMMMMMdW',
-          '.dddddddd.',
+          '...KKKKKKKK...',
+          '..KaaaaaaaaK..',
+          '.KaWaaaaWaaaK.',
+          'KBBBBBBBBBBBBK',
+          'KMMMMMMMMMMMMK',
+          'KMMMMMMMMMMMMK',
+          '.KMMMMMMMMMMK.',
+          '..KMMMMMMMMK..',
+          '...KKKKKKKK...',
+          '..d..ff..d....',
+          '..dddffffdd...',
+          '..ssssssssss..',
         ],
         legend: {
-          k: 'mortar',
-          B: 'stoneDark',
-          a: 'aetherB',
-          W: 'whiteSoft',
-          M: 'stoneMid',
-          d: 'woodDark',
+          K: 'mortar',       // outer iron rim
+          B: 'stoneHi',      // highlight ring below opening
+          M: 'stoneDark',    // body (dark iron)
+          a: 'aetherB',      // glowing liquid
+          W: 'whiteSoft',    // bubble highlight
+          d: 'woodDark',     // log pedestal
+          f: 'fireB',        // fire flicker under cauldron
+          s: 'shadowSoft',   // drop shadow
         },
       },
+      { x: 7, y: 8 },
     ),
 
+    // 2.5D candle: tall wax pillar on a short iron plate with visible top
+    // and side so it reads as a 3D object.
     candle: bakeSprite(
       {
         rows: [
-          '.f.',
-          '.F.',
-          'WCW',
-          'WCW',
-          'WCW',
-          'ddd',
+          '..f..',
+          '..F..',
+          '.WWW.',
+          'WCWWW',
+          'WCWWW',
+          'WCWWW',
+          '.WWW.',
+          'KKKKK',
+          'sssss',
         ],
         legend: {
           f: 'fireA',
           F: 'fireB',
-          W: 'parchment',
-          C: 'whiteSoft',
-          d: 'woodDark',
+          W: 'parchment',    // wax body
+          C: 'whiteSoft',    // lit side highlight
+          K: 'stoneDark',    // iron plate
+          s: 'shadowSoft',
         },
       },
+      { x: 2, y: 8 },
     ),
 
     flyingFlask: bakeSprite(

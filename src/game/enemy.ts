@@ -106,15 +106,18 @@ export function updateEnemies(state: GameState, dt: number): void {
 export function updateGoldPickups(state: GameState, dt: number): void {
   const m = state.mannequin;
   const radius = m.baseLootRadius * state.modifiers.lootRadiusMult;
+  const magnetActive = state.magnetTimer > 0;
+  if (magnetActive) state.magnetTimer -= dt;
   const remove: number[] = [];
   for (let i = 0; i < state.goldPickups.length; i++) {
     const g = state.goldPickups[i]!;
     g.life -= dt;
     const d = dist(g.pos, m.pos);
-    if (d < radius) {
-      // Suck toward mannequin.
+    // While the magnet pulse is active every pickup is pulled in hard; else
+    // only pickups inside the loot radius are drawn toward the hero.
+    if (magnetActive || d < radius) {
       const dir = norm(sub(m.pos, g.pos));
-      const sp = 240 + (radius - d) * 1.4;
+      const sp = magnetActive ? 820 : 240 + (radius - d) * 1.4;
       g.pos.x += dir.x * sp * dt;
       g.pos.y += dir.y * sp * dt;
     }
