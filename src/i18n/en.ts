@@ -487,6 +487,14 @@ Object.assign(EN, {
   'meta.node.eco_loot_1.name': "Magnet",
   'meta.node.eco_loot_1.desc': "+15% gold pickup radius",
 
+  // ── Elite modifiers (§12.2) ──────────────────────────────────────────
+  'elite.armored': 'Armored',
+  'elite.frenzied': 'Frenzied',
+  'elite.regenerating': 'Regenerating',
+  'elite.ethereal': 'Ethereal',
+  'elite.fireResistant': 'Fire Resistant',
+  'floating.ethereal': 'Ethereal!',
+
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Leaderboards',
   'ui.lb.tab.bestWave': 'Best Wave',
