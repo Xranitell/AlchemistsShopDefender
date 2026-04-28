@@ -202,7 +202,7 @@ function tick(dt: number): void {
   }
 
   // Auto-repair ticks in both wave and preparing phases
-  if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0) {
+  if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0 && !state.revivePaused) {
     state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
     if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
       state.mannequin.hp = Math.min(
@@ -387,7 +387,7 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpX
 /** Compose a reward-breakdown subtitle string for victory/defeat screens. */
 function rewardBreakdown(r: { blue: number; ancient: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
   const parts = [
-    t('ui.reward.wave', { wave, total: totalWaves() }),
+    t('ui.reward.wave', { wave, total: totalWaves(state) }),
     t('ui.reward.kills', { n: kills }),
     t('ui.reward.blueGain', { n: r.blue }),
   ];
@@ -660,8 +660,8 @@ function showReviveOverlay(): void {
   yandex.gameplayStop();
   reviveOverlay.show({
     onRevive: () => {
-      reviveOverlay.hide();
       void yandex.showRewarded().then((ok) => {
+        reviveOverlay.hide();
         if (!ok) {
           // Ad failed or was skipped — game over.
           state.revivePaused = false;
