@@ -185,4 +185,99 @@ export const CARDS: CardDef[] = [
     rarity: 'epic',
     desc: 'Базовая склянка отравляет врагов: 4 урона/сек 5 сек, игнорирует броню.',
   },
+
+  // --- High-tier cards (GDD §8.2) ---
+  {
+    id: 'triple_throw',
+    name: 'Тройной бросок',
+    category: 'recipe',
+    rarity: 'rare',
+    desc: 'Раз в 8 сек Манекен дополнительно бросает 3 склянки веером.',
+  },
+  {
+    id: 'salamander',
+    name: 'Великий рецепт Саламандры',
+    category: 'recipe',
+    rarity: 'legendary',
+    desc: 'Все склянки становятся огненными и оставляют лужу, но откат склянок +20%.',
+  },
+  {
+    id: 'archmaster',
+    name: 'Башенный чертёж Архимастера',
+    category: 'engineering',
+    rarity: 'legendary',
+    desc: 'Все новые стойки появляются 2-го уровня, но стоят на 25% дороже.',
+  },
+  {
+    id: 'golem_heart',
+    name: 'Сердце Голема',
+    category: 'ritual',
+    rarity: 'legendary',
+    desc: 'При смертельном уроне Манекен остаётся с 1 HP и получает щит на 6 сек. Раз за забег.',
+  },
+  {
+    id: 'crown_of_elements',
+    name: 'Корона четырёх элементов',
+    category: 'catalyst',
+    rarity: 'legendary',
+    desc: 'Все стихийные реакции наносят +50% урона и заряжают +10 Overload. +1 слот катализатора.',
+  },
 ];
+
+/**
+ * Static synergy graph used by the card draft UI to surface "this combos with
+ * a card you already took". Pairs are bidirectional — if A→[B] is listed, the
+ * UI also lights up A when B is the new card. Keep entries small (≤ 3 partners
+ * per card) so the hint stays readable.
+ */
+export const CARD_SYNERGIES: Record<string, string[]> = {
+  // Fire family
+  flammable_mix: ['acid_brew', 'aether_brew', 'crossfire', 'fire_ruby', 'salamander'],
+  fire_ruby: ['flammable_mix', 'crossfire', 'salamander'],
+  salamander: ['flammable_mix', 'fire_ruby', 'crossfire'],
+  crossfire: ['flammable_mix', 'fire_ruby', 'salamander'],
+  // Acid + reactions
+  acid_brew: ['flammable_mix', 'frost_brew', 'mutagen_brew', 'acid_prism', 'acid_tips'],
+  acid_prism: ['acid_brew', 'aether_engine', 'crown_of_elements'],
+  acid_tips: ['acid_brew', 'mercury_coating'],
+  mutagen_brew: ['acid_brew', 'acid_prism'],
+  // Frost / Mercury
+  frost_brew: ['acid_brew', 'mercury_brew', 'flammable_mix'],
+  mercury_brew: ['aether_brew', 'frost_brew', 'mercury_ring', 'mercury_coating'],
+  mercury_ring: ['mercury_brew', 'mercury_coating'],
+  mercury_coating: ['mercury_brew', 'mercury_ring', 'acid_tips'],
+  // Aether
+  aether_brew: ['flammable_mix', 'mercury_brew', 'aether_engine', 'crown_of_elements'],
+  aether_engine: ['aether_brew', 'acid_prism', 'crown_of_elements'],
+  // Engineering
+  oiled_gears: ['wider_lenses', 'synchronized_volley', 'archmaster'],
+  wider_lenses: ['oiled_gears', 'synchronized_volley', 'archmaster'],
+  synchronized_volley: ['oiled_gears', 'wider_lenses', 'crossfire'],
+  archmaster: ['oiled_gears', 'wider_lenses', 'synchronized_volley'],
+  // Survival
+  reinforced_frame: ['thorny_shell', 'golem_heart'],
+  thorny_shell: ['reinforced_frame', 'golem_heart'],
+  golem_heart: ['reinforced_frame', 'thorny_shell'],
+  // Crown / catalysts
+  crown_of_elements: ['acid_prism', 'aether_engine', 'fire_ruby', 'mercury_ring'],
+  // Potion utility
+  heavy_brew: ['wide_splash', 'unstable_flask', 'triple_throw'],
+  wide_splash: ['heavy_brew', 'unstable_flask', 'triple_throw'],
+  unstable_flask: ['heavy_brew', 'wide_splash'],
+  quick_hands: ['triple_throw', 'unstable_flask'],
+  triple_throw: ['heavy_brew', 'wide_splash', 'quick_hands'],
+};
+
+/** Look up the names of synergy partners that the player has already picked. */
+export function pickedSynergyNames(cardId: string, pickedIds: readonly string[]): string[] {
+  const partners = CARD_SYNERGIES[cardId];
+  if (!partners || partners.length === 0) return [];
+  const taken = new Set(pickedIds);
+  const names: string[] = [];
+  for (const id of partners) {
+    if (!taken.has(id)) continue;
+    const def = CARDS.find((c) => c.id === id);
+    if (def) names.push(def.name);
+  }
+  return names;
+}

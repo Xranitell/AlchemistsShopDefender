@@ -480,6 +480,18 @@ body {
 .card.legendary .rarity { color: var(--legendary); }
 .card.legendary::before, .card.legendary::after { background: linear-gradient(135deg, var(--legendary) 50%, transparent 50%); opacity: 1; }
 
+.card .synergy {
+  margin-top: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--accent);
+  letter-spacing: 0.4px;
+  border-top: 1px dashed var(--accent);
+  padding-top: 6px;
+  text-align: left;
+}
+.card.has-synergy { box-shadow: 0 0 0 2px rgba(125, 249, 255, 0.18) inset; }
+
 .card .name {
   font-size: 20px;
   font-weight: bold;

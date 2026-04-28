@@ -1,4 +1,6 @@
-import type { GameState } from './state';
+import { dist } from '../engine/math';
+import type { GameState, Enemy } from './state';
+import { spawnFloatingText } from './state';
 import { throwPotion } from './projectile';
 import { tryActivateOverload } from './overload';
 
@@ -22,12 +24,59 @@ export function updateMannequin(state: GameState, dt: number): void {
     m.throwAnim = 0.22;
   }
 
+  // Triple Throw card (GDD §8.2): every `tripleThrowInterval` seconds the
+  // alchemist also lobs a 3-potion fan toward the highest-priority enemy on
+  // the board. The fan is spawned on TOP of normal throws — it doesn't
+  // consume the manual cooldown — so the card stacks with the rest of the
+  // potion build instead of replacing it.
+  if (state.modifiers.tripleThrowActive) {
+    state.modifiers.tripleThrowTimer -= dt;
+    if (state.modifiers.tripleThrowTimer <= 0) {
+      state.modifiers.tripleThrowTimer = state.modifiers.tripleThrowInterval;
+      const target = pickFanTarget(state);
+      if (target) {
+        spawnFanThrow(state, target);
+      }
+    }
+  }
+
   if (state.overloadRequested) {
     tryActivateOverload(state);
   }
 
   state.manualFireRequested = false;
   state.overloadRequested = false;
+}
+
+/** Pick the most threatening enemy (closest to the mannequin) as the centre
+ *  of the Triple-Throw fan. Returns null if the board is empty. */
+function pickFanTarget(state: GameState): Enemy | null {
+  let best: Enemy | null = null;
+  let bestD = Infinity;
+  for (const e of state.enemies) {
+    const d = dist(e.pos, state.mannequin.pos);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+/** Spawn a 3-potion fan aimed at `target`. The two side potions land slightly
+ *  off-axis (~22°) of the centre potion so the fan has a visible spread. */
+function spawnFanThrow(state: GameState, target: Enemy): void {
+  const m = state.mannequin;
+  const dx = target.pos.x - m.pos.x;
+  const dy = target.pos.y - m.pos.y;
+  const baseAngle = Math.atan2(dy, dx);
+  const baseDist = Math.hypot(dx, dy);
+  const FAN = 0.38; // ~22° off-axis
+  for (const dAng of [-FAN, 0, FAN]) {
+    const a = baseAngle + dAng;
+    const tx = m.pos.x + Math.cos(a) * baseDist;
+    const ty = m.pos.y + Math.sin(a) * baseDist;
+    const aim = clampAim(state, { x: tx, y: ty });
+    throwPotion(state, aim, /*manual*/ false);
+  }
+  spawnFloatingText(state, 'x3', m.pos, '#ffd166');
 }
 
 function tickFireRuby(state: GameState): void {

@@ -1,4 +1,5 @@
 import type { CardDef } from '../game/types';
+import { pickedSynergyNames } from '../data/cards';
 
 export class CardOverlay {
   private root: HTMLElement;
@@ -11,6 +12,9 @@ export class CardOverlay {
     title: string;
     subtitle: string;
     cards: CardDef[];
+    /** Cards already taken in this run, used to surface synergy hints on the
+     *  cards being offered. */
+    pickedIds?: readonly string[];
     onPick: (card: CardDef) => void;
     /** When provided, the overlay renders a "reroll for gold" button. */
     rerollGold?: { cost: number; canAfford: boolean; onReroll: () => void };
@@ -32,6 +36,7 @@ export class CardOverlay {
 
     const cards = document.createElement('div');
     cards.className = 'cards';
+    const picked = options.pickedIds ?? [];
     for (const card of options.cards) {
       const c = document.createElement('button');
       c.className = `card ${card.rarity}`;
@@ -47,6 +52,16 @@ export class CardOverlay {
       c.appendChild(r);
       c.appendChild(n);
       c.appendChild(d);
+      // Synergy hint (GDD §15.2): "Синергирует с: ..." line, only shown when
+      // at least one of the partner cards has already been taken this run.
+      const synergies = pickedSynergyNames(card.id, picked);
+      if (synergies.length > 0) {
+        const syn = document.createElement('div');
+        syn.className = 'synergy';
+        syn.textContent = `Синергирует с: ${synergies.slice(0, 2).join(', ')}`;
+        c.appendChild(syn);
+        c.classList.add('has-synergy');
+      }
       c.addEventListener('click', () => options.onPick(card));
       cards.appendChild(c);
     }

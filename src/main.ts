@@ -267,6 +267,7 @@ function renderCardOverlay(): void {
       ? 'Выбери одну карту улучшения. Между волнами можно докупить стойки.'
       : 'Все карты MVP уже получены.',
     cards: options,
+    pickedIds: state.cardChoice.pickedIds,
     onPick: (card) => {
       applyCard(state, card);
       overlay.hide();

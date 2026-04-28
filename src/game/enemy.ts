@@ -136,8 +136,19 @@ export function updateEnemies(state: GameState, dt: number): void {
 
   // Mannequin death check.
   if (m.hp <= 0) {
-    m.hp = 0;
-    state.phase = 'gameover';
+    if (state.golemHeartCharges > 0) {
+      // Golem Heart legendary: consume the charge to survive at 1 HP and grant
+      // a strong 6-second shield while the player recovers.
+      state.golemHeartCharges = 0;
+      m.hp = 1;
+      state.tempShieldTime = 6;
+      state.tempShieldReduction = 0.8;
+      m.damageFlash = 0.4;
+      spawnFloatingText(state, 'Сердце Голема!', m.pos, '#ffb86b');
+    } else {
+      m.hp = 0;
+      state.phase = 'gameover';
+    }
   }
 }
 

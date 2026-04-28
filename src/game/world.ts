@@ -129,7 +129,15 @@ export function buildInitialState(
     totalKills: 0,
     modifiers: newModifiers(),
     waveState: buildWaveState(),
-    cardChoice: { options: [], pickedIds: [], rerollCost: 50, freeRerollUsed: false },
+    cardChoice: {
+      options: [],
+      pickedIds: [],
+      rerollCost: 50,
+      freeRerollUsed: false,
+      draftCount: 0,
+      lastNonCommonDraft: -1,
+      lastLegendaryWave: -10,
+    },
     overload: { charge: 0, maxCharge: 100 },
     aim: v2(ARENA_W / 2, ARENA_H / 2 - 200),
     manualFireRequested: false,
@@ -152,5 +160,6 @@ export function buildInitialState(
     endlessLoop: 0,
     tempShieldTime: 0,
     tempShieldReduction: 0,
+    golemHeartCharges: 0,
   };
 }
