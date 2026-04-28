@@ -33,13 +33,21 @@ export class ReviveOverlay {
     const reviveBtn = document.createElement('button');
     reviveBtn.className = 'revive-btn revive-ad';
     reviveBtn.innerHTML = `<span class="revive-ad-icon"></span>${t('ui.revive.adButton')}`;
-    reviveBtn.addEventListener('click', opts.onRevive);
+    reviveBtn.addEventListener('click', () => {
+      reviveBtn.disabled = true;
+      giveUpBtn.disabled = true;
+      opts.onRevive();
+    });
     panel.appendChild(reviveBtn);
 
     const giveUpBtn = document.createElement('button');
     giveUpBtn.className = 'revive-btn revive-give-up';
     giveUpBtn.textContent = t('ui.revive.giveUp');
-    giveUpBtn.addEventListener('click', opts.onGiveUp);
+    giveUpBtn.addEventListener('click', () => {
+      reviveBtn.disabled = true;
+      giveUpBtn.disabled = true;
+      opts.onGiveUp();
+    });
     panel.appendChild(giveUpBtn);
 
     wrap.appendChild(panel);

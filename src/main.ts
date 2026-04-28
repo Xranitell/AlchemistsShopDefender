@@ -662,6 +662,8 @@ function showReviveOverlay(): void {
     onRevive: () => {
       void yandex.showRewarded().then((ok) => {
         reviveOverlay.hide();
+        // Guard: if user already clicked Give Up while ad was loading, bail.
+        if (!state.revivePaused) return;
         if (!ok) {
           // Ad failed or was skipped — game over.
           state.revivePaused = false;
