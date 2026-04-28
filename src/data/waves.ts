@@ -1,9 +1,11 @@
 import type { WaveDef } from '../game/types';
 
-// Compress spawn times by this factor so enemies arrive more frequently.
-// Waves got rebalanced after the walls were removed — enemies walk from
-// off-screen and were being killed long before reaching the hero.
-const DENSITY = 0.55;
+// Compress spawn times so enemies arrive much more frequently. After the
+// walls + cardinal-only entrances were removed enemies come from any angle
+// and the hero can pick them off long before they connect, so we also spawn
+// EXTRA ghost copies at half-beats between the authored entries.
+const DENSITY = 0.35;
+const DOUBLE_SPAWNS = true;
 
 const wave = (
   index: number,
@@ -11,13 +13,27 @@ const wave = (
   pause: number,
   spawns: WaveDef['spawns'],
   isBoss = false,
-): WaveDef => ({
-  index,
-  durationSec: duration * DENSITY + 3,
-  pauseAfterSec: pause,
-  spawns: spawns.map((s) => ({ ...s, at: s.at * DENSITY })),
-  isBoss,
-});
+): WaveDef => {
+  const scaled = spawns.map((s) => ({ ...s, at: s.at * DENSITY }));
+  // Insert a mirrored spawn from the opposite entrance at a small offset so
+  // a wave with N authored spawns actually puts ~2N enemies on screen and
+  // attacks come from two opposite directions simultaneously.
+  const extra: WaveDef['spawns'] = DOUBLE_SPAWNS
+    ? scaled.map((s) => ({
+        ...s,
+        at: s.at + 0.3,
+        entrance: (s.entrance + 2) % 4,
+      }))
+    : [];
+  const allSpawns = [...scaled, ...extra].sort((a, b) => a.at - b.at);
+  return {
+    index,
+    durationSec: duration * DENSITY + 3,
+    pauseAfterSec: pause,
+    spawns: allSpawns,
+    isBoss,
+  };
+};
 
 // Stage 2: 10 waves.
 // Entrances are indexed 0..3 (top, right, bottom, left).

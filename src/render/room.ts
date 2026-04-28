@@ -155,19 +155,21 @@ function drawScatteredDecor(
   w: number,
   h: number,
 ): void {
-  // Avoid the mannequin's dais (centre) and some breathing room around it.
+  // Avoid the mannequin's dais + tower rune ring. Exclusion is an ellipse
+  // matching the iso rune ring (wide × short) so decor fills the outer area.
   const cx = w / 2;
   const cy = h / 2;
-  const excludeR = 120;
+  const excludeRX = 280;
+  const excludeRY = 150;
 
-  const PROPS = 48;
+  const PROPS = 42;
   for (let i = 0; i < PROPS; i++) {
     const r = hash2(i * 31 + 7, 13 + i);
     const x = (r & 0xffff) % (w - 60) + 30;
     const y = ((r >> 16) & 0xffff) % (h - 60) + 30;
-    const dx = x - cx;
-    const dy = y - cy;
-    if (dx * dx + dy * dy < excludeR * excludeR) continue;
+    const dx = (x - cx) / excludeRX;
+    const dy = (y - cy) / excludeRY;
+    if (dx * dx + dy * dy < 1) continue;
 
     const pick = r % 6;
     switch (pick) {
@@ -181,6 +183,24 @@ function drawScatteredDecor(
   }
 }
 
+// Pixel helper: 1 "cell" is 3 screen px. Props end up roughly 24×12 which
+// reads clearly next to the 34-px-wide alchemist sprite.
+const P = 3;
+
+function px(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cw: number,
+  ch: number,
+  color: string,
+): void {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), cw * P, ch * P);
+}
+
+// Broken potion: a clear bottle silhouette lying on its side with a spilled
+// puddle, a cracked neck, and 3-4 chunky glass shards radiating outwards.
 function drawBrokenPotion(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -189,94 +209,158 @@ function drawBrokenPotion(
 ): void {
   const liquidA = tint === 'cyan' ? COLORS.shardA : tint === 'green' ? COLORS.shardGreenA : COLORS.shardPurpleA;
   const liquidB = tint === 'cyan' ? COLORS.shardB : tint === 'green' ? COLORS.shardGreenB : COLORS.shardPurpleB;
-  // Liquid splash.
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  const liquidHi = '#ffffff';
+  const glass = COLORS.shardC;
+
+  // Ground shadow (spilled puddle outline).
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.beginPath();
-  ctx.ellipse(x, y + 1, 8, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + P, y + 2 * P, 8 * P, 3 * P, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // Liquid splash (2:1 blob in liquid colour).
   ctx.fillStyle = liquidA;
   ctx.beginPath();
-  ctx.ellipse(x, y, 7, 2.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + P, y + P, 7 * P, 2.5 * P, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = liquidB;
-  ctx.fillRect(x - 4, y - 1, 3, 1);
-  ctx.fillRect(x + 1, y, 3, 1);
-  // Glass shards.
-  ctx.fillStyle = COLORS.shardC;
-  ctx.fillRect(x - 3, y - 2, 2, 1);
-  ctx.fillRect(x + 2, y - 2, 2, 1);
-  ctx.fillRect(x - 1, y + 2, 2, 1);
+  ctx.beginPath();
+  ctx.ellipse(x - P, y + P, 3 * P, 1.2 * P, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Specular highlight dot on the puddle.
+  px(ctx, x - P, y, 1, 1, liquidHi);
+
+  // Bottle body (round base + narrowing shoulder + neck lying to the left).
+  // Base (3x2):
+  px(ctx, x + P, y - P, 3, 2, glass);
+  // Shoulder (narrower):
+  px(ctx, x, y - 2 * P, 2, 1, glass);
+  // Neck (1 cell tall) lying flat to the left with a cracked tip.
+  px(ctx, x - 2 * P, y - 2 * P, 2, 1, glass);
+  // Cork popped off.
+  px(ctx, x - 3 * P, y - 2 * P, 1, 1, COLORS.woodMid);
+
+  // Rim highlight on the body.
+  px(ctx, x + 2 * P, y - P, 2, 1, liquidA);
+
+  // Shards radiating out.
+  px(ctx, x + 4 * P, y - 2 * P, 1, 1, glass);
+  px(ctx, x + 4 * P, y, 1, 1, glass);
+  px(ctx, x - 4 * P, y + 2 * P, 1, 1, glass);
+  px(ctx, x + 2 * P, y + 3 * P, 1, 1, glass);
 }
 
+// Book with a clear spine, cover, and visible page edges. Optionally drawn
+// lying open so the pages are legible.
 function drawBook(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   variant: number,
 ): void {
-  // Small flat book seen from above.
-  const w = 10;
-  const h = 7;
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillRect(x - w / 2 + 1, y - h / 2 + 1, w, h);
-  ctx.fillStyle = variant === 0 ? COLORS.bookA : COLORS.woodMid;
-  ctx.fillRect(x - w / 2, y - h / 2, w, h);
-  ctx.fillStyle = variant === 0 ? COLORS.bookB : COLORS.woodHi;
-  ctx.fillRect(x - w / 2, y - h / 2, w, 1);
-  // Pages visible on one edge.
-  ctx.fillStyle = COLORS.paperA;
-  ctx.fillRect(x + w / 2 - 1, y - h / 2 + 1, 1, h - 2);
-  // Spine shadow.
-  ctx.fillStyle = COLORS.bookC;
-  ctx.fillRect(x - w / 2, y + h / 2 - 1, w, 1);
+  if (variant === 0) {
+    // Closed book seen from a 3/4 angle. 8x4 cells + shadow.
+    const w = 8 * P;
+    const h = 4 * P;
+    // Shadow.
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(x - w / 2 + P, y - h / 2 + P, w, h);
+    // Cover.
+    px(ctx, x - w / 2, y - h / 2, 8, 4, COLORS.bookA);
+    // Spine band (top edge).
+    px(ctx, x - w / 2, y - h / 2, 8, 1, COLORS.bookB);
+    // Cover detail: embossed rectangle.
+    px(ctx, x - w / 2 + 2 * P, y - h / 2 + 2 * P, 4, 1, COLORS.bookB);
+    // Page edges on the right side.
+    px(ctx, x + w / 2 - P, y - h / 2 + P, 1, 3, COLORS.paperA);
+    // Bottom shadow line.
+    px(ctx, x - w / 2, y + h / 2 - P, 8, 1, COLORS.bookC);
+  } else {
+    // Open book with two pages and a spine down the middle.
+    const w = 10 * P;
+    const h = 5 * P;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x - w / 2 + P, y - h / 2 + P, w, h);
+    // Pages (paper colour).
+    px(ctx, x - w / 2, y - h / 2, 10, 5, COLORS.paperA);
+    // Spine shadow down the middle.
+    px(ctx, x - P / 2, y - h / 2, 1, 5, COLORS.bookC);
+    // Page wrinkle / text lines.
+    px(ctx, x - w / 2 + P, y - h / 2 + P, 3, 1, COLORS.paperB);
+    px(ctx, x - w / 2 + P, y - h / 2 + 2 * P, 3, 1, COLORS.paperB);
+    px(ctx, x + P, y - h / 2 + P, 3, 1, COLORS.paperB);
+    px(ctx, x + P, y - h / 2 + 3 * P, 3, 1, COLORS.paperB);
+    // Cover poking out behind the open pages.
+    px(ctx, x - w / 2 - P, y - h / 2, 1, 5, COLORS.bookA);
+    px(ctx, x + w / 2, y - h / 2, 1, 5, COLORS.bookA);
+  }
 }
 
+// Paper variants: flat sheet w/ text, scroll with rolled ends, torn piece.
 function drawPaperSheet(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   variant: number,
 ): void {
-  // Crumpled paper or scroll.
   if (variant === 0) {
-    // Flat sheet
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(x - 3, y, 8, 4);
-    ctx.fillStyle = COLORS.paperA;
-    ctx.fillRect(x - 4, y - 1, 8, 4);
-    ctx.fillStyle = COLORS.paperB;
-    ctx.fillRect(x - 3, y + 1, 6, 1);
-    ctx.fillRect(x - 3, y - 1, 3, 1);
+    // Flat sheet with 3 lines of "text".
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x - 4 * P + P, y - 3 * P + P, 8 * P, 6 * P);
+    px(ctx, x - 4 * P, y - 3 * P, 8, 6, COLORS.paperA);
+    // Corners folded (shading).
+    px(ctx, x - 4 * P, y - 3 * P, 1, 1, COLORS.paperB);
+    px(ctx, x + 3 * P, y + 2 * P, 1, 1, COLORS.paperB);
+    // Text lines.
+    px(ctx, x - 3 * P, y - 2 * P, 5, 1, COLORS.paperB);
+    px(ctx, x - 3 * P, y, 6, 1, COLORS.paperB);
+    px(ctx, x - 3 * P, y + 2 * P, 4, 1, COLORS.paperB);
   } else if (variant === 1) {
-    // Scroll
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(x - 5, y + 1, 12, 3);
-    ctx.fillStyle = COLORS.paperA;
-    ctx.fillRect(x - 6, y - 1, 12, 4);
-    ctx.fillStyle = COLORS.paperB;
-    ctx.fillRect(x - 6, y, 1, 2);
-    ctx.fillRect(x + 5, y, 1, 2);
+    // Scroll seen from above: tan tube with darker rolled ends.
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(x - 6 * P + P, y - P + P, 12 * P, 3 * P);
+    // Main paper body.
+    px(ctx, x - 5 * P, y - P, 10, 3, COLORS.paperA);
+    // Text strip.
+    px(ctx, x - 4 * P, y, 8, 1, COLORS.paperB);
+    // Rolled ends — darker, rounded.
+    px(ctx, x - 6 * P, y - 2 * P, 2, 5, COLORS.paperB);
+    px(ctx, x + 4 * P, y - 2 * P, 2, 5, COLORS.paperB);
+    // End highlight (inside of roll).
+    px(ctx, x - 6 * P + P, y - P, 1, 1, COLORS.paperA);
+    px(ctx, x + 4 * P + P, y - P, 1, 1, COLORS.paperA);
   } else {
-    // Torn piece
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(x - 2, y + 1, 6, 3);
-    ctx.fillStyle = COLORS.paperA;
-    ctx.fillRect(x - 3, y, 6, 3);
-    ctx.fillStyle = COLORS.paperB;
-    ctx.fillRect(x - 2, y + 1, 1, 1);
-    ctx.fillRect(x + 1, y, 1, 1);
+    // Torn page — jagged edges.
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x - 3 * P + P, y - 2 * P + P, 6 * P, 4 * P);
+    px(ctx, x - 3 * P, y - 2 * P, 6, 4, COLORS.paperA);
+    // Jagged top.
+    px(ctx, x - 2 * P, y - 3 * P, 1, 1, COLORS.paperA);
+    px(ctx, x, y - 3 * P, 1, 1, COLORS.paperA);
+    px(ctx, x + 2 * P, y - 3 * P, 1, 1, COLORS.paperA);
+    // Jagged bottom.
+    px(ctx, x - 2 * P, y + 2 * P, 1, 1, COLORS.paperA);
+    px(ctx, x + P, y + 2 * P, 1, 1, COLORS.paperA);
+    // Text line.
+    px(ctx, x - 2 * P, y, 4, 1, COLORS.paperB);
   }
 }
 
 function drawDustPile(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  // Fluffy dust bunny: soft ellipse body with a few specks sticking out.
   ctx.fillStyle = COLORS.dustB;
   ctx.beginPath();
-  ctx.ellipse(x, y, 5, 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y, 7 * P / P, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = COLORS.dustA;
   ctx.beginPath();
-  ctx.ellipse(x, y - 1, 3, 1.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(x - 1, y - 1, 5, 2, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Specks.
+  px(ctx, x - 4 * P, y, 1, 1, COLORS.dustB);
+  px(ctx, x + 3 * P, y - P, 1, 1, COLORS.dustB);
+  px(ctx, x + P, y + P, 1, 1, COLORS.dustA);
 }
 
 // Filled 2:1 diamond (rhombus) centred at (cx, cy).

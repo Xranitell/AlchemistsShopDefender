@@ -79,12 +79,15 @@ function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void
 }
 
 function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
+  // Iso-plane y-compression so the chalk circles read as painted on the
+  // floor and not floating perpendicular to the camera.
+  const YS = 0.5;
+
   for (const rp of state.runePoints) {
     if (rp.towerId !== null) continue; // tower will be drawn over the rune
     const isActive = rp.active;
     const isSelected = state.activeRunePoint === rp.id;
 
-    // Chalk pentagram glyph: a soft circle + 5-point star.
     ctx.save();
     ctx.translate(rp.pos.x, rp.pos.y);
 
@@ -95,28 +98,42 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
       : 'rgba(160, 160, 180, 0.05)';
     ctx.globalAlpha = baseAlpha;
     ctx.lineWidth = 1.5;
+    // Iso-plane chalk circle (2:1 ellipse).
     ctx.beginPath();
-    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 22, 22 * YS, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    // Star
+    // Star, squished along Y so it lies on the same plane as the circle.
     ctx.beginPath();
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
-      const x = Math.cos(a) * 14;
-      const y = Math.sin(a) * 14;
+      const x = Math.cos(a) * 17;
+      const y = Math.sin(a) * 17 * YS;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.closePath();
     ctx.stroke();
 
+    // Inactive slot: draw an "X" hatching to communicate "locked".
+    if (!isActive) {
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = COLORS.stoneLight;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-12, -4);
+      ctx.lineTo(12, 4);
+      ctx.moveTo(12, -4);
+      ctx.lineTo(-12, 4);
+      ctx.stroke();
+    }
+
     ctx.globalAlpha = 1;
     if (isSelected) {
       ctx.strokeStyle = COLORS.brassHi;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 28, 28 * YS, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
     ctx.restore();
@@ -126,14 +143,16 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
 function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
   for (const t of state.towers) {
-    // Range indicator when shop is open on this rune
+    // Range indicator when shop is open on this rune — iso-plane ellipse so
+    // it visually lies on the floor.
     if (state.activeRunePoint === t.runePointId) {
+      const R = t.kind.range * state.modifiers.towerRangeMult;
       ctx.save();
       ctx.strokeStyle = `rgba(125, 249, 255, 0.18)`;
       ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(t.pos.x, t.pos.y, t.kind.range * state.modifiers.towerRangeMult, 0, Math.PI * 2);
+      ctx.ellipse(t.pos.x, t.pos.y, R, R * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.restore();
@@ -190,13 +209,13 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   const m = state.mannequin;
   const s = getSprites();
 
-  // Soft loot magnet ring
+  // Soft loot magnet ring — iso-plane ellipse on the floor.
   const lootR = m.baseLootRadius * state.modifiers.lootRadiusMult;
   ctx.save();
   ctx.strokeStyle = 'rgba(255, 209, 102, 0.10)';
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
-  ctx.arc(m.pos.x, m.pos.y, lootR, 0, Math.PI * 2);
+  ctx.ellipse(m.pos.x, m.pos.y, lootR, lootR * 0.5, 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
@@ -366,20 +385,20 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
     acid: ACID_COLORS,
   };
   for (const p of state.projectiles) {
-    // Spawn particle trail behind projectile
     const trailColors = trailColorMap[p.element] ?? AETHER_COLORS;
-    spawnTrail(p.pos.x, p.pos.y, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
 
     if (p.kind === 'potion') {
       // Arc height (z) is a visual-only offset so the potion appears airborne.
       const z = p.arc?.height ?? 0;
+      const drawX = p.pos.x;
+      const drawY = p.pos.y - z;
 
-      // Ground shadow: stays at the projectile's ground-plane position and
-      // shrinks as the potion rises. This sells the parabola in 2D.
+      // Ground shadow: opaque dark ellipse that stays on the floor and
+      // shrinks as the potion rises. No glow — shadows don't emit light.
       if (z > 0.5) {
         ctx.save();
         const shrink = Math.max(0.35, 1 - z / 180);
-        ctx.globalAlpha = 0.45 * shrink;
+        ctx.globalAlpha = 0.55 * shrink;
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.ellipse(p.pos.x, p.pos.y + 2, 7 * shrink, 3 * shrink, 0, 0, Math.PI * 2);
@@ -387,9 +406,13 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
         ctx.restore();
       }
 
-      // Glowing trail behind potion (uses airborne draw position).
-      const drawX = p.pos.x;
-      const drawY = p.pos.y - z;
+      // Particle trail follows the AIRBORNE position so the glow traces the
+      // arc in the air rather than piling up on the floor (which would look
+      // like a glowing shadow).
+      spawnTrail(drawX, drawY, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
+
+      // Soft glow tail — also airborne, and slightly smaller so it reads as
+      // "trailing vapour" rather than another shadow.
       const trailGlow: Record<string, string> = {
         fire: 'rgba(255, 140, 58, 0.35)',
         mercury: 'rgba(201, 201, 216, 0.3)',
@@ -397,10 +420,9 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       };
       ctx.save();
       ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
-      // Tail direction: derive from ground-plane motion (start→target).
       const tx = p.arc ? (p.arc.target.x - p.arc.start.x) : p.vel.x;
       const ty = p.arc ? (p.arc.target.y - p.arc.start.y) : p.vel.y;
-      ctx.fillRect(Math.round(drawX - 4 - tx * 0.008), Math.round(drawY - 4 - ty * 0.008), 8, 8);
+      ctx.fillRect(Math.round(drawX - 3 - tx * 0.006), Math.round(drawY - 3 - ty * 0.006), 6, 6);
       ctx.restore();
 
       let sprite = s.potionBottle;
@@ -409,8 +431,9 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       else if (p.element === 'acid') sprite = s.potionBottleAcid;
       drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
     } else {
+      // Tower projectiles stay on the ground plane, trail can go there too.
+      spawnTrail(p.pos.x, p.pos.y, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
       const angle = Math.atan2(p.vel.y, p.vel.x);
-      // Muzzle flash trail
       ctx.save();
       const flashColor = p.element === 'acid' ? 'rgba(210, 245, 90, 0.4)' :
                           p.element === 'mercury' ? 'rgba(189, 246, 255, 0.4)' :
