@@ -1,6 +1,6 @@
 import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost, towerName } from '../data/towers';
 import type { GameState } from '../game/state';
-import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower } from '../game/tower';
+import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower, sellTower } from '../game/tower';
 import { t } from '../i18n';
 
 /**
@@ -132,6 +132,29 @@ export class TowerShop {
         });
         el.appendChild(tgt);
       }
+
+      // Sell tower button
+      const sell = document.createElement('button');
+      sell.className = 'tower-shop-sell';
+      const sellLeft = document.createElement('span');
+      const baseCost = tower.kind.cost;
+      let totalInvested = baseCost;
+      for (let lvl = 1; lvl < tower.level; lvl++) {
+        totalInvested += towerUpgradeCost(lvl);
+      }
+      const refund = Math.floor(totalInvested * 0.5);
+      sellLeft.textContent = t('ui.tower.sell');
+      const sellRight = document.createElement('span');
+      sellRight.className = 'cost';
+      sellRight.textContent = `+${refund}g`;
+      sell.appendChild(sellLeft);
+      sell.appendChild(sellRight);
+      sell.addEventListener('click', () => {
+        if (!this.state) return;
+        sellTower(this.state, tower.id);
+        this.close();
+      });
+      el.appendChild(sell);
 
       const cancel = document.createElement('button');
       cancel.textContent = t('ui.tower.close');

@@ -44,7 +44,7 @@ const wave = (
 // Stage 2: 10 waves.
 // Entrances are indexed 0..3 (top, right, bottom, left).
 export const WAVES: WaveDef[] = [
-  wave(1, 22, 8, [
+  wave(1, 22, 14, [
     { kind: 'slime', at: 1.0, entrance: 0 },
     { kind: 'slime', at: 4.0, entrance: 0 },
     { kind: 'slime', at: 7.5, entrance: 2 },
@@ -52,7 +52,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'slime', at: 14, entrance: 2 },
     { kind: 'slime', at: 17, entrance: 2 },
   ]),
-  wave(2, 26, 8, [
+  wave(2, 26, 14, [
     { kind: 'slime', at: 1, entrance: 1 },
     { kind: 'slime', at: 3, entrance: 3 },
     { kind: 'rat',   at: 6, entrance: 1 },
@@ -62,7 +62,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'rat',   at: 18, entrance: 1 },
     { kind: 'slime', at: 21, entrance: 3 },
   ]),
-  wave(3, 28, 6, [
+  wave(3, 28, 10, [
     { kind: 'rat',   at: 0.5, entrance: 0 },
     { kind: 'rat',   at: 2.5, entrance: 0 },
     { kind: 'slime', at: 4, entrance: 2 },
@@ -75,7 +75,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'rat',   at: 21, entrance: 0 },
     { kind: 'slime', at: 24, entrance: 2 },
   ]),
-  wave(4, 30, 6, [
+  wave(4, 30, 10, [
     { kind: 'slime', at: 0.5, entrance: 0 },
     { kind: 'slime', at: 2, entrance: 1 },
     { kind: 'rat',   at: 4, entrance: 2 },
@@ -89,7 +89,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'slime', at: 22, entrance: 0 },
     { kind: 'slime', at: 25, entrance: 2 },
   ]),
-  wave(5, 50, 12, [
+  wave(5, 50, 18, [
     { kind: 'slime',           at: 1, entrance: 0 },
     { kind: 'slime',           at: 3, entrance: 2 },
     { kind: 'rat',             at: 5, entrance: 1 },
@@ -105,7 +105,7 @@ export const WAVES: WaveDef[] = [
   ], true),
 
   // --- Stage 2 waves 6-10 ---
-  wave(6, 30, 6, [
+  wave(6, 30, 10, [
     { kind: 'slime',        at: 0.5, entrance: 0 },
     { kind: 'rat',          at: 2, entrance: 1 },
     { kind: 'flying_flask', at: 3.5, entrance: 2 },
@@ -120,7 +120,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'slime',        at: 24, entrance: 3 },
     { kind: 'flying_flask', at: 27, entrance: 0 },
   ]),
-  wave(7, 32, 6, [
+  wave(7, 32, 10, [
     { kind: 'golem',   at: 1, entrance: 0 },
     { kind: 'rat',     at: 2, entrance: 1 },
     { kind: 'rat',     at: 3, entrance: 2 },
@@ -137,7 +137,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'rat',     at: 26, entrance: 1 },
     { kind: 'shaman',  at: 29, entrance: 2 },
   ]),
-  wave(8, 34, 6, [
+  wave(8, 34, 10, [
     { kind: 'golem',        at: 0.5, entrance: 0 },
     { kind: 'golem',        at: 2, entrance: 2 },
     { kind: 'flying_flask', at: 3, entrance: 1 },
@@ -156,7 +156,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'rat',          at: 28, entrance: 3 },
     { kind: 'golem',        at: 31, entrance: 0 },
   ]),
-  wave(9, 36, 8, [
+  wave(9, 36, 14, [
     { kind: 'rat',          at: 0.5, entrance: 0 },
     { kind: 'rat',          at: 1, entrance: 1 },
     { kind: 'rat',          at: 1.5, entrance: 2 },
@@ -178,7 +178,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'rat',          at: 31, entrance: 2 },
     { kind: 'golem',        at: 34, entrance: 3 },
   ]),
-  wave(10, 55, 12, [
+  wave(10, 55, 18, [
     { kind: 'golem',          at: 1, entrance: 0 },
     { kind: 'golem',          at: 2, entrance: 2 },
     { kind: 'shaman',         at: 4, entrance: 1 },
@@ -202,7 +202,7 @@ export const WAVES: WaveDef[] = [
 
   // --- Stage 4 waves 11-15: late-game pressure + homunculus ---
   // Introduces the Sapper (suicide bomber) that rushes the mannequin.
-  wave(11, 36, 6, [
+  wave(11, 36, 10, [
     { kind: 'rat',          at: 0.5, entrance: 0 },
     { kind: 'rat',          at: 1.5, entrance: 1 },
     { kind: 'sapper',       at: 3, entrance: 2 },
@@ -222,7 +222,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'sapper',       at: 33, entrance: 0 },
     { kind: 'golem',        at: 34, entrance: 2 },
   ]),
-  wave(12, 38, 6, [
+  wave(12, 38, 10, [
     { kind: 'golem',        at: 0.5, entrance: 0 },
     { kind: 'golem',        at: 1.5, entrance: 2 },
     { kind: 'shaman',       at: 3, entrance: 1 },
@@ -243,7 +243,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'golem',        at: 34, entrance: 2 },
     { kind: 'sapper',       at: 36, entrance: 1 },
   ]),
-  wave(13, 40, 8, [
+  wave(13, 40, 14, [
     { kind: 'sapper',       at: 0.5, entrance: 0 },
     { kind: 'sapper',       at: 1.5, entrance: 1 },
     { kind: 'sapper',       at: 2.5, entrance: 2 },
@@ -265,7 +265,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'golem',        at: 32, entrance: 2 },
     { kind: 'flying_flask', at: 36, entrance: 3 },
   ]),
-  wave(14, 42, 12, [
+  wave(14, 42, 18, [
     { kind: 'golem',        at: 0.5, entrance: 0 },
     { kind: 'golem',        at: 1.5, entrance: 2 },
     { kind: 'golem',        at: 2.5, entrance: 1 },
@@ -288,7 +288,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'sapper',       at: 33, entrance: 3 },
     { kind: 'golem',        at: 37, entrance: 0 },
   ]),
-  wave(15, 60, 12, [
+  wave(15, 60, 18, [
     // Cleaner mobs first to let towers pre-heat
     { kind: 'slime',           at: 1, entrance: 0 },
     { kind: 'slime',           at: 2, entrance: 2 },

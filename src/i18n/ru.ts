@@ -49,6 +49,11 @@ export const RU: Record<string, string> = {
   'ui.hud.module.chronos': 'Хронос',
   'ui.hud.module.transmute': 'Трансмут.',
   'ui.hud.module.alch_dome': 'Купол',
+  'ui.hud.magnet': 'МАГНИТ',
+  'ui.hud.ability': 'СПОСОБ.',
+  'ui.hud.abilityComingSoon': 'Скоро будет доступно',
+  'ui.hud.overload': 'ПЕРЕГРУЗ',
+  'ui.hud.bossIncoming': '⚠ БОСС ВОЛНА ⚠',
 
   // ── Card overlay (draft) ─────────────────────────────────────────────
   'ui.cards.empty': 'Все карты уже получены — жми «Дальше».',
@@ -220,6 +225,7 @@ export const RU: Record<string, string> = {
   // ── Tower shop popup ─────────────────────────────────────────────────
   'ui.tower.cancel': 'Отмена',
   'ui.tower.close': 'Закрыть',
+  'ui.tower.sell': 'Продать',
   'ui.tower.cost.archmaster': '{n} зол. (Архимастер +25%)',
   'ui.tower.cost.discount': '{n} зол. (−{d})',
   'ui.tower.cost.plain': '{n} зол.',

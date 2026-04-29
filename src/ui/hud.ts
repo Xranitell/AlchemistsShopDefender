@@ -1,5 +1,5 @@
 import type { GameState } from '../game/state';
-import { totalWaves, currentWaveDuration, currentPauseDuration } from '../game/wave';
+import { totalWaves, currentWaveDuration, currentPauseDuration, isNextWaveBoss } from '../game/wave';
 import { getSprites } from '../render/sprites';
 import type { BakedSprite } from '../render/sprite';
 import { DIFFICULTY_MODES } from '../data/difficulty';
@@ -64,6 +64,9 @@ export class Hud {
   private timerFill!: HTMLDivElement;
   private timerLabel!: HTMLSpanElement;
 
+  // Boss wave indicator (shown during preparing phase when next wave has a boss)
+  private bossIndicator!: HTMLDivElement;
+
   // Bottom-center crafted-potion inventory (4 slots) + active-effect chips
   private potionBar!: HTMLDivElement;
   private potionSlots: HTMLButtonElement[] = [];
@@ -116,6 +119,13 @@ export class Hud {
     this.timerBar.appendChild(this.timerFill);
     this.timerBar.appendChild(this.timerLabel);
     waveStack.appendChild(this.timerBar);
+
+    // Boss wave warning indicator
+    this.bossIndicator = document.createElement('div');
+    this.bossIndicator.className = 'hud-boss-indicator';
+    this.bossIndicator.textContent = t('ui.hud.bossIncoming');
+    this.bossIndicator.style.display = 'none';
+    waveStack.appendChild(this.bossIndicator);
 
     top.appendChild(waveStack);
 
@@ -200,7 +210,7 @@ export class Hud {
     this.magnetButton.appendChild(spriteEl(getSprites().iconMagnet, 4));
     const magLabel = document.createElement('span');
     magLabel.className = 'hud-icon-label';
-    magLabel.textContent = 'MAGNET';
+    magLabel.textContent = t('ui.hud.magnet');
     this.magnetButton.appendChild(magLabel);
     this.magnetButton.addEventListener('click', () => this.handlers.onActivateMagnet());
     bottom.appendChild(this.magnetButton);
@@ -247,8 +257,10 @@ export class Hud {
     this.abilityButton.appendChild(spriteEl(getSprites().iconAbility, 4));
     const abLabel = document.createElement('span');
     abLabel.className = 'hud-icon-label';
-    abLabel.textContent = 'ABILITY';
+    abLabel.textContent = t('ui.hud.ability');
     this.abilityButton.appendChild(abLabel);
+    this.abilityButton.disabled = true;
+    this.abilityButton.title = t('ui.hud.abilityComingSoon');
     rightButtons.appendChild(this.abilityButton);
 
     this.overloadButton = document.createElement('button');
@@ -257,7 +269,7 @@ export class Hud {
     this.overloadButton.appendChild(spriteEl(getSprites().iconLightning, 4));
     const olLabel = document.createElement('span');
     olLabel.className = 'hud-icon-label';
-    olLabel.textContent = 'OVERLOAD';
+    olLabel.textContent = t('ui.hud.overload');
     this.overloadButton.appendChild(olLabel);
     this.overloadModule = document.createElement('span');
     this.overloadModule.className = 'hud-overload-module';
@@ -342,6 +354,10 @@ export class Hud {
     } else {
       this.hint.textContent = '';
     }
+
+    // Boss wave indicator
+    const showBoss = state.phase === 'preparing' && isNextWaveBoss(state);
+    this.bossIndicator.style.display = showBoss ? '' : 'none';
 
     // Wave / pause progress bar. Shown during 'wave' and 'preparing' only.
     this.updateTimerBar(state);
