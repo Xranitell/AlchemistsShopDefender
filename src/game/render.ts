@@ -350,11 +350,11 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
 /** Catalyst color palette (GDD §7.5). Maps each catalyst card id to a
  *  color used for its orbiting orb. Unknown ids fall back to white. */
 const CATALYST_COLORS: Record<string, string> = {
-  fire_ruby: '#ff5a32',
-  mercury_ring: '#c0c0c0',
-  acid_prism: '#a3e36a',
-  aether_engine: '#7df9ff',
-  crown_of_elements: '#ffd166',
+  curse_fire_ruby: '#ff5a32',
+  curse_mercury_ring: '#c0c0c0',
+  curse_acid_prism: '#a3e36a',
+  curse_aether_engine: '#7df9ff',
+  curse_crown_of_elements: '#ffd166',
 };
 
 /** Render orbiting catalyst icons around the Mannequin. Catalysts are

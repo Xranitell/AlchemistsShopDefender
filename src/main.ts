@@ -10,7 +10,7 @@ import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier, INITIAL_PREP_DURATION } from './game/wave';
-import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
+import { applyCard, beginNewDraft, isCursedWave, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld } from './render/camera';
@@ -382,12 +382,18 @@ function showCardOverlay(): void {
 function renderCardOverlay(): void {
   const options = state.cardChoice.options;
   const idx = state.waveState.currentIndex;
+  const cursed = isCursedWave(idx + 1);
+  const title = cursed
+    ? t('ui.cards.cursedTitle', { n: idx + 1 })
+    : t('ui.cards.waveCleared', { n: idx + 1 });
+  const subtitle = options.length === 0
+    ? t('ui.cards.subtitle.empty')
+    : (cursed ? t('ui.cards.subtitle.cursed') : t('ui.cards.subtitle.has'));
   overlay.show({
-    title: t('ui.cards.waveCleared', { n: idx + 1 }),
-    subtitle: options.length > 0
-      ? t('ui.cards.subtitle.has')
-      : t('ui.cards.subtitle.empty'),
+    title,
+    subtitle,
     cards: options,
+    cursed,
     pickedIds: state.cardChoice.pickedIds,
     onPick: (card) => {
       applyCard(state, card);
@@ -396,6 +402,14 @@ function renderCardOverlay(): void {
       startPause(state);
       yandex.gameplayStart();
     },
+    // Skip: dismiss the draft entirely without applying a card. We still
+    // notify the tutorial so the "you've seen the draft" gate trips.
+    onSkip: options.length > 0 ? () => {
+      tutorial.notify('cardPicked');
+      overlay.hide();
+      startPause(state);
+      yandex.gameplayStart();
+    } : undefined,
     rerollGold: options.length > 0 ? {
       cost: state.cardChoice.rerollCost,
       canAfford: state.gold >= state.cardChoice.rerollCost,

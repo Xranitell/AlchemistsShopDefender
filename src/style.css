@@ -572,9 +572,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 24px 32px;
-  max-width: min(96vw, 960px);
+  gap: 22px;
+  padding: 28px 36px;
+  /* Wider stage so the larger card faces fit comfortably side-by-side at
+   * desktop sizes. Still capped at 96vw on smaller screens. */
+  max-width: min(96vw, 1280px);
   width: 100%;
 }
 
@@ -583,7 +585,7 @@ body {
   color: #f6f0e0;
   letter-spacing: 6px;
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 22px;
+  font-size: 28px;
   text-transform: uppercase;
   text-shadow:
     0 0 16px rgba(125, 249, 255, 0.18),
@@ -606,26 +608,29 @@ body {
 .cards-stage-subtitle {
   margin: 0 0 4px;
   color: var(--fg-dim);
-  font-size: 16px;
+  font-size: 22px;
   font-family: 'VT323', monospace;
   letter-spacing: 0.5px;
+  max-width: 920px;
+  text-align: center;
 }
 
 .cards-empty {
   color: var(--fg-dim);
   font-family: 'VT323', monospace;
-  font-size: 18px;
+  font-size: 22px;
   padding: 32px;
 }
 
 .cards-rh {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 240px));
-  gap: 18px;
+  /* Bigger cards: bumped from 240px to 320px per the design refresh. */
+  grid-template-columns: repeat(3, minmax(0, 320px));
+  gap: 22px;
   align-items: stretch;
 }
-@media (max-width: 720px) {
-  .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1024px) {
+  .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 }
 
 /* Single card. Frame is a flex column so the title / divider / effects
@@ -661,8 +666,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 14px 14px 18px;
-  gap: 8px;
+  padding: 18px 18px 22px;
+  gap: 10px;
   background: linear-gradient(180deg, rgba(34, 30, 50, 0.95), rgba(18, 14, 28, 0.95));
   border: 2px solid var(--rh-color, #888);
   /* Cut top corners so the silhouette matches the reference. */
@@ -684,6 +689,29 @@ body {
 .card-rh.rarity-legendary {
   --rh-color: #ffb86b;
   --rh-glow: rgba(255, 184, 107, 0.45);
+}
+
+/* Cursed cards override the rarity colourway entirely with a deep
+ * blood-violet palette so the player can spot them at a glance during the
+ * every-3rd-wave draft. The dark background is reinforced by a bigger
+ * inset bloom so the card looks heavier than its rarity peers. */
+.card-rh.cursed {
+  --rh-color: #ff4e6b;
+  --rh-glow: rgba(255, 78, 107, 0.5);
+}
+.card-rh.cursed .card-rh-frame {
+  background: linear-gradient(180deg, rgba(48, 14, 28, 0.98), rgba(20, 6, 14, 0.98));
+  border-color: var(--rh-color);
+  box-shadow:
+    0 0 0 1px rgba(255, 80, 110, 0.25) inset,
+    0 0 28px rgba(255, 50, 90, 0.45) inset;
+}
+.card-rh.cursed .card-rh-tag.cursed {
+  color: #ffe2e7;
+  background: rgba(255, 60, 90, 0.85);
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 }
 
 /* Animated legendary border-shimmer. The pulsing inset glow stays on the
@@ -721,8 +749,8 @@ body {
   margin-bottom: 4px;
 }
 .card-rh-glyph {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   color: var(--rh-color);
   filter: drop-shadow(0 0 6px var(--rh-glow));
 }
@@ -733,7 +761,7 @@ body {
   top: 14px;
   right: 14px;
   font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.5px;
   color: var(--rh-color);
   text-shadow: 0 0 6px var(--rh-glow);
@@ -741,19 +769,21 @@ body {
 
 .card-rh-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 13px;
+  /* Bumped from 13px → 17px so the card titles read clearly at the new
+   * card size. Legendary names like "Великий рецепт Саламандры" still
+   * fit thanks to the 3-line clamp below. */
+  font-size: 17px;
   letter-spacing: 1.5px;
   text-align: center;
   color: #f6f0e0;
   text-transform: uppercase;
   text-shadow: 1px 1px 0 #141018, 0 0 6px var(--rh-glow);
   padding: 0 4px;
-  /* Allow up to 3 lines so longer card names like "Великий рецепт
-   * Саламандры" don't get clipped or truncated. */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.25;
 }
 
 .card-rh-divider {
@@ -769,15 +799,16 @@ body {
   padding: 0 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  /* Bumped from 14px → 19px for legibility on the bigger cards. */
+  font-size: 19px;
   color: #d8d2c0;
   text-align: center;
   flex: 1 1 auto;
 }
 .card-rh-effects li {
-  line-height: 1.25;
+  line-height: 1.3;
 }
 .card-rh-val {
   display: inline-block;
@@ -789,12 +820,13 @@ body {
 
 .card-rh-synergy {
   font-family: 'VT323', monospace;
-  font-size: 12px;
+  font-size: 16px;
   color: var(--accent);
   text-align: center;
   border-top: 1px dashed rgba(125, 249, 255, 0.45);
   margin: 4px 6px 0;
   padding-top: 4px;
+  line-height: 1.25;
 }
 
 /* Bottom action strip. */
@@ -808,13 +840,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 14px;
+  padding: 8px 18px;
   background: rgba(20, 18, 32, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 4px;
   color: #f6f0e0;
   font-family: 'VT323', monospace;
-  font-size: 18px;
+  font-size: 22px;
   letter-spacing: 0.6px;
   cursor: pointer;
   transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
@@ -828,6 +860,14 @@ body {
 .cards-action-pill.accent {
   border-color: var(--accent);
   color: var(--accent);
+}
+.cards-action-pill.danger {
+  border-color: rgba(255, 100, 120, 0.7);
+  color: #ffb1bd;
+}
+.cards-action-pill.danger:hover:not(:disabled) {
+  border-color: #ff6680;
+  color: #ff6680;
 }
 .cards-action-counter {
   display: inline-block;
@@ -1084,7 +1124,7 @@ body {
 }
 .meta-loadout-title {
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 20px;
   letter-spacing: 0.4px;
   color: var(--accent);
   text-transform: uppercase;
@@ -1100,10 +1140,10 @@ body {
 .meta-loadout-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-family: 'VT323', monospace;
-  font-size: 14px;
-  padding: 5px 8px;
+  font-size: 18px;
+  padding: 7px 10px;
   background: rgba(20, 18, 32, 0.85);
   color: var(--fg);
   border: 1px solid rgba(125, 249, 255, 0.18);
@@ -1115,10 +1155,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 22px;
-  width: 22px;
-  height: 22px;
-  font-size: 17px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  font-size: 22px;
   text-shadow: 0 0 4px currentColor;
 }
 .meta-loadout-btn-label {
@@ -1135,9 +1175,10 @@ body {
 }
 .meta-loadout-desc {
   font-family: 'VT323', monospace;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--fg-dim);
-  min-height: 18px;
+  min-height: 22px;
+  line-height: 1.3;
 }
 .meta-tree-body {
   display: flex;
@@ -1178,16 +1219,16 @@ body {
    visible (even on touch) so the player has a stable place to read what
    each node does and to tap "Изучить" / "Вернуть". */
 .meta-tree-side {
-  flex: 0 0 clamp(220px, 20vw, 320px);
+  flex: 0 0 clamp(260px, 22vw, 360px);
   background: rgba(10, 8, 16, 0.85);
   border: 1px solid var(--bg-frame-mid);
   border-radius: 4px;
-  padding: 14px 14px 16px;
+  padding: 16px 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 20px;
   color: var(--fg);
   overflow-y: auto;
   align-self: stretch;
@@ -1195,31 +1236,31 @@ body {
 }
 .meta-side-hint {
   color: var(--fg-dim);
-  font-size: 14px;
+  font-size: 17px;
   font-style: italic;
 }
 .meta-side-name {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 12px;
+  font-size: 16px;
   letter-spacing: 0.5px;
   line-height: 1.4;
 }
 .meta-side-meta {
   color: var(--fg-dim);
-  font-size: 13px;
+  font-size: 16px;
 }
 .meta-side-desc {
   color: var(--fg);
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1.4;
   min-height: 3em;
 }
 .meta-side-cost {
   color: #7df9ff;
-  font-size: 14px;
+  font-size: 18px;
 }
 .meta-side-cost strong { color: #ffd166; font-weight: normal; }
-.meta-side-status { font-size: 13px; }
+.meta-side-status { font-size: 16px; }
 .meta-side-actions {
   margin-top: auto;
   display: flex;
@@ -1228,9 +1269,9 @@ body {
 .meta-side-learn,
 .meta-side-refund {
   flex: 1 1 auto;
-  padding: 10px 12px;
+  padding: 12px 14px;
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.5px;
   border: 2px solid var(--bg-frame-mid);
   border-radius: 4px;
@@ -1331,7 +1372,7 @@ body {
   text-align: center;
   color: var(--fg-dim);
   font-family: 'VT323', monospace;
-  font-size: 13px;
+  font-size: 17px;
   margin-top: 0;
   flex: 0 0 auto;
 }

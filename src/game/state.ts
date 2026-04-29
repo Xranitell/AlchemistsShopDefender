@@ -225,6 +225,10 @@ export interface Modifiers {
   salamanderActive: boolean;
   /** Archmaster legendary: new towers spawn at +1 level (min 2) and cost +25%. */
   archmasterActive: boolean;
+  /** Multiplicative tower-cost penalty applied by Cursed Cards (e.g. an
+   *  Acid Tips Pact that makes towers cost more in exchange for armor
+   *  break). Stacks with archmaster. */
+  towerCostMult: number;
 }
 
 export const newModifiers = (): Modifiers => ({
@@ -259,6 +263,7 @@ export const newModifiers = (): Modifiers => ({
   tripleThrowInterval: 8,
   salamanderActive: false,
   archmasterActive: false,
+  towerCostMult: 1,
 });
 
 export interface WaveState {
