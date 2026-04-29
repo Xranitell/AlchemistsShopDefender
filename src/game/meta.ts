@@ -264,15 +264,14 @@ export function calcRunEssence(
     if (u && u.effect.kind === 'essenceBonus') mult *= u.effect.value;
   }
 
-  // v2 reward curve: ~½ of v1 so the talent tree (~70+ nodes, mostly 8-22 СЭ
-  // small + 55-80 СЭ notables + 2-АЭ keystones) takes 15-25 runs to fully
-  // explore instead of 4-5.
-  //   Wave 1 fail with 8 kills    →  1*5 + 8*0.35 + 6  ≈ 14 blue
-  //   Wave 5 victory + 60 kills   →  5*5 + 60*0.35 + 6 + 25 ≈ 77 blue
-  //   Wave 10 fail with 90 kills  →  10*5 + 90*0.35 + 6 ≈ 87 blue
-  //   Wave 15 victory + 140 kills →  15*5 + 140*0.35 + 6 + 25 ≈ 155 blue
-  let blue = Math.floor(waveReached * 5 + totalKills * 0.35 + 6);
-  if (victory) blue += 25;
+  // v3 reward curve: reduced further so the expanded talent tree takes
+  // 25-40 runs to fully explore.
+  //   Wave 1 fail with 8 kills    →  1*3 + 8*0.2 + 4  ≈ 9 blue
+  //   Wave 5 victory + 60 kills   →  5*3 + 60*0.2 + 4 + 15 ≈ 46 blue
+  //   Wave 10 fail with 90 kills  →  10*3 + 90*0.2 + 4 ≈ 52 blue
+  //   Wave 15 victory + 140 kills →  15*3 + 140*0.2 + 4 + 15 ≈ 92 blue
+  let blue = Math.floor(waveReached * 3 + totalKills * 0.2 + 4);
+  if (victory) blue += 15;
   blue = Math.round(blue * mult);
 
   // Ancient essence: scarcer in v2 — only on a full victory, +1 if you also

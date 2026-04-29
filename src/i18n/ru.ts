@@ -85,6 +85,9 @@ export const RU: Record<string, string> = {
   'ui.reward.ancientGain': '+{n} ДЭ',
   'ui.reward.bpGain': '+{n} BP-опыта',
   'ui.reward.chestOpened': 'Сундук вскрыт.',
+  'ui.chest.tapToOpen': 'Нажми, чтобы открыть!',
+  'ui.chest.opening': 'Открывается...',
+  'ui.chest.opened': 'Награда получена!',
 
   // ── Settings ─────────────────────────────────────────────────────────
   'ui.settings.title': 'Настройки',
@@ -250,7 +253,7 @@ export const RU: Record<string, string> = {
   'ui.tower.targeting.first': 'Первый по маршруту',
 
   // ── Tutorial overlay ─────────────────────────────────────────────────
-  'ui.tutorial.skip': 'Пропустить тьюториал',
+  'ui.tutorial.skip': 'Пропустить обучение',
   'ui.tutorial.ok': 'Понятно',
   'tutorial.w1-throw': 'Зажми ЛКМ, чтобы прицелиться, и отпусти — манекен швырнёт зелье.',
   'tutorial.w1-aim-bonus': 'Точное попадание ручным броском даёт +20% урона. Целься, не спамь.',

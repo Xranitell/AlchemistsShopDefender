@@ -45,9 +45,7 @@ export class Hud {
   private catalystBadge!: HTMLDivElement;
   private catalystValue!: HTMLSpanElement;
 
-  // Bottom-left magnet info (loot radius indicator)
-  // (Decorative for now, animates when picking up gold)
-  private magnetButton!: HTMLDivElement;
+  // (Magnet button removed — auto-magnet is always active)
 
   // Bottom-right ability / overload buttons
   private abilityButton!: HTMLButtonElement;
@@ -120,14 +118,14 @@ export class Hud {
     this.timerBar.appendChild(this.timerLabel);
     waveStack.appendChild(this.timerBar);
 
-    // Boss wave warning indicator
+    top.appendChild(waveStack);
+
+    // Boss wave warning indicator — appended to HUD root so it's centered on screen
     this.bossIndicator = document.createElement('div');
     this.bossIndicator.className = 'hud-boss-indicator';
     this.bossIndicator.textContent = t('ui.hud.bossIncoming');
     this.bossIndicator.style.display = 'none';
-    waveStack.appendChild(this.bossIndicator);
-
-    top.appendChild(waveStack);
+    this.root.appendChild(this.bossIndicator);
 
     // Top-center: HP bar in metal frame
     const hpBadge = badgeFrame('hud-hp-badge');
@@ -204,16 +202,7 @@ export class Hud {
     const bottom = document.createElement('div');
     bottom.className = 'hud-bottom-row';
 
-    // Bottom-left: MAGNET round button — pulls every gold pickup on the floor
-    // toward the hero when clicked.
-    this.magnetButton = roundIconButton('hud-icon-magnet');
-    this.magnetButton.appendChild(spriteEl(getSprites().iconMagnet, 4));
-    const magLabel = document.createElement('span');
-    magLabel.className = 'hud-icon-label';
-    magLabel.textContent = t('ui.hud.magnet');
-    this.magnetButton.appendChild(magLabel);
-    this.magnetButton.addEventListener('click', () => this.handlers.onActivateMagnet());
-    bottom.appendChild(this.magnetButton);
+    // Magnet button removed — auto-magnet is always active.
 
     // Bottom-center: hint + skip-wave button (during preparing phase only)
     const center = document.createElement('div');
@@ -448,7 +437,7 @@ function badgeFrame(extraClass: string): HTMLDivElement {
   return el;
 }
 
-function roundIconButton(extraClass: string): HTMLDivElement {
+export function roundIconButton(extraClass: string): HTMLDivElement {
   const el = document.createElement('div');
   el.className = `hud-round-btn ${extraClass}`;
   return el;

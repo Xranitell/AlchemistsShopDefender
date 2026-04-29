@@ -84,6 +84,9 @@ export const EN: Record<string, string> = {
   'ui.reward.ancientGain': '+{n} AE',
   'ui.reward.bpGain': '+{n} BP-XP',
   'ui.reward.chestOpened': 'Chest opened.',
+  'ui.chest.tapToOpen': 'Tap to open!',
+  'ui.chest.opening': 'Opening...',
+  'ui.chest.opened': 'Reward received!',
 
   // ── Settings ─────────────────────────────────────────────────────────
   'ui.settings.title': 'Settings',
@@ -249,7 +252,7 @@ export const EN: Record<string, string> = {
   'ui.tower.targeting.first': 'First on path',
 
   // ── Tutorial overlay ─────────────────────────────────────────────────
-  'ui.tutorial.skip': 'Skip tutorial',
+  'ui.tutorial.skip': 'Skip training',
   'ui.tutorial.ok': 'Got it',
   'tutorial.w1-throw': 'Hold LMB to aim, release to throw — the mannequin will hurl a potion.',
   'tutorial.w1-aim-bonus': 'A precise manual hit deals +20% damage. Aim — don\u2019t spam.',

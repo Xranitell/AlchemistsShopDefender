@@ -50,17 +50,17 @@ export const INGREDIENT_DROP_TABLE: Array<{
   chance: number;       // 0..1 per kill (regular drops)
   guaranteedAmount?: number; // fixed drop on death (boss / miniboss)
 }> = [
-  // Regular drops (rolled per kill)
-  { enemyId: 'slime',         ingredient: 'slime_jelly', chance: 0.12 },
-  { enemyId: 'rat',           ingredient: 'rat_fang',    chance: 0.14 },
-  { enemyId: 'sapper',        ingredient: 'sapper_ash',  chance: 0.18 },
-  { enemyId: 'shaman',        ingredient: 'mold_spore',  chance: 0.18 },
-  { enemyId: 'flying_flask',  ingredient: 'glass_shard', chance: 0.16 },
-  { enemyId: 'golem',         ingredient: 'iron_plate',  chance: 0.14 },
+  // Regular drops (rolled per kill) — reduced from v1 values
+  { enemyId: 'slime',         ingredient: 'slime_jelly', chance: 0.06 },
+  { enemyId: 'rat',           ingredient: 'rat_fang',    chance: 0.07 },
+  { enemyId: 'sapper',        ingredient: 'sapper_ash',  chance: 0.09 },
+  { enemyId: 'shaman',        ingredient: 'mold_spore',  chance: 0.09 },
+  { enemyId: 'flying_flask',  ingredient: 'glass_shard', chance: 0.08 },
+  { enemyId: 'golem',         ingredient: 'iron_plate',  chance: 0.07 },
   // Boss / miniboss guaranteed drops
-  { enemyId: 'miniboss_slime',ingredient: 'slime_jelly', chance: 1, guaranteedAmount: 5 },
-  { enemyId: 'boss_rat_king', ingredient: 'rat_fang',    chance: 1, guaranteedAmount: 4 },
-  { enemyId: 'boss_homunculus',ingredient: 'homunculus_frag', chance: 1, guaranteedAmount: 3 },
+  { enemyId: 'miniboss_slime',ingredient: 'slime_jelly', chance: 1, guaranteedAmount: 3 },
+  { enemyId: 'boss_rat_king', ingredient: 'rat_fang',    chance: 1, guaranteedAmount: 2 },
+  { enemyId: 'boss_homunculus',ingredient: 'homunculus_frag', chance: 1, guaranteedAmount: 2 },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────

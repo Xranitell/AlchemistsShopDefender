@@ -57,7 +57,7 @@ export interface TutorialStep {
   text: string;
   target: TutorialTarget;
   dismiss: TutorialDismiss;
-  /** Show the "Пропустить тьюториал" button alongside the tooltip. */
+  /** Show the "Пропустить обучение" button alongside the tooltip. */
   showSkip?: boolean;
 }
 
