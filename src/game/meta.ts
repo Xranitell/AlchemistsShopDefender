@@ -6,7 +6,8 @@ import {
   DEFAULT_AURA_MODULE,
   ETHER_AMP_FIRE_RATE,
   ELEM_RESON_DAMAGE,
-  MAGNET_RES_LOOT_RADIUS,
+  GOLD_AURA_MULT,
+  LONG_RANGE_MULT,
   isActiveModule,
   isAuraModule,
 } from '../data/modules';
@@ -52,9 +53,6 @@ export function applyModuleLoadout(state: GameState, meta: MetaSave): void {
 
   const m = state.modifiers;
   switch (aura) {
-    case 'magnet_res':
-      m.lootRadiusMult *= MAGNET_RES_LOOT_RADIUS;
-      break;
     case 'ether_amp':
       m.towerFireRateMult *= ETHER_AMP_FIRE_RATE;
       break;
@@ -63,6 +61,16 @@ export function applyModuleLoadout(state: GameState, meta: MetaSave): void {
       break;
     case 'elem_reson':
       m.reactionDamageMult *= ELEM_RESON_DAMAGE;
+      break;
+    case 'vital_pulse':
+      // Layered with the Auto-Repair meta upgrade — both stack additively.
+      m.vitalPulseRegen = true;
+      break;
+    case 'gold_aura':
+      m.goldDropMult *= GOLD_AURA_MULT;
+      break;
+    case 'long_range':
+      m.towerRangeMult *= LONG_RANGE_MULT;
       break;
   }
 }

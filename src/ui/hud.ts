@@ -35,6 +35,12 @@ export class Hud {
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
 
+  // Top-right pause button (also drives the keyboard shortcut). Holds its
+  // own paused/playing state so the icon and aria-label stay in sync with
+  // whatever the host code reports through `setPaused`.
+  private pauseButton!: HTMLButtonElement;
+  private isPaused = false;
+
   // Top-center HP bar
   private hpFill!: HTMLDivElement;
   private hpLabel!: HTMLSpanElement;
@@ -195,6 +201,18 @@ export class Hud {
     this.catalystBadge.appendChild(catLab);
     this.catalystBadge.appendChild(this.catalystValue);
     rightStack.appendChild(this.catalystBadge);
+
+    // Pause button — sits in the top-right corner, above the resource stack.
+    // Tapping it toggles the run pause state via the `onPause` handler so
+    // the same control works on desktop and mobile.
+    this.pauseButton = document.createElement('button');
+    this.pauseButton.className = 'hud-pause-btn';
+    this.pauseButton.type = 'button';
+    this.pauseButton.setAttribute('aria-label', t('ui.hud.pause'));
+    this.pauseButton.title = t('ui.hud.pause');
+    this.pauseButton.textContent = '❚❚';
+    this.pauseButton.addEventListener('click', () => this.handlers.onPause());
+    rightStack.appendChild(this.pauseButton);
 
     top.appendChild(rightStack);
 
@@ -376,6 +394,27 @@ export class Hud {
     this.updatePotionBar(state);
   }
 
+  /** Sync the pause button visual state with the host's run pause flag. */
+  setPaused(paused: boolean): void {
+    this.isPaused = paused;
+    if (!this.pauseButton) return;
+    this.pauseButton.classList.toggle('paused', paused);
+    if (paused) {
+      this.pauseButton.textContent = '▶';
+      this.pauseButton.setAttribute('aria-label', t('ui.hud.resume'));
+      this.pauseButton.title = t('ui.hud.resume');
+    } else {
+      this.pauseButton.textContent = '❚❚';
+      this.pauseButton.setAttribute('aria-label', t('ui.hud.pause'));
+      this.pauseButton.title = t('ui.hud.pause');
+    }
+  }
+
+  /** Whether the HUD currently displays the paused state. */
+  paused(): boolean {
+    return this.isPaused;
+  }
+
   private updatePotionBar(state: GameState): void {
     const interactive = state.phase === 'wave' || state.phase === 'preparing';
     this.potionBar.style.display = interactive ? '' : 'none';
@@ -484,6 +523,8 @@ function activeModuleShortLabel(id: string): string {
     case 'chronos': return t('ui.hud.module.chronos');
     case 'transmute': return t('ui.hud.module.transmute');
     case 'alch_dome': return t('ui.hud.module.alch_dome');
+    case 'frost_nova': return t('ui.hud.module.frost_nova');
+    case 'vortex': return t('ui.hud.module.vortex');
     default: return '';
   }
 }

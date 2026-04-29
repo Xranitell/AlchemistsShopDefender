@@ -106,8 +106,8 @@ export function runeUnlockSlotToIndex(slot: number): number {
 export function buildMannequin(width: number = ARENA_W, height: number = ARENA_H): Mannequin {
   return {
     pos: v2(width / 2, height / 2),
-    hp: 120,
-    maxHp: 120,
+    hp: 200,
+    maxHp: 200,
     basePotionDamage: 12,
     basePotionRadius: 60,
     basePotionCooldown: 1.3,
@@ -244,7 +244,7 @@ export function buildInitialState(
     golemHeartCharges: 0,
     // Default loadout — overwritten by `applyMetaUpgrades` at run start.
     activeModuleId: 'lightning',
-    auraModuleId: 'magnet_res',
+    auraModuleId: 'ether_amp',
     transmuteTimer: 0,
     transmuteGoldMult: 1,
     // Default catalyst capacity per GDD §7.5: 2 slots, expanded by meta and

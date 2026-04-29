@@ -10,6 +10,10 @@ import {
   ALCH_DOME_REDUCTION,
   TRANSMUTE_DURATION,
   TRANSMUTE_GOLD_MULT,
+  FROST_NOVA_DURATION,
+  VORTEX_RADIUS,
+  VORTEX_DAMAGE,
+  VORTEX_PULL_FORCE,
 } from '../data/modules';
 
 const LIGHTNING_TARGETS = 6;
@@ -47,6 +51,10 @@ export function tryActivateOverload(state: GameState): boolean {
       return runTransmute(state);
     case 'alch_dome':
       return runAlchDome(state);
+    case 'frost_nova':
+      return runFrostNova(state);
+    case 'vortex':
+      return runVortex(state);
     case 'lightning':
     default:
       return runLightning(state);
@@ -115,5 +123,39 @@ function runAlchDome(state: GameState): boolean {
   state.tempShieldTime = Math.max(state.tempShieldTime, ALCH_DOME_DURATION);
   state.tempShieldReduction = Math.max(state.tempShieldReduction, ALCH_DOME_REDUCTION);
   spawnFloatingText(state, t('floating.alch_dome'), state.mannequin.pos, '#7df9ff');
+  return true;
+}
+
+function runFrostNova(state: GameState): boolean {
+  // Full freeze: drop slowFactor to 0 so the enemy can't move at all and
+  // refresh the slow timer to the nova duration. Existing freezes always
+  // win against a partial Chronos so the player's burst combo is intact.
+  for (const e of state.enemies) {
+    e.status.slowFactor = 0;
+    e.status.slowTime = Math.max(e.status.slowTime, FROST_NOVA_DURATION);
+  }
+  spawnFloatingText(state, t('floating.frost_nova'), state.mannequin.pos, '#7ec8ff');
+  return true;
+}
+
+function runVortex(state: GameState): boolean {
+  // Pull every enemy in radius toward the mannequin and deal a single AoE
+  // pulse. Damage is applied first so even fragile enemies that get yanked
+  // through the centre still take the hit.
+  const m = state.mannequin.pos;
+  for (const e of state.enemies) {
+    const d = dist(e.pos, m);
+    if (d > VORTEX_RADIUS) continue;
+    applyDamageToEnemy(state, e, VORTEX_DAMAGE, 'aether');
+    if (d > 1) {
+      // Yank the enemy a fraction of its radial distance toward us. The
+      // pull caps at half the radius so distant enemies don't snap onto
+      // the hero's hitbox.
+      const pull = Math.min(VORTEX_PULL_FORCE, d * 0.6);
+      e.pos.x += ((m.x - e.pos.x) / d) * pull;
+      e.pos.y += ((m.y - e.pos.y) / d) * pull;
+    }
+  }
+  spawnFloatingText(state, t('floating.vortex'), state.mannequin.pos, '#a78bfa');
   return true;
 }

@@ -131,10 +131,12 @@ body {
   text-shadow: 2px 2px 0 var(--hud-frame-dark);
 }
 
-/* HP central widget — bigger, with a chunky red bar and metal frame */
+/* HP central widget — bigger, with a chunky red bar and metal frame.
+ * `align-self: flex-start` keeps it pinned to the top of the HUD row so the
+ * mannequin's HP is the very first thing visible on every device. */
 .hud-hp-badge {
   flex: 0 1 420px;
-  align-self: center;
+  align-self: flex-start;
   padding: 8px 14px 10px;
 }
 .hud-hp-inner {
@@ -215,6 +217,45 @@ body {
 .hud-catalyst-badge .hud-resource-value { font-size: 16px; color: var(--accent); }
 .hud-catalyst-badge .hud-tag-label { color: var(--accent); }
 
+/* Pause button — sits in the top-right HUD stack. Square chunky button so
+ * the icon glyph (❚❚ / ▶) is large enough for thumb taps on mobile. */
+.hud-pause-btn {
+  pointer-events: auto;
+  align-self: flex-end;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(180deg, var(--hud-frame-mid), var(--hud-frame-dark));
+  border: 3px solid #090b13;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 2px var(--hud-frame-rim),
+    inset 0 2px 0 var(--hud-frame-shine),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 0;
+}
+.hud-pause-btn:hover { transform: translateY(-1px); }
+.hud-pause-btn:active { transform: translateY(2px); }
+.hud-pause-btn.paused {
+  color: var(--cta-yellow);
+  box-shadow:
+    0 0 0 2px var(--hud-frame-rim),
+    inset 0 2px 0 var(--hud-frame-shine),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.55),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(255, 209, 102, 0.45);
+}
+
 /* ============ HUD: bottom row (MAGNET / CTA / ABILITY+OVERLOAD) ============ */
 .hud-bottom-row {
   position: absolute;
@@ -228,6 +269,11 @@ body {
   pointer-events: none;
 }
 
+/* The flask / potion column lives in the bottom-row but visually we lift
+ * it toward the screen centre so the inventory is closer to the player's
+ * thumbs and reads alongside the action area. The right-side round
+ * buttons (ABILITY / OVERLOAD) stay anchored at the bottom of the row
+ * because they sit in their own flex sibling. */
 .hud-center-bottom {
   display: flex;
   flex-direction: column;
@@ -235,6 +281,7 @@ body {
   gap: 8px;
   flex: 1;
   text-align: center;
+  transform: translateY(-72px);
 }
 .hud-hint {
   color: var(--fg);
