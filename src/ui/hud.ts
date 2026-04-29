@@ -229,7 +229,28 @@ export class Hud {
       btn.className = 'hud-potion-slot';
       btn.dataset.slot = String(i);
       btn.disabled = true;
-      btn.addEventListener('click', () => this.handlers.onUsePotion(i));
+      // Fire on pointerdown so the action triggers on the very first frame
+      // the user touches the slot — `click` can be flaky when the button is
+      // briefly enabled/disabled across renders or when other overlays steal
+      // focus mid-press. We track a per-slot "consumed-this-press" flag so
+      // the synthetic `click` that follows doesn't double-fire.
+      let pressedThisGesture = false;
+      btn.addEventListener('pointerdown', (ev) => {
+        if (btn.disabled) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        pressedThisGesture = true;
+        this.handlers.onUsePotion(i);
+      });
+      btn.addEventListener('click', (ev) => {
+        if (pressedThisGesture) {
+          pressedThisGesture = false;
+          ev.preventDefault();
+          return;
+        }
+        if (btn.disabled) return;
+        this.handlers.onUsePotion(i);
+      });
       this.potionSlots.push(btn);
       this.potionBar.appendChild(btn);
     }
@@ -369,13 +390,13 @@ export class Hud {
       if (recipe) {
         btn.style.color = recipe.color;
         btn.classList.add('filled');
-        btn.title = `${t(`${recipe.i18nKey}.name`)} — ${t(`${recipe.i18nKey}.desc`)}`;
-        btn.innerHTML = `<span class="hud-potion-glyph">${recipe.glyph}</span>`;
+        btn.title = `[${i + 1}] ${t(`${recipe.i18nKey}.name`)} — ${t(`${recipe.i18nKey}.desc`)}`;
+        btn.innerHTML = `<span class="hud-potion-glyph">${recipe.glyph}</span><span class="hud-potion-key">${i + 1}</span>`;
       } else {
         btn.classList.remove('filled');
         btn.style.color = '';
         btn.title = t('ui.hud.potionEmpty');
-        btn.innerHTML = `<span class="hud-potion-glyph hud-potion-empty">·</span>`;
+        btn.innerHTML = `<span class="hud-potion-glyph hud-potion-empty">·</span><span class="hud-potion-key">${i + 1}</span>`;
       }
     }
 

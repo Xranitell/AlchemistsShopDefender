@@ -3,7 +3,7 @@ import { Input } from './engine/input';
 import { Loop } from './engine/loop';
 import { dist } from './engine/math';
 import { yandex } from './yandex';
-import { buildInitialState, applyBiomeModifiers, dailySeed, dailyBoardId } from './game/world';
+import { buildInitialState, applyBiomeModifiers, dailySeed, dailyBoardId, resizeArena, setArenaSize } from './game/world';
 import { updateMannequin } from './game/mannequin';
 import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts } from './game/enemy';
 import { updateReactionPools } from './game/reactions';
@@ -57,6 +57,29 @@ const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
+/** Resize the canvas + game arena to fully cover the current viewport.
+ *  We keep the canvas internal resolution at the CSS pixel size (without
+ *  multiplying by devicePixelRatio) so 1280x720-tuned positions translate
+ *  directly into world coordinates and the existing renderer doesn't need
+ *  to know about HiDPI scaling. */
+function syncArenaToViewport(): void {
+  const c = canvas!;
+  const w = Math.max(640, Math.floor(window.innerWidth));
+  const h = Math.max(360, Math.floor(window.innerHeight));
+  if (c.width !== w) c.width = w;
+  if (c.height !== h) c.height = h;
+  setArenaSize(w, h);
+  // Re-enable smoothing every resize (Canvas resets context state when
+  // the backing store size changes).
+  if (ctx) ctx.imageSmoothingEnabled = true;
+}
+syncArenaToViewport();
+window.addEventListener('resize', () => {
+  syncArenaToViewport();
+  // The first call inside `state` setup already used the right size, but
+  // subsequent runtime resizes need to reposition the mannequin / runes.
+  if (state) resizeArena(state, window.innerWidth, window.innerHeight);
+});
 
 let meta: MetaSave = loadMeta();
 // Apply the saved locale before any UI is rendered so the very first
@@ -186,6 +209,18 @@ function tick(dt: number): void {
     if (state.phase === 'preparing') {
       towerShop.close();
       startNextWave(state);
+    }
+  }
+  // Potion hotkeys: 1..4 maps to inventory slots 0..3. Works during the
+  // same phases as the HUD buttons (`wave` / `preparing`).
+  if (state.phase === 'wave' || state.phase === 'preparing') {
+    for (let i = 0; i < 4; i++) {
+      if (input.state.keysPressedThisFrame.has(`Digit${i + 1}`)) {
+        if (consumePotion(state, i)) {
+          persistRunInventory(state, meta);
+          audio.playSfx('throwPotion', { detune: 0.85 });
+        }
+      }
     }
   }
   input.endFrame();
@@ -393,11 +428,13 @@ function showEndlessModifierOverlay(): void {
   });
 }
 
-function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpXp: number } {
+function awardRunEssence(victory: boolean): { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number } {
   const wave = state.waveState.currentIndex + 1;
-  const reward = calcRunEssence(meta, wave, state.totalKills, victory);
+  const reward = calcRunEssence(meta, wave, state.totalKills, victory, state.difficulty);
   meta.blueEssence += reward.blue;
   meta.ancientEssence += reward.ancient;
+  meta.epicKeys += reward.epicKeys;
+  meta.ancientKeys += reward.ancientKeys;
   meta.totalRuns += 1;
   if (wave > meta.bestWave) meta.bestWave = wave;
   // Battle pass XP
@@ -417,26 +454,30 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpX
     void yandex.setLeaderboardScore('boss_challenge', score);
   }
 
-  return { blue: reward.blue, ancient: reward.ancient, bpXp };
+  return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp };
 }
 
 /** Compose a reward-breakdown subtitle string for victory/defeat screens. */
-function rewardBreakdown(r: { blue: number; ancient: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
+function rewardBreakdown(r: { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
   const parts = [
     t('ui.reward.wave', { wave, total: totalWaves(state) }),
     t('ui.reward.kills', { n: kills }),
     t('ui.reward.blueGain', { n: r.blue }),
   ];
   if (r.ancient > 0) parts.push(t('ui.reward.ancientGain', { n: r.ancient }));
+  if (r.epicKeys > 0) parts.push(t('ui.reward.epicKeyGain', { n: r.epicKeys }));
+  if (r.ancientKeys > 0) parts.push(t('ui.reward.ancientKeyGain', { n: r.ancientKeys }));
   parts.push(t('ui.reward.bpGain', { n: r.bpXp }));
   if (victory) parts.unshift(t('ui.reward.chestOpened'));
   return parts.join(' • ');
 }
 
 /** Award the same reward payload again (chest doubling via rewarded ad). */
-function doubleRewards(r: { blue: number; ancient: number; bpXp: number }): void {
+function doubleRewards(r: { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number }): void {
   meta.blueEssence += r.blue;
   meta.ancientEssence += r.ancient;
+  meta.epicKeys += r.epicKeys;
+  meta.ancientKeys += r.ancientKeys;
   addBpXp(meta, r.bpXp);
   saveMeta(meta);
 }

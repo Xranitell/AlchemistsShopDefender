@@ -251,12 +251,15 @@ function isAllocationConnected(allocated: Set<string>): boolean {
   return visited.size === allocated.size;
 }
 
+import type { DifficultyMode } from '../data/difficulty';
+
 export function calcRunEssence(
   meta: MetaSave,
   waveReached: number,
   totalKills: number,
   victory: boolean,
-): { blue: number; ancient: number } {
+  difficulty: DifficultyMode = 'normal',
+): { blue: number; ancient: number; epicKeys: number; ancientKeys: number } {
   // Sum every allocated essenceBonus effect (multiplicative).
   let mult = 1;
   for (const id of meta.purchased) {
@@ -281,7 +284,22 @@ export function calcRunEssence(
   if (victory) ancient = 1;
   if (waveReached >= 12 && victory) ancient += 1;
 
-  return { blue, ancient };
+  // Difficulty-based key drops:
+  //   normal → epic keys (the ticket into Epic mode).
+  //   epic   → ancient keys (the ticket into Ancient mode).
+  // Keys scale with progress: 1 every ~5 waves, +1 on full victory.
+  // Higher difficulties don't drop their own key tier — Ancient is the cap.
+  let epicKeys = 0;
+  let ancientKeys = 0;
+  if (difficulty === 'normal') {
+    epicKeys = Math.max(0, Math.floor(waveReached / 5));
+    if (victory) epicKeys += 1;
+  } else if (difficulty === 'epic') {
+    ancientKeys = Math.max(0, Math.floor(waveReached / 5));
+    if (victory) ancientKeys += 1;
+  }
+
+  return { blue, ancient, epicKeys, ancientKeys };
 }
 
 // Ensure no dead-code warning for full export coverage.

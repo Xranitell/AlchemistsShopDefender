@@ -14,29 +14,32 @@ import { biomeFromSeed, BIOMES, type BiomeId } from '../data/biomes';
 const ARENA_W = 1280;
 const ARENA_H = 720;
 
-export function buildEntrances(): Entrance[] {
+export function buildEntrances(width: number = ARENA_W, height: number = ARENA_H): Entrance[] {
   // Enemies spawn just off-screen (beyond the canvas edges) and walk onto
   // the arena floor. Order: top, right, bottom, left.
   const OFFSCREEN = 30;
   return [
-    { pos: v2(ARENA_W / 2, -OFFSCREEN), active: false },
-    { pos: v2(ARENA_W + OFFSCREEN, ARENA_H / 2), active: false },
-    { pos: v2(ARENA_W / 2, ARENA_H + OFFSCREEN), active: false },
-    { pos: v2(-OFFSCREEN, ARENA_H / 2), active: false },
+    { pos: v2(width / 2, -OFFSCREEN), active: false },
+    { pos: v2(width + OFFSCREEN, height / 2), active: false },
+    { pos: v2(width / 2, height + OFFSCREEN), active: false },
+    { pos: v2(-OFFSCREEN, height / 2), active: false },
   ];
 }
 
-export function buildRunePoints(): RunePoint[] {
+export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_H): RunePoint[] {
   // 8 points on a ring around the centre, of which the first 4 (indices 0..3
   // in unlock order) are active by default. The remaining 4 slots unlock via
   // meta-progression — see `runePointUnlock` upgrades. The unlock order is
   // separate from the visual angle so each unlock opens a slot on a different
   // side of the arena rather than them all clustering together.
   const points: RunePoint[] = [];
-  const cx = ARENA_W / 2;
-  const cy = ARENA_H / 2;
-  const rx = 250;
-  const ry = 130;
+  const cx = width / 2;
+  const cy = height / 2;
+  // Scale the rune ring to roughly one-third of the smaller axis so the
+  // ring keeps a comfortable distance from both the mannequin in the
+  // centre and the screen edges, no matter the viewport aspect ratio.
+  const rx = Math.min(width, height) * 0.35;
+  const ry = Math.min(width, height) * 0.18;
   // Visual angles around the dais.
   const angles = [
     -Math.PI / 2,                  // 0  top         (active)
@@ -100,9 +103,9 @@ export function runeUnlockSlotToIndex(slot: number): number {
   return LOCKED[i]!;
 }
 
-export function buildMannequin(): Mannequin {
+export function buildMannequin(width: number = ARENA_W, height: number = ARENA_H): Mannequin {
   return {
-    pos: v2(ARENA_W / 2, ARENA_H / 2),
+    pos: v2(width / 2, height / 2),
     hp: 120,
     maxHp: 120,
     basePotionDamage: 12,
@@ -127,6 +130,46 @@ export function buildWaveState(): WaveState {
   };
 }
 
+/** Module-level dynamic arena size, set by `setArenaSize` from main.ts on
+ *  window resize. Values default to the legacy 1280x720 layout so existing
+ *  call-sites work unchanged when the host hasn't called `setArenaSize`. */
+let CURRENT_W = ARENA_W;
+let CURRENT_H = ARENA_H;
+
+export function setArenaSize(width: number, height: number): void {
+  CURRENT_W = Math.max(640, Math.floor(width));
+  CURRENT_H = Math.max(360, Math.floor(height));
+}
+
+export function getArenaSize(): { width: number; height: number } {
+  return { width: CURRENT_W, height: CURRENT_H };
+}
+
+/** Resize an existing run to fit a new viewport. Re-positions the
+ *  mannequin to the new centre and rebuilds the rune ring + entrances so
+ *  they hug the new bounds. Live entities (enemies, projectiles, gold
+ *  pickups, fire pools) keep their world coordinates — they will simply
+ *  appear in the same world spot, which is now in a different visual
+ *  position relative to the new edges. The next wave / drop will already
+ *  use the new dimensions. */
+export function resizeArena(state: GameState, width: number, height: number): void {
+  const w = Math.max(640, Math.floor(width));
+  const h = Math.max(360, Math.floor(height));
+  state.arena.width = w;
+  state.arena.height = h;
+  state.arena.center = v2(w / 2, h / 2);
+  state.arena.arenaRadius = Math.min(w, h) * 0.45;
+  state.mannequin.pos = v2(w / 2, h / 2);
+  state.entrances = buildEntrances(w, h);
+  // Preserve which rune slots are active / occupied / which kind they are
+  // by mutating positions in place rather than rebuilding from scratch.
+  const fresh = buildRunePoints(w, h);
+  for (let i = 0; i < state.runePoints.length && i < fresh.length; i++) {
+    state.runePoints[i]!.pos = fresh[i]!.pos;
+  }
+  state.aim = v2(w / 2, h / 2 - 200);
+}
+
 export function buildInitialState(
   seed?: number,
   difficulty: DifficultyMode = 'normal',
@@ -135,18 +178,20 @@ export function buildInitialState(
   const mode = DIFFICULTY_MODES[difficulty];
   const actualSeed = seed ?? (Date.now() >>> 0);
   const biomeId: BiomeId = biome ?? biomeFromSeed(actualSeed);
+  const W = CURRENT_W;
+  const H = CURRENT_H;
   return {
     rng: new Rng(actualSeed),
     phase: 'menu',
     arena: {
-      width: ARENA_W,
-      height: ARENA_H,
-      center: v2(ARENA_W / 2, ARENA_H / 2),
-      arenaRadius: 320,
+      width: W,
+      height: H,
+      center: v2(W / 2, H / 2),
+      arenaRadius: Math.min(W, H) * 0.45,
     },
-    entrances: buildEntrances(),
-    runePoints: buildRunePoints(),
-    mannequin: buildMannequin(),
+    entrances: buildEntrances(W, H),
+    runePoints: buildRunePoints(W, H),
+    mannequin: buildMannequin(W, H),
     enemies: [],
     towers: [],
     projectiles: [],
@@ -170,7 +215,7 @@ export function buildInitialState(
       lastLegendaryWave: -10,
     },
     overload: { charge: 0, maxCharge: 100 },
-    aim: v2(ARENA_W / 2, ARENA_H / 2 - 200),
+    aim: v2(W / 2, H / 2 - 200),
     manualFireRequested: false,
     overloadRequested: false,
     activeRunePoint: null,
