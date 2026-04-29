@@ -99,6 +99,7 @@ export class Input {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      e.preventDefault();
       this.state.mouse = this.toGame(t.clientX, t.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
