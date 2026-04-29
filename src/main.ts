@@ -232,20 +232,34 @@ function tick(dt: number): void {
   }
 
   // Phase transitions that drive overlays.
-  if (state.phase === 'card_select' && !overlay.isVisible()) {
-    showCardOverlay();
-  }
-  if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
-    showEndlessModifierOverlay();
-  }
-  if (state.revivePaused && !reviveOverlay.isVisible()) {
-    showReviveOverlay();
-  }
-  if (state.phase === 'victory' && !overlay.isVisible()) {
-    showVictory();
-  }
-  if (state.phase === 'gameover' && !overlay.isVisible()) {
-    showGameOver();
+  //
+  // Skip every in-game overlay trigger while a meta-menu (main menu, lab,
+  // crafting, daily rewards, settings, etc.) owns the overlay root. The
+  // shared `#overlay` host has the `.visible` class only when something is
+  // currently rendered into it; if that "something" is the player's menu
+  // we must not stomp it with a stale `gameover` / `revivePaused` carried
+  // over from a previous run.
+  const metaMenuOpen =
+    overlayRoot!.classList.contains('visible') &&
+    !overlay.isVisible() &&
+    !endlessModOverlay.isVisible() &&
+    !reviveOverlay.isVisible();
+  if (!metaMenuOpen) {
+    if (state.phase === 'card_select' && !overlay.isVisible()) {
+      showCardOverlay();
+    }
+    if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
+      showEndlessModifierOverlay();
+    }
+    if (state.revivePaused && !reviveOverlay.isVisible()) {
+      showReviveOverlay();
+    }
+    if (state.phase === 'victory' && !overlay.isVisible()) {
+      showVictory();
+    }
+    if (state.phase === 'gameover' && !overlay.isVisible()) {
+      showGameOver();
+    }
   }
 
   render(ctx!, state);
