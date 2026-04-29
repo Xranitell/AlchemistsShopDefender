@@ -30,10 +30,15 @@ export class CraftingOverlay {
 
   show(opts: { meta: MetaSave; onClose: () => void }): void {
     this.render(opts);
+    // Mark the shared overlay container as visible so it covers the canvas
+    // (otherwise the panel renders inside a `display:none` host and the
+    // player just sees the last-rendered game state behind it).
+    this.root.classList.add('visible');
   }
 
   hide(): void {
     this.root.innerHTML = '';
+    this.root.classList.remove('visible');
   }
 
   private render(opts: { meta: MetaSave; onClose: () => void }): void {
