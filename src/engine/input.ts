@@ -64,6 +64,19 @@ export class Input {
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
     });
+    // Fallback: register press when the click hits a non-interactive HUD
+    // element that overlaps the canvas (e.g. decorative panel areas).
+    // Skip buttons / inputs so their own click handlers still work.
+    window.addEventListener('mousedown', (e) => {
+      if (e.target === c) return;
+      if (!this.isInsideCanvas(e.clientX, e.clientY)) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).closest?.('button')) return;
+      this.state.mouse = this.toGame(e.clientX, e.clientY);
+      this.state.mouseDown = true;
+      this.state.mousePressedThisFrame = true;
+    });
     window.addEventListener('mouseup', () => {
       this.state.mouseDown = false;
     });
@@ -73,6 +86,19 @@ export class Input {
       e.preventDefault();
       const t = e.touches[0];
       if (!t) return;
+      this.state.mouse = this.toGame(t.clientX, t.clientY);
+      this.state.mouseDown = true;
+      this.state.mousePressedThisFrame = true;
+    }, { passive: false });
+    // Fallback for touches landing on non-interactive HUD overlays.
+    window.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      if (e.target === c) return;
+      if (!this.isInsideCanvas(t.clientX, t.clientY)) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).closest?.('button')) return;
       this.state.mouse = this.toGame(t.clientX, t.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
@@ -87,7 +113,7 @@ export class Input {
       }
     }, { passive: false });
 
-    c.addEventListener('touchend', () => {
+    window.addEventListener('touchend', () => {
       this.state.mouseDown = false;
     });
 
