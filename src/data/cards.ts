@@ -1,5 +1,6 @@
-import type { CardDef } from '../game/types';
+import type { CardDef, EffectPolarity } from '../game/types';
 import { tWithFallback } from '../i18n';
+import { cursedExtraLabel, getCursedExtra } from './cursedExtras';
 
 /** Localised display name for a card. Falls back to the source-of-truth
  *  Russian string in `CARDS` if the active locale doesn't translate it. */
@@ -10,6 +11,92 @@ export function cardName(card: CardDef): string {
 /** Localised description for a card (effects shown below the title). */
 export function cardDesc(card: CardDef): string {
   return tWithFallback(`cards.${card.id}.desc`, card.desc);
+}
+
+/** A single bullet line on a card, classified as helping the player
+ *  (`pos`) or hurting them (`neg`) based on the bullet text + sign. */
+export interface CardBullet {
+  text: string;
+  polarity: EffectPolarity;
+}
+
+// Patterns that flip the natural sign-based polarity. Order is checked
+// first against `+`-prefixed bullets and then `−`-prefixed; the first match
+// wins. Patterns are anchored to whole-word substrings (with optional
+// preceding "макс. " etc.) and case-insensitive.
+//
+// `+` is normally GOOD for the player (more damage / radius / HP / gold);
+// these patterns mark a `+` bullet as a DRAWBACK because they buff enemies
+// or inflate cooldowns / costs.
+const PLUS_IS_NEGATIVE: RegExp[] = [
+  /HP\s+врагов/i,           // +X% enemy HP
+  /скорость\s+врагов/i,     // +X% enemy speed (NB: NOT "скорость атаки стоек")
+  /урон\s+врагов/i,         // +X% enemy damage
+  /стоимость\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cost
+  /(?:^|\s)откат\s+склянок/i,        // +X% potion cooldown
+  /(?:^|\s)откат\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cooldown (rare)
+  /\bcost\b/i,
+  /\bcooldown\b/i,
+  /\benemy\s+HP\b/i,
+  /\benemy\s+speed\b/i,
+  /\benemy\s+damage\b/i,
+];
+
+// `−` is normally BAD for the player (less HP / less damage / less gold);
+// these patterns mark a `−` bullet as a DRAWBACK because they reduce a
+// player-beneficial stat. Anything that ISN'T in this list is treated as
+// debuffing enemies (e.g. `−50% брони цели` is good for the player).
+const MINUS_IS_NEGATIVE: RegExp[] = [
+  /макс\.?\s*HP\s+(?:Манекена|Mannequin)/i,
+  /\bурон\s+склянок/i,
+  /\bурон\s+стоек/i,
+  /\bурон\s+реакций/i,
+  /\bрадиус\s+склянок/i,
+  /\bрадиус\s+стоек/i,
+  /\bскорость\s+атаки\s+ст(?:о[ея]ек|ойки)/i,
+  /\bзолот[ао]/i,
+  /\bpotion\s+(damage|radius)\b/i,
+  /\btower\s+(damage|range|fire-rate)\b/i,
+  /\bgold\b/i,
+  /\bmax\s+(?:mannequin\s+)?HP\b/i,
+];
+
+/** Classify a single bullet as `pos` or `neg` for the player based on
+ *  its leading sign + the keyword set. Bullets without an explicit sign
+ *  (pure flavour effects like "+стихия Мороза") are treated as positive. */
+export function classifyBullet(text: string): EffectPolarity {
+  const trimmed = text.trim();
+  const sign = trimmed[0];
+  if (sign === '+') {
+    return PLUS_IS_NEGATIVE.some((rx) => rx.test(trimmed)) ? 'neg' : 'pos';
+  }
+  if (sign === '−' || sign === '-') {
+    return MINUS_IS_NEGATIVE.some((rx) => rx.test(trimmed)) ? 'neg' : 'pos';
+  }
+  return 'pos';
+}
+
+/** Split a card description into its `·`-separated bullets, classify each
+ *  as pos/neg, and append any rolled-extra bullets attached to a per-draft
+ *  card instance. Returns the bullets in their original order; the renderer
+ *  is responsible for grouping by polarity. */
+export function cardBullets(card: CardDef): CardBullet[] {
+  const desc = cardDesc(card);
+  const parts = desc
+    .split(/(?:\.\s+|;\s+|\s\u00B7\s)/)
+    .map((p) => p.trim().replace(/\.$/, ''))
+    .filter((p) => p.length > 0);
+  const base: CardBullet[] = (parts.length > 0 ? parts : [desc]).map((text) => ({
+    text,
+    polarity: classifyBullet(text),
+  }));
+  const extras = card.rolledExtraIds ?? [];
+  for (const id of extras) {
+    const def = getCursedExtra(id);
+    if (!def) continue;
+    base.push({ text: cursedExtraLabel(id), polarity: def.polarity });
+  }
+  return base;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

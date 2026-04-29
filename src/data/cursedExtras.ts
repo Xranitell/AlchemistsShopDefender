@@ -1,0 +1,147 @@
+import type { EffectPolarity } from '../game/types';
+import type { GameState } from '../game/state';
+import { tWithFallback } from '../i18n';
+
+/** A small extra effect that gets rolled onto a cursed card at draft time
+ *  to push the bullet count up to 4-5 and randomise the pos/neg ratio.
+ *
+ *  Magnitudes are intentionally smaller than the base cursed-card stat
+ *  bumps (10-20 % typical) — the extras are flavour swing, not the main
+ *  reward. */
+export interface CursedExtraEffect {
+  id: string;
+  polarity: EffectPolarity;
+  /** Russian label, used as fallback when no translation key matches. */
+  label: string;
+  /** Mutates `state` to apply this extra alongside the card's static
+   *  `curse_*` arm in `applyCard`. */
+  apply: (state: GameState) => void;
+}
+
+const ALL: CursedExtraEffect[] = [
+  // ── Positive: damage / range / cooldown / sustain ─────────────────────
+  {
+    id: 'extra_pdmg_10',
+    polarity: 'pos',
+    label: '+10% урона склянок',
+    apply: (s) => { s.modifiers.potionDamageMult *= 1.10; },
+  },
+  {
+    id: 'extra_tdmg_10',
+    polarity: 'pos',
+    label: '+10% урона стоек',
+    apply: (s) => { s.modifiers.towerDamageMult *= 1.10; },
+  },
+  {
+    id: 'extra_pcd_-10',
+    polarity: 'pos',
+    label: '−10% откат склянок',
+    apply: (s) => { s.modifiers.potionCooldownMult *= 0.90; },
+  },
+  {
+    id: 'extra_trng_10',
+    polarity: 'pos',
+    label: '+10% радиус стоек',
+    apply: (s) => { s.modifiers.towerRangeMult *= 1.10; },
+  },
+  {
+    id: 'extra_tfr_10',
+    polarity: 'pos',
+    label: '+10% скорость атаки стоек',
+    apply: (s) => { s.modifiers.towerFireRateMult *= 1.10; },
+  },
+  {
+    id: 'extra_prad_10',
+    polarity: 'pos',
+    label: '+10% радиус склянок',
+    apply: (s) => { s.modifiers.potionRadiusMult *= 1.10; },
+  },
+  {
+    id: 'extra_hp_15',
+    polarity: 'pos',
+    label: '+15 макс. HP Манекена',
+    apply: (s) => {
+      s.mannequin.maxHp += 15;
+      s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp + 15);
+    },
+  },
+  {
+    id: 'extra_gold_10',
+    polarity: 'pos',
+    label: '+10% золота',
+    apply: (s) => { s.modifiers.goldDropMult *= 1.10; },
+  },
+
+  // ── Negative: enemy buffs / player penalties ──────────────────────────
+  {
+    id: 'extra_enemy_hp_8',
+    polarity: 'neg',
+    label: '+8% HP врагов',
+    apply: (s) => { s.difficultyModifier.hpMult *= 1.08; },
+  },
+  {
+    id: 'extra_enemy_speed_8',
+    polarity: 'neg',
+    label: '+8% скорость врагов',
+    apply: (s) => { s.difficultyModifier.speedMult *= 1.08; },
+  },
+  {
+    id: 'extra_gold_-10',
+    polarity: 'neg',
+    label: '−10% золота',
+    apply: (s) => { s.modifiers.goldDropMult *= 0.90; },
+  },
+  {
+    id: 'extra_pcd_10',
+    polarity: 'neg',
+    label: '+10% откат склянок',
+    apply: (s) => { s.modifiers.potionCooldownMult *= 1.10; },
+  },
+  {
+    id: 'extra_tcost_10',
+    polarity: 'neg',
+    label: '+10% стоимость стоек',
+    apply: (s) => { s.modifiers.towerCostMult *= 1.10; },
+  },
+  {
+    id: 'extra_hp_-15',
+    polarity: 'neg',
+    label: '−15 макс. HP Манекена',
+    apply: (s) => {
+      s.mannequin.maxHp = Math.max(50, s.mannequin.maxHp - 15);
+      s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp);
+    },
+  },
+  {
+    id: 'extra_pdmg_-10',
+    polarity: 'neg',
+    label: '−10% урон склянок',
+    apply: (s) => { s.modifiers.potionDamageMult *= 0.90; },
+  },
+  {
+    id: 'extra_tdmg_-10',
+    polarity: 'neg',
+    label: '−10% урон стоек',
+    apply: (s) => { s.modifiers.towerDamageMult *= 0.90; },
+  },
+];
+
+const BY_ID: Record<string, CursedExtraEffect> = Object.fromEntries(
+  ALL.map((e) => [e.id, e]),
+);
+
+export function getCursedExtra(id: string): CursedExtraEffect | undefined {
+  return BY_ID[id];
+}
+
+export function cursedExtraPool(polarity: EffectPolarity): CursedExtraEffect[] {
+  return ALL.filter((e) => e.polarity === polarity);
+}
+
+/** Localised label for an extra effect — falls back to the source Russian
+ *  string in `ALL` when no translation is registered. */
+export function cursedExtraLabel(id: string): string {
+  const def = BY_ID[id];
+  if (!def) return '';
+  return tWithFallback(`cardExtras.${id}.label`, def.label);
+}
