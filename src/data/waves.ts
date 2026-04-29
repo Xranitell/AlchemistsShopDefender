@@ -24,7 +24,10 @@ const wave = (
   // Insert a mirrored spawn from the opposite entrance at a small offset so
   // a wave with N authored spawns actually puts ~2N enemies on screen and
   // attacks come from two opposite directions simultaneously.
-  const extra: WaveDef['spawns'] = DOUBLE_SPAWNS
+  // The first three waves stay single-direction so newcomers get a calmer
+  // ramp-up while learning the basic controls.
+  const allowMirror = DOUBLE_SPAWNS && index > 3;
+  const extra: WaveDef['spawns'] = allowMirror
     ? scaled.map((s) => ({
         ...s,
         at: s.at + 0.3,
@@ -45,35 +48,26 @@ const wave = (
 // Entrances are indexed 0..3 (top, right, bottom, left).
 export const WAVES: WaveDef[] = [
   wave(1, 22, 14, [
-    { kind: 'slime', at: 1.0, entrance: 0 },
-    { kind: 'slime', at: 4.0, entrance: 0 },
-    { kind: 'slime', at: 7.5, entrance: 2 },
-    { kind: 'slime', at: 11, entrance: 0 },
-    { kind: 'slime', at: 14, entrance: 2 },
-    { kind: 'slime', at: 17, entrance: 2 },
+    { kind: 'slime', at: 1.5, entrance: 0 },
+    { kind: 'slime', at: 6.0, entrance: 0 },
+    { kind: 'slime', at: 11, entrance: 2 },
+    { kind: 'slime', at: 16, entrance: 0 },
   ]),
   wave(2, 26, 14, [
     { kind: 'slime', at: 1, entrance: 1 },
-    { kind: 'slime', at: 3, entrance: 3 },
-    { kind: 'rat',   at: 6, entrance: 1 },
-    { kind: 'slime', at: 9, entrance: 3 },
-    { kind: 'rat',   at: 12, entrance: 3 },
-    { kind: 'slime', at: 15, entrance: 1 },
+    { kind: 'slime', at: 5, entrance: 3 },
+    { kind: 'rat',   at: 9, entrance: 1 },
+    { kind: 'slime', at: 13, entrance: 3 },
     { kind: 'rat',   at: 18, entrance: 1 },
-    { kind: 'slime', at: 21, entrance: 3 },
   ]),
   wave(3, 28, 10, [
     { kind: 'rat',   at: 0.5, entrance: 0 },
-    { kind: 'rat',   at: 2.5, entrance: 0 },
     { kind: 'slime', at: 4, entrance: 2 },
-    { kind: 'rat',   at: 6, entrance: 2 },
-    { kind: 'slime', at: 8.5, entrance: 0 },
-    { kind: 'rat',   at: 11, entrance: 1 },
-    { kind: 'rat',   at: 13, entrance: 3 },
-    { kind: 'slime', at: 15, entrance: 1 },
-    { kind: 'slime', at: 18, entrance: 3 },
-    { kind: 'rat',   at: 21, entrance: 0 },
-    { kind: 'slime', at: 24, entrance: 2 },
+    { kind: 'rat',   at: 8, entrance: 2 },
+    { kind: 'slime', at: 12, entrance: 0 },
+    { kind: 'rat',   at: 16, entrance: 1 },
+    { kind: 'slime', at: 20, entrance: 3 },
+    { kind: 'rat',   at: 24, entrance: 0 },
   ]),
   wave(4, 30, 10, [
     { kind: 'slime', at: 0.5, entrance: 0 },

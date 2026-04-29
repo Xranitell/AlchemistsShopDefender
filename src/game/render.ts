@@ -914,7 +914,7 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.globalAlpha = (0.1 - eff.age) * 3;
     ctx.fillStyle = 'rgba(189, 246, 255, 0.15)';
-    ctx.fillRect(0, 0, 1280, 720);
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.restore();
   }
 

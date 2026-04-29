@@ -30,16 +30,87 @@ const BRANCH_COLORS: Record<MetaBranch, string> = {
 };
 
 const NODE_RADIUS: Record<string, number> = {
-  root: 22,
-  notable: 16,
-  keystone: 18,
-  small: 10,
+  root: 26,
+  notable: 20,
+  keystone: 22,
+  small: 14,
 };
 
 // SVG viewBox dimensions. Covers the entire node-position space defined in
 // metaTree.ts (≈0..1100 × 0..740) plus a small margin.
 const VIEW_W = 1100;
 const VIEW_H = 740;
+// The visual centre of the tree — used to pick the curve direction so
+// connections bend along a radial arc (PoE-style) rather than crossing
+// straight through the middle.
+const TREE_CX = 550;
+const TREE_CY = 370;
+
+/** Glyph for a node, derived from its effect kind. Unicode-only so we
+ *  don't ship a sprite atlas — characters render in the native pixel
+ *  font and pick up the branch colour via SVG `fill="currentColor"`. */
+const EFFECT_ICONS: Record<string, string> = {
+  // Potions
+  potionDamage: '⚗',
+  potionCooldown: '⏱',
+  potionRadius: '◎',
+  potionEchoChance: '⤴',
+  potionAimBonus: '✦',
+  potionLeavesFire: '🔥',
+  // Engineering / towers
+  towerDiscount: '$',
+  towerStartLevel: '⭐',
+  towerFireRate: '➤',
+  towerDamage: '⚔',
+  towerRange: '◉',
+  runePointUnlock: '✚',
+  // Core / arcanum
+  overloadRate: '⚡',
+  overloadMaxCharge: '🔋',
+  auraRadius: '◯',
+  reactionDamage: '✸',
+  catalystSlot: '◆',
+  // Survival
+  maxHp: '❤',
+  armor: '🛡',
+  autoRepair: '✚',
+  bossShield: '⛨',
+  thornyShell: '🜨',
+  // Economy
+  essenceBonus: '✦',
+  startGold: '⛁',
+  goldDrop: '⛁',
+  lootRadius: '◌',
+  // Combat extras
+  armorPen: '⚒',
+  critChance: '✦',
+};
+
+const ROOT_GLYPH = '✶';
+
+const ACTIVE_MODULE_ICONS: Record<string, string> = {
+  lightning: '⚡',
+  chronos: '⏳',
+  transmute: '⛁',
+  alch_dome: '⛨',
+};
+const AURA_MODULE_ICONS: Record<string, string> = {
+  magnet_res: '🧲',
+  ether_amp: '✦',
+  thorn_shell: '🜨',
+  elem_reson: '◎',
+};
+
+function nodeGlyph(node: { id: string; effect: { kind: string } }): string {
+  if (node.id === ROOT_NODE_ID) return ROOT_GLYPH;
+  return EFFECT_ICONS[node.effect.kind] ?? '✦';
+}
+
+function moduleGlyph(slot: 'active' | 'aura', id: string): string {
+  return slot === 'active'
+    ? ACTIVE_MODULE_ICONS[id] ?? '⚡'
+    : AURA_MODULE_ICONS[id] ?? '◯';
+}
 
 /**
  * PoE-style passive tree overlay. Renders META_UPGRADES as an SVG graph and
@@ -92,12 +163,17 @@ export class MetaOverlay {
 
     panel.appendChild(header);
 
-    // Module loadout (GDD §11.2): two slots — Active (Q-Overload behavior)
-    // and Aura (passive). Re-rendered in place so the player can swap modules
-    // without leaving the meta menu.
+    // Body: loadout (left) + graph (centre) + info side panel (right). The
+    // loadout used to live above the tree, but on smaller viewports it
+    // pushed the SVG off-screen and triggered a vertical scrollbar. Moving
+    // it to the side keeps the entire screen one fixed canvas.
+    const body = document.createElement('div');
+    body.className = 'meta-tree-body';
+    panel.appendChild(body);
+
     const loadout = document.createElement('div');
-    loadout.className = 'meta-loadout';
-    panel.appendChild(loadout);
+    loadout.className = 'meta-loadout meta-loadout-side';
+    body.appendChild(loadout);
     const renderLoadout = () => {
       loadout.innerHTML = '';
       loadout.appendChild(
@@ -114,13 +190,6 @@ export class MetaOverlay {
       );
     };
     renderLoadout();
-
-    // Body: graph (left) + info side panel (right). The side panel is always
-    // present so the player has a stable place to read details on touch
-    // devices where hover-tooltips are unavailable.
-    const body = document.createElement('div');
-    body.className = 'meta-tree-body';
-    panel.appendChild(body);
 
     const treeWrap = document.createElement('div');
     treeWrap.className = 'meta-tree-canvas';
@@ -237,7 +306,12 @@ export class MetaOverlay {
       const allocated = allocatedSet(opts.meta);
       const drawnEdges = new Set<string>();
 
-      // 1) Edges first (so they sit behind the nodes).
+      // 1) Edges first (so they sit behind the nodes). PoE-style: every
+      //    edge is a quadratic Bézier curve whose control point sits
+      //    *outside* the line connecting the two nodes, biased away from
+      //    the tree centre. Doing this turns crossings between adjacent
+      //    branches into clearly separated arcs (the radial pattern PoE
+      //    uses) so the player can visually trace each connection.
       for (const node of META_UPGRADES) {
         for (const otherId of node.connects) {
           const a = node.id;
@@ -247,14 +321,37 @@ export class MetaOverlay {
           drawnEdges.add(key);
           const other = META_UPGRADES.find((u) => u.id === otherId);
           if (!other) continue;
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', `${node.pos.x}`);
-          line.setAttribute('y1', `${node.pos.y}`);
-          line.setAttribute('x2', `${other.pos.x}`);
-          line.setAttribute('y2', `${other.pos.y}`);
+          const x1 = node.pos.x;
+          const y1 = node.pos.y;
+          const x2 = other.pos.x;
+          const y2 = other.pos.y;
+          // Midpoint biased perpendicular to the segment, away from
+          // the tree centre. The bias scales with the segment length so
+          // long arcs curve more than short ones.
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const len = Math.max(1, Math.hypot(dx, dy));
+          // Perpendicular unit vector; pick the side whose direction
+          // points away from the tree centre (radial outward).
+          let nx = -dy / len;
+          let ny = dx / len;
+          const radialX = mx - TREE_CX;
+          const radialY = my - TREE_CY;
+          if (nx * radialX + ny * radialY < 0) {
+            nx = -nx;
+            ny = -ny;
+          }
+          const curveAmt = Math.min(60, len * 0.18);
+          const cx = mx + nx * curveAmt;
+          const cy = my + ny * curveAmt;
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+          path.setAttribute('fill', 'none');
           const bothAllocated = allocated.has(node.id) && allocated.has(other.id);
-          line.setAttribute('class', bothAllocated ? 'meta-edge meta-edge-on' : 'meta-edge');
-          svg.appendChild(line);
+          path.setAttribute('class', bothAllocated ? 'meta-edge meta-edge-on' : 'meta-edge');
+          svg.appendChild(path);
         }
       }
 
@@ -304,6 +401,21 @@ export class MetaOverlay {
           inner.setAttribute('stroke-width', '1');
           g.appendChild(inner);
         }
+
+        // Glyph at the centre of the node — gives the player a quick
+        // visual hint about what the node does even before they read
+        // the side-panel description.
+        const glyph = nodeGlyph(node);
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', `${node.pos.x}`);
+        text.setAttribute('y', `${node.pos.y}`);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('class', 'meta-node-glyph');
+        text.setAttribute('font-size', `${Math.max(10, r * 1.05)}`);
+        text.setAttribute('fill', owned ? '#0d0a14' : BRANCH_COLORS[node.branch]);
+        text.textContent = glyph;
+        g.appendChild(text);
 
         // Click: select (and on already-selected available node, allocate).
         g.addEventListener('click', () => {
@@ -435,7 +547,15 @@ function buildModuleSlot(
   for (const def of Object.values(pool)) {
     const btn = document.createElement('button');
     btn.className = 'meta-loadout-btn';
-    btn.textContent = moduleName(def);
+    const icon = document.createElement('span');
+    icon.className = 'meta-loadout-btn-icon';
+    icon.textContent = moduleGlyph(slot, def.id);
+    const label = document.createElement('span');
+    label.className = 'meta-loadout-btn-label';
+    label.textContent = moduleName(def);
+    btn.appendChild(icon);
+    btn.appendChild(label);
+    btn.title = moduleDesc(def);
     if (def.id === current) btn.classList.add('selected');
     btn.addEventListener('click', () => {
       if (slot === 'active') meta.selectedActiveModule = def.id as ActiveModuleId;

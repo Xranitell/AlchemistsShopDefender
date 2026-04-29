@@ -50,24 +50,20 @@ body {
 
 #app {
   position: relative;
-  display: grid;
-  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #game-canvas {
   display: block;
   background: #14101f;
-  box-shadow:
-    0 0 0 4px #090b13,
-    0 0 0 8px var(--hud-frame-mid),
-    0 0 0 10px var(--hud-frame-rim),
-    0 18px 60px rgba(0, 0, 0, 0.8);
+  /* The game now fills the entire viewport. The internal resolution is
+   * resized to match the window in `main.ts` so there's no upscaling blur. */
   image-rendering: pixelated;
-  max-width: 100vw;
-  max-height: 100vh;
-  width: auto;
-  height: auto;
-  aspect-ratio: 16 / 9;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
 }
 
 #hud {
@@ -390,6 +386,17 @@ body {
   overflow: auto;
 }
 #overlay.visible { display: grid; }
+/* Fullscreen overlays (main menu + skill tree) get to fill the entire
+ * viewport without the centred-panel padding. */
+#overlay:has(.main-menu),
+#overlay:has(.meta-tree-panel) {
+  display: none;
+  place-items: stretch;
+  overflow: hidden;
+  padding: 0;
+}
+#overlay.visible:has(.main-menu),
+#overlay.visible:has(.meta-tree-panel) { display: block; }
 
 /* When any full-screen overlay is visible (main menu, dailies, settings,
  * battle pass, meta-tree, victory/gameover, card-pick), hide the in-game
@@ -1024,34 +1031,56 @@ body {
 
 /* ──────────── PoE-style tree ──────────── */
 .meta-tree-panel {
-  max-width: 1280px;
-  width: min(98vw, 1280px);
+  /* Fill the entire viewport, no scrollbars. The tree, loadout, and side
+   * panel each get their own flex region inside `.meta-tree-body`. */
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  margin: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(8px, 1.2vw, 16px);
+  gap: clamp(6px, 0.8vw, 12px);
+  overflow: hidden;
 }
 .meta-tree-header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 18px;
-  margin-bottom: 6px;
+  margin-bottom: 0;
+  flex: 0 0 auto;
 }
 .meta-tree-header h2 { margin: 0; }
 .meta-loadout {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 10px;
   padding: 8px 10px;
   border: 1px dashed rgba(125, 249, 255, 0.25);
   border-radius: 6px;
   background: rgba(20, 18, 32, 0.55);
 }
+/* Side variant: stack slots vertically and keep a fixed-width column on
+   the left of the tree. */
+.meta-loadout-side {
+  flex: 0 0 clamp(200px, 18vw, 280px);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+  overflow-y: auto;
+  align-self: stretch;
+}
 .meta-loadout-slot {
   flex: 1 1 360px;
-  min-width: 280px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.meta-loadout-side .meta-loadout-slot {
+  flex: 0 0 auto;
 }
 .meta-loadout-title {
   font-family: 'VT323', monospace;
@@ -1065,16 +1094,38 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 4px;
 }
+.meta-loadout-side .meta-loadout-grid {
+  grid-template-columns: 1fr;
+}
 .meta-loadout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: 'VT323', monospace;
   font-size: 14px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   background: rgba(20, 18, 32, 0.85);
   color: var(--fg);
   border: 1px solid rgba(125, 249, 255, 0.18);
   border-radius: 3px;
   cursor: pointer;
   text-align: left;
+}
+.meta-loadout-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  font-size: 17px;
+  text-shadow: 0 0 4px currentColor;
+}
+.meta-loadout-btn-label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .meta-loadout-btn:hover { border-color: rgba(125, 249, 255, 0.45); }
 .meta-loadout-btn.selected {
@@ -1090,29 +1141,44 @@ body {
 }
 .meta-tree-body {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: clamp(6px, 0.8vw, 12px);
+  flex: 1 1 auto;
   align-items: stretch;
+  min-height: 0;
 }
 .meta-tree-canvas {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   background: radial-gradient(ellipse at center, #14101f 0%, #0a0810 70%, #060509 100%);
   border: 1px solid var(--bg-frame-mid);
   border-radius: 4px;
   overflow: hidden;
+  display: flex;
 }
 .meta-tree-svg {
   width: 100%;
-  height: 70vh;
-  max-height: 720px;
+  height: 100%;
+  max-height: none;
+  flex: 1 1 auto;
   display: block;
+}
+/* Glyph rendered inside each node — tinted via the `fill` attribute set
+   in metaOverlay.ts, but the font / stroke is shared. */
+.meta-node-glyph {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-weight: bold;
+  pointer-events: none;
+  user-select: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 0.5;
 }
 /* Right side panel with the currently-selected node's details. Always
    visible (even on touch) so the player has a stable place to read what
    each node does and to tap "Изучить" / "Вернуть". */
 .meta-tree-side {
-  flex: 0 0 280px;
+  flex: 0 0 clamp(220px, 20vw, 320px);
   background: rgba(10, 8, 16, 0.85);
   border: 1px solid var(--bg-frame-mid);
   border-radius: 4px;
@@ -1123,6 +1189,9 @@ body {
   font-family: 'VT323', monospace;
   font-size: 16px;
   color: var(--fg);
+  overflow-y: auto;
+  align-self: stretch;
+  min-height: 0;
 }
 .meta-side-hint {
   color: var(--fg-dim);
@@ -1195,8 +1264,10 @@ body {
 }
 @media (max-width: 900px) {
   .meta-tree-body { flex-direction: column; }
-  .meta-tree-side { flex: 0 0 auto; }
-  .meta-tree-svg { height: 55vh; }
+  .meta-tree-side, .meta-loadout-side { flex: 0 0 auto; }
+  .meta-tree-svg { height: 100%; }
+  .meta-loadout-side { flex-direction: row; flex-wrap: wrap; }
+  .meta-loadout-side .meta-loadout-grid { grid-template-columns: 1fr 1fr; }
 }
 .meta-edge {
   stroke: #2a2438;
@@ -1261,23 +1332,36 @@ body {
   color: var(--fg-dim);
   font-family: 'VT323', monospace;
   font-size: 13px;
-  margin-top: 6px;
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+/* Bottom action bar inside the tree panel — keeps the start / reset
+   buttons pinned to the bottom of the viewport while the tree fills the
+   rest of the space. */
+.meta-tree-panel > .meta-actions {
+  flex: 0 0 auto;
+  margin-top: 0;
 }
 
 /* ============= Main Menu ============= */
 .main-menu {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 720px;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 16px;
+  align-items: stretch;
+  justify-content: stretch;
+  /* Fill the entire viewport — the menu is its own screen, no centred
+   * card layout. Content inside scales fluidly via flex children. */
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  max-width: none;
+  margin: 0;
+  padding: clamp(8px, 1.5vw, 24px);
+  gap: clamp(6px, 1vw, 14px);
   background:
     radial-gradient(circle at 50% 28%, rgba(125, 249, 255, 0.15), transparent 26%),
     linear-gradient(120deg, rgba(12, 18, 30, 0.98), rgba(17, 19, 35, 0.98) 48%, rgba(12, 14, 25, 0.98));
+  overflow: hidden;
 }
 .mm-top-bar {
   display: flex;
@@ -1350,16 +1434,19 @@ body {
 .mm-res-icon.ancient { color: #ffd166; }
 .mm-center {
   display: flex;
-  gap: 18px;
+  gap: clamp(10px, 1.5vw, 24px);
   width: 100%;
   align-items: stretch;
-  min-height: 570px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .mm-left, .mm-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  flex: 0 0 196px;
+  gap: clamp(8px, 1vw, 14px);
+  flex: 0 0 clamp(180px, 16vw, 260px);
+  min-width: 0;
+  overflow-y: auto;
 }
 .mm-mid {
   flex: 1;
@@ -1610,7 +1697,7 @@ body {
   filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35));
 }
 .mm-title-top {
-  font-size: 32px;
+  font-size: clamp(20px, 3.4vw, 44px);
   color: #ffd166;
   letter-spacing: 2px;
   text-shadow:
@@ -1619,7 +1706,7 @@ body {
     0 0 12px rgba(255, 209, 102, 0.45);
 }
 .mm-title-bottom {
-  font-size: 34px;
+  font-size: clamp(22px, 3.7vw, 48px);
   color: #7df9ff;
   letter-spacing: 3px;
   margin-top: 5px;
@@ -1630,7 +1717,7 @@ body {
 }
 .mm-battle-btn {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 28px;
+  font-size: clamp(18px, 2.6vw, 34px);
   background:
     linear-gradient(180deg, var(--cta-yellow-hi), var(--cta-yellow) 50%, #d98219);
   border: 4px solid #4a250d;
@@ -2833,6 +2920,17 @@ body {
 .hud-potion-slot:disabled {
   cursor: default;
   opacity: 0.55;
+}
+.hud-potion-key {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 1px 1px 0 #000;
+  pointer-events: none;
 }
 .hud-potion-glyph {
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
