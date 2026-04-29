@@ -680,6 +680,14 @@ body {
   .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 }
 
+/* Animated rotating-angle custom prop powering the running outline + bloom
+ * sweep on every card. Registered via @property so we can transition it. */
+@property --rh-shim-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
 /* Single card. Frame is a flex column so the title / divider / effects
  * stack with the divider taking the natural width. The card itself adds
  * the glow and angled clip-path corners. */
@@ -699,12 +707,90 @@ body {
     drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6))
     drop-shadow(0 0 12px var(--rh-glow, rgba(255, 255, 255, 0.18)));
   transition: transform 120ms ease, filter 120ms ease;
+  /* Default shimmer tint — overridden per rarity below. */
+  --rh-shim: rgba(255, 255, 255, 0.95);
 }
 .card-rh:hover {
   transform: translateY(-6px) scale(1.03);
   filter:
     drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7))
     drop-shadow(0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.28)));
+}
+
+/* Running outline + bloom sweep. Two pseudos sit BEHIND the frame:
+ *   - ::before is a thin (2 px) outset of the card silhouette and carries
+ *     the bright rotating conic gradient — this is the "бегущая обводка"
+ *     that travels around the border.
+ *   - ::after is a much larger, heavily-blurred copy of the same gradient;
+ *     it provides the bloom that bleeds outside the card.
+ *
+ * The conic gradient has two opposing bright sweeps so the running light
+ * is visible from any side at all times. The animation rotates the
+ * gradient angle continuously via the @property-registered
+ * `--rh-shim-angle` custom variable. Per-rarity tints come from
+ * `--rh-shim` set on `.card-rh.rarity-*` rules below. */
+.card-rh::before,
+.card-rh::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--rh-shim-angle, 0deg),
+    transparent 0deg,
+    var(--rh-shim) 22deg,
+    var(--rh-shim) 38deg,
+    transparent 70deg,
+    transparent 180deg,
+    var(--rh-shim) 202deg,
+    var(--rh-shim) 218deg,
+    transparent 250deg,
+    transparent 360deg
+  );
+  animation: rh-shim 3.4s linear infinite;
+}
+/* Thin outline — barely larger than the frame so only a 2 px halo of the
+ * sweep peeks out around the silhouette. */
+.card-rh::before {
+  inset: -2px;
+  z-index: -1;
+  clip-path: polygon(
+    14px 0, calc(100% - 14px) 0, 100% 14px,
+    100% 100%, 0 100%, 0 14px
+  );
+}
+/* Big blurry bloom — extends well outside the card and is heavily blurred
+ * so the running sweep paints a soft halo that drifts around the card. */
+.card-rh::after {
+  inset: -18px;
+  z-index: -2;
+  filter: blur(20px) saturate(1.3);
+  opacity: 0.6;
+  clip-path: polygon(
+    18px 0, calc(100% - 18px) 0, 100% 18px,
+    100% 100%, 0 100%, 0 18px
+  );
+}
+@keyframes rh-shim {
+  to { --rh-shim-angle: 360deg; }
+}
+/* Stagger the shimmer phase across the row so the cards don't pulse
+ * in lockstep — each draft typically shows three cards. */
+.cards-rh > .card-rh:nth-child(2)::before,
+.cards-rh > .card-rh:nth-child(2)::after { animation-delay: -1.1s; }
+.cards-rh > .card-rh:nth-child(3)::before,
+.cards-rh > .card-rh:nth-child(3)::after { animation-delay: -2.2s; }
+.cards-rh > .card-rh:nth-child(4)::before,
+.cards-rh > .card-rh:nth-child(4)::after { animation-delay: -0.6s; }
+/* Pause the sweep while the draft is still locked, so the visual cue
+ * matches the dimmed/non-interactive state. */
+#overlay.cards-mode.cards-pre-lock .card-rh::before,
+#overlay.cards-mode.cards-pre-lock .card-rh::after {
+  animation-play-state: paused;
+}
+/* Honour reduced-motion preferences — drop the rotation entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .card-rh::before,
+  .card-rh::after { animation: none; }
 }
 
 .card-rh-frame {
@@ -729,13 +815,27 @@ body {
     0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.18)) inset;
 }
 
-/* Per-rarity glow + border colors. */
-.card-rh.rarity-common  { --rh-color: #6d8a64; --rh-glow: rgba(132, 220, 100, 0.22); }
-.card-rh.rarity-rare    { --rh-color: #6ec1ff; --rh-glow: rgba(110, 193, 255, 0.28); }
-.card-rh.rarity-epic    { --rh-color: #c084fc; --rh-glow: rgba(192, 132, 252, 0.32); }
+/* Per-rarity glow + border colors. `--rh-shim` is the colour of the
+ * running outline + bloom sweep defined above. */
+.card-rh.rarity-common  {
+  --rh-color: #6d8a64;
+  --rh-glow: rgba(132, 220, 100, 0.22);
+  --rh-shim: rgba(170, 240, 140, 0.95);
+}
+.card-rh.rarity-rare    {
+  --rh-color: #6ec1ff;
+  --rh-glow: rgba(110, 193, 255, 0.28);
+  --rh-shim: rgba(170, 220, 255, 1);
+}
+.card-rh.rarity-epic    {
+  --rh-color: #c084fc;
+  --rh-glow: rgba(192, 132, 252, 0.32);
+  --rh-shim: rgba(220, 170, 255, 1);
+}
 .card-rh.rarity-legendary {
   --rh-color: #ffb86b;
   --rh-glow: rgba(255, 184, 107, 0.45);
+  --rh-shim: rgba(255, 220, 140, 1);
 }
 
 /* Cursed cards override the rarity colourway entirely with a deep
@@ -745,6 +845,7 @@ body {
 .card-rh.cursed {
   --rh-color: #ff4e6b;
   --rh-glow: rgba(255, 78, 107, 0.5);
+  --rh-shim: rgba(255, 130, 160, 1);
 }
 .card-rh.cursed .card-rh-frame {
   background: linear-gradient(180deg, rgba(48, 14, 28, 0.98), rgba(20, 6, 14, 0.98));
