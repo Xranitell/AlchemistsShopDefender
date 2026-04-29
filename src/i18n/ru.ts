@@ -513,4 +513,53 @@ Object.assign(RU, {
   'ui.revive.desc': 'Посмотри рекламу — возродись с 50% HP и щитом на 4 секунды.',
   'ui.revive.adButton': 'Реклама — Возродить',
   'ui.revive.giveUp': 'Сдаться',
+
+  // ── Crafting (PR-«крафт») ──────────────────────────────────────────
+  'ui.menu.craftingHint': 'Нажми, чтобы открыть алхимический стол',
+  'ui.craft.title': 'Алхимический стол',
+  'ui.craft.subtitle': 'Свари 10 видов зелий из ингредиентов с врагов',
+  'ui.craft.inventoryTitle': 'Инвентарь зелий (4)',
+  'ui.craft.ingredientsTitle': 'Ингредиенты',
+  'ui.craft.recipesTitle': 'Рецепты',
+  'ui.craft.brew': 'Сварить',
+  'ui.craft.notEnough': 'Недостаточно ингредиентов',
+  'ui.craft.inventoryFull': 'Инвентарь зелий заполнен',
+
+  'ui.hud.potionEmpty': 'Слот пуст — свари зелье в алхимическом столе',
+
+  // Ingredients
+  'craft.ing.slime_jelly': 'Слизь',
+  'craft.ing.rat_fang': 'Клык крысы',
+  'craft.ing.sapper_ash': 'Пепел сапёра',
+  'craft.ing.mold_spore': 'Спора плесени',
+  'craft.ing.glass_shard': 'Стеклянный осколок',
+  'craft.ing.iron_plate': 'Железная пластина',
+  'craft.ing.homunculus_frag': 'Фрагмент Гомункула',
+
+  // Floating texts
+  'craft.float.shield': '+{n} ЩИТ',
+  'craft.float.heal': '+{n} HP',
+  'craft.float.storm': 'БУРЯ ×{n}',
+
+  // Potions — names + descriptions
+  'craft.potion.rage.name': 'Зелье ярости',
+  'craft.potion.rage.desc': '+30% урон склянок на 25 секунд.',
+  'craft.potion.haste.name': 'Зелье скорости',
+  'craft.potion.haste.desc': '−40% перезарядка склянок на 25 секунд.',
+  'craft.potion.mech.name': 'Зелье механика',
+  'craft.potion.mech.desc': '+30% скорострельность стоек на 30 секунд.',
+  'craft.potion.scope.name': 'Зелье прицела',
+  'craft.potion.scope.desc': '+30% дальность стоек на 30 секунд.',
+  'craft.potion.stoneShield.name': 'Каменный щит',
+  'craft.potion.stoneShield.desc': '+60 HP щит, поглощается уроном.',
+  'craft.potion.fieldRepair.name': 'Полевой ремонт',
+  'craft.potion.fieldRepair.desc': 'Мгновенно восстановить +50 HP манекену.',
+  'craft.potion.berserk.name': 'Зелье берсерка',
+  'craft.potion.berserk.desc': '+25% урон стоек, +10% получаемый урон, 25 секунд.',
+  'craft.potion.storm.name': 'Алхимическая буря',
+  'craft.potion.storm.desc': 'Следующие 5 склянок наносят ×1.6 урона.',
+  'craft.potion.frostMist.name': 'Ледяной туман',
+  'craft.potion.frostMist.desc': 'Все враги −50% скорости на 12 секунд.',
+  'craft.potion.greed.name': 'Эликсир жадности',
+  'craft.potion.greed.desc': '×2 золота с врагов, 30 секунд.',
 });

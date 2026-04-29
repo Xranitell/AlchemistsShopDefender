@@ -33,6 +33,14 @@ import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
+import {
+  attachRunInventory,
+  persistRunInventory,
+  tickActivePotions,
+  consumePotion,
+} from './game/potions';
+import { CraftingOverlay } from './ui/craftingOverlay';
+import type { IngredientId } from './data/potions';
 import { audio } from './audio/audio';
 import { tutorial } from './ui/tutorial';
 import { setLocale, t, onLocaleChange } from './i18n';
@@ -81,6 +89,7 @@ const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
+const craftingOverlay = new CraftingOverlay(overlayRoot);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -100,6 +109,14 @@ const hud = new Hud(hudRoot, {
     // yanked hard toward the hero regardless of the base loot radius.
     if (state.phase === 'wave' || state.phase === 'preparing') {
       state.magnetTimer = Math.max(state.magnetTimer, 1.2);
+    }
+  },
+  onUsePotion: (slot) => {
+    if (state.phase !== 'wave' && state.phase !== 'preparing') return;
+    if (consumePotion(state, slot)) {
+      // Mirror back to meta so the slot stays empty across saves/exits.
+      persistRunInventory(state, meta);
+      audio.playSfx('throwPotion', { detune: 0.85 });
     }
   },
 });
@@ -193,12 +210,14 @@ function tick(dt: number): void {
     updateFloatingTexts(state, dt);
     tickOverloadEffect(dt);
     tickModuleTimers(state, dt);
+    tickActivePotions(state, dt);
     updateWave(state, dt);
   } else if (state.phase === 'preparing') {
     // Allow projectile and gold pickup decay during pause for clean transitions.
     updateProjectiles(state, dt);
     updateGoldPickups(state, dt);
     updateFloatingTexts(state, dt);
+    tickActivePotions(state, dt);
   }
 
   // Auto-repair ticks in both wave and preparing phases
@@ -369,6 +388,8 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; bpX
   // Battle pass XP
   const bpXp = wave * BP_XP_PER_WAVE + state.totalKills * BP_XP_PER_KILL + (victory ? BP_XP_VICTORY : 0);
   addBpXp(meta, bpXp);
+  // Persist surviving (unused) potion slots back to the meta save.
+  persistRunInventory(state, meta);
   saveMeta(meta);
 
   // Submit scores to leaderboards
@@ -525,6 +546,20 @@ function showMainMenu(): void {
       mainMenu.hide();
       showLeaderboards();
     },
+    onCrafting: () => {
+      mainMenu.hide();
+      showCrafting();
+    },
+  });
+}
+
+function showCrafting(): void {
+  craftingOverlay.show({
+    meta,
+    onClose: () => {
+      craftingOverlay.hide();
+      showMainMenu();
+    },
   });
 }
 
@@ -580,6 +615,12 @@ function startRun(mode: DifficultyMode): void {
   state = buildInitialState(seed, mode);
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
+  attachRunInventory(state, meta);
+  state.onIngredientDrop = (id, amount) => {
+    const key = id as IngredientId;
+    meta.ingredients[key] = (meta.ingredients[key] ?? 0) + amount;
+    saveMeta(meta);
+  };
   towerShop.attach(state);
   mannequinShop.attach(state);
   // Light up the FTUE for first-time players. We only run the tutorial on

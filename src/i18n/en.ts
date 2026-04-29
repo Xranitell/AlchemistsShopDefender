@@ -512,4 +512,53 @@ Object.assign(EN, {
   'ui.revive.desc': 'Watch an ad to revive at 50% HP with a 4-second shield.',
   'ui.revive.adButton': 'Ad — Revive',
   'ui.revive.giveUp': 'Give up',
+
+  // ── Crafting (PR «crafting») ───────────────────────────────────────
+  'ui.menu.craftingHint': 'Tap to open the alchemy table',
+  'ui.craft.title': 'Alchemy table',
+  'ui.craft.subtitle': 'Brew 10 potions from ingredients dropped by enemies',
+  'ui.craft.inventoryTitle': 'Potion inventory (4)',
+  'ui.craft.ingredientsTitle': 'Ingredients',
+  'ui.craft.recipesTitle': 'Recipes',
+  'ui.craft.brew': 'Brew',
+  'ui.craft.notEnough': 'Not enough ingredients',
+  'ui.craft.inventoryFull': 'Potion inventory is full',
+
+  'ui.hud.potionEmpty': 'Slot empty — brew a potion at the alchemy table',
+
+  // Ingredients
+  'craft.ing.slime_jelly': 'Slime jelly',
+  'craft.ing.rat_fang': 'Rat fang',
+  'craft.ing.sapper_ash': 'Sapper ash',
+  'craft.ing.mold_spore': 'Mold spore',
+  'craft.ing.glass_shard': 'Glass shard',
+  'craft.ing.iron_plate': 'Iron plate',
+  'craft.ing.homunculus_frag': 'Homunculus fragment',
+
+  // Floating texts
+  'craft.float.shield': '+{n} SHIELD',
+  'craft.float.heal': '+{n} HP',
+  'craft.float.storm': 'STORM ×{n}',
+
+  // Potions — names + descriptions
+  'craft.potion.rage.name': 'Rage potion',
+  'craft.potion.rage.desc': '+30% potion damage for 25s.',
+  'craft.potion.haste.name': 'Haste potion',
+  'craft.potion.haste.desc': '−40% potion cooldown for 25s.',
+  'craft.potion.mech.name': "Mechanic's potion",
+  'craft.potion.mech.desc': '+30% tower fire rate for 30s.',
+  'craft.potion.scope.name': "Scope potion",
+  'craft.potion.scope.desc': '+30% tower range for 30s.',
+  'craft.potion.stoneShield.name': 'Stone shield',
+  'craft.potion.stoneShield.desc': '+60 HP shield, absorbs damage.',
+  'craft.potion.fieldRepair.name': 'Field repair',
+  'craft.potion.fieldRepair.desc': 'Instantly restore +50 HP to the mannequin.',
+  'craft.potion.berserk.name': 'Berserk potion',
+  'craft.potion.berserk.desc': '+25% tower damage, +10% incoming damage, 25s.',
+  'craft.potion.storm.name': 'Alchemy storm',
+  'craft.potion.storm.desc': 'The next 5 potions deal ×1.6 damage.',
+  'craft.potion.frostMist.name': 'Ice fog',
+  'craft.potion.frostMist.desc': 'All enemies move at −50% speed for 12s.',
+  'craft.potion.greed.name': 'Greed elixir',
+  'craft.potion.greed.desc': '×2 gold from enemies for 30s.',
 });

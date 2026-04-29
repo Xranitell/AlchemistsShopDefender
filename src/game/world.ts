@@ -208,6 +208,13 @@ export function buildInitialState(
     equippedCatalysts: [],
     reviveUsed: false,
     revivePaused: false,
+    // Crafted potions (loaded from MetaSave.inventory at run start)
+    inventory: [null, null, null, null],
+    activePotions: [],
+    stormCharges: 0,
+    stormChargeMult: 1,
+    potionShieldHp: 0,
+    onIngredientDrop: null,
   };
 }
 

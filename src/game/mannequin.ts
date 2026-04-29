@@ -5,6 +5,7 @@ import { throwPotion } from './projectile';
 import { tryActivateOverload } from './overload';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
+import { potionCooldownMultiplier } from './potions';
 
 export function updateMannequin(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -19,7 +20,8 @@ export function updateMannequin(state: GameState, dt: number): void {
     throwPotion(state, aim, /*manual*/ true);
     audio.playSfx('throwPotion');
     tutorial.notify('manualThrow');
-    m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult;
+    m.potionTimer = m.basePotionCooldown * state.modifiers.potionCooldownMult
+      * potionCooldownMultiplier(state);
     // Face the throw and trigger the mid-throw pose briefly.
     const dx = aim.x - m.pos.x;
     const dy = aim.y - m.pos.y;
