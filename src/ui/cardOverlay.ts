@@ -221,11 +221,18 @@ function buildCardElement(
 
   // Effects: split desc into bullets at sentence-like boundaries and wrap any
   // numeric tokens with a bright value chip so the chrome reads at a glance.
+  // For cursed cards, lines that describe unique effects (not plain stat
+  // changes) get a distinct frame + background so the player can tell the
+  // special ability apart from the stat boosts.
   const ul = document.createElement('ul');
   ul.className = 'card-rh-effects';
-  for (const line of splitDesc(cardDesc(card))) {
+  const descLines = splitDesc(cardDesc(card));
+  for (const line of descLines) {
     const li = document.createElement('li');
     li.innerHTML = formatEffectLine(line);
+    if (card.isCursed && isUniqueEffectLine(line)) {
+      li.classList.add('card-rh-unique');
+    }
     ul.appendChild(li);
   }
   frame.appendChild(ul);
@@ -247,6 +254,20 @@ function buildCardElement(
     onPick(card);
   });
   return c;
+}
+
+/** Detect whether a description bullet describes a unique effect (vs a plain
+ *  stat change). Stat lines start with +/-/×/numbers; unique lines start with
+ *  verbs/nouns describing a special mechanic. */
+function isUniqueEffectLine(line: string): boolean {
+  const trimmed = line.trim();
+  // Stat-change lines start with +, -, −, ×, or a digit (e.g. "50% шанс...")
+  if (/^[+\-−×\d]/.test(trimmed)) return false;
+  // Lines about enemies getting buffs are drawbacks, not unique effects
+  if (/^враги\b/i.test(trimmed)) return false;
+  // Lines about cooldown/cost penalties
+  if (/откат|стоят|стоимость/i.test(trimmed) && /\+\d/.test(trimmed)) return false;
+  return true;
 }
 
 /** Split the card description into 1-3 short bullets at sentence-ish

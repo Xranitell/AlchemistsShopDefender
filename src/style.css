@@ -857,6 +857,14 @@ body {
 .card-rh-effects li {
   line-height: 1.3;
 }
+.card-rh-effects li.card-rh-unique {
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 4px -4px;
+  color: #e0d4ff;
+}
 .card-rh-val {
   display: inline-block;
   color: var(--rh-color);
@@ -2357,6 +2365,8 @@ body {
 }
 .mp-stat-value.up { color: #ff6a3d; font-weight: bold; }
 .mp-stat-value.down { color: #7df9ff; }
+.mp-stat-value.buff { color: #7df9ff; font-weight: bold; }
+.mp-stat-value.debuff { color: #ff6a3d; font-weight: bold; }
 
 .mp-lines {
   margin: 0 0 14px 0;
@@ -3314,3 +3324,85 @@ body {
   font-size: 22px;
   line-height: 1;
 }
+
+/* ============ Pause stats overlay ============ */
+.pause-stats-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(6, 4, 12, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 150ms ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.pause-stats-inner {
+  position: relative;
+  width: min(640px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px 24px 20px;
+  background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.pause-stats-inner .overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+}
+
+.ps-section {
+  margin-bottom: 18px;
+}
+.ps-section.ps-unique {
+  background: rgba(192, 132, 252, 0.08);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: 8px;
+  padding: 12px 14px 8px;
+}
+
+.ps-section-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  color: #ffd166;
+  letter-spacing: 1px;
+  margin: 0 0 10px;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.4);
+}
+
+.ps-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 3px 0;
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+}
+.ps-value {
+  min-width: 72px;
+  text-align: right;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.ps-label {
+  color: #d8d2c0;
+}
+.ps-empty {
+  color: rgba(255,255,255,0.3);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  padding: 4px 0;
+}
+
+/* Buff (good for player) = green, Debuff (bad) = red, Unique = purple */
+.ps-row.ps-buff .ps-value { color: #7df9a8; text-shadow: 0 0 6px rgba(125, 249, 168, 0.4); }
+.ps-row.ps-debuff .ps-value { color: #ff6a6a; text-shadow: 0 0 6px rgba(255, 106, 106, 0.4); }
+.ps-row.ps-unique .ps-value { color: #c084fc; text-shadow: 0 0 6px rgba(192, 132, 252, 0.5); }
+.ps-row.ps-unique .ps-label { color: #e0d4ff; }

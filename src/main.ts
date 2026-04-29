@@ -28,6 +28,7 @@ import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import { LeaderboardOverlay } from './ui/leaderboardOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
+import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
@@ -114,6 +115,7 @@ const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
+const pauseStats = new PauseStatsOverlay(document.body);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -132,10 +134,16 @@ function togglePause(): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') {
     userPaused = false;
     hud.setPaused(false);
+    pauseStats.hide();
     return;
   }
   userPaused = !userPaused;
   hud.setPaused(userPaused);
+  if (userPaused) {
+    pauseStats.show(state);
+  } else {
+    pauseStats.hide();
+  }
 }
 
 const hud = new Hud(hudRoot, {

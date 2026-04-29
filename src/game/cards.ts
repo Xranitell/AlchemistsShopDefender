@@ -148,9 +148,9 @@ function weightedPick(state: GameState, weights: number[]): number {
   return weights.length - 1;
 }
 
-/** Reset reroll state at the start of a fresh draft. */
+/** Reset reroll state at the start of a fresh draft. The reroll cost
+ *  persists across waves — only the free ad-reroll resets each draft. */
 export function beginNewDraft(state: GameState): void {
-  state.cardChoice.rerollCost = 50;
   state.cardChoice.freeRerollUsed = false;
 }
 
