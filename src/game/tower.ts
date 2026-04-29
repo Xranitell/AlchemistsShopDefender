@@ -97,7 +97,7 @@ export function towerStats(state: GameState, t: Tower) {
   for (const other of state.towers) {
     if (other.id === t.id) continue;
     if (other.kind.behavior !== 'aura') continue;
-    const auraRange = other.kind.range * state.modifiers.towerRangeMult;
+    const auraRange = other.kind.range * state.modifiers.towerRangeMult * towerRangeMultiplier(state);
     if (dist(other.pos, t.pos) > auraRange) continue;
     rateMult *= WATCH_TOWER_AURA.fireRateMult;
     rangeMult *= WATCH_TOWER_AURA.rangeMult;
