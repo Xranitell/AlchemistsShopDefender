@@ -43,10 +43,21 @@ export class Input {
     };
   }
 
+  private isInsideCanvas(clientX: number, clientY: number): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    return (
+      clientX >= rect.left && clientX <= rect.right &&
+      clientY >= rect.top && clientY <= rect.bottom
+    );
+  }
+
   private attach() {
     const c = this.canvas;
-    c.addEventListener('mousemove', (e) => {
-      this.state.mouse = this.toGame(e.clientX, e.clientY);
+    // Listen on window so aim updates even when cursor is over HUD overlays.
+    window.addEventListener('mousemove', (e) => {
+      if (this.isInsideCanvas(e.clientX, e.clientY)) {
+        this.state.mouse = this.toGame(e.clientX, e.clientY);
+      }
     });
     c.addEventListener('mousedown', (e) => {
       this.state.mouse = this.toGame(e.clientX, e.clientY);
@@ -67,11 +78,13 @@ export class Input {
       this.state.mousePressedThisFrame = true;
     }, { passive: false });
 
-    c.addEventListener('touchmove', (e) => {
-      e.preventDefault();
+    window.addEventListener('touchmove', (e) => {
       const t = e.touches[0];
       if (!t) return;
-      this.state.mouse = this.toGame(t.clientX, t.clientY);
+      if (this.isInsideCanvas(t.clientX, t.clientY)) {
+        e.preventDefault();
+        this.state.mouse = this.toGame(t.clientX, t.clientY);
+      }
     }, { passive: false });
 
     c.addEventListener('touchend', () => {
