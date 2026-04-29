@@ -276,114 +276,114 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'curse_flammable_mix':
       m.potionLeavesFire = true;
       m.potionDamageMult *= 1.30;
-      dm.hpMult *= 1.10;
+      dm.hpMult *= 1.15;
       break;
     case 'curse_unstable_flask':
       m.potionEchoExplode = Math.max(m.potionEchoExplode, 0.5);
       m.potionRadiusMult *= 1.25;
-      m.potionCooldownMult *= 1.15;
+      m.potionCooldownMult *= 1.20;
       break;
     case 'curse_frost_brew':
       m.potionFrostActive = true;
       m.potionRadiusMult *= 1.30;
-      dm.hpMult *= 1.10;
+      dm.hpMult *= 1.15;
       break;
     case 'curse_acid_brew':
       m.potionAcidActive = true;
       m.potionDamageMult *= 1.30;
-      dm.hpMult *= 1.10;
+      dm.hpMult *= 1.15;
       break;
     case 'curse_mercury_brew':
       m.potionMercuryActive = true;
       m.potionDamageMult *= 1.25;
       m.potionRadiusMult *= 1.20;
-      m.goldDropMult *= 0.80;
+      m.goldDropMult *= 0.75;
       break;
     case 'curse_aether_brew':
       m.potionAetherActive = true;
       m.potionDamageMult *= 1.40;
-      dm.hpMult *= 1.15;
+      dm.hpMult *= 1.20;
       break;
     case 'curse_mutagen_brew':
       m.potionPoisonActive = true;
       m.potionDamageMult *= 1.35;
-      dm.hpMult *= 1.15;
+      dm.hpMult *= 1.20;
       break;
     case 'curse_triple_throw':
       m.tripleThrowActive = true;
       m.tripleThrowTimer = m.tripleThrowInterval;
       m.potionCooldownMult *= 0.80;
-      m.potionRadiusMult *= 0.85;
+      m.potionRadiusMult *= 0.80;
       break;
 
     // Engineering / towers
     case 'curse_crossfire':
       m.towerBonusVsBurning = true;
       m.towerDamageMult *= 1.20;
-      dm.speedMult *= 1.10;
+      dm.speedMult *= 1.15;
       break;
     case 'curse_mercury_coating':
       m.towerMercurySlow = true;
       m.towerFireRateMult *= 1.25;
-      mq.maxHp = Math.max(50, mq.maxHp - 20);
+      mq.maxHp = Math.max(50, mq.maxHp - 30);
       mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
     case 'curse_acid_tips':
       m.towerAcidBreak = true;
       m.towerDamageMult *= 1.25;
-      m.towerCostMult *= 1.25;
+      m.towerCostMult *= 1.30;
       break;
     case 'curse_synchronized_volley':
       m.towerSyncVolley = true;
       m.towerDamageMult *= 1.20;
-      dm.hpMult *= 1.15;
+      dm.hpMult *= 1.20;
       break;
 
     // Rituals / mannequin
     case 'curse_thorny_shell':
       m.thornyShell = true;
       mq.maxHp += 50; mq.hp = Math.min(mq.maxHp, mq.hp + 50);
-      m.goldDropMult *= 0.85;
+      m.goldDropMult *= 0.80;
       break;
     case 'curse_chronos':
       state.activeModuleId = 'chronos';
       m.potionDamageMult *= 1.30;
-      m.potionCooldownMult *= 1.15;
+      m.potionCooldownMult *= 1.20;
       break;
     case 'curse_golem_heart':
       state.golemHeartCharges = 1;
       mq.maxHp += 75; mq.hp = Math.min(mq.maxHp, mq.hp + 75);
-      m.potionDamageMult *= 0.75;
+      m.potionDamageMult *= 0.70;
       break;
 
     // Catalysts
     case 'curse_fire_ruby':
       m.fireRubyCounter = 5;
       m.potionDamageMult *= 1.25;
-      dm.speedMult *= 1.10;
+      dm.speedMult *= 1.15;
       break;
     case 'curse_mercury_ring':
       m.mercuryRingActive = true;
       m.goldDropMult *= 1.30;
-      dm.hpMult *= 1.10;
+      dm.hpMult *= 1.15;
       break;
     case 'curse_acid_prism':
       m.reactionDamageMult *= 1.25;
       m.potionDamageMult *= 1.25;
-      mq.maxHp = Math.max(50, mq.maxHp - 25);
+      mq.maxHp = Math.max(50, mq.maxHp - 35);
       mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
     case 'curse_aether_engine':
       m.aetherEngineActive = true;
       m.potionDamageMult *= 1.35;
-      m.potionCooldownMult *= 1.15;
+      m.potionCooldownMult *= 1.20;
       break;
     case 'curse_crown_of_elements':
       m.reactionDamageMult *= 1.5;
       m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
       state.catalystSlots += 1;
       m.potionDamageMult *= 1.25;
-      dm.hpMult *= 1.15;
+      dm.hpMult *= 1.20;
       break;
 
     // Legendary pacts
@@ -391,12 +391,12 @@ export function applyCard(state: GameState, card: CardDef): void {
       m.salamanderActive = true;
       m.potionLeavesFire = true;
       m.potionDamageMult *= 1.50;
-      mq.basePotionCooldown *= 1.20;
+      mq.basePotionCooldown *= 1.25;
       break;
     case 'curse_archmaster':
       m.archmasterActive = true;
       m.towerDamageMult *= 1.25;
-      // Cost penalty already part of archmasterActive; no extra towerCostMult.
+      m.towerCostMult *= 1.10;
       break;
 
     default:

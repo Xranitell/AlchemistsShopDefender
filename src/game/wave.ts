@@ -204,6 +204,13 @@ export function spawnEnemy(
     goldPending: 0,
     abilities,
     shieldCharges: abilities.includes('one_hit_shield') ? 1 : 0,
+    // Cursed-extra: seed the bonus damage-soak shield from the global
+    // multiplier. Bosses don't get this — their HP pools are already
+    // tuned, and stacking another shield ruins their pacing. The
+    // spawn-time max is cached so the renderer can show a proportional
+    // bar above the enemy.
+    extraShield: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
+    extraShieldMax: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
     dashBackTimer: 0,
     splitGeneration,
     damageTaken: 1,

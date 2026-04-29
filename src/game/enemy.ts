@@ -50,6 +50,13 @@ export function updateEnemies(state: GameState, dt: number): void {
     }
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
+    // Cursed-extra: enemy regen — non-boss enemies recover a flat HP/sec
+    // amount up to their `maxHp` ceiling. The shield does NOT regenerate;
+    // once depleted it stays gone for the rest of the enemy's life.
+    if (state.modifiers.enemyRegenPerSec > 0 && !e.kind.isBoss && e.hp > 0) {
+      e.hp = Math.min(e.maxHp, e.hp + state.modifiers.enemyRegenPerSec * dt);
+    }
+
     // Dash-back: while this timer is >0 the enemy is pushed away from the
     // hero instead of toward them (brief knockback from the last hit).
     if (e.dashBackTimer > 0) {

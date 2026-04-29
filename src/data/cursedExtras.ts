@@ -73,56 +73,88 @@ const ALL: CursedExtraEffect[] = [
   },
 
   // ── Negative: enemy buffs / player penalties ──────────────────────────
+  // Magnitudes are deliberately a tier above the positive extras (≈15-20 %)
+  // so cursed drafts feel weighty — the player should hesitate to scoop a
+  // 1+/3- card even when the unique effect is tempting.
   {
-    id: 'extra_enemy_hp_8',
+    id: 'extra_enemy_hp_15',
     polarity: 'neg',
-    label: '+8% HP врагов',
-    apply: (s) => { s.difficultyModifier.hpMult *= 1.08; },
+    label: '+15% HP врагов',
+    apply: (s) => { s.difficultyModifier.hpMult *= 1.15; },
   },
   {
-    id: 'extra_enemy_speed_8',
+    id: 'extra_enemy_speed_12',
     polarity: 'neg',
-    label: '+8% скорость врагов',
-    apply: (s) => { s.difficultyModifier.speedMult *= 1.08; },
+    label: '+12% скорость врагов',
+    apply: (s) => { s.difficultyModifier.speedMult *= 1.12; },
   },
   {
-    id: 'extra_gold_-10',
+    id: 'extra_gold_-15',
     polarity: 'neg',
-    label: '−10% золота',
-    apply: (s) => { s.modifiers.goldDropMult *= 0.90; },
+    label: '−15% золота',
+    apply: (s) => { s.modifiers.goldDropMult *= 0.85; },
   },
   {
-    id: 'extra_pcd_10',
+    id: 'extra_pcd_15',
     polarity: 'neg',
-    label: '+10% откат склянок',
-    apply: (s) => { s.modifiers.potionCooldownMult *= 1.10; },
+    label: '+15% откат склянок',
+    apply: (s) => { s.modifiers.potionCooldownMult *= 1.15; },
   },
   {
-    id: 'extra_tcost_10',
+    id: 'extra_tcost_15',
     polarity: 'neg',
-    label: '+10% стоимость стоек',
-    apply: (s) => { s.modifiers.towerCostMult *= 1.10; },
+    label: '+15% стоимость стоек',
+    apply: (s) => { s.modifiers.towerCostMult *= 1.15; },
   },
   {
-    id: 'extra_hp_-15',
+    id: 'extra_hp_-25',
     polarity: 'neg',
-    label: '−15 макс. HP Манекена',
+    label: '−25 макс. HP Манекена',
     apply: (s) => {
-      s.mannequin.maxHp = Math.max(50, s.mannequin.maxHp - 15);
+      s.mannequin.maxHp = Math.max(50, s.mannequin.maxHp - 25);
       s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp);
     },
   },
   {
-    id: 'extra_pdmg_-10',
+    id: 'extra_pdmg_-15',
     polarity: 'neg',
-    label: '−10% урон склянок',
-    apply: (s) => { s.modifiers.potionDamageMult *= 0.90; },
+    label: '−15% урон склянок',
+    apply: (s) => { s.modifiers.potionDamageMult *= 0.85; },
   },
   {
-    id: 'extra_tdmg_-10',
+    id: 'extra_tdmg_-15',
     polarity: 'neg',
-    label: '−10% урон стоек',
-    apply: (s) => { s.modifiers.towerDamageMult *= 0.90; },
+    label: '−15% урон стоек',
+    apply: (s) => { s.modifiers.towerDamageMult *= 0.85; },
+  },
+
+  // ── Negative: unique enemy mechanics (mechanical, not just stat-mults) ─
+  // These are the marquee drawbacks — they change how combat plays, not
+  // just the numbers. Stacks additively when the same id is rolled across
+  // multiple drafts; per-effect caps live where each modifier is consumed.
+  {
+    id: 'extra_enemy_dodge_15',
+    polarity: 'neg',
+    label: '+15% шанс уворота врагов',
+    apply: (s) => { s.modifiers.enemyDodgeChance += 0.15; },
+  },
+  {
+    id: 'extra_enemy_shield_20',
+    polarity: 'neg',
+    label: '+щит врагов 20% от HP',
+    apply: (s) => { s.modifiers.enemyExtraShieldFraction += 0.20; },
+  },
+  {
+    id: 'extra_enemy_regen_3',
+    polarity: 'neg',
+    label: '+регенерация врагов 3 HP/с',
+    apply: (s) => { s.modifiers.enemyRegenPerSec += 3; },
+  },
+  {
+    id: 'extra_enemy_armor_10',
+    polarity: 'neg',
+    label: '+10% брони врагов',
+    apply: (s) => { s.modifiers.enemyArmorAdd += 0.10; },
   },
 ];
 

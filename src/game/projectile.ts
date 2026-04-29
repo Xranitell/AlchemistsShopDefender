@@ -250,6 +250,19 @@ export function applyDamageToEnemy(
   rawDamage: number,
   element: Projectile['element'],
 ): void {
+  // Cursed-extra: dodge roll. Non-boss enemies get a per-hit chance to
+  // fully evade the projectile. The chance is hard-capped so the player
+  // can never softlock from too many stacked dodge extras.
+  if (
+    !e.kind.isBoss
+    && state.modifiers.enemyDodgeChance > 0
+    && state.rng.chance(Math.min(0.6, state.modifiers.enemyDodgeChance))
+  ) {
+    e.hitFlash = 0.08;
+    spawnFloatingText(state, t('floating.dodge'), e.pos, '#a0c4ff');
+    return;
+  }
+
   // Difficulty abilities:
   // One-hit shield absorbs the first hit completely and breaks.
   if (e.shieldCharges > 0) {
@@ -266,11 +279,15 @@ export function applyDamageToEnemy(
     return;
   }
 
-  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
+  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction
+  // and any cursed-extra global armour bump. The total is clamped to
+  // [0, 0.95] so the floor ensures damage still ticks through.
   const baseArmor = e.kind.armor
-    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
+    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0)
+    + state.modifiers.enemyArmorAdd;
   // Meta armour penetration scales the effective armour value down.
-  const armor = baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen);
+  const armor = Math.min(0.95,
+    baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen));
   let dmg = Math.max(1, rawDamage * (1 - armor));
 
   // Meta crit chance: doubled damage on a successful roll.
@@ -293,6 +310,20 @@ export function applyDamageToEnemy(
   // Engineering: +30% damage to burning enemies.
   if (state.modifiers.towerBonusVsBurning && e.status.burnTime > 0) {
     dmg *= 1.3;
+  }
+
+  // Cursed-extra: bonus shield soaks damage before it spills over to HP.
+  // Damage that fully drains the shield bleeds the remainder into HP so
+  // the hit still registers.
+  if (e.extraShield > 0) {
+    const absorbed = Math.min(e.extraShield, dmg);
+    e.extraShield -= absorbed;
+    dmg -= absorbed;
+    if (dmg <= 0) {
+      e.hitFlash = 0.10;
+      audio.playSfx('enemyHit', { detune: 1.2 });
+      return;
+    }
   }
 
   e.hp -= dmg;
