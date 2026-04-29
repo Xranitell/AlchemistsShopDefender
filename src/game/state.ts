@@ -207,6 +207,9 @@ export interface Modifiers {
   towerSyncVolley: boolean;
   lootRadiusMult: number;
   thornyShell: boolean;
+  /** Set by the Vital Pulse aura: while true the mannequin regenerates
+   *  HP every second during waves. */
+  vitalPulseRegen: boolean;
   goldDropMult: number;
   fireRubyCounter: number;
   fireRubyActive: boolean;
@@ -251,6 +254,7 @@ export const newModifiers = (): Modifiers => ({
   towerSyncVolley: false,
   lootRadiusMult: 1,
   thornyShell: false,
+  vitalPulseRegen: false,
   goldDropMult: 1,
   fireRubyCounter: 0,
   fireRubyActive: false,

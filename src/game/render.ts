@@ -345,6 +345,77 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 
   drawOrbitalCatalysts(ctx, state, drawX, drawY);
+
+  // Translucent blue shield bubble — shown whenever the mannequin has any
+  // active barrier (Alch-Dome / boss-wave shield via tempShield, or the
+  // crafted "stone shield" potion via potionShieldHp). Drawn last so the
+  // dome sits visually on top of the hero sprite.
+  drawMannequinShieldBubble(ctx, state, drawX, drawY);
+}
+
+/** Translucent blue bubble visualising the mannequin's barrier. The bubble
+ *  pulses gently with `worldTime` and gets a brighter rim so it reads as a
+ *  proper magical dome instead of a flat circle. */
+function drawMannequinShieldBubble(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cx: number,
+  cy: number,
+): void {
+  const hasTemp = state.tempShieldTime > 0;
+  const hasPotion = state.potionShieldHp > 0;
+  if (!hasTemp && !hasPotion) return;
+
+  const baseR = 46;
+  const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 3);
+  const radius = baseR + pulse * 2;
+  const ox = cx;
+  const oy = cy - 4; // centre on the mannequin's torso
+
+  ctx.save();
+  // Outer glow halo.
+  const glow = ctx.createRadialGradient(ox, oy, radius * 0.55, ox, oy, radius * 1.15);
+  glow.addColorStop(0, 'rgba(125, 200, 255, 0.0)');
+  glow.addColorStop(0.7, 'rgba(125, 200, 255, 0.18)');
+  glow.addColorStop(1, 'rgba(125, 200, 255, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(ox, oy, radius * 1.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  // Translucent body of the bubble.
+  const body = ctx.createRadialGradient(ox - radius * 0.25, oy - radius * 0.3, radius * 0.1, ox, oy, radius);
+  body.addColorStop(0, 'rgba(220, 240, 255, 0.32)');
+  body.addColorStop(0.55, 'rgba(125, 200, 255, 0.18)');
+  body.addColorStop(1, 'rgba(80, 160, 255, 0.10)');
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(ox, oy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bright rim.
+  ctx.strokeStyle = `rgba(170, 220, 255, ${0.55 + pulse * 0.25})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(ox, oy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Specular highlight.
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(
+    ox - radius * 0.35,
+    oy - radius * 0.5,
+    radius * 0.22,
+    radius * 0.10,
+    -0.6,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.restore();
 }
 
 /** Catalyst color palette (GDD §7.5). Maps each catalyst card id to a

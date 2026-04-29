@@ -37,14 +37,15 @@ const NODE_RADIUS: Record<string, number> = {
 };
 
 // SVG viewBox dimensions. Covers the entire node-position space defined in
-// metaTree.ts (≈0..1100 × 0..740) plus a small margin.
-const VIEW_W = 1100;
-const VIEW_H = 740;
+// metaTree.ts. Width and height were widened in the v2 layout pass so each
+// branch gets its own non-overlapping wedge and connections no longer cross.
+const VIEW_W = 1400;
+const VIEW_H = 900;
 // The visual centre of the tree — used to pick the curve direction so
 // connections bend along a radial arc (PoE-style) rather than crossing
 // straight through the middle.
-const TREE_CX = 550;
-const TREE_CY = 370;
+const TREE_CX = 700;
+const TREE_CY = 450;
 
 /** Glyph for a node, derived from its effect kind. Unicode-only so we
  *  don't ship a sprite atlas — characters render in the native pixel
@@ -93,12 +94,16 @@ const ACTIVE_MODULE_ICONS: Record<string, string> = {
   chronos: '⏳',
   transmute: '⛁',
   alch_dome: '⛨',
+  frost_nova: '❄',
+  vortex: '🌀',
 };
 const AURA_MODULE_ICONS: Record<string, string> = {
-  magnet_res: '🧲',
   ether_amp: '✦',
   thorn_shell: '🜨',
   elem_reson: '◎',
+  vital_pulse: '♥',
+  gold_aura: '🜚',
+  long_range: '➶',
 };
 
 function nodeGlyph(node: { id: string; effect: { kind: string } }): string {

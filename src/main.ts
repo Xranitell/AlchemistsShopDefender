@@ -119,8 +119,27 @@ towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
 mannequinShop.attach(state);
 
+/** User-driven pause flag. Toggled by the HUD pause button (and the
+ *  matching mobile control). When true, the simulation does not tick —
+ *  all enemies, projectiles, towers, and timers freeze until the player
+ *  resumes. We still keep rendering the canvas / HUD so the frozen frame
+ *  is visible. */
+let userPaused = false;
+function togglePause(): void {
+  // Pause is only meaningful during active gameplay phases. The flag stays
+  // false outside of `wave` / `preparing` so re-entering gameplay never
+  // starts mid-pause.
+  if (state.phase !== 'wave' && state.phase !== 'preparing') {
+    userPaused = false;
+    hud.setPaused(false);
+    return;
+  }
+  userPaused = !userPaused;
+  hud.setPaused(userPaused);
+}
+
 const hud = new Hud(hudRoot, {
-  onPause: () => {},
+  onPause: () => togglePause(),
   onSkipPause: () => {
     if (state.phase === 'preparing') {
       towerShop.close();
@@ -172,10 +191,29 @@ void (async () => {
 })();
 
 function tick(dt: number): void {
-  state.worldTime += dt;
   // Convert screen mouse position to world coordinates through inverse iso transform
   const cam = getRenderCamera(state.arena.width, state.arena.height);
   state.aim = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
+
+  // User-driven pause — freeze the entire simulation (worldTime included
+  // so animations don't drift) but keep rendering the last frame so the
+  // player can read the board. Input is dropped so accidental taps on the
+  // arena don't queue throws while we're paused.
+  if (userPaused) {
+    if (state.phase !== 'wave' && state.phase !== 'preparing') {
+      // Phase changed under us (e.g. wave finished into card_select). Auto-
+      // resume so we never stay paused on a non-gameplay screen.
+      userPaused = false;
+      hud.setPaused(false);
+    } else {
+      input.endFrame();
+      render(ctx!, state);
+      hud.update(state);
+      return;
+    }
+  }
+
+  state.worldTime += dt;
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
@@ -263,6 +301,18 @@ function tick(dt: number): void {
       state.mannequin.hp = Math.min(
         state.mannequin.maxHp,
         state.mannequin.hp + state.metaAutoRepairRate * dt,
+      );
+    }
+  }
+
+  // Vital Pulse aura — heals the mannequin while a wave is in progress.
+  // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
+  // with Auto-Repair without trivialising tougher waves.
+  if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
+    if (state.mannequin.hp < state.mannequin.maxHp) {
+      state.mannequin.hp = Math.min(
+        state.mannequin.maxHp,
+        state.mannequin.hp + 1 * dt,
       );
     }
   }
