@@ -1,6 +1,6 @@
 import type { Vec2 } from '../engine/math';
 
-export type Element = 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether';
+export type Element = 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether' | 'frost' | 'poison';
 
 export interface StatusEffects {
   /** Burn applies damage over time, in HP/sec, while remaining > 0. */
@@ -12,6 +12,13 @@ export interface StatusEffects {
   /** Armor reduction factor (1 = full armor, 0 = no armor). */
   armorBreakFactor: number;
   armorBreakTime: number;
+  /** Aether mark: tracks recent aether damage for reaction triggers. */
+  aetherMarkTime: number;
+  /** Frost mark: enemy is "chilled" (slowed AND vulnerable to brittle). */
+  frostMarkTime: number;
+  /** Poison damage-over-time, similar to burn but armor-piercing. */
+  poisonDps: number;
+  poisonTime: number;
 }
 
 export const newStatus = (): StatusEffects => ({
@@ -21,6 +28,10 @@ export const newStatus = (): StatusEffects => ({
   slowTime: 0,
   armorBreakFactor: 1,
   armorBreakTime: 0,
+  aetherMarkTime: 0,
+  frostMarkTime: 0,
+  poisonDps: 0,
+  poisonTime: 0,
 });
 
 export interface EnemyKind {
@@ -48,7 +59,19 @@ export interface TowerKind {
   element: Element;
   color: string;
   desc: string;
+  /** Special behavior tag. Towers without a behavior fire a regular tracking
+   *  projectile. */
+  behavior?: TowerBehavior;
 }
+
+export type TowerBehavior =
+  | 'projectile'
+  /** Эфирная катушка: instant chain-lightning that arcs to up to N nearby
+   *  enemies, dealing decreasing damage with each hop. */
+  | 'chain'
+  /** Сторожевой фонарь: passive aura tower — never fires a projectile, but
+   *  buffs other towers within `range`. */
+  | 'aura';
 
 export type CardCategory = 'recipe' | 'engineering' | 'ritual' | 'catalyst';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -59,6 +82,11 @@ export interface CardDef {
   category: CardCategory;
   rarity: Rarity;
   desc: string;
+  /** Cursed cards combine 2-3 strong stat boosts with a unique effect AND a
+   *  drawback (weakened mannequin / towers, or strengthened enemies). They
+   *  are only offered every 3rd wave (see {@link rollCardOptions}) and use a
+   *  distinct dark-purple frame in the card draft UI. */
+  isCursed?: boolean;
 }
 
 export interface WaveDef {

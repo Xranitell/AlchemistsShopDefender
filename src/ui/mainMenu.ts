@@ -1,0 +1,287 @@
+import type { MetaSave } from '../game/save';
+import { canClaimDaily, saveMeta } from '../game/save';
+import { t, getLocale, setLocale, type Locale } from '../i18n';
+import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
+
+export class MainMenu {
+  private root: HTMLElement;
+
+  constructor(root: HTMLElement) {
+    this.root = root;
+  }
+
+  show(opts: {
+    meta: MetaSave;
+    onBattle: () => void;
+    onLaboratory: () => void;
+    onBattlePass: () => void;
+    onDailyRewards: () => void;
+    onSettings: () => void;
+    onDailyExperiment: () => void;
+    onBossChallenge: () => void;
+    onLeaderboards: () => void;
+    onCrafting: () => void;
+  }): void {
+    this.root.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'main-menu';
+
+    // Top bar — currencies
+    const topBar = document.createElement('div');
+    topBar.className = 'mm-top-bar';
+    topBar.innerHTML = `
+      <span class="mm-currency blue-essence" title="${t('ui.menu.tooltip.blueEssence')}"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
+      <span class="mm-currency ancient-essence" title="${t('ui.menu.tooltip.ancientEssence')}"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
+      <span class="mm-currency epic-key" title="${t('ui.menu.tooltip.epicKey')}"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
+      <span class="mm-currency ancient-key" title="${t('ui.menu.tooltip.ancientKey')}"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
+    `;
+    // RU/EN switcher in the top-right corner of the main menu (PR-9 i18n).
+    topBar.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
+    wrap.appendChild(topBar);
+
+    // Center content
+    const center = document.createElement('div');
+    center.className = 'mm-center';
+
+    // Left column: My Shop + Laboratory + Settings
+    const leftCol = document.createElement('div');
+    leftCol.className = 'mm-left';
+
+    // My Shop section — also doubles as the Alchemy crafting entry point.
+    // Clicking the section (slots, title, or hint) opens the crafting overlay.
+    const shopSection = document.createElement('button');
+    shopSection.className = 'mm-section mm-shop mm-shop-btn';
+    shopSection.type = 'button';
+    const shopTitle = document.createElement('div');
+    shopTitle.className = 'mm-section-title mm-title-with-icon';
+    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span><span class="mm-info-dot">i</span>`;
+    shopSection.appendChild(shopTitle);
+    const slotRow = document.createElement('div');
+    slotRow.className = 'mm-shop-slots';
+    for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
+      const slot = document.createElement('div');
+      const id = opts.meta.inventory[i];
+      const recipe = id ? POTION_BY_ID[id] : null;
+      slot.className = `mm-shop-slot${recipe ? ' filled' : ''}`;
+      if (recipe) {
+        slot.title = t(`${recipe.i18nKey}.name`);
+        slot.innerHTML = `<span class="mm-slot-potion" style="color:${recipe.color}">${recipe.glyph}</span>`;
+      }
+      slotRow.appendChild(slot);
+    }
+    shopSection.appendChild(slotRow);
+    const craftHint = document.createElement('div');
+    craftHint.className = 'mm-craft-level';
+    craftHint.innerHTML = `<span>${t('ui.menu.craftingHint')}</span>`;
+    shopSection.appendChild(craftHint);
+    const statsRow = document.createElement('div');
+    statsRow.className = 'mm-stats';
+    statsRow.innerHTML = `<span>${t('ui.menu.runs', { n: opts.meta.totalRuns })}</span><span>${t('ui.menu.bestWave', { n: opts.meta.bestWave })}</span>`;
+    shopSection.appendChild(statsRow);
+    shopSection.addEventListener('click', opts.onCrafting);
+    leftCol.appendChild(shopSection);
+
+    // Laboratory button
+    const labBtn = document.createElement('button');
+    labBtn.className = 'mm-section mm-lab-btn';
+    const labTitle = document.createElement('div');
+    labTitle.className = 'mm-section-title';
+    labTitle.innerHTML = `<span class="mm-flask-icon"></span><span>${t('ui.menu.laboratory')}</span>`;
+    labBtn.appendChild(labTitle);
+    const labDesc = document.createElement('div');
+    labDesc.className = 'mm-lab-desc';
+    const hpNode = opts.meta.purchased.includes('hp_1') ? 10 : 0;
+    const damageNode = opts.meta.purchased.includes('potion_damage_1') ? 5 : 0;
+    labDesc.innerHTML = `
+      <span class="mm-lab-tree">
+        <span class="node core"></span>
+        <span class="branch left"></span><span class="branch right"></span>
+        <span class="node hp">HP<br>+${hpNode}%</span>
+        <span class="node dmg">DMG<br>+${damageNode}%</span>
+      </span>
+    `;
+    labBtn.appendChild(labDesc);
+    labBtn.addEventListener('click', opts.onLaboratory);
+    leftCol.appendChild(labBtn);
+
+    // Settings button
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'mm-section mm-settings-btn';
+    const settingsTitle = document.createElement('div');
+    settingsTitle.className = 'mm-section-title';
+    settingsTitle.innerHTML = `<span class="mm-gear-icon"></span><span>${t('ui.menu.settings')}</span>`;
+    settingsBtn.addEventListener('click', opts.onSettings);
+    settingsBtn.appendChild(settingsTitle);
+    leftCol.appendChild(settingsBtn);
+
+    center.appendChild(leftCol);
+
+    // Middle: Title + illustration + TO BATTLE
+    const midCol = document.createElement('div');
+    midCol.className = 'mm-mid';
+    const title = document.createElement('div');
+    title.className = 'mm-title';
+    title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
+    midCol.appendChild(title);
+
+    // Central illustration — pixel-art style alchemist's shop with hero in front.
+    const illu = document.createElement('div');
+    illu.className = 'mm-illustration';
+    illu.innerHTML = shopIllustrationSVG();
+    midCol.appendChild(illu);
+
+    const battleBtn = document.createElement('button');
+    battleBtn.className = 'mm-battle-btn';
+    battleBtn.textContent = t('ui.menu.toBattle');
+    battleBtn.addEventListener('click', opts.onBattle);
+    midCol.appendChild(battleBtn);
+
+    // Special mode buttons
+    const modeBtns = document.createElement('div');
+    modeBtns.className = 'mm-mode-btns';
+
+    const dailyBtn2 = document.createElement('button');
+    dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
+    dailyBtn2.textContent = t('ui.menu.dailyExperiment');
+    dailyBtn2.addEventListener('click', opts.onDailyExperiment);
+    modeBtns.appendChild(dailyBtn2);
+
+    const bossBtn = document.createElement('button');
+    bossBtn.className = 'mm-mode-btn mm-boss-challenge';
+    bossBtn.textContent = t('ui.menu.bossChallenge');
+    bossBtn.addEventListener('click', opts.onBossChallenge);
+    modeBtns.appendChild(bossBtn);
+
+    const lbBtn = document.createElement('button');
+    lbBtn.className = 'mm-mode-btn mm-leaderboards';
+    lbBtn.textContent = t('ui.menu.leaderboards');
+    lbBtn.addEventListener('click', opts.onLeaderboards);
+    modeBtns.appendChild(lbBtn);
+
+    midCol.appendChild(modeBtns);
+
+    center.appendChild(midCol);
+
+    // Right column: Battle Pass + Daily Rewards
+    const rightCol = document.createElement('div');
+    rightCol.className = 'mm-right';
+
+    const bpBtn = document.createElement('button');
+    bpBtn.className = 'mm-section mm-bp-btn';
+    const bpTitle = document.createElement('div');
+    bpTitle.className = 'mm-section-title';
+    bpTitle.innerHTML = `<span>${t('ui.menu.battlePass')}</span><span class="mm-chest-icon"></span>`;
+    bpBtn.appendChild(bpTitle);
+    const bpSub = document.createElement('div');
+    bpSub.className = 'mm-bp-sub';
+    bpSub.innerHTML = `<span>${t('ui.menu.bpLevel', { level: opts.meta.bpLevel })}</span><span class="mm-mini-progress"><i style="width:${Math.min(100, (opts.meta.bpLevel / 50) * 100)}%"></i></span>`;
+    bpBtn.appendChild(bpSub);
+    bpBtn.addEventListener('click', opts.onBattlePass);
+    rightCol.appendChild(bpBtn);
+
+    const dailyBtn = document.createElement('button');
+    dailyBtn.className = 'mm-section mm-daily-btn';
+    const dailyTitle = document.createElement('div');
+    dailyTitle.className = 'mm-section-title';
+    dailyTitle.innerHTML = `<span>${t('ui.menu.dailyRewards').replace(/\n/g, '<br>')}</span><span class="mm-calendar-icon"></span>`;
+    dailyBtn.appendChild(dailyTitle);
+    if (canClaimDaily(opts.meta)) {
+      const badge = document.createElement('div');
+      badge.className = 'mm-daily-badge';
+      badge.textContent = t('ui.menu.dailyClaim');
+      dailyBtn.appendChild(badge);
+    }
+    dailyBtn.addEventListener('click', opts.onDailyRewards);
+    rightCol.appendChild(dailyBtn);
+
+    center.appendChild(rightCol);
+    wrap.appendChild(center);
+    this.root.appendChild(wrap);
+    this.root.classList.add('visible');
+  }
+
+  isVisible(): boolean {
+    return this.root.classList.contains('visible');
+  }
+
+  hide(): void {
+    this.root.classList.remove('visible');
+    this.root.innerHTML = '';
+  }
+}
+
+// Pixel-art-ish storefront illustration drawn in SVG so it ships with zero
+// asset pipeline. Colours match the in-game palette (wood + copper + purple
+// potions + warm lantern glow).
+function shopIllustrationSVG(): string {
+  return `<svg viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <radialGradient id="sky" cx="50%" cy="48%" r="72%">
+        <stop offset="0%" stop-color="#27445b"/>
+        <stop offset="58%" stop-color="#121a2a"/>
+        <stop offset="100%" stop-color="#080b12"/>
+      </radialGradient>
+      <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffd27a" stop-opacity="0.8"/>
+        <stop offset="100%" stop-color="#ffd27a" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="220" height="180" fill="url(#sky)"/>
+    <ellipse cx="110" cy="139" rx="76" ry="26" fill="#151c2c"/>
+    <polygon points="56,122 110,96 164,122 110,154" fill="#4d596f"/>
+    <polygon points="56,122 110,154 110,166 48,132" fill="#2c3448"/>
+    <polygon points="164,122 110,154 110,166 172,132" fill="#242b3d"/>
+    <polygon points="62,120 110,98 158,120 110,147" fill="#758096"/>
+    <polyline points="72,122 110,104 148,122" fill="none" stroke="#9ba6bb" stroke-width="2"/>
+    <polyline points="82,128 110,115 138,128" fill="none" stroke="#59657f" stroke-width="2"/>
+    <polygon points="74,92 110,64 146,92 110,112" fill="#9a5a2a" stroke="#2a1810" stroke-width="3"/>
+    <polygon points="82,92 110,70 138,92 110,107" fill="#c07a3e"/>
+    <polygon points="78,94 110,111 110,143 78,126" fill="#6b4026" stroke="#2a1810" stroke-width="2"/>
+    <polygon points="142,94 110,111 110,143 142,126" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
+    <polygon points="92,102 110,111 110,136 92,127" fill="#2a1810"/>
+    <polygon points="119,106 134,99 134,122 119,130" fill="#24445d" stroke="#182436" stroke-width="2"/>
+    <rect x="74" y="113" width="9" height="28" fill="#5a3622"/>
+    <rect x="137" y="112" width="8" height="27" fill="#5a3622"/>
+    <rect x="100" y="53" width="9" height="16" fill="#454a60" stroke="#1a1d28" stroke-width="2"/>
+    <ellipse cx="103" cy="49" rx="7" ry="3" fill="#9c8a90" opacity="0.6"/>
+    <circle cx="126" cy="112" r="12" fill="url(#glow)"/>
+    <rect x="124" y="111" width="4" height="7" fill="#ffd166"/>
+    <rect x="65" y="128" width="12" height="19" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
+    <rect x="145" y="130" width="18" height="17" fill="#b78250" stroke="#2a1810" stroke-width="2"/>
+    <circle cx="89" cy="136" r="3" fill="#7df9ff"/>
+    <circle cx="133" cy="132" r="3" fill="#c084fc"/>
+    <circle cx="153" cy="139" r="3" fill="#4fd36a"/>
+    <rect x="44" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
+    <rect x="154" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
+  </svg>`;
+}
+
+/** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).
+ *  Mirrors the slider in the Settings overlay so the player can flip the
+ *  language without diving into a sub-menu. */
+function buildLangSwitcher(meta: MetaSave, _onSettings: () => void): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'mm-lang-switcher';
+  wrap.title = t('ui.lang.tooltip');
+  const buttons: { code: Locale; label: string }[] = [
+    { code: 'ru', label: t('ui.lang.ru') },
+    { code: 'en', label: t('ui.lang.en') },
+  ];
+  for (const { code, label } of buttons) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mm-lang-btn' + (getLocale() === code ? ' active' : '');
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      if (getLocale() === code) return;
+      setLocale(code);
+      meta.locale = code;
+      saveMeta(meta);
+      // Re-render the menu by re-dispatching the existing onSettings hook —
+      // safer than holding a ref to the original render fn. Caller refreshes.
+      window.dispatchEvent(new CustomEvent('asd-locale-changed'));
+    });
+    wrap.appendChild(b);
+  }
+  return wrap;
+}

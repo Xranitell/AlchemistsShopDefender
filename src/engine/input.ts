@@ -43,12 +43,36 @@ export class Input {
     };
   }
 
+  private isInsideCanvas(clientX: number, clientY: number): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    return (
+      clientX >= rect.left && clientX <= rect.right &&
+      clientY >= rect.top && clientY <= rect.bottom
+    );
+  }
+
   private attach() {
     const c = this.canvas;
-    c.addEventListener('mousemove', (e) => {
-      this.state.mouse = this.toGame(e.clientX, e.clientY);
+    // Listen on window so aim updates even when cursor is over HUD overlays.
+    window.addEventListener('mousemove', (e) => {
+      if (this.isInsideCanvas(e.clientX, e.clientY)) {
+        this.state.mouse = this.toGame(e.clientX, e.clientY);
+      }
     });
     c.addEventListener('mousedown', (e) => {
+      this.state.mouse = this.toGame(e.clientX, e.clientY);
+      this.state.mouseDown = true;
+      this.state.mousePressedThisFrame = true;
+    });
+    // Fallback: register press when the click hits a non-interactive HUD
+    // element that overlaps the canvas (e.g. decorative panel areas).
+    // Skip buttons / inputs so their own click handlers still work.
+    window.addEventListener('mousedown', (e) => {
+      if (e.target === c) return;
+      if (!this.isInsideCanvas(e.clientX, e.clientY)) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).closest?.('button')) return;
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
@@ -66,15 +90,31 @@ export class Input {
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
     }, { passive: false });
-
-    c.addEventListener('touchmove', (e) => {
-      e.preventDefault();
+    // Fallback for touches landing on non-interactive HUD overlays.
+    window.addEventListener('touchstart', (e) => {
       const t = e.touches[0];
       if (!t) return;
+      if (e.target === c) return;
+      if (!this.isInsideCanvas(t.clientX, t.clientY)) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
+      if ((e.target as HTMLElement).closest?.('button')) return;
+      e.preventDefault();
       this.state.mouse = this.toGame(t.clientX, t.clientY);
+      this.state.mouseDown = true;
+      this.state.mousePressedThisFrame = true;
     }, { passive: false });
 
-    c.addEventListener('touchend', () => {
+    window.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      if (this.isInsideCanvas(t.clientX, t.clientY)) {
+        e.preventDefault();
+        this.state.mouse = this.toGame(t.clientX, t.clientY);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
       this.state.mouseDown = false;
     });
 

@@ -1,56 +1,379 @@
-import { CARDS } from '../data/cards';
-import type { CardDef } from './types';
+import {
+  CARDS,
+  CARD_SYNERGIES,
+  cursedCardPool,
+  isCursedCard,
+  normalCardPool,
+} from '../data/cards';
+import type { CardDef, Rarity } from './types';
 import type { GameState } from './state';
 
-export function rollCardOptions(state: GameState): CardDef[] {
-  const taken = new Set(state.cardChoice.pickedIds);
-  const pool = CARDS.filter((c) => !taken.has(c.id));
-  const shuffled = state.rng.shuffle(pool);
-  return shuffled.slice(0, Math.min(3, shuffled.length));
+const RARITY_WEIGHT: Record<Rarity, number> = {
+  common: 1.00,
+  rare: 0.55,
+  epic: 0.22,
+  legendary: 0.07,
+};
+
+/** Base draft size before guarantees / cooldowns. */
+const DRAFT_SIZE = 3;
+/** GDD §8.3: Legendary cards may be offered at most once per 5 waves. */
+const LEGENDARY_WAVE_COOLDOWN = 5;
+/** GDD §8.3: at least one of every 3 drafts must contain a non-Common option. */
+const NON_COMMON_GUARANTEE_GAP = 3;
+
+/** A card draft is "cursed" when the wave that just ended is the 3rd, 6th,
+ *  9th… wave of the run. Cursed drafts pull from the cursed-only pool and
+ *  every option mixes a unique effect with epic stats and a drawback. */
+export function isCursedWave(currentWave: number): boolean {
+  return currentWave > 0 && currentWave % 3 === 0;
 }
+
+/**
+ * Roll the 3 cards offered after the current wave. Implements GDD §8.3 rules:
+ *  - on cursed waves (every 3rd wave), the entire offer is drawn from the
+ *    cursed pool — combos of stat boosts + unique effects + a drawback;
+ *  - on regular waves, the offer is purely stat-bonus cards whose magnitude
+ *    is pinned to their rarity;
+ *  - smart-bias: cards from already-picked categories get a soft weight
+ *    boost, and cards listed as synergy partners of picked cards get a
+ *    stronger one;
+ *  - Legendary may not be offered twice within `LEGENDARY_WAVE_COOLDOWN` waves;
+ *  - if no non-Common option has been offered for `NON_COMMON_GUARANTEE_GAP`
+ *    consecutive (regular) drafts, force at least one non-Common.
+ *
+ * The function ALSO advances the bookkeeping fields on `state.cardChoice`
+ * (`lastLegendaryWave`, `lastNonCommonDraft`, `draftCount`) so the next
+ * draft sees the updated cooldown windows.
+ */
+export function rollCardOptions(state: GameState): CardDef[] {
+  const cc = state.cardChoice;
+  const currentWave = state.waveState.currentIndex + 1; // 1-based
+  const taken = new Set(cc.pickedIds);
+
+  const cursed = isCursedWave(currentWave);
+
+  // Choose the appropriate base pool.
+  let pool = (cursed ? cursedCardPool() : normalCardPool()).filter((c) => !taken.has(c.id));
+
+  // Catalyst slot cap (GDD §7.5): if the player has filled every catalyst
+  // slot, stop offering catalyst cards (cursed or otherwise). Crown of
+  // Elements grants its own bonus slot when picked.
+  if (state.equippedCatalysts.length >= state.catalystSlots) {
+    pool = pool.filter((c) => c.category !== 'catalyst');
+  }
+
+  // Legendary cooldown window — drop legendaries if we offered one recently.
+  // Cursed waves still respect the cooldown so the player isn't drowned in
+  // legendary-cursed offers.
+  const wavesSinceLegendary = currentWave - cc.lastLegendaryWave;
+  if (wavesSinceLegendary < LEGENDARY_WAVE_COOLDOWN) {
+    pool = pool.filter((c) => c.rarity !== 'legendary');
+  }
+
+  if (pool.length === 0) return [];
+
+  // Build the per-card weight profile based on rarity, category synergy, and
+  // explicit synergy graph picks. Weights are recomputed every draft so
+  // freshly-picked cards immediately influence subsequent drafts.
+  const synergyGraph = CARD_SYNERGIES;
+  const catCounts: Record<string, number> = {};
+  for (const id of cc.pickedIds) {
+    const def = CARDS.find((c) => c.id === id);
+    if (def) catCounts[def.category] = (catCounts[def.category] ?? 0) + 1;
+  }
+
+  const computeWeight = (card: CardDef): number => {
+    let w = RARITY_WEIGHT[card.rarity];
+    // Soft category bias: 1.25× once a category has 2 picks.
+    const cc2 = catCounts[card.category] ?? 0;
+    if (cc2 >= 2) w *= 1.25;
+    if (cc2 >= 4) w *= 1.15;
+    // Synergy bias: each picked partner adds +30% weight, capped at +90%.
+    const partners = synergyGraph[card.id] ?? [];
+    let synergyBoost = 0;
+    for (const p of partners) {
+      if (taken.has(p)) synergyBoost += 0.3;
+    }
+    w *= 1 + Math.min(synergyBoost, 0.9);
+    return w;
+  };
+
+  const weighted = pool.map((c) => ({ card: c, w: computeWeight(c) }));
+  const result: CardDef[] = [];
+  for (let i = 0; i < DRAFT_SIZE && weighted.length > 0; i++) {
+    const idx = weightedPick(state, weighted.map((x) => x.w));
+    result.push(weighted[idx]!.card);
+    weighted.splice(idx, 1);
+  }
+
+  // Non-Common guarantee — only meaningful for regular drafts (cursed cards
+  // are all epic/legendary, so this is always satisfied for them).
+  if (!cursed) {
+    const hasNonCommon = result.some((c) => c.rarity !== 'common');
+    const draftsSinceNonCommon = cc.draftCount - cc.lastNonCommonDraft;
+    if (!hasNonCommon && draftsSinceNonCommon >= NON_COMMON_GUARANTEE_GAP - 1) {
+      const remainingNonCommons = pool.filter(
+        (c) => c.rarity !== 'common' && !result.includes(c),
+      );
+      if (remainingNonCommons.length > 0) {
+        const replacement = state.rng.pick(remainingNonCommons);
+        const swapIdx = result.findIndex((c) => c.rarity === 'common');
+        if (swapIdx >= 0) result[swapIdx] = replacement;
+      }
+    }
+  }
+
+  // Bookkeeping.
+  cc.draftCount += 1;
+  if (result.some((c) => c.rarity !== 'common')) {
+    cc.lastNonCommonDraft = cc.draftCount;
+  }
+  if (result.some((c) => c.rarity === 'legendary')) {
+    cc.lastLegendaryWave = currentWave;
+  }
+
+  return result;
+}
+
+// Tiny weighted-pick helper that uses the shared RNG for determinism.
+function weightedPick(state: GameState, weights: number[]): number {
+  let total = 0;
+  for (const w of weights) total += w;
+  let r = state.rng.next() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i]!;
+    if (r <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
+/** Reset reroll state at the start of a fresh draft. */
+export function beginNewDraft(state: GameState): void {
+  state.cardChoice.rerollCost = 50;
+  state.cardChoice.freeRerollUsed = false;
+}
+
+/** Attempt a paid reroll. Returns true on success. Increases the cost for
+ *  subsequent rerolls within the same draft. */
+export function rerollForGold(state: GameState): boolean {
+  const cost = state.cardChoice.rerollCost;
+  if (state.gold < cost) return false;
+  state.gold -= cost;
+  state.cardChoice.rerollCost = cost + 25;
+  // A reroll counts as a re-draft for the cooldown bookkeeping. We undo the
+  // increment that rollCardOptions just did so a reroll doesn't artificially
+  // burn through the legendary cooldown.
+  state.cardChoice.draftCount -= 1;
+  state.cardChoice.options = rollCardOptions(state);
+  return true;
+}
+
+/** One free reroll per draft, granted after watching a rewarded ad. */
+export function rerollForAd(state: GameState): boolean {
+  if (state.cardChoice.freeRerollUsed) return false;
+  state.cardChoice.freeRerollUsed = true;
+  state.cardChoice.draftCount -= 1;
+  state.cardChoice.options = rollCardOptions(state);
+  return true;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// applyCard
+//
+// Dispatches on `card.id`. Normal cards (`<stat>_<rarity>`) only mutate the
+// matching modifier or stat. Cursed cards (`curse_*`) layer their unique
+// effect, the bonus stat, and the drawback in a single switch arm.
+// ────────────────────────────────────────────────────────────────────────────
 
 export function applyCard(state: GameState, card: CardDef): void {
   const m = state.modifiers;
   const mq = state.mannequin;
+  const dm = state.difficultyModifier;
 
+  // Track equipped catalysts so the renderer can orbit icons around the
+  // Mannequin and so the draft pool can stop offering them once the slot
+  // cap is reached. Cursed catalyst cards count too.
+  if (card.category === 'catalyst' && !state.equippedCatalysts.includes(card.id)) {
+    state.equippedCatalysts.push(card.id);
+  }
+
+  // ── Normal stat-only cards ────────────────────────────────────────────────
   switch (card.id) {
-    case 'heavy_brew':
-      m.potionDamageMult *= 1.25;
-      break;
-    case 'wide_splash':
-      m.potionRadiusMult *= 1.20;
-      break;
-    case 'quick_hands':
-      m.potionCooldownMult *= 0.85;
-      break;
-    case 'flammable_mix':
+    // Potion damage
+    case 'pdmg_c': m.potionDamageMult *= 1.15; break;
+    case 'pdmg_r': m.potionDamageMult *= 1.30; break;
+    case 'pdmg_e': m.potionDamageMult *= 1.50; break;
+    case 'pdmg_l': m.potionDamageMult *= 1.80; break;
+    // Potion radius
+    case 'prad_c': m.potionRadiusMult *= 1.15; break;
+    case 'prad_r': m.potionRadiusMult *= 1.25; break;
+    case 'prad_e': m.potionRadiusMult *= 1.45; break;
+    case 'prad_l': m.potionRadiusMult *= 1.70; break;
+    // Potion cooldown
+    case 'pcd_c': m.potionCooldownMult *= 0.88; break;
+    case 'pcd_r': m.potionCooldownMult *= 0.78; break;
+    case 'pcd_e': m.potionCooldownMult *= 0.65; break;
+    case 'pcd_l': m.potionCooldownMult *= 0.50; break;
+    // Tower damage
+    case 'tdmg_c': m.towerDamageMult *= 1.15; break;
+    case 'tdmg_r': m.towerDamageMult *= 1.30; break;
+    case 'tdmg_e': m.towerDamageMult *= 1.50; break;
+    case 'tdmg_l': m.towerDamageMult *= 1.80; break;
+    // Tower fire rate
+    case 'tfr_c': m.towerFireRateMult *= 1.12; break;
+    case 'tfr_r': m.towerFireRateMult *= 1.22; break;
+    case 'tfr_e': m.towerFireRateMult *= 1.40; break;
+    case 'tfr_l': m.towerFireRateMult *= 1.60; break;
+    // Tower range
+    case 'trng_c': m.towerRangeMult *= 1.10; break;
+    case 'trng_r': m.towerRangeMult *= 1.20; break;
+    case 'trng_e': m.towerRangeMult *= 1.35; break;
+    case 'trng_l': m.towerRangeMult *= 1.55; break;
+    // Mannequin HP
+    case 'hp_c': mq.maxHp += 25;  mq.hp = Math.min(mq.maxHp, mq.hp + 25);  break;
+    case 'hp_r': mq.maxHp += 50;  mq.hp = Math.min(mq.maxHp, mq.hp + 50);  break;
+    case 'hp_e': mq.maxHp += 90;  mq.hp = Math.min(mq.maxHp, mq.hp + 90);  break;
+    case 'hp_l': mq.maxHp += 150; mq.hp = Math.min(mq.maxHp, mq.hp + 150); break;
+    // Gold drops
+    case 'gold_c': m.goldDropMult *= 1.15; break;
+    case 'gold_r': m.goldDropMult *= 1.30; break;
+    case 'gold_e': m.goldDropMult *= 1.50; break;
+    case 'gold_l': m.goldDropMult *= 1.80; break;
+    // ── Cursed cards ────────────────────────────────────────────────────────
+    // Recipes / brews
+    case 'curse_flammable_mix':
       m.potionLeavesFire = true;
+      m.potionDamageMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'unstable_flask':
-      m.potionEchoExplode = true;
+    case 'curse_unstable_flask':
+      m.potionEchoExplode = Math.max(m.potionEchoExplode, 0.5);
+      m.potionRadiusMult *= 1.25;
+      m.potionCooldownMult *= 1.15;
       break;
-    case 'oiled_gears':
-      m.towerFireRateMult *= 1.15;
+    case 'curse_frost_brew':
+      m.potionFrostActive = true;
+      m.potionRadiusMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'wider_lenses':
-      m.towerRangeMult *= 1.12;
-      m.towerDamageMult *= 1.10;
+    case 'curse_acid_brew':
+      m.potionAcidActive = true;
+      m.potionDamageMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'crossfire':
+    case 'curse_mercury_brew':
+      m.potionMercuryActive = true;
+      m.potionDamageMult *= 1.25;
+      m.potionRadiusMult *= 1.20;
+      m.goldDropMult *= 0.80;
+      break;
+    case 'curse_aether_brew':
+      m.potionAetherActive = true;
+      m.potionDamageMult *= 1.40;
+      dm.hpMult *= 1.15;
+      break;
+    case 'curse_mutagen_brew':
+      m.potionPoisonActive = true;
+      m.potionDamageMult *= 1.35;
+      dm.hpMult *= 1.15;
+      break;
+    case 'curse_triple_throw':
+      m.tripleThrowActive = true;
+      m.tripleThrowTimer = m.tripleThrowInterval;
+      m.potionCooldownMult *= 0.80;
+      m.potionRadiusMult *= 0.85;
+      break;
+
+    // Engineering / towers
+    case 'curse_crossfire':
       m.towerBonusVsBurning = true;
+      m.towerDamageMult *= 1.20;
+      dm.speedMult *= 1.10;
       break;
-    case 'reinforced_frame':
-      mq.maxHp += 25;
-      mq.hp = Math.min(mq.maxHp, mq.hp + 25);
+    case 'curse_mercury_coating':
+      m.towerMercurySlow = true;
+      m.towerFireRateMult *= 1.25;
+      mq.maxHp = Math.max(50, mq.maxHp - 20);
+      mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
-    case 'magnet':
-      m.lootRadiusMult *= 1.5;
+    case 'curse_acid_tips':
+      m.towerAcidBreak = true;
+      m.towerDamageMult *= 1.25;
+      m.towerCostMult *= 1.25;
       break;
-    case 'chronos':
-      m.overloadType = 'chronos';
+    case 'curse_synchronized_volley':
+      m.towerSyncVolley = true;
+      m.towerDamageMult *= 1.20;
+      dm.hpMult *= 1.15;
       break;
+
+    // Rituals / mannequin
+    case 'curse_thorny_shell':
+      m.thornyShell = true;
+      mq.maxHp += 50; mq.hp = Math.min(mq.maxHp, mq.hp + 50);
+      m.goldDropMult *= 0.85;
+      break;
+    case 'curse_chronos':
+      state.activeModuleId = 'chronos';
+      m.potionDamageMult *= 1.30;
+      m.potionCooldownMult *= 1.15;
+      break;
+    case 'curse_golem_heart':
+      state.golemHeartCharges = 1;
+      mq.maxHp += 75; mq.hp = Math.min(mq.maxHp, mq.hp + 75);
+      m.potionDamageMult *= 0.75;
+      break;
+
+    // Catalysts
+    case 'curse_fire_ruby':
+      m.fireRubyCounter = 5;
+      m.potionDamageMult *= 1.25;
+      dm.speedMult *= 1.10;
+      break;
+    case 'curse_mercury_ring':
+      m.mercuryRingActive = true;
+      m.goldDropMult *= 1.30;
+      dm.hpMult *= 1.10;
+      break;
+    case 'curse_acid_prism':
+      m.reactionDamageMult *= 1.25;
+      m.potionDamageMult *= 1.25;
+      mq.maxHp = Math.max(50, mq.maxHp - 25);
+      mq.hp = Math.min(mq.maxHp, mq.hp);
+      break;
+    case 'curse_aether_engine':
+      m.aetherEngineActive = true;
+      m.potionDamageMult *= 1.35;
+      m.potionCooldownMult *= 1.15;
+      break;
+    case 'curse_crown_of_elements':
+      m.reactionDamageMult *= 1.5;
+      m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
+      state.catalystSlots += 1;
+      m.potionDamageMult *= 1.25;
+      dm.hpMult *= 1.15;
+      break;
+
+    // Legendary pacts
+    case 'curse_salamander':
+      m.salamanderActive = true;
+      m.potionLeavesFire = true;
+      m.potionDamageMult *= 1.50;
+      mq.basePotionCooldown *= 1.20;
+      break;
+    case 'curse_archmaster':
+      m.archmasterActive = true;
+      m.towerDamageMult *= 1.25;
+      // Cost penalty already part of archmasterActive; no extra towerCostMult.
+      break;
+
     default:
       break;
   }
+
   state.cardChoice.pickedIds.push(card.id);
 }
+
+// Re-export for tests / debug tools that previously imported from this file.
+export { isCursedCard };

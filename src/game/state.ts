@@ -1,13 +1,18 @@
 import type { Vec2 } from '../engine/math';
 import { Rng } from '../engine/rng';
-import type { CardDef, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
+import type { CardDef, Element, Entrance, EnemyKind, StatusEffects, TowerKind, WaveDef } from './types';
 import { newStatus } from './types';
+import type { ReactionPool } from './reactions';
+import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
+import type { BiomeId } from '../data/biomes';
+import type { EliteModId } from '../data/eliteMods';
 
 export type Phase =
   | 'menu'
   | 'preparing'
   | 'wave'
   | 'card_select'
+  | 'endless_modifier_select'
   | 'victory'
   | 'gameover';
 
@@ -21,6 +26,10 @@ export interface Mannequin {
   potionTimer: number;
   baseLootRadius: number;
   damageFlash: number;
+  /** Seconds remaining on the throw-pose animation. Counts down to 0. */
+  throwAnim: number;
+  /** Screen-space offset direction of the last throw (for arm-aim + lean). */
+  throwDir: Vec2;
 }
 
 export interface Enemy {
@@ -32,7 +41,44 @@ export interface Enemy {
   status: StatusEffects;
   hitFlash: number;
   goldPending: number;
+  /** Extra per-enemy behaviour attached by the current dungeon difficulty. */
+  abilities: EnemyAbility[];
+  /** Remaining "one-hit shield" charges. Attached by ancient/epic modes. */
+  shieldCharges: number;
+  /** Seconds left of the backstep impulse; while >0 movement is pushed
+   *  away from the hero instead of toward them. */
+  dashBackTimer: number;
+  /** Generation counter — used so split-on-death only chains twice. */
+  splitGeneration: number;
+  /** Multiplier applied to the damage dealt to this enemy. Goes to <1 only
+   *  while the one-hit shield is absorbing, currently always 0 or 1. */
+  damageTaken: number;
+  /** Sapper-only: seconds left on the "about to blow" fuse. 0 = not armed. */
+  sapperFuse: number;
+  /** Boss-only phase counter (1..3). Used by the homunculus for mechanics. */
+  bossPhase: number;
+  /** Boss-only: seconds left on the current phase's minion-summon timer. */
+  minionSummonTimer: number;
+  /** Elite modifier assigned to this enemy, if any (GDD §12.2). */
+  elite: EliteModId | null;
+  /** Ethereal elite: seconds remaining in the current immune phase. */
+  etherealTimer: number;
+  /** Ethereal elite: whether currently in the immune (phased-out) window. */
+  etherealActive: boolean;
+  /** Boss-only: cooldown until next active special ability. */
+  bossSpecialCooldown: number;
+  /** Boss-only: seconds left on a perpendicular dodge dash. While > 0 the
+   *  enemy moves along `bossDodgeDir` instead of toward the mannequin. */
+  bossDodgeTimer: number;
+  /** Boss-only: unit vector for the active dodge dash. */
+  bossDodgeDir: Vec2;
+  /** Boss-only: dash speed used while dodgeTimer > 0 (px/sec). */
+  bossDodgeSpeed: number;
+  /** Miniboss slime: seconds left on the slam wind-up animation. */
+  bossSlamWindup: number;
 }
+
+export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';
 
 export interface Tower {
   id: number;
@@ -42,13 +88,31 @@ export interface Tower {
   level: number; // 1..3
   fireTimer: number;
   aimAngle: number;
+  shotCount: number;
+  /** Which enemy this tower picks out of candidates in range. Default 'nearest'
+   * = closest to mannequin, matching the historical behaviour. */
+  targetingMode: TargetingMode;
 }
+
+/** Type of a rune point (GDD §7.4). Each kind grants a distinct in-run
+ *  bonus to whatever tower is placed on it. `unstable` rotates between
+ *  three short buffs every few seconds so its tower always feels alive
+ *  but never gives a permanent advantage. */
+export type RunePointKind =
+  | 'normal'
+  | 'reinforced'
+  | 'unstable'
+  | 'resonant'
+  | 'defensive';
 
 export interface RunePoint {
   id: number;
   pos: Vec2;
   active: boolean; // unlocked by meta-progression (always true in MVP)
   towerId: number | null;
+  kind: RunePointKind;
+  /** Phase used by `unstable` rune points to time their rotating buff. */
+  unstablePhase: number;
 }
 
 export type ProjectileKind = 'potion' | 'tower';
@@ -63,13 +127,22 @@ export interface Projectile {
   /** Optional homing target id. */
   targetId: number | null;
   /** Element tag applied on hit. */
-  element: 'neutral' | 'fire' | 'mercury' | 'acid' | 'aether';
+  element: Element;
   life: number;
   /** Whether this potion should leave a fire pool on impact (Flammable Mix). */
   leaveFire: boolean;
   /** Whether potion should fire a secondary mini-explosion shortly after. */
   echoExplosion: boolean;
   bonusFromManualAim: boolean;
+  /** Parabolic-arc fields (only populated for thrown potions). */
+  arc?: {
+    start: Vec2;
+    target: Vec2;
+    t: number;          // 0..1 progress along the ground-plane path
+    duration: number;   // total flight time in seconds
+    peakHeight: number; // visual apex above the ground plane (pixels)
+    height: number;     // current visual height (z), updated each frame
+  };
 }
 
 export interface FirePool {
@@ -96,32 +169,105 @@ export interface FloatingText {
   vy: number;
 }
 
+/** Short-lived visual segment for chain-lightning beams (Эфирная катушка).
+ *  Each segment is a single hop between two enemies (or tower→enemy). */
+export interface ChainBolt {
+  id: number;
+  from: Vec2;
+  to: Vec2;
+  /** Total lifetime in seconds. Counts down to 0 and is removed. */
+  time: number;
+  maxTime: number;
+  /** Hop index (0 = primary tower→enemy, 1+ = enemy→enemy). Higher hops draw
+   *  thinner / dimmer to convey the falloff. */
+  hop: number;
+}
+
 export interface Modifiers {
   potionDamageMult: number;
   potionRadiusMult: number;
   potionCooldownMult: number;
-  potionEchoExplode: boolean;
+  potionEchoExplode: number;
   potionLeavesFire: boolean;
+  /** Card-driven elemental conversion of the base potion. Highest-priority
+   *  flag wins (frost > acid > mercury > fire > neutral). The default
+   *  potion is `neutral`; `potionLeavesFire` and `fireRubyActive` still
+   *  layer on top to leave a fire pool. */
+  potionFrostActive: boolean;
+  potionAcidActive: boolean;
+  potionMercuryActive: boolean;
+  potionAetherActive: boolean;
+  potionPoisonActive: boolean;
   towerFireRateMult: number;
   towerRangeMult: number;
   towerDamageMult: number;
   towerBonusVsBurning: boolean;
+  towerMercurySlow: boolean;
+  towerAcidBreak: boolean;
+  towerSyncVolley: boolean;
   lootRadiusMult: number;
-  overloadType: 'lightning' | 'chronos';
+  thornyShell: boolean;
+  /** Set by the Vital Pulse aura: while true the mannequin regenerates
+   *  HP every second during waves. */
+  vitalPulseRegen: boolean;
+  goldDropMult: number;
+  fireRubyCounter: number;
+  fireRubyActive: boolean;
+  mercuryRingActive: boolean;
+  reactionDamageMult: number;
+  aetherEngineActive: boolean;
+  /** Reactions also charge Overload (+10) when crown_of_elements is active. */
+  reactionOverloadCharge: number;
+  /** Triple Throw card: every `tripleThrowInterval` seconds the mannequin
+   *  spawns a 3-potion fan toward the nearest enemy. 0 = inactive. */
+  tripleThrowActive: boolean;
+  tripleThrowTimer: number;
+  tripleThrowInterval: number;
+  /** Salamander legendary: forces every potion to be fire-element and leaves
+   *  a fire pool. Cooldown is increased once at apply-time (mq.basePotionCooldown ×= 1.20). */
+  salamanderActive: boolean;
+  /** Archmaster legendary: new towers spawn at +1 level (min 2) and cost +25%. */
+  archmasterActive: boolean;
+  /** Multiplicative tower-cost penalty applied by Cursed Cards (e.g. an
+   *  Acid Tips Pact that makes towers cost more in exchange for armor
+   *  break). Stacks with archmaster. */
+  towerCostMult: number;
 }
 
 export const newModifiers = (): Modifiers => ({
   potionDamageMult: 1,
   potionRadiusMult: 1,
   potionCooldownMult: 1,
-  potionEchoExplode: false,
+  potionEchoExplode: 0,
   potionLeavesFire: false,
+  potionFrostActive: false,
+  potionAcidActive: false,
+  potionMercuryActive: false,
+  potionAetherActive: false,
+  potionPoisonActive: false,
   towerFireRateMult: 1,
   towerRangeMult: 1,
   towerDamageMult: 1,
   towerBonusVsBurning: false,
+  towerMercurySlow: false,
+  towerAcidBreak: false,
+  towerSyncVolley: false,
   lootRadiusMult: 1,
-  overloadType: 'lightning',
+  thornyShell: false,
+  vitalPulseRegen: false,
+  goldDropMult: 1,
+  fireRubyCounter: 0,
+  fireRubyActive: false,
+  mercuryRingActive: false,
+  reactionDamageMult: 1,
+  aetherEngineActive: false,
+  reactionOverloadCharge: 0,
+  tripleThrowActive: false,
+  tripleThrowTimer: 0,
+  tripleThrowInterval: 8,
+  salamanderActive: false,
+  archmasterActive: false,
+  towerCostMult: 1,
 });
 
 export interface WaveState {
@@ -136,12 +282,51 @@ export interface WaveState {
 export interface CardChoice {
   options: CardDef[];
   pickedIds: string[]; // ids picked across the run (so we don't show same card twice)
+  /** Gold cost of the next reroll during the current card-draft. Grows by
+   * +25 every time a reroll is spent (starts at 50). Resets to 50 at the
+   * start of each draft. */
+  rerollCost: number;
+  /** Whether the free rewarded-ad reroll was already used this draft. */
+  freeRerollUsed: boolean;
+  /** GDD §8.3: number of drafts the player has been through during this run.
+   *  Used together with `lastNonCommonDraft` to guarantee at least one
+   *  non-Common offering every 3 drafts, and with `lastLegendaryWave` to cap
+   *  Legendary offerings to no more than once every 5 waves. */
+  draftCount: number;
+  /** Last draft index where at least one non-Common card was OFFERED (not
+   *  necessarily picked). -1 if no such draft has happened yet. */
+  lastNonCommonDraft: number;
+  /** 1-based wave number when a Legendary card was last offered. -10 means
+   *  "never" so the first 5 waves are eligible. */
+  lastLegendaryWave: number;
 }
 
 export interface OverloadState {
   charge: number;
   maxCharge: number;
 }
+
+/** Identifiers for the endless-loop modifier pool. */
+export type EndlessModifierId =
+  | 'hp_x125'
+  | 'speed_x110'
+  | 'gold_minus10'
+  | 'extra_enemies'
+  | 'elites_on_normal';
+
+export interface EndlessModifier {
+  id: EndlessModifierId;
+  label: string;
+  desc: string;
+}
+
+export const ENDLESS_MODIFIER_POOL: EndlessModifier[] = [
+  { id: 'hp_x125',         label: 'Живучесть',       desc: '×1.25 HP врагов' },
+  { id: 'speed_x110',      label: 'Прыткость',       desc: '×1.10 скорость врагов' },
+  { id: 'gold_minus10',    label: 'Скупость',         desc: '−10% золота' },
+  { id: 'extra_enemies',   label: 'Подкрепление',     desc: '+2 врага в каждой волне' },
+  { id: 'elites_on_normal', label: 'Элитный патруль', desc: 'Элиты на обычных волнах' },
+];
 
 export interface GameState {
   rng: Rng;
@@ -156,7 +341,12 @@ export interface GameState {
   firePools: FirePool[];
   goldPickups: GoldPickup[];
   floatingTexts: FloatingText[];
+  /** Visual-only chain-lightning segments (Эфирная катушка). Updated in lockstep
+   *  with the rest of the world; damage is applied at spawn-time. */
+  chainBolts: ChainBolt[];
+  reactionPools: ReactionPool[];
   gold: number;
+  essence: number;
   totalKills: number;
   modifiers: Modifiers;
   waveState: WaveState;
@@ -170,9 +360,99 @@ export interface GameState {
   overloadRequested: boolean;
   /** Active rune point being targeted in tower-shop UI. */
   activeRunePoint: number | null;
+  /** Seconds remaining on the magnet pulse — while >0 all gold pickups are
+   * yanked hard toward the hero regardless of loot radius. */
+  magnetTimer: number;
   /** Time accumulator (debug + status effects). */
   worldTime: number;
   nextEntityId: number;
+  // Meta-progression fields (applied at run start)
+  metaTowerDiscount: number;
+  metaTowerStartLevel: number;
+  metaOverloadRateMult: number;
+  metaMannequinArmor: number;
+  metaAutoRepairRate: number;
+  metaBossShield: number;
+  metaAutoRepairCooldown: number;
+  metaPotionAimBonus: number;
+  metaAuraRadiusMult: number;
+  /** Multiplier applied to enemy armour: 0 = no penetration, 1 = full ignore. */
+  metaArmorPen: number;
+  /** Per-shot crit chance (0..1) for both potions and tower projectiles. */
+  metaCritChance: number;
+  // --- Difficulty / dungeon mode ---
+  /** Which dungeon difficulty was picked for this run. */
+  difficulty: DifficultyMode;
+  /** The modifier bundle for the active difficulty, already scaled up for
+   *  the current endless loop count. */
+  difficultyModifier: DifficultyModifier;
+  /** In endless mode, how many full wave-lists we have already completed. */
+  endlessLoop: number;
+  /** Biome selected for this run. Affects palette and passive modifiers. */
+  biomeId: BiomeId;
+  /** Cumulative endless-mode modifiers applied after each W15 loop. */
+  endlessModifiers: EndlessModifier[];
+  /** The modifier just rolled for the upcoming endless cycle (shown in the
+   *  selector overlay). Null when no selection is pending. */
+  pendingEndlessModifier: EndlessModifierId | null;
+  /** Seconds left on the active "Temporary Shield" buy. While >0 incoming
+   * damage to the mannequin is reduced by `tempShieldReduction`. */
+  tempShieldTime: number;
+  /** Damage reduction applied while `tempShieldTime > 0` (e.g. 0.5 = -50% dmg). */
+  tempShieldReduction: number;
+  /** Golem Heart legendary card: number of charges remaining. While >0, a
+   *  lethal hit to the mannequin is converted into a 1-HP survival + a strong
+   *  6-second shield. Set to 1 when the card is picked, decremented to 0 on use. */
+  golemHeartCharges: number;
+  /** Mannequin module loadout for THIS run. Mirrored from the meta save at
+   *  run start; cards (e.g. `chronos`) may temporarily override the active
+   *  slot for the duration of the run. */
+  activeModuleId: string;
+  auraModuleId: string;
+  /** Трансмутация active-module timer (seconds). While >0 enemy gold drops
+   *  are multiplied by `transmuteGoldMult`. */
+  transmuteTimer: number;
+  transmuteGoldMult: number;
+  /** Orbital catalyst slots (GDD §7.5). New catalyst cards are accepted until
+   *  `equippedCatalysts.length === catalystSlots`; meta nodes / Crown of
+   *  Elements expand the cap by `+1`. */
+  catalystSlots: number;
+  /** IDs of catalyst cards currently equipped, in pick order. The renderer
+   *  uses this list to draw orbiting icons around the Mannequin. */
+  equippedCatalysts: string[];
+  /** Whether the player has already used the revive-via-ad option this run. */
+  reviveUsed: boolean;
+  /** While true, the world is frozen (e.g. waiting for a rewarded ad). */
+  revivePaused: boolean;
+
+  // ─── Crafted potions (PR-«крафт») ──────────────────────────────────────
+  /** Mirror of `MetaSave.inventory` for THIS run. Slots are nulled out as the
+   *  player consumes them; nothing is written back until the run ends. */
+  inventory: (string | null)[];
+  /** Active timed potion effects. Tick down each frame; effects with timeLeft
+   *  ≤ 0 are removed. Recipes that grant charges (Алхимическая буря) live in
+   *  their own counter, not in this list. */
+  activePotions: ActivePotion[];
+  /** Charges for the «Алхимическая буря» recipe — each thrown potion consumes
+   *  one charge and gets `stormChargeMult`× damage. */
+  stormCharges: number;
+  stormChargeMult: number;
+  /** Mannequin "stone shield" added by the recipe — flat HP that absorbs
+   *  damage before mannequin.hp does. */
+  potionShieldHp: number;
+  /** Hook fired when an enemy drops a crafting ingredient. Wired to the
+   *  meta save in `main.ts`; left null in the default state so headless
+   *  unit tests can ignore it. */
+  onIngredientDrop: ((ingredientId: string, amount: number) => void) | null;
+}
+
+export interface ActivePotion {
+  /** Recipe id (`PotionRecipe.id`). */
+  id: string;
+  /** Seconds remaining. Decremented in the main loop. */
+  timeLeft: number;
+  /** Initial duration so the HUD can render a fill ring. */
+  duration: number;
 }
 
 export function newId(state: GameState): number {

@@ -1,48 +1,75 @@
 import type { WaveDef } from '../game/types';
 
+// Compress spawn times so enemies arrive much more frequently. After the
+// walls + cardinal-only entrances were removed enemies come from any angle
+// and the hero can pick them off long before they connect, so we also spawn
+// EXTRA ghost copies at half-beats between the authored entries.
+//
+// Density was bumped from 0.35 to 0.6 so a single wave actually feels like a
+// fight: spawns are still close together, but the wave plays out over a
+// longer window of time (~70% longer) which gives the player more room to
+// reposition, manage cooldowns, and react to elites before the next set
+// hits the mannequin.
+const DENSITY = 0.55;
+const DOUBLE_SPAWNS = true;
+
 const wave = (
   index: number,
   duration: number,
   pause: number,
   spawns: WaveDef['spawns'],
   isBoss = false,
-): WaveDef => ({ index, durationSec: duration, pauseAfterSec: pause, spawns, isBoss });
+): WaveDef => {
+  const scaled = spawns.map((s) => ({ ...s, at: s.at * DENSITY }));
+  // Insert a mirrored spawn from the opposite entrance at a small offset so
+  // a wave with N authored spawns actually puts ~2N enemies on screen and
+  // attacks come from two opposite directions simultaneously.
+  // The first three waves stay single-direction so newcomers get a calmer
+  // ramp-up while learning the basic controls.
+  const allowMirror = DOUBLE_SPAWNS && index > 3;
+  const extra: WaveDef['spawns'] = allowMirror
+    ? scaled.map((s) => ({
+        ...s,
+        at: s.at + 0.3,
+        entrance: (s.entrance + 2) % 4,
+      }))
+    : [];
+  const allSpawns = [...scaled, ...extra].sort((a, b) => a.at - b.at);
+  return {
+    index,
+    durationSec: duration * DENSITY + 3,
+    pauseAfterSec: pause,
+    spawns: allSpawns,
+    isBoss,
+  };
+};
 
-// Vertical slice: 5 waves.
+// Stage 2: 10 waves.
 // Entrances are indexed 0..3 (top, right, bottom, left).
 export const WAVES: WaveDef[] = [
-  wave(1, 22, 8, [
-    { kind: 'slime', at: 1.0, entrance: 0 },
-    { kind: 'slime', at: 4.0, entrance: 0 },
-    { kind: 'slime', at: 7.5, entrance: 2 },
-    { kind: 'slime', at: 11, entrance: 0 },
-    { kind: 'slime', at: 14, entrance: 2 },
-    { kind: 'slime', at: 17, entrance: 2 },
+  wave(1, 22, 14, [
+    { kind: 'slime', at: 1.5, entrance: 0 },
+    { kind: 'slime', at: 6.0, entrance: 0 },
+    { kind: 'slime', at: 11, entrance: 2 },
+    { kind: 'slime', at: 16, entrance: 0 },
   ]),
-  wave(2, 26, 8, [
+  wave(2, 26, 14, [
     { kind: 'slime', at: 1, entrance: 1 },
-    { kind: 'slime', at: 3, entrance: 3 },
-    { kind: 'rat',   at: 6, entrance: 1 },
-    { kind: 'slime', at: 9, entrance: 3 },
-    { kind: 'rat',   at: 12, entrance: 3 },
-    { kind: 'slime', at: 15, entrance: 1 },
+    { kind: 'slime', at: 5, entrance: 3 },
+    { kind: 'rat',   at: 9, entrance: 1 },
+    { kind: 'slime', at: 13, entrance: 3 },
     { kind: 'rat',   at: 18, entrance: 1 },
-    { kind: 'slime', at: 21, entrance: 3 },
   ]),
-  wave(3, 28, 6, [
+  wave(3, 28, 10, [
     { kind: 'rat',   at: 0.5, entrance: 0 },
-    { kind: 'rat',   at: 2.5, entrance: 0 },
     { kind: 'slime', at: 4, entrance: 2 },
-    { kind: 'rat',   at: 6, entrance: 2 },
-    { kind: 'slime', at: 8.5, entrance: 0 },
-    { kind: 'rat',   at: 11, entrance: 1 },
-    { kind: 'rat',   at: 13, entrance: 3 },
-    { kind: 'slime', at: 15, entrance: 1 },
-    { kind: 'slime', at: 18, entrance: 3 },
-    { kind: 'rat',   at: 21, entrance: 0 },
-    { kind: 'slime', at: 24, entrance: 2 },
+    { kind: 'rat',   at: 8, entrance: 2 },
+    { kind: 'slime', at: 12, entrance: 0 },
+    { kind: 'rat',   at: 16, entrance: 1 },
+    { kind: 'slime', at: 20, entrance: 3 },
+    { kind: 'rat',   at: 24, entrance: 0 },
   ]),
-  wave(4, 30, 6, [
+  wave(4, 30, 10, [
     { kind: 'slime', at: 0.5, entrance: 0 },
     { kind: 'slime', at: 2, entrance: 1 },
     { kind: 'rat',   at: 4, entrance: 2 },
@@ -56,7 +83,7 @@ export const WAVES: WaveDef[] = [
     { kind: 'slime', at: 22, entrance: 0 },
     { kind: 'slime', at: 25, entrance: 2 },
   ]),
-  wave(5, 50, 12, [
+  wave(5, 50, 18, [
     { kind: 'slime',           at: 1, entrance: 0 },
     { kind: 'slime',           at: 3, entrance: 2 },
     { kind: 'rat',             at: 5, entrance: 1 },
@@ -69,5 +96,210 @@ export const WAVES: WaveDef[] = [
     { kind: 'slime',           at: 30, entrance: 0 },
     { kind: 'slime',           at: 34, entrance: 2 },
     { kind: 'golem',           at: 38, entrance: 1 },
+  ], true),
+
+  // --- Stage 2 waves 6-10 ---
+  wave(6, 30, 10, [
+    { kind: 'slime',        at: 0.5, entrance: 0 },
+    { kind: 'rat',          at: 2, entrance: 1 },
+    { kind: 'flying_flask', at: 3.5, entrance: 2 },
+    { kind: 'slime',        at: 5, entrance: 3 },
+    { kind: 'golem',        at: 7, entrance: 0 },
+    { kind: 'flying_flask', at: 9, entrance: 1 },
+    { kind: 'rat',          at: 11, entrance: 2 },
+    { kind: 'slime',        at: 13, entrance: 3 },
+    { kind: 'flying_flask', at: 15, entrance: 0 },
+    { kind: 'golem',        at: 18, entrance: 1 },
+    { kind: 'rat',          at: 21, entrance: 2 },
+    { kind: 'slime',        at: 24, entrance: 3 },
+    { kind: 'flying_flask', at: 27, entrance: 0 },
+  ]),
+  wave(7, 32, 10, [
+    { kind: 'golem',   at: 1, entrance: 0 },
+    { kind: 'rat',     at: 2, entrance: 1 },
+    { kind: 'rat',     at: 3, entrance: 2 },
+    { kind: 'shaman',  at: 5, entrance: 3 },
+    { kind: 'slime',   at: 7, entrance: 0 },
+    { kind: 'slime',   at: 8, entrance: 1 },
+    { kind: 'golem',   at: 10, entrance: 2 },
+    { kind: 'rat',     at: 12, entrance: 3 },
+    { kind: 'shaman',  at: 14, entrance: 0 },
+    { kind: 'slime',   at: 16, entrance: 1 },
+    { kind: 'rat',     at: 18, entrance: 2 },
+    { kind: 'golem',   at: 20, entrance: 3 },
+    { kind: 'slime',   at: 23, entrance: 0 },
+    { kind: 'rat',     at: 26, entrance: 1 },
+    { kind: 'shaman',  at: 29, entrance: 2 },
+  ]),
+  wave(8, 34, 10, [
+    { kind: 'golem',        at: 0.5, entrance: 0 },
+    { kind: 'golem',        at: 2, entrance: 2 },
+    { kind: 'flying_flask', at: 3, entrance: 1 },
+    { kind: 'flying_flask', at: 4, entrance: 3 },
+    { kind: 'shaman',       at: 6, entrance: 0 },
+    { kind: 'rat',          at: 8, entrance: 1 },
+    { kind: 'rat',          at: 9, entrance: 2 },
+    { kind: 'golem',        at: 11, entrance: 3 },
+    { kind: 'slime',        at: 13, entrance: 0 },
+    { kind: 'slime',        at: 14, entrance: 1 },
+    { kind: 'slime',        at: 15, entrance: 2 },
+    { kind: 'golem',        at: 18, entrance: 3 },
+    { kind: 'flying_flask', at: 20, entrance: 0 },
+    { kind: 'shaman',       at: 22, entrance: 1 },
+    { kind: 'golem',        at: 25, entrance: 2 },
+    { kind: 'rat',          at: 28, entrance: 3 },
+    { kind: 'golem',        at: 31, entrance: 0 },
+  ]),
+  wave(9, 36, 14, [
+    { kind: 'rat',          at: 0.5, entrance: 0 },
+    { kind: 'rat',          at: 1, entrance: 1 },
+    { kind: 'rat',          at: 1.5, entrance: 2 },
+    { kind: 'rat',          at: 2, entrance: 3 },
+    { kind: 'shaman',       at: 4, entrance: 0 },
+    { kind: 'golem',        at: 6, entrance: 1 },
+    { kind: 'golem',        at: 7, entrance: 2 },
+    { kind: 'flying_flask', at: 9, entrance: 3 },
+    { kind: 'flying_flask', at: 10, entrance: 0 },
+    { kind: 'shaman',       at: 12, entrance: 1 },
+    { kind: 'slime',        at: 14, entrance: 2 },
+    { kind: 'slime',        at: 15, entrance: 3 },
+    { kind: 'golem',        at: 17, entrance: 0 },
+    { kind: 'golem',        at: 19, entrance: 1 },
+    { kind: 'rat',          at: 21, entrance: 2 },
+    { kind: 'shaman',       at: 23, entrance: 3 },
+    { kind: 'flying_flask', at: 25, entrance: 0 },
+    { kind: 'golem',        at: 28, entrance: 1 },
+    { kind: 'rat',          at: 31, entrance: 2 },
+    { kind: 'golem',        at: 34, entrance: 3 },
+  ]),
+  wave(10, 55, 18, [
+    { kind: 'golem',          at: 1, entrance: 0 },
+    { kind: 'golem',          at: 2, entrance: 2 },
+    { kind: 'shaman',         at: 4, entrance: 1 },
+    { kind: 'boss_rat_king',  at: 6, entrance: 3 },
+    { kind: 'rat',            at: 10, entrance: 0 },
+    { kind: 'rat',            at: 11, entrance: 1 },
+    { kind: 'rat',            at: 12, entrance: 2 },
+    { kind: 'flying_flask',   at: 15, entrance: 3 },
+    { kind: 'golem',          at: 18, entrance: 0 },
+    { kind: 'shaman',         at: 21, entrance: 1 },
+    { kind: 'rat',            at: 24, entrance: 2 },
+    { kind: 'rat',            at: 26, entrance: 3 },
+    { kind: 'flying_flask',   at: 29, entrance: 0 },
+    { kind: 'golem',          at: 32, entrance: 1 },
+    { kind: 'slime',          at: 35, entrance: 2 },
+    { kind: 'shaman',         at: 38, entrance: 3 },
+    { kind: 'golem',          at: 42, entrance: 0 },
+    { kind: 'rat',            at: 46, entrance: 1 },
+    { kind: 'golem',          at: 50, entrance: 2 },
+  ], true),
+
+  // --- Stage 4 waves 11-15: late-game pressure + homunculus ---
+  // Introduces the Sapper (suicide bomber) that rushes the mannequin.
+  wave(11, 36, 10, [
+    { kind: 'rat',          at: 0.5, entrance: 0 },
+    { kind: 'rat',          at: 1.5, entrance: 1 },
+    { kind: 'sapper',       at: 3, entrance: 2 },
+    { kind: 'slime',        at: 5, entrance: 3 },
+    { kind: 'golem',        at: 7, entrance: 0 },
+    { kind: 'sapper',       at: 9, entrance: 1 },
+    { kind: 'flying_flask', at: 11, entrance: 2 },
+    { kind: 'shaman',       at: 13, entrance: 3 },
+    { kind: 'rat',          at: 15, entrance: 0 },
+    { kind: 'rat',          at: 16, entrance: 1 },
+    { kind: 'sapper',       at: 18, entrance: 2 },
+    { kind: 'golem',        at: 20, entrance: 3 },
+    { kind: 'slime',        at: 22, entrance: 0 },
+    { kind: 'flying_flask', at: 25, entrance: 1 },
+    { kind: 'golem',        at: 28, entrance: 2 },
+    { kind: 'sapper',       at: 31, entrance: 3 },
+    { kind: 'sapper',       at: 33, entrance: 0 },
+    { kind: 'golem',        at: 34, entrance: 2 },
+  ]),
+  wave(12, 38, 10, [
+    { kind: 'golem',        at: 0.5, entrance: 0 },
+    { kind: 'golem',        at: 1.5, entrance: 2 },
+    { kind: 'shaman',       at: 3, entrance: 1 },
+    { kind: 'shaman',       at: 4, entrance: 3 },
+    { kind: 'flying_flask', at: 6, entrance: 0 },
+    { kind: 'flying_flask', at: 7, entrance: 2 },
+    { kind: 'sapper',       at: 9, entrance: 1 },
+    { kind: 'sapper',       at: 10, entrance: 3 },
+    { kind: 'rat',          at: 12, entrance: 0 },
+    { kind: 'rat',          at: 13, entrance: 1 },
+    { kind: 'rat',          at: 14, entrance: 2 },
+    { kind: 'golem',        at: 16, entrance: 3 },
+    { kind: 'shaman',       at: 19, entrance: 0 },
+    { kind: 'sapper',       at: 22, entrance: 2 },
+    { kind: 'golem',        at: 25, entrance: 1 },
+    { kind: 'flying_flask', at: 28, entrance: 3 },
+    { kind: 'golem',        at: 32, entrance: 0 },
+    { kind: 'golem',        at: 34, entrance: 2 },
+    { kind: 'sapper',       at: 36, entrance: 1 },
+  ]),
+  wave(13, 40, 14, [
+    { kind: 'sapper',       at: 0.5, entrance: 0 },
+    { kind: 'sapper',       at: 1.5, entrance: 1 },
+    { kind: 'sapper',       at: 2.5, entrance: 2 },
+    { kind: 'sapper',       at: 3.5, entrance: 3 },
+    { kind: 'rat',          at: 5, entrance: 0 },
+    { kind: 'rat',          at: 6, entrance: 1 },
+    { kind: 'golem',        at: 8, entrance: 2 },
+    { kind: 'golem',        at: 9, entrance: 3 },
+    { kind: 'flying_flask', at: 11, entrance: 0 },
+    { kind: 'flying_flask', at: 12, entrance: 1 },
+    { kind: 'shaman',       at: 14, entrance: 2 },
+    { kind: 'shaman',       at: 15, entrance: 3 },
+    { kind: 'slime',        at: 17, entrance: 0 },
+    { kind: 'slime',        at: 18, entrance: 1 },
+    { kind: 'slime',        at: 19, entrance: 2 },
+    { kind: 'golem',        at: 22, entrance: 3 },
+    { kind: 'sapper',       at: 25, entrance: 0 },
+    { kind: 'shaman',       at: 28, entrance: 1 },
+    { kind: 'golem',        at: 32, entrance: 2 },
+    { kind: 'flying_flask', at: 36, entrance: 3 },
+  ]),
+  wave(14, 42, 18, [
+    { kind: 'golem',        at: 0.5, entrance: 0 },
+    { kind: 'golem',        at: 1.5, entrance: 2 },
+    { kind: 'golem',        at: 2.5, entrance: 1 },
+    { kind: 'golem',        at: 3.5, entrance: 3 },
+    { kind: 'sapper',       at: 5, entrance: 0 },
+    { kind: 'sapper',       at: 6, entrance: 2 },
+    { kind: 'shaman',       at: 8, entrance: 1 },
+    { kind: 'shaman',       at: 9, entrance: 3 },
+    { kind: 'rat',          at: 11, entrance: 0 },
+    { kind: 'rat',          at: 12, entrance: 1 },
+    { kind: 'rat',          at: 13, entrance: 2 },
+    { kind: 'rat',          at: 14, entrance: 3 },
+    { kind: 'flying_flask', at: 16, entrance: 0 },
+    { kind: 'flying_flask', at: 18, entrance: 2 },
+    { kind: 'sapper',       at: 20, entrance: 1 },
+    { kind: 'sapper',       at: 22, entrance: 3 },
+    { kind: 'golem',        at: 25, entrance: 0 },
+    { kind: 'golem',        at: 27, entrance: 2 },
+    { kind: 'shaman',       at: 30, entrance: 1 },
+    { kind: 'sapper',       at: 33, entrance: 3 },
+    { kind: 'golem',        at: 37, entrance: 0 },
+  ]),
+  wave(15, 60, 18, [
+    // Cleaner mobs first to let towers pre-heat
+    { kind: 'slime',           at: 1, entrance: 0 },
+    { kind: 'slime',           at: 2, entrance: 2 },
+    { kind: 'rat',             at: 4, entrance: 1 },
+    { kind: 'rat',             at: 5, entrance: 3 },
+    // Homunculus arrives. Phase transitions are driven by its HP (66%, 33%).
+    { kind: 'boss_homunculus', at: 8, entrance: 0 },
+    // Waves of reinforcements while the boss cycles phases.
+    { kind: 'slime',           at: 12, entrance: 1 },
+    { kind: 'slime',           at: 14, entrance: 3 },
+    { kind: 'rat',             at: 17, entrance: 2 },
+    { kind: 'sapper',          at: 20, entrance: 1 },
+    { kind: 'golem',           at: 24, entrance: 3 },
+    { kind: 'shaman',          at: 28, entrance: 0 },
+    { kind: 'sapper',          at: 32, entrance: 2 },
+    { kind: 'flying_flask',    at: 36, entrance: 1 },
+    { kind: 'golem',           at: 40, entrance: 3 },
+    { kind: 'sapper',          at: 44, entrance: 0 },
   ], true),
 ];
