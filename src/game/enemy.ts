@@ -8,6 +8,7 @@ import { audio } from '../audio/audio';
 import { t } from '../i18n';
 import { INGREDIENT_DROP_TABLE, INGREDIENTS, type IngredientId } from '../data/potions';
 import { takenDamageMultiplier, goldMultiplier, absorbWithShield, enemySpeedMultiplier } from './potions';
+import { waveSpeedScale } from './wave';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -150,7 +151,7 @@ export function updateEnemies(state: GameState, dt: number): void {
         const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
         const speed = e.kind.speed * e.status.slowFactor
           * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult
-          * enemySpeedMultiplier(state);
+          * enemySpeedMultiplier(state) * waveSpeedScale(state);
         e.pos.x += dir.x * speed * dt;
         e.pos.y += dir.y * speed * dt;
       }

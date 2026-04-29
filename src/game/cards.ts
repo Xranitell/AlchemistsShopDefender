@@ -232,157 +232,157 @@ export function applyCard(state: GameState, card: CardDef): void {
   // ── Normal stat-only cards ────────────────────────────────────────────────
   switch (card.id) {
     // Potion damage
-    case 'pdmg_c': m.potionDamageMult *= 1.15; break;
-    case 'pdmg_r': m.potionDamageMult *= 1.30; break;
-    case 'pdmg_e': m.potionDamageMult *= 1.50; break;
-    case 'pdmg_l': m.potionDamageMult *= 1.80; break;
+    case 'pdmg_c': m.potionDamageMult *= 1.08; break;
+    case 'pdmg_r': m.potionDamageMult *= 1.15; break;
+    case 'pdmg_e': m.potionDamageMult *= 1.25; break;
+    case 'pdmg_l': m.potionDamageMult *= 1.40; break;
     // Potion radius
-    case 'prad_c': m.potionRadiusMult *= 1.15; break;
-    case 'prad_r': m.potionRadiusMult *= 1.25; break;
-    case 'prad_e': m.potionRadiusMult *= 1.45; break;
-    case 'prad_l': m.potionRadiusMult *= 1.70; break;
+    case 'prad_c': m.potionRadiusMult *= 1.08; break;
+    case 'prad_r': m.potionRadiusMult *= 1.13; break;
+    case 'prad_e': m.potionRadiusMult *= 1.23; break;
+    case 'prad_l': m.potionRadiusMult *= 1.35; break;
     // Potion cooldown
-    case 'pcd_c': m.potionCooldownMult *= 0.88; break;
-    case 'pcd_r': m.potionCooldownMult *= 0.78; break;
-    case 'pcd_e': m.potionCooldownMult *= 0.65; break;
-    case 'pcd_l': m.potionCooldownMult *= 0.50; break;
+    case 'pcd_c': m.potionCooldownMult *= 0.94; break;
+    case 'pcd_r': m.potionCooldownMult *= 0.89; break;
+    case 'pcd_e': m.potionCooldownMult *= 0.82; break;
+    case 'pcd_l': m.potionCooldownMult *= 0.75; break;
     // Tower damage
-    case 'tdmg_c': m.towerDamageMult *= 1.15; break;
-    case 'tdmg_r': m.towerDamageMult *= 1.30; break;
-    case 'tdmg_e': m.towerDamageMult *= 1.50; break;
-    case 'tdmg_l': m.towerDamageMult *= 1.80; break;
+    case 'tdmg_c': m.towerDamageMult *= 1.08; break;
+    case 'tdmg_r': m.towerDamageMult *= 1.15; break;
+    case 'tdmg_e': m.towerDamageMult *= 1.25; break;
+    case 'tdmg_l': m.towerDamageMult *= 1.40; break;
     // Tower fire rate
-    case 'tfr_c': m.towerFireRateMult *= 1.12; break;
-    case 'tfr_r': m.towerFireRateMult *= 1.22; break;
-    case 'tfr_e': m.towerFireRateMult *= 1.40; break;
-    case 'tfr_l': m.towerFireRateMult *= 1.60; break;
+    case 'tfr_c': m.towerFireRateMult *= 1.06; break;
+    case 'tfr_r': m.towerFireRateMult *= 1.11; break;
+    case 'tfr_e': m.towerFireRateMult *= 1.20; break;
+    case 'tfr_l': m.towerFireRateMult *= 1.30; break;
     // Tower range
-    case 'trng_c': m.towerRangeMult *= 1.10; break;
-    case 'trng_r': m.towerRangeMult *= 1.20; break;
-    case 'trng_e': m.towerRangeMult *= 1.35; break;
-    case 'trng_l': m.towerRangeMult *= 1.55; break;
+    case 'trng_c': m.towerRangeMult *= 1.05; break;
+    case 'trng_r': m.towerRangeMult *= 1.10; break;
+    case 'trng_e': m.towerRangeMult *= 1.18; break;
+    case 'trng_l': m.towerRangeMult *= 1.28; break;
     // Mannequin HP
-    case 'hp_c': mq.maxHp += 25;  mq.hp = Math.min(mq.maxHp, mq.hp + 25);  break;
-    case 'hp_r': mq.maxHp += 50;  mq.hp = Math.min(mq.maxHp, mq.hp + 50);  break;
-    case 'hp_e': mq.maxHp += 90;  mq.hp = Math.min(mq.maxHp, mq.hp + 90);  break;
-    case 'hp_l': mq.maxHp += 150; mq.hp = Math.min(mq.maxHp, mq.hp + 150); break;
+    case 'hp_c': mq.maxHp += 13;  mq.hp = Math.min(mq.maxHp, mq.hp + 13);  break;
+    case 'hp_r': mq.maxHp += 25;  mq.hp = Math.min(mq.maxHp, mq.hp + 25);  break;
+    case 'hp_e': mq.maxHp += 45;  mq.hp = Math.min(mq.maxHp, mq.hp + 45);  break;
+    case 'hp_l': mq.maxHp += 75; mq.hp = Math.min(mq.maxHp, mq.hp + 75); break;
     // Gold drops
-    case 'gold_c': m.goldDropMult *= 1.15; break;
-    case 'gold_r': m.goldDropMult *= 1.30; break;
-    case 'gold_e': m.goldDropMult *= 1.50; break;
-    case 'gold_l': m.goldDropMult *= 1.80; break;
+    case 'gold_c': m.goldDropMult *= 1.08; break;
+    case 'gold_r': m.goldDropMult *= 1.15; break;
+    case 'gold_e': m.goldDropMult *= 1.25; break;
+    case 'gold_l': m.goldDropMult *= 1.40; break;
     // ── Cursed cards ────────────────────────────────────────────────────────
     // Recipes / brews
     case 'curse_flammable_mix':
       m.potionLeavesFire = true;
-      m.potionDamageMult *= 1.30;
+      m.potionDamageMult *= 1.15;
       dm.hpMult *= 1.15;
       break;
     case 'curse_unstable_flask':
       m.potionEchoExplode = Math.max(m.potionEchoExplode, 0.5);
-      m.potionRadiusMult *= 1.25;
+      m.potionRadiusMult *= 1.13;
       m.potionCooldownMult *= 1.20;
       break;
     case 'curse_frost_brew':
       m.potionFrostActive = true;
-      m.potionRadiusMult *= 1.30;
+      m.potionRadiusMult *= 1.15;
       dm.hpMult *= 1.15;
       break;
     case 'curse_acid_brew':
       m.potionAcidActive = true;
-      m.potionDamageMult *= 1.30;
+      m.potionDamageMult *= 1.15;
       dm.hpMult *= 1.15;
       break;
     case 'curse_mercury_brew':
       m.potionMercuryActive = true;
-      m.potionDamageMult *= 1.25;
-      m.potionRadiusMult *= 1.20;
+      m.potionDamageMult *= 1.13;
+      m.potionRadiusMult *= 1.10;
       m.goldDropMult *= 0.75;
       break;
     case 'curse_aether_brew':
       m.potionAetherActive = true;
-      m.potionDamageMult *= 1.40;
+      m.potionDamageMult *= 1.20;
       dm.hpMult *= 1.20;
       break;
     case 'curse_mutagen_brew':
       m.potionPoisonActive = true;
-      m.potionDamageMult *= 1.35;
+      m.potionDamageMult *= 1.18;
       dm.hpMult *= 1.20;
       break;
     case 'curse_triple_throw':
       m.tripleThrowActive = true;
       m.tripleThrowTimer = m.tripleThrowInterval;
-      m.potionCooldownMult *= 0.80;
+      m.potionCooldownMult *= 0.90;
       m.potionRadiusMult *= 0.80;
       break;
 
     // Engineering / towers
     case 'curse_crossfire':
       m.towerBonusVsBurning = true;
-      m.towerDamageMult *= 1.20;
+      m.towerDamageMult *= 1.10;
       dm.speedMult *= 1.15;
       break;
     case 'curse_mercury_coating':
       m.towerMercurySlow = true;
-      m.towerFireRateMult *= 1.25;
+      m.towerFireRateMult *= 1.13;
       mq.maxHp = Math.max(50, mq.maxHp - 30);
       mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
     case 'curse_acid_tips':
       m.towerAcidBreak = true;
-      m.towerDamageMult *= 1.25;
+      m.towerDamageMult *= 1.13;
       m.towerCostMult *= 1.30;
       break;
     case 'curse_synchronized_volley':
       m.towerSyncVolley = true;
-      m.towerDamageMult *= 1.20;
+      m.towerDamageMult *= 1.10;
       dm.hpMult *= 1.20;
       break;
 
     // Rituals / mannequin
     case 'curse_thorny_shell':
       m.thornyShell = true;
-      mq.maxHp += 50; mq.hp = Math.min(mq.maxHp, mq.hp + 50);
+      mq.maxHp += 25; mq.hp = Math.min(mq.maxHp, mq.hp + 25);
       m.goldDropMult *= 0.80;
       break;
     case 'curse_chronos':
       state.activeModuleId = 'chronos';
-      m.potionDamageMult *= 1.30;
+      m.potionDamageMult *= 1.15;
       m.potionCooldownMult *= 1.20;
       break;
     case 'curse_golem_heart':
       state.golemHeartCharges = 1;
-      mq.maxHp += 75; mq.hp = Math.min(mq.maxHp, mq.hp + 75);
+      mq.maxHp += 38; mq.hp = Math.min(mq.maxHp, mq.hp + 38);
       m.potionDamageMult *= 0.70;
       break;
 
     // Catalysts
     case 'curse_fire_ruby':
       m.fireRubyCounter = 5;
-      m.potionDamageMult *= 1.25;
+      m.potionDamageMult *= 1.13;
       dm.speedMult *= 1.15;
       break;
     case 'curse_mercury_ring':
       m.mercuryRingActive = true;
-      m.goldDropMult *= 1.30;
+      m.goldDropMult *= 1.15;
       dm.hpMult *= 1.15;
       break;
     case 'curse_acid_prism':
-      m.reactionDamageMult *= 1.25;
-      m.potionDamageMult *= 1.25;
+      m.reactionDamageMult *= 1.13;
+      m.potionDamageMult *= 1.13;
       mq.maxHp = Math.max(50, mq.maxHp - 35);
       mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
     case 'curse_aether_engine':
       m.aetherEngineActive = true;
-      m.potionDamageMult *= 1.35;
+      m.potionDamageMult *= 1.18;
       m.potionCooldownMult *= 1.20;
       break;
     case 'curse_crown_of_elements':
-      m.reactionDamageMult *= 1.5;
+      m.reactionDamageMult *= 1.25;
       m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
       state.catalystSlots += 1;
-      m.potionDamageMult *= 1.25;
+      m.potionDamageMult *= 1.13;
       dm.hpMult *= 1.20;
       break;
 
@@ -390,12 +390,12 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'curse_salamander':
       m.salamanderActive = true;
       m.potionLeavesFire = true;
-      m.potionDamageMult *= 1.50;
+      m.potionDamageMult *= 1.25;
       mq.basePotionCooldown *= 1.25;
       break;
     case 'curse_archmaster':
       m.archmasterActive = true;
-      m.towerDamageMult *= 1.25;
+      m.towerDamageMult *= 1.13;
       m.towerCostMult *= 1.10;
       break;
 

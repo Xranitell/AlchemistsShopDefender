@@ -23,53 +23,53 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_pdmg_10',
     polarity: 'pos',
-    label: '+10% урона склянок',
-    apply: (s) => { s.modifiers.potionDamageMult *= 1.10; },
+    label: '+5% урона склянок',
+    apply: (s) => { s.modifiers.potionDamageMult *= 1.05; },
   },
   {
     id: 'extra_tdmg_10',
     polarity: 'pos',
-    label: '+10% урона стоек',
-    apply: (s) => { s.modifiers.towerDamageMult *= 1.10; },
+    label: '+5% урона стоек',
+    apply: (s) => { s.modifiers.towerDamageMult *= 1.05; },
   },
   {
     id: 'extra_pcd_-10',
     polarity: 'pos',
-    label: '−10% откат склянок',
-    apply: (s) => { s.modifiers.potionCooldownMult *= 0.90; },
+    label: '−5% откат склянок',
+    apply: (s) => { s.modifiers.potionCooldownMult *= 0.95; },
   },
   {
     id: 'extra_trng_10',
     polarity: 'pos',
-    label: '+10% радиус стоек',
-    apply: (s) => { s.modifiers.towerRangeMult *= 1.10; },
+    label: '+5% радиус стоек',
+    apply: (s) => { s.modifiers.towerRangeMult *= 1.05; },
   },
   {
     id: 'extra_tfr_10',
     polarity: 'pos',
-    label: '+10% скорость атаки стоек',
-    apply: (s) => { s.modifiers.towerFireRateMult *= 1.10; },
+    label: '+5% скорость атаки стоек',
+    apply: (s) => { s.modifiers.towerFireRateMult *= 1.05; },
   },
   {
     id: 'extra_prad_10',
     polarity: 'pos',
-    label: '+10% радиус склянок',
-    apply: (s) => { s.modifiers.potionRadiusMult *= 1.10; },
+    label: '+5% радиус склянок',
+    apply: (s) => { s.modifiers.potionRadiusMult *= 1.05; },
   },
   {
     id: 'extra_hp_15',
     polarity: 'pos',
-    label: '+15 макс. HP Манекена',
+    label: '+8 макс. ХП Манекена',
     apply: (s) => {
-      s.mannequin.maxHp += 15;
-      s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp + 15);
+      s.mannequin.maxHp += 8;
+      s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp + 8);
     },
   },
   {
     id: 'extra_gold_10',
     polarity: 'pos',
-    label: '+10% золота',
-    apply: (s) => { s.modifiers.goldDropMult *= 1.10; },
+    label: '+5% золота',
+    apply: (s) => { s.modifiers.goldDropMult *= 1.05; },
   },
 
   // ── Negative: enemy buffs / player penalties ──────────────────────────
@@ -79,7 +79,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_hp_15',
     polarity: 'neg',
-    label: '+15% HP врагов',
+    label: '+15% ХП врагов',
     apply: (s) => { s.difficultyModifier.hpMult *= 1.15; },
   },
   {
@@ -109,7 +109,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_hp_-25',
     polarity: 'neg',
-    label: '−25 макс. HP Манекена',
+    label: '−25 макс. ХП Манекена',
     apply: (s) => {
       s.mannequin.maxHp = Math.max(50, s.mannequin.maxHp - 25);
       s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp);
@@ -141,13 +141,13 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_shield_20',
     polarity: 'neg',
-    label: '+щит врагов 20% от HP',
+    label: '+щит врагов 20% от ХП',
     apply: (s) => { s.modifiers.enemyExtraShieldFraction += 0.20; },
   },
   {
     id: 'extra_enemy_regen_3',
     polarity: 'neg',
-    label: '+регенерация врагов 3 HP/с',
+    label: '+регенерация врагов 3 ХП/с',
     apply: (s) => { s.modifiers.enemyRegenPerSec += 3; },
   },
   {

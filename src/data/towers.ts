@@ -37,7 +37,7 @@ export const TOWERS: Record<string, TowerKind> = {
     splashRadius: 60,
     element: 'fire',
     color: '#ff8c5a',
-    desc: 'Медленная AoE-мортира. Хороша против толп.',
+    desc: 'Медленная мортира по площади. Хороша против толп.',
   },
   mercury_sprayer: {
     id: 'mercury_sprayer',

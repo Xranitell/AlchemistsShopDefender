@@ -121,7 +121,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     },
     previewLines: [
       'Волны повторяются по кругу',
-      'Каждый круг — +10% ХП и +5% скорости врагам',
+      'Сложность растёт линейно с каждой волной',
       'Не требует ключа',
     ],
     color: '#8ecae6',
