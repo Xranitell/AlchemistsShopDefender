@@ -4,6 +4,12 @@ import {
   isActiveModule,
   isAuraModule,
 } from '../data/modules';
+import {
+  ALL_INGREDIENT_IDS,
+  POTION_BY_ID,
+  POTION_INVENTORY_SIZE,
+  type IngredientId,
+} from '../data/potions';
 
 const SAVE_KEY = 'asd_meta_v2';
 
@@ -43,6 +49,13 @@ export interface MetaSave {
   tutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  // ─── Potion crafting (PR-«крафт») ───────────────────────────────────────
+  /** Stockpile of crafting ingredients. Keys come from `IngredientId`; missing
+   *  keys are treated as 0. Drops persist across runs. */
+  ingredients: Partial<Record<IngredientId, number>>;
+  /** Brewed-potion inventory carried across runs. Fixed length =
+   *  `POTION_INVENTORY_SIZE` (4); each slot is either a recipe id or `null`. */
+  inventory: (string | null)[];
 }
 
 export function newMetaSave(): MetaSave {
@@ -72,7 +85,37 @@ export function newMetaSave(): MetaSave {
     musicVolume: 0.4,
     tutorialDone: false,
     locale: defaultLocale(),
+    ingredients: {},
+    inventory: emptyInventory(),
   };
+}
+
+function emptyInventory(): (string | null)[] {
+  return Array.from({ length: POTION_INVENTORY_SIZE }, () => null);
+}
+
+function sanitizeIngredients(
+  raw: unknown,
+): Partial<Record<IngredientId, number>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<IngredientId, number>> = {};
+  for (const id of ALL_INGREDIENT_IDS) {
+    const v = (raw as Record<string, unknown>)[id];
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+      out[id] = Math.floor(v);
+    }
+  }
+  return out;
+}
+
+function sanitizeInventory(raw: unknown): (string | null)[] {
+  const out = emptyInventory();
+  if (!Array.isArray(raw)) return out;
+  for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
+    const v = raw[i];
+    if (typeof v === 'string' && POTION_BY_ID[v]) out[i] = v;
+  }
+  return out;
 }
 
 function defaultLocale(): 'ru' | 'en' {
@@ -124,6 +167,8 @@ export function loadMeta(): MetaSave {
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
+      inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {

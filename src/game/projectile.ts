@@ -7,6 +7,10 @@ import type { Element } from './types';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import {
+  potionDamageMultiplier,
+  consumeStormCharge,
+} from './potions';
 
 /** Pick the element of a thrown potion based on currently-active recipe
  *  modifiers. Cards can layer multiple flags on the same potion — we resolve
@@ -61,7 +65,9 @@ export function throwPotion(
   manual: boolean,
 ): void {
   const m = state.mannequin;
-  const damage = m.basePotionDamage * state.modifiers.potionDamageMult;
+  const stormMult = consumeStormCharge(state);
+  const damage = m.basePotionDamage * state.modifiers.potionDamageMult
+    * potionDamageMultiplier(state) * stormMult;
   const radius = m.basePotionRadius * state.modifiers.potionRadiusMult;
 
   // Parabolic arc: potion follows a ballistic curve from the alchemist to the

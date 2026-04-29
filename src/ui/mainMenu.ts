@@ -1,6 +1,7 @@
 import type { MetaSave } from '../game/save';
 import { canClaimDaily, saveMeta } from '../game/save';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
+import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -19,6 +20,7 @@ export class MainMenu {
     onDailyExperiment: () => void;
     onBossChallenge: () => void;
     onLeaderboards: () => void;
+    onCrafting: () => void;
   }): void {
     this.root.innerHTML = '';
     const wrap = document.createElement('div');
@@ -45,30 +47,38 @@ export class MainMenu {
     const leftCol = document.createElement('div');
     leftCol.className = 'mm-left';
 
-    // My Shop section
-    const shopSection = document.createElement('div');
-    shopSection.className = 'mm-section mm-shop';
+    // My Shop section — also doubles as the Alchemy crafting entry point.
+    // Clicking the section (slots, title, or hint) opens the crafting overlay.
+    const shopSection = document.createElement('button');
+    shopSection.className = 'mm-section mm-shop mm-shop-btn';
+    shopSection.type = 'button';
     const shopTitle = document.createElement('div');
     shopTitle.className = 'mm-section-title mm-title-with-icon';
     shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span><span class="mm-info-dot">i</span>`;
     shopSection.appendChild(shopTitle);
     const slotRow = document.createElement('div');
     slotRow.className = 'mm-shop-slots';
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
       const slot = document.createElement('div');
-      slot.className = `mm-shop-slot ${i === 0 ? 'filled' : ''}`;
-      if (i === 0) slot.innerHTML = '<span class="mm-slot-potion"></span>';
+      const id = opts.meta.inventory[i];
+      const recipe = id ? POTION_BY_ID[id] : null;
+      slot.className = `mm-shop-slot${recipe ? ' filled' : ''}`;
+      if (recipe) {
+        slot.title = t(`${recipe.i18nKey}.name`);
+        slot.innerHTML = `<span class="mm-slot-potion" style="color:${recipe.color}">${recipe.glyph}</span>`;
+      }
       slotRow.appendChild(slot);
     }
     shopSection.appendChild(slotRow);
-    const craftLevel = document.createElement('div');
-    craftLevel.className = 'mm-craft-level';
-    craftLevel.innerHTML = `<span>${t('ui.menu.craftingLevel', { level: opts.meta.craftingLevel })}</span><span class="mm-craft-bar"><i style="width:${Math.min(100, 24 + opts.meta.craftingLevel * 8)}%"></i></span>`;
-    shopSection.appendChild(craftLevel);
+    const craftHint = document.createElement('div');
+    craftHint.className = 'mm-craft-level';
+    craftHint.innerHTML = `<span>${t('ui.menu.craftingHint')}</span>`;
+    shopSection.appendChild(craftHint);
     const statsRow = document.createElement('div');
     statsRow.className = 'mm-stats';
     statsRow.innerHTML = `<span>${t('ui.menu.runs', { n: opts.meta.totalRuns })}</span><span>${t('ui.menu.bestWave', { n: opts.meta.bestWave })}</span>`;
     shopSection.appendChild(statsRow);
+    shopSection.addEventListener('click', opts.onCrafting);
     leftCol.appendChild(shopSection);
 
     // Laboratory button

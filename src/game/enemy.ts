@@ -6,6 +6,8 @@ import { spawnEnemy } from './wave';
 import { applyDamageToEnemy } from './projectile';
 import { audio } from '../audio/audio';
 import { t } from '../i18n';
+import { INGREDIENT_DROP_TABLE, INGREDIENTS, type IngredientId } from '../data/potions';
+import { takenDamageMultiplier, goldMultiplier, absorbWithShield, enemySpeedMultiplier } from './potions';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -140,7 +142,8 @@ export function updateEnemies(state: GameState, dt: number): void {
         // Frenzied elite: ×1.5 speed.
         const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
         const speed = e.kind.speed * e.status.slowFactor
-          * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult;
+          * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult
+          * enemySpeedMultiplier(state);
         e.pos.x += dir.x * speed * dt;
         e.pos.y += dir.y * speed * dt;
       }
@@ -160,7 +163,8 @@ export function updateEnemies(state: GameState, dt: number): void {
     if (d < e.kind.radius + 22) {
       const scaledDamage = e.kind.damage * state.difficultyModifier.damageMult;
       const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
-      const dmgReduced = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor) * shieldMult);
+      const rawDmg = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor) * shieldMult * takenDamageMultiplier(state));
+      const dmgReduced = absorbWithShield(state, rawDmg);
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
@@ -227,7 +231,8 @@ function sapperDetonate(state: GameState, e: Enemy): void {
   if (dist(m.pos, e.pos) < radius) {
     const scaled = e.kind.damage * state.difficultyModifier.damageMult;
     const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
-    const dmg = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult);
+    const raw = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult * takenDamageMultiplier(state));
+    const dmg = absorbWithShield(state, raw);
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
@@ -312,7 +317,8 @@ function minibossSlimeSlam(state: GameState, e: Enemy): void {
   if (dist(m.pos, e.pos) < radius) {
     const scaled = e.kind.damage * state.difficultyModifier.damageMult * 0.6;
     const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
-    const dmg = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult);
+    const raw = Math.max(1, scaled * (1 - state.metaMannequinArmor) * shieldMult * takenDamageMultiplier(state));
+    const dmg = absorbWithShield(state, raw);
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
@@ -433,7 +439,8 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   audio.playSfx('enemyDeath', { detune: e.kind.isBoss ? 0.5 : 1 });
   const goldMult = state.modifiers.goldDropMult
     * state.difficultyModifier.goldMult
-    * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1);
+    * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1)
+    * goldMultiplier(state);
   const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * goldMult);
   state.goldPickups.push({
     id: newId(state),
@@ -475,11 +482,31 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
     }
     // Damage the hero too if close enough.
     if (dist(state.mannequin.pos, e.pos) < radius) {
-      const dmg = Math.max(1, 4 * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor));
+      const raw = Math.max(1, 4 * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor) * takenDamageMultiplier(state));
+      const dmg = absorbWithShield(state, raw);
       state.mannequin.hp -= dmg;
       state.mannequin.damageFlash = 0.22;
       spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
     }
+  }
+
+  // Crafting ingredient drops. Split-on-death offspring are NOT eligible
+  // (`splitGeneration > 0`) so a single packed slime wave can't flood the
+  // economy with jelly.
+  if (e.splitGeneration === 0) {
+    rollIngredientDrop(state, e);
+  }
+}
+
+function rollIngredientDrop(state: GameState, e: Enemy): void {
+  for (const row of INGREDIENT_DROP_TABLE) {
+    if (row.enemyId !== e.kind.id) continue;
+    const amount = row.guaranteedAmount ?? (state.rng.chance(row.chance) ? 1 : 0);
+    if (amount <= 0) continue;
+    state.onIngredientDrop?.(row.ingredient, amount);
+    const ing = INGREDIENTS[row.ingredient as IngredientId];
+    spawnFloatingText(state, `+${amount} ${t(ing.i18nKey)}`, e.pos, ing.color);
+    return;
   }
 }
 

@@ -5,6 +5,11 @@ import { newId, spawnFloatingText } from './state';
 import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import {
+  towerFireRateMultiplier,
+  towerRangeMultiplier,
+  towerDamageMultiplier,
+} from './potions';
 
 export const TARGETING_MODES: TargetingMode[] = ['nearest', 'strongest', 'fastest', 'debuffed', 'first'];
 
@@ -67,11 +72,13 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
 export function towerStats(state: GameState, t: Tower) {
   let damage = t.kind.damage *
     Math.pow(TOWER_UPGRADE_DAMAGE_MULT, t.level - 1) *
-    state.modifiers.towerDamageMult;
+    state.modifiers.towerDamageMult *
+    towerDamageMultiplier(state);
   let baseRate = t.kind.fireRate *
     Math.pow(TOWER_UPGRADE_RATE_MULT, t.level - 1) *
-    state.modifiers.towerFireRateMult;
-  let baseRange = t.kind.range * state.modifiers.towerRangeMult;
+    state.modifiers.towerFireRateMult *
+    towerFireRateMultiplier(state);
+  let baseRange = t.kind.range * state.modifiers.towerRangeMult * towerRangeMultiplier(state);
 
   // GDD §7.4: rune-point kind buffs the tower placed on it.
   const rp = state.runePoints.find((r) => r.id === t.runePointId);

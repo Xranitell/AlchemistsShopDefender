@@ -415,6 +415,35 @@ export interface GameState {
   reviveUsed: boolean;
   /** While true, the world is frozen (e.g. waiting for a rewarded ad). */
   revivePaused: boolean;
+
+  // ─── Crafted potions (PR-«крафт») ──────────────────────────────────────
+  /** Mirror of `MetaSave.inventory` for THIS run. Slots are nulled out as the
+   *  player consumes them; nothing is written back until the run ends. */
+  inventory: (string | null)[];
+  /** Active timed potion effects. Tick down each frame; effects with timeLeft
+   *  ≤ 0 are removed. Recipes that grant charges (Алхимическая буря) live in
+   *  their own counter, not in this list. */
+  activePotions: ActivePotion[];
+  /** Charges for the «Алхимическая буря» recipe — each thrown potion consumes
+   *  one charge and gets `stormChargeMult`× damage. */
+  stormCharges: number;
+  stormChargeMult: number;
+  /** Mannequin "stone shield" added by the recipe — flat HP that absorbs
+   *  damage before mannequin.hp does. */
+  potionShieldHp: number;
+  /** Hook fired when an enemy drops a crafting ingredient. Wired to the
+   *  meta save in `main.ts`; left null in the default state so headless
+   *  unit tests can ignore it. */
+  onIngredientDrop: ((ingredientId: string, amount: number) => void) | null;
+}
+
+export interface ActivePotion {
+  /** Recipe id (`PotionRecipe.id`). */
+  id: string;
+  /** Seconds remaining. Decremented in the main loop. */
+  timeLeft: number;
+  /** Initial duration so the HUD can render a fill ring. */
+  duration: number;
 }
 
 export function newId(state: GameState): number {

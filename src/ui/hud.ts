@@ -3,6 +3,11 @@ import { totalWaves, currentWaveDuration, currentPauseDuration } from '../game/w
 import { getSprites } from '../render/sprites';
 import type { BakedSprite } from '../render/sprite';
 import { DIFFICULTY_MODES } from '../data/difficulty';
+import {
+  POTION_BY_ID,
+  POTION_INVENTORY_SIZE,
+  type PotionRecipe,
+} from '../data/potions';
 import { t } from '../i18n';
 
 export interface HudHandlers {
@@ -10,6 +15,7 @@ export interface HudHandlers {
   onSkipPause(): void;
   onActivateOverload(): void;
   onActivateMagnet(): void;
+  onUsePotion(slot: number): void;
 }
 
 // HUD layout matches the supplied reference image:
@@ -57,6 +63,11 @@ export class Hud {
   private timerBar!: HTMLDivElement;
   private timerFill!: HTMLDivElement;
   private timerLabel!: HTMLSpanElement;
+
+  // Bottom-center crafted-potion inventory (4 slots) + active-effect chips
+  private potionBar!: HTMLDivElement;
+  private potionSlots: HTMLButtonElement[] = [];
+  private effectsBar!: HTMLDivElement;
 
   constructor(root: HTMLElement, handlers: HudHandlers) {
     this.root = root;
@@ -205,6 +216,26 @@ export class Hud {
     this.skipBtn.addEventListener('click', () => this.handlers.onSkipPause());
     center.appendChild(this.hint);
     center.appendChild(this.skipBtn);
+
+    // Active-effect chips (timed potions). Sit just above the inventory row.
+    this.effectsBar = document.createElement('div');
+    this.effectsBar.className = 'hud-potion-effects';
+    center.appendChild(this.effectsBar);
+
+    // Crafted-potion inventory (4 buttons, mobile-friendly).
+    this.potionBar = document.createElement('div');
+    this.potionBar.className = 'hud-potion-bar';
+    for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'hud-potion-slot';
+      btn.dataset.slot = String(i);
+      btn.disabled = true;
+      btn.addEventListener('click', () => this.handlers.onUsePotion(i));
+      this.potionSlots.push(btn);
+      this.potionBar.appendChild(btn);
+    }
+    center.appendChild(this.potionBar);
+
     bottom.appendChild(center);
 
     // Bottom-right: ABILITY + OVERLOAD round buttons
@@ -314,6 +345,58 @@ export class Hud {
 
     // Wave / pause progress bar. Shown during 'wave' and 'preparing' only.
     this.updateTimerBar(state);
+
+    // Crafted-potion inventory + active-effect chips.
+    this.updatePotionBar(state);
+  }
+
+  private updatePotionBar(state: GameState): void {
+    const interactive = state.phase === 'wave' || state.phase === 'preparing';
+    this.potionBar.style.display = interactive ? '' : 'none';
+    this.effectsBar.style.display = interactive ? '' : 'none';
+    if (!interactive) return;
+
+    for (let i = 0; i < this.potionSlots.length; i++) {
+      const btn = this.potionSlots[i]!;
+      const id = state.inventory[i];
+      const recipe = id ? POTION_BY_ID[id] : null;
+      btn.disabled = !recipe;
+      if (recipe) {
+        btn.style.color = recipe.color;
+        btn.classList.add('filled');
+        btn.title = `${t(`${recipe.i18nKey}.name`)} — ${t(`${recipe.i18nKey}.desc`)}`;
+        btn.innerHTML = `<span class="hud-potion-glyph">${recipe.glyph}</span>`;
+      } else {
+        btn.classList.remove('filled');
+        btn.style.color = '';
+        btn.title = t('ui.hud.potionEmpty');
+        btn.innerHTML = `<span class="hud-potion-glyph hud-potion-empty">·</span>`;
+      }
+    }
+
+    // Effect chips: timed potions + storm charges + shield HP.
+    const chips: string[] = [];
+    for (const ap of state.activePotions) {
+      const recipe: PotionRecipe | undefined = POTION_BY_ID[ap.id];
+      if (!recipe) continue;
+      const sec = Math.max(0, ap.timeLeft).toFixed(0);
+      chips.push(
+        `<span class="hud-effect-chip" style="border-color:${recipe.color};color:${recipe.color}"><span>${recipe.glyph}</span><span>${sec}s</span></span>`,
+      );
+    }
+    if (state.stormCharges > 0) {
+      const r = POTION_BY_ID['storm']!;
+      chips.push(
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${state.stormCharges}×</span></span>`,
+      );
+    }
+    if (state.potionShieldHp > 0) {
+      const r = POTION_BY_ID['stoneShield']!;
+      chips.push(
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}HP</span></span>`,
+      );
+    }
+    this.effectsBar.innerHTML = chips.join('');
   }
 
   private updateTimerBar(state: GameState): void {
