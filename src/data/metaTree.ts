@@ -29,6 +29,9 @@ export interface MetaUpgrade {
   cost: number;
   currency: 'blue' | 'ancient';
   effect: MetaEffect;
+  /** Additional effects applied alongside the primary `effect`. Used by
+   *  keystones and compound nodes that grant more than one bonus. */
+  extraEffects?: MetaEffect[];
 }
 
 export type NodeKind = 'root' | 'small' | 'notable' | 'keystone';
@@ -370,9 +373,10 @@ export const META_UPGRADES: MetaUpgrade[] = [
     pos: { x: 1290, y: 280 },
     connects: ['e_rune_2'],
     name: 'Чертёж Архимастера',
-    desc: '+1 руническая точка β и +10% дальность стоек',
+    desc: '+1 руническая точка и +10% дальность стоек',
     cost: 2, currency: 'ancient',
-    effect: { kind: 'towerRange', value: 1.10 },
+    effect: { kind: 'runePointUnlock', value: 3 },
+    extraEffects: [{ kind: 'towerRange', value: 1.10 }],
   },
 
   // ─────────────────────────── Arcanum (SW, core/overload) ───────────────────
@@ -740,18 +744,30 @@ export const META_UPGRADES: MetaUpgrade[] = [
     branch: 'engineering',
     kind: 'notable',
     pos: { x: 1140, y: 320 },
-    connects: ['e_fire_3', 'e_dmg_3', 'e_range_3', 'e_keystone_overdrive'],
+    connects: ['e_fire_3', 'e_dmg_3', 'e_range_3', 'e_keystone_overdrive', 'e_rune_3'],
     name: 'Полный арсенал',
     desc: '+15% урон и +10% дальность стоек',
     cost: 105, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.15 },
+    extraEffects: [{ kind: 'towerRange', value: 1.10 }],
+  },
+  {
+    id: 'e_rune_3',
+    branch: 'engineering',
+    kind: 'notable',
+    pos: { x: 1250, y: 460 },
+    connects: ['e_notable_armament', 'e_keystone_overdrive'],
+    name: 'Открытая руническая точка γ',
+    desc: '+1 руническая точка для стойки',
+    cost: 150, currency: 'blue',
+    effect: { kind: 'runePointUnlock', value: 4 },
   },
   {
     id: 'e_keystone_overdrive',
     branch: 'engineering',
     kind: 'keystone',
     pos: { x: 1190, y: 540 },
-    connects: ['e_notable_armament', 'e_dmg_3'],
+    connects: ['e_notable_armament', 'e_dmg_3', 'e_rune_3'],
     name: 'Overdrive',
     desc: '+5% крит-шанс стоек и склянок',
     cost: 2, currency: 'ancient',

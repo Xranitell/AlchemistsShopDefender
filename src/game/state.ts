@@ -308,9 +308,8 @@ export interface WaveState {
 export interface CardChoice {
   options: CardDef[];
   pickedIds: string[]; // ids picked across the run (so we don't show same card twice)
-  /** Gold cost of the next reroll during the current card-draft. Grows by
-   * +25 every time a reroll is spent (starts at 50). Resets to 50 at the
-   * start of each draft. */
+  /** Gold cost of the next reroll. Grows by +25 every time a reroll is
+   * spent (starts at 50). Persists across waves within the same run. */
   rerollCost: number;
   /** Whether the free rewarded-ad reroll was already used this draft. */
   freeRerollUsed: boolean;

@@ -1,4 +1,4 @@
-import { META_BY_ID, META_UPGRADES, type MetaUpgrade } from '../data/metaTree';
+import { META_BY_ID, META_UPGRADES, type MetaUpgrade, type MetaEffect } from '../data/metaTree';
 import {
   ACTIVE_MODULES,
   AURA_MODULES,
@@ -83,7 +83,13 @@ export function getModuleDef(id: string): { name: string; desc: string; slot: 'a
 }
 
 function applyEffect(state: GameState, upg: MetaUpgrade): void {
-  const e = upg.effect;
+  applySingleEffect(state, upg.effect);
+  if (upg.extraEffects) {
+    for (const extra of upg.extraEffects) applySingleEffect(state, extra);
+  }
+}
+
+function applySingleEffect(state: GameState, e: MetaEffect): void {
   const m = state.modifiers;
   switch (e.kind) {
     // Potions
