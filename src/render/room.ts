@@ -45,7 +45,7 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
 
   const pal = BIOMES[activeBiome].palette;
   drawFloor(ctx, width, height, pal);
-  drawWorkshopWalls(ctx, width, height, pal);
+  // Walls removed per design request — open arena feel.
   drawScatteredDecor(ctx, width, height);
   drawBiomeDecor(ctx, width, height, activeBiome);
 
@@ -55,7 +55,8 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   return c;
 }
 
-function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
+/* Walls removed per design request — kept for potential re-use. */
+export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
   const wall = 70;
   const side = 46;
   ctx.fillStyle = pal.wallDark;

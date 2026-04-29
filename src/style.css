@@ -34,7 +34,7 @@
 
 * { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+html, body, #app { margin: 0; padding: 0; height: 100%; width: 100%; }
 
 body {
   background:
@@ -46,18 +46,12 @@ body {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
 #app {
   position: relative;
-  width: min(100vw, calc(100dvh * 16 / 9));
-  height: min(100dvh, calc(100vw * 9 / 16));
-  max-width: 100vw;
-  max-height: 100dvh;
-  overflow: hidden;
+  display: grid;
+  place-items: center;
 }
 
 #game-canvas {
@@ -69,18 +63,16 @@ body {
     0 0 0 10px var(--hud-frame-rim),
     0 18px 60px rgba(0, 0, 0, 0.8);
   image-rendering: pixelated;
-  width: 100%;
-  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  aspect-ratio: 16 / 9;
 }
 
 #hud {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 1280px;
-  height: 720px;
-  transform-origin: top left;
-  transform: scale(var(--ui-scale, 1));
+  inset: 0;
   pointer-events: none;
   font-size: 18px;
   font-family: 'VT323', 'Courier New', monospace;
@@ -90,7 +82,7 @@ body {
 /* ============ HUD: top row (WAVE / HP / GOLD+ESSENCE) ============ */
 .hud-top {
   position: absolute;
-  top: 14px;
+  top: 4px;
   left: 18px;
   right: 18px;
   display: flex;
@@ -387,12 +379,7 @@ body {
 
 #overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 1280px;
-  height: 720px;
-  transform-origin: top left;
-  transform: scale(var(--ui-scale, 1));
+  inset: 0;
   display: none;
   place-items: center;
   background:
@@ -882,7 +869,7 @@ body {
   padding: 8px;
   pointer-events: auto;
   min-width: 200px;
-  z-index: 5;
+  z-index: 1600;
   box-shadow:
     0 0 0 2px var(--hud-frame-rim),
     inset 0 2px 0 rgba(255,255,255,0.1),
@@ -2364,21 +2351,34 @@ body {
   pointer-events: none;
 }
 
-/* Boss wave warning indicator */
+/* Boss wave warning indicator — centered on screen */
 .hud-boss-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  letter-spacing: 1px;
+  font-size: 28px;
+  letter-spacing: 3px;
   color: #ff5a5a;
-  text-shadow: 0 0 6px rgba(255, 90, 90, 0.7), 0 0 12px rgba(255, 40, 40, 0.4);
+  text-shadow:
+    0 0 12px rgba(255, 90, 90, 0.9),
+    0 0 24px rgba(255, 40, 40, 0.6),
+    0 0 48px rgba(255, 40, 40, 0.3),
+    0 2px 0 rgba(0, 0, 0, 0.8);
   text-align: center;
-  padding: 3px 8px;
-  margin-top: 3px;
+  padding: 12px 32px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 90, 90, 0.5);
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
   animation: boss-blink 1s ease-in-out infinite;
+  z-index: 10;
 }
 @keyframes boss-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.04); }
 }
 
 /* ============ Battle Pass polish ============ */
@@ -2447,6 +2447,7 @@ body {
   top: 0;
   max-width: 360px;
   padding: 14px 18px 12px;
+  pointer-events: auto;
   background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
   border: 2px solid #f5c453;
   border-radius: 8px;
@@ -2784,14 +2785,15 @@ body {
 .hud-effect-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 5px;
+  padding: 4px 10px;
   font-family: 'VT323', monospace;
-  font-size: 14px;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1.5px solid currentColor;
-  border-radius: 12px;
+  font-size: 18px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid currentColor;
+  border-radius: 14px;
   text-shadow: 1px 1px 0 #000;
+  box-shadow: 0 0 8px currentColor;
 }
 .hud-potion-bar {
   display: flex;
@@ -2810,9 +2812,12 @@ body {
   justify-content: center;
   font-size: 28px;
   cursor: pointer;
+  pointer-events: auto;
   transition: transform 80ms, border-color 120ms, background 120ms;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.65);
   padding: 0;
+  position: relative;
+  z-index: 5;
 }
 .hud-potion-slot.filled {
   border-color: currentColor;
@@ -3034,6 +3039,82 @@ body {
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: none;
   cursor: not-allowed;
+}
+
+/* ============ Victory chest overlay ============ */
+.chest-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 24px;
+}
+.chest-icon {
+  font-size: 96px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 120ms ease;
+  filter: drop-shadow(0 4px 12px rgba(255, 180, 60, 0.5));
+}
+.chest-icon:hover { transform: scale(1.08); }
+.chest-icon:active { transform: scale(0.95); }
+.chest-icon.shake {
+  animation: chest-shake 0.35s ease;
+}
+.chest-icon.opened {
+  animation: chest-open 0.5s ease forwards;
+  cursor: default;
+}
+.chest-hint {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #ffd166;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.5);
+  letter-spacing: 1px;
+  animation: chest-hint-pulse 1.2s ease-in-out infinite;
+}
+.chest-progress {
+  width: 180px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.chest-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd166, #ff9d3a);
+  border-radius: 4px;
+  transition: width 200ms ease;
+}
+.chest-reward {
+  font-family: 'VT323', monospace;
+  font-size: 22px;
+  color: #ffd166;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: chest-reward-in 0.4s ease forwards;
+}
+@keyframes chest-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-8deg) scale(1.05); }
+  40% { transform: rotate(8deg) scale(1.05); }
+  60% { transform: rotate(-5deg); }
+  80% { transform: rotate(5deg); }
+}
+@keyframes chest-open {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2) rotate(-5deg); }
+  60% { transform: scale(1.3); filter: drop-shadow(0 0 24px rgba(255, 220, 80, 0.9)); }
+  100% { transform: scale(1.1); filter: drop-shadow(0 0 32px rgba(255, 220, 80, 0.7)); }
+}
+@keyframes chest-hint-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes chest-reward-in {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Crafting entry point — shop card on the main menu */

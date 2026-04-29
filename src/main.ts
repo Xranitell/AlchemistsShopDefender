@@ -57,13 +57,6 @@ const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
-const appRoot = document.getElementById('app')!;
-function updateUiScale(): void {
-  const s = Math.min(appRoot.clientWidth / 1280, appRoot.clientHeight / 720);
-  document.documentElement.style.setProperty('--ui-scale', String(s));
-}
-updateUiScale();
-window.addEventListener('resize', updateUiScale);
 
 let meta: MetaSave = loadMeta();
 // Apply the saved locale before any UI is rendered so the very first
@@ -315,10 +308,15 @@ function handleClick(at: { x: number; y: number }): void {
   if (mannequinShop.isOpen()) mannequinShop.close();
 }
 
-function canvasToScreen(_c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
-  // #hud is a fixed 1280×720 container scaled via CSS transform, so popup
-  // positions are in the same coordinate space as the canvas buffer.
-  return { x: gamePos.x, y: gamePos.y };
+function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
+  const rect = c.getBoundingClientRect();
+  const sx = rect.width / c.width;
+  const sy = rect.height / c.height;
+  const parent = c.parentElement!.getBoundingClientRect();
+  return {
+    x: rect.left - parent.left + gamePos.x * sx,
+    y: rect.top - parent.top + gamePos.y * sy,
+  };
 }
 
 function showCardOverlay(): void {
@@ -453,39 +451,125 @@ function showVictory(): void {
   tutorial.stop();
   const reward = awardRunEssence(true);
   const wave = state.waveState.currentIndex + 1;
-  let doubled = false;
-  const buttons: { label: string; primary?: boolean; onClick: () => void }[] = [
-    {
-      label: t('ui.victory.doubleAd'),
-      primary: true,
-      onClick: () => {
-        if (doubled) return;
-        void yandex.showRewarded().then((ok) => {
-          if (!ok) return;
-          doubled = true;
-          doubleRewards(reward);
-          overlay.showSimple({
-            title: t('ui.victory.doubled'),
-            subtitle: t('ui.victory.doubledSubtitle', {
-              blue: reward.blue * 2,
-              ancient: reward.ancient > 0
-                ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
-                : '',
-            }),
-            buttons: [
-              { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
-            ],
+
+  // Chest click-to-open mechanic: player taps the chest 3 times, then
+  // it opens revealing the reward breakdown + double/menu buttons.
+  const TAPS_NEEDED = 3;
+  let tapCount = 0;
+  let chestOpened = false;
+
+  const root = overlay.getRootElement();
+  root.innerHTML = '';
+  root.classList.remove('cards-mode');
+
+  const panel = document.createElement('div');
+  panel.className = 'panel chest-overlay';
+
+  const title = document.createElement('h2');
+  title.textContent = t('ui.victory.title');
+  panel.appendChild(title);
+
+  const chestIcon = document.createElement('div');
+  chestIcon.className = 'chest-icon';
+  chestIcon.textContent = '🧰';
+  panel.appendChild(chestIcon);
+
+  const hint = document.createElement('div');
+  hint.className = 'chest-hint';
+  hint.textContent = t('ui.chest.tapToOpen');
+  panel.appendChild(hint);
+
+  const progressBar = document.createElement('div');
+  progressBar.className = 'chest-progress';
+  const progressFill = document.createElement('div');
+  progressFill.className = 'chest-progress-fill';
+  progressFill.style.width = '0%';
+  progressBar.appendChild(progressFill);
+  panel.appendChild(progressBar);
+
+  const rewardContainer = document.createElement('div');
+  rewardContainer.style.display = 'none';
+  panel.appendChild(rewardContainer);
+
+  chestIcon.addEventListener('click', () => {
+    if (chestOpened) return;
+    tapCount++;
+    audio.playSfx('uiClick');
+
+    // Shake animation
+    chestIcon.classList.remove('shake');
+    void chestIcon.offsetWidth; // reflow to re-trigger animation
+    chestIcon.classList.add('shake');
+
+    progressFill.style.width = `${Math.min(100, (tapCount / TAPS_NEEDED) * 100)}%`;
+    hint.textContent = t('ui.chest.opening');
+
+    if (tapCount >= TAPS_NEEDED) {
+      chestOpened = true;
+      chestIcon.classList.remove('shake');
+      chestIcon.classList.add('opened');
+      chestIcon.textContent = '✨';
+      hint.style.display = 'none';
+      progressBar.style.display = 'none';
+
+      // Show reward after short delay
+      setTimeout(() => {
+        const rewardText = document.createElement('div');
+        rewardText.className = 'chest-reward';
+        rewardText.textContent = rewardBreakdown(reward, state.totalKills, wave, true);
+        rewardContainer.appendChild(rewardText);
+        rewardContainer.style.display = '';
+
+        // Show action buttons
+        let doubled = false;
+        const wrap = document.createElement('div');
+        wrap.className = 'menu-buttons';
+        wrap.style.marginTop = '12px';
+
+        const adBtn = document.createElement('button');
+        adBtn.textContent = t('ui.victory.doubleAd');
+        adBtn.style.borderColor = 'var(--accent)';
+        adBtn.style.color = 'var(--accent)';
+        adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+        adBtn.addEventListener('click', () => {
+          audio.playSfx('uiClick');
+          if (doubled) return;
+          void yandex.showRewarded().then((ok) => {
+            if (!ok) return;
+            doubled = true;
+            doubleRewards(reward);
+            overlay.showSimple({
+              title: t('ui.victory.doubled'),
+              subtitle: t('ui.victory.doubledSubtitle', {
+                blue: reward.blue * 2,
+                ancient: reward.ancient > 0
+                  ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
+                  : '',
+              }),
+              buttons: [
+                { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
+              ],
+            });
           });
         });
-      },
-    },
-    { label: t('ui.common.toMenu'), onClick: () => restart() },
-  ];
-  overlay.showSimple({
-    title: t('ui.victory.title'),
-    subtitle: rewardBreakdown(reward, state.totalKills, wave, true),
-    buttons,
+        wrap.appendChild(adBtn);
+
+        const menuBtn = document.createElement('button');
+        menuBtn.textContent = t('ui.common.toMenu');
+        menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+        menuBtn.addEventListener('click', () => {
+          audio.playSfx('uiClick');
+          restart();
+        });
+        wrap.appendChild(menuBtn);
+
+        rewardContainer.appendChild(wrap);
+      }, 500);
+    }
   });
+
+  root.appendChild(panel);
+  root.classList.add('visible');
 }
 
 function showGameOver(): void {

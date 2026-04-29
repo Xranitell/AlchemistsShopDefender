@@ -116,7 +116,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'p_dmg_2', 'p_aim_1'],
     name: 'Концентрат',
     desc: '+5% урон склянок',
-    cost: 8, currency: 'blue',
+    cost: 12, currency: 'blue',
     effect: { kind: 'potionDamage', value: 1.05 },
   },
   {
@@ -127,7 +127,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'p_cd_2', 'p_radius_1'],
     name: 'Быстрые руки',
     desc: '-4% кулдаун склянок',
-    cost: 8, currency: 'blue',
+    cost: 12, currency: 'blue',
     effect: { kind: 'potionCooldown', value: 0.96 },
   },
   {
@@ -138,7 +138,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_dmg_1', 'p_notable_brew', 'p_dmg_3'],
     name: 'Концентрат II',
     desc: '+5% урон склянок',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'potionDamage', value: 1.05 },
   },
   {
@@ -149,7 +149,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_cd_1', 'p_notable_brew', 'p_cd_3'],
     name: 'Быстрые руки II',
     desc: '-4% кулдаун склянок',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'potionCooldown', value: 0.96 },
   },
   {
@@ -160,7 +160,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_cd_1', 'p_radius_2'],
     name: 'Широкий всплеск',
     desc: '+5% радиус AoE',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'potionRadius', value: 1.05 },
   },
   {
@@ -171,7 +171,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_radius_1', 'p_notable_brew', 'p_radius_3'],
     name: 'Широкий всплеск II',
     desc: '+5% радиус AoE',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'potionRadius', value: 1.05 },
   },
   {
@@ -182,7 +182,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_dmg_2', 'p_cd_2', 'p_radius_2', 'p_aim_2', 'p_echo_1'],
     name: 'Тяжёлый состав',
     desc: '+15% урон, +10% радиус AoE склянок',
-    cost: 55, currency: 'blue',
+    cost: 82, currency: 'blue',
     effect: { kind: 'potionDamage', value: 1.15 },
   },
   {
@@ -193,7 +193,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_dmg_1', 'p_aim_2', 'eco_essence_notable'],
     name: 'Прицельный бросок',
     desc: '+5% бонус за ручное попадание',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'potionAimBonus', value: 0.05 },
   },
   {
@@ -204,7 +204,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_aim_1', 'p_notable_brew', 'p_keystone_salamander'],
     name: 'Точный бросок II',
     desc: '+5% бонус за ручное попадание',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'potionAimBonus', value: 0.05 },
   },
   {
@@ -215,7 +215,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_notable_brew', 'p_echo_2'],
     name: 'Эхо взрыва',
     desc: '+8% шанс микровзрыва',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'potionEchoChance', value: 0.08 },
   },
   {
@@ -226,7 +226,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_echo_1', 'p_keystone_salamander'],
     name: 'Эхо взрыва II',
     desc: '+8% шанс микровзрыва',
-    cost: 22, currency: 'blue',
+    cost: 33, currency: 'blue',
     effect: { kind: 'potionEchoChance', value: 0.08 },
   },
   {
@@ -250,7 +250,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'e_fire_2', 'e_range_1'],
     name: 'Смазанные шестерни',
     desc: '+4% скорострельность стоек',
-    cost: 8, currency: 'blue',
+    cost: 12, currency: 'blue',
     effect: { kind: 'towerFireRate', value: 1.04 },
   },
   {
@@ -261,7 +261,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'e_range_2', 'e_fire_1', 'e_dmg_1'],
     name: 'Точная оптика',
     desc: '+5% дальность стоек',
-    cost: 8, currency: 'blue',
+    cost: 12, currency: 'blue',
     effect: { kind: 'towerRange', value: 1.05 },
   },
   {
@@ -272,7 +272,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_fire_1', 'e_notable_workshop', 'e_discount'],
     name: 'Смазка II',
     desc: '+4% скорострельность стоек',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'towerFireRate', value: 1.04 },
   },
   {
@@ -283,7 +283,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_range_1', 'e_notable_workshop', 'e_range_3'],
     name: 'Оптика II',
     desc: '+5% дальность стоек',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'towerRange', value: 1.05 },
   },
   {
@@ -294,7 +294,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_range_1', 'e_dmg_2', 'e_notable_workshop'],
     name: 'Усиленные дюзы',
     desc: '+5% урон стоек',
-    cost: 12, currency: 'blue',
+    cost: 18, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.05 },
   },
   {
@@ -305,7 +305,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_dmg_1', 'e_rune_1', 'e_dmg_3'],
     name: 'Усиленные дюзы II',
     desc: '+5% урон стоек',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.05 },
   },
   {
@@ -316,7 +316,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_fire_2', 'e_range_2', 'e_dmg_1', 'e_discount', 'e_rune_1'],
     name: 'Мастерская Архимастера',
     desc: '+10% урон, +5% скорострельность стоек',
-    cost: 60, currency: 'blue',
+    cost: 90, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.10 },
   },
   {
@@ -327,7 +327,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_fire_2', 'e_notable_workshop', 'e_start_level', 'e_fire_3'],
     name: 'Скидка на стойки',
     desc: '−10 золота на первую стойку',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'towerDiscount', value: 10 },
   },
   {
@@ -338,7 +338,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_discount', 'e_rune_1'],
     name: 'Мастер-сборка',
     desc: 'Первая стойка появляется уже на Lv 2',
-    cost: 70, currency: 'blue',
+    cost: 105, currency: 'blue',
     effect: { kind: 'towerStartLevel', value: 2 },
   },
   {
@@ -349,7 +349,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_dmg_2', 'e_notable_workshop', 'e_start_level', 'e_rune_2'],
     name: 'Открытая руническая точка α',
     desc: '+1 руническая точка для стойки',
-    cost: 70, currency: 'blue',
+    cost: 105, currency: 'blue',
     effect: { kind: 'runePointUnlock', value: 1 },
   },
   {
@@ -360,7 +360,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_rune_1', 'e_keystone_archmaster'],
     name: 'Открытая руническая точка β',
     desc: '+1 руническая точка для стойки',
-    cost: 100, currency: 'blue',
+    cost: 150, currency: 'blue',
     effect: { kind: 'runePointUnlock', value: 2 },
   },
   {
@@ -384,7 +384,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'c_overload_2', 'c_aura_1'],
     name: 'Ускоренный заряд',
     desc: '+8% скорость заряда Overload',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'overloadRate', value: 1.08 },
   },
   {
@@ -395,7 +395,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'c_overload_1', 'c_reaction_1', 'c_aura_2'],
     name: 'Резонансная сетка',
     desc: '+8% радиус аур',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'auraRadius', value: 1.08 },
   },
   {
@@ -406,7 +406,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_overload_1', 'c_notable_capacitor', 'c_overload_3'],
     name: 'Конденсатор',
     desc: '+15 макс. заряд Overload',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'overloadMaxCharge', value: 15 },
   },
   {
@@ -417,7 +417,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_aura_1', 'c_notable_capacitor', 'c_reaction_2'],
     name: 'Стихийный резонанс',
     desc: '+10% урон элементальных реакций',
-    cost: 12, currency: 'blue',
+    cost: 18, currency: 'blue',
     effect: { kind: 'reactionDamage', value: 1.10 },
   },
   {
@@ -428,7 +428,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_reaction_1', 'c_keystone_resonator', 'c_reaction_3'],
     name: 'Стихийный резонанс II',
     desc: '+10% урон элементальных реакций',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'reactionDamage', value: 1.10 },
   },
   {
@@ -439,7 +439,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_overload_2', 'c_reaction_1', 'c_catalyst', 'c_keystone_resonator'],
     name: 'Расширенный конденсатор',
     desc: '+25 макс. заряд Overload и +15% скорость заряда',
-    cost: 55, currency: 'blue',
+    cost: 82, currency: 'blue',
     effect: { kind: 'overloadMaxCharge', value: 25 },
   },
   {
@@ -474,7 +474,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 's_hp_2', 's_armor_1'],
     name: 'Прочный каркас',
     desc: '+10 макс. HP манекена',
-    cost: 8, currency: 'blue',
+    cost: 12, currency: 'blue',
     effect: { kind: 'maxHp', value: 10 },
   },
   {
@@ -485,7 +485,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 's_hp_1', 's_armor_2', 's_repair_1'],
     name: 'Железная обшивка',
     desc: '+3% брони манекена',
-    cost: 10, currency: 'blue',
+    cost: 15, currency: 'blue',
     effect: { kind: 'armor', value: 0.03 },
   },
   {
@@ -496,7 +496,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_hp_1', 's_notable_frame', 's_hp_3'],
     name: 'Прочный каркас II',
     desc: '+15 макс. HP манекена',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'maxHp', value: 15 },
   },
   {
@@ -507,7 +507,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_armor_1', 's_notable_frame', 's_repair_1', 's_armor_3'],
     name: 'Железная обшивка II',
     desc: '+3% брони манекена',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'armor', value: 0.03 },
   },
   {
@@ -518,7 +518,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_hp_2', 's_armor_2', 's_thorns', 's_boss_shield'],
     name: 'Усиленный корпус',
     desc: '+25 HP и +5% брони манекена',
-    cost: 55, currency: 'blue',
+    cost: 82, currency: 'blue',
     effect: { kind: 'maxHp', value: 25 },
   },
   {
@@ -529,7 +529,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_armor_1', 's_armor_2', 's_repair_notable'],
     name: 'Авто-ремонт',
     desc: 'Восстановление 1 HP/сек вне боя',
-    cost: 20, currency: 'blue',
+    cost: 30, currency: 'blue',
     effect: { kind: 'autoRepair', value: 1 },
   },
   {
@@ -540,7 +540,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_repair_1', 's_boss_shield', 's_keystone_thorns'],
     name: 'Полевой ремонт',
     desc: 'Восстановление +2 HP/сек вне боя',
-    cost: 60, currency: 'blue',
+    cost: 90, currency: 'blue',
     effect: { kind: 'autoRepair', value: 2 },
   },
   {
@@ -551,7 +551,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_notable_frame', 's_keystone_thorns'],
     name: 'Шипастый каркас',
     desc: 'Атакующий враг получает 3 урона',
-    cost: 22, currency: 'blue',
+    cost: 33, currency: 'blue',
     effect: { kind: 'thornyShell', value: 1 },
   },
   {
@@ -562,7 +562,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_notable_frame', 's_repair_notable', 's_keystone_thorns'],
     name: 'Щит босс-волны',
     desc: 'Щит 25 HP в начале каждой босс-волны',
-    cost: 70, currency: 'blue',
+    cost: 105, currency: 'blue',
     effect: { kind: 'bossShield', value: 25 },
   },
   {
@@ -586,7 +586,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['heart_root', 'eco_essence_notable'],
     name: 'Эссенциальная жатва I',
     desc: '+10% Синей Эссенции за забег',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'essenceBonus', value: 1.10 },
   },
   {
@@ -597,7 +597,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['eco_essence_1', 'eco_gold_1', 'p_aim_1'],
     name: 'Эссенциальная жатва II',
     desc: '+25% Синей Эссенции за забег',
-    cost: 80, currency: 'blue',
+    cost: 120, currency: 'blue',
     effect: { kind: 'essenceBonus', value: 1.25 },
   },
   {
@@ -608,7 +608,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['eco_essence_notable', 'eco_gold_2'],
     name: 'Золотая жила',
     desc: '+10% золота с врагов',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'goldDrop', value: 1.10 },
   },
   {
@@ -619,7 +619,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['eco_gold_1'],
     name: 'Стартовый кошелёк',
     desc: '+30 стартового золота',
-    cost: 20, currency: 'blue',
+    cost: 30, currency: 'blue',
     effect: { kind: 'startGold', value: 30 },
   },
   // ─────────────────────────── v2: Alchemy expansion ───────────────────────
@@ -631,7 +631,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_dmg_2', 'p_notable_concentrate'],
     name: 'Концентрат III',
     desc: '+5% урон склянок',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'potionDamage', value: 1.05 },
   },
   {
@@ -642,7 +642,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_cd_2', 'p_notable_concentrate'],
     name: 'Быстрые руки III',
     desc: '-4% кулдаун склянок',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'potionCooldown', value: 0.96 },
   },
   {
@@ -653,7 +653,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_radius_2', 'p_notable_concentrate'],
     name: 'Широкий всплеск III',
     desc: '+5% радиус AoE',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'potionRadius', value: 1.05 },
   },
   {
@@ -664,7 +664,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_dmg_3', 'p_cd_3', 'p_radius_3', 'p_armor_pen', 'p_crit_1'],
     name: 'Совершенный состав',
     desc: '+20% урон, +5% радиус AoE',
-    cost: 65, currency: 'blue',
+    cost: 98, currency: 'blue',
     effect: { kind: 'potionDamage', value: 1.20 },
   },
   {
@@ -675,7 +675,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_notable_concentrate'],
     name: 'Бронебойные склянки',
     desc: '+10% бронепробитие склянок и стоек',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'armorPen', value: 0.10 },
   },
   {
@@ -686,7 +686,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['p_notable_concentrate', 'p_armor_pen'],
     name: 'Алхимический скол',
     desc: '+5% шанс крит. удара (×2 урон)',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'critChance', value: 0.05 },
   },
   {
@@ -710,7 +710,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_discount', 'e_notable_armament'],
     name: 'Смазка III',
     desc: '+4% скорострельность стоек',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'towerFireRate', value: 1.04 },
   },
   {
@@ -721,7 +721,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_dmg_2', 'e_notable_armament'],
     name: 'Усиленные дюзы III',
     desc: '+5% урон стоек',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.05 },
   },
   {
@@ -732,7 +732,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_range_2', 'e_notable_armament'],
     name: 'Оптика III',
     desc: '+5% дальность стоек',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'towerRange', value: 1.05 },
   },
   {
@@ -743,7 +743,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['e_fire_3', 'e_dmg_3', 'e_range_3', 'e_keystone_overdrive'],
     name: 'Полный арсенал',
     desc: '+15% урон и +10% дальность стоек',
-    cost: 70, currency: 'blue',
+    cost: 105, currency: 'blue',
     effect: { kind: 'towerDamage', value: 1.15 },
   },
   {
@@ -767,7 +767,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_overload_2', 'c_notable_amplifier'],
     name: 'Конденсатор II',
     desc: '+20 макс. заряд Overload',
-    cost: 22, currency: 'blue',
+    cost: 33, currency: 'blue',
     effect: { kind: 'overloadMaxCharge', value: 20 },
   },
   {
@@ -778,7 +778,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_reaction_2', 'c_notable_amplifier'],
     name: 'Стихийный резонанс III',
     desc: '+10% урон элементальных реакций',
-    cost: 18, currency: 'blue',
+    cost: 27, currency: 'blue',
     effect: { kind: 'reactionDamage', value: 1.10 },
   },
   {
@@ -789,7 +789,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_aura_1', 'c_notable_amplifier'],
     name: 'Резонансная сетка II',
     desc: '+8% радиус аур',
-    cost: 14, currency: 'blue',
+    cost: 21, currency: 'blue',
     effect: { kind: 'auraRadius', value: 1.08 },
   },
   {
@@ -800,7 +800,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['c_overload_3', 'c_reaction_3', 'c_aura_2'],
     name: 'Усилитель резонанса',
     desc: '+30 макс. заряд Overload и +10% скорость заряда',
-    cost: 60, currency: 'blue',
+    cost: 90, currency: 'blue',
     effect: { kind: 'overloadMaxCharge', value: 30 },
   },
 
@@ -813,7 +813,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_hp_2', 's_armor_3'],
     name: 'Прочный каркас III',
     desc: '+20 макс. HP манекена',
-    cost: 20, currency: 'blue',
+    cost: 30, currency: 'blue',
     effect: { kind: 'maxHp', value: 20 },
   },
   {
@@ -824,7 +824,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     connects: ['s_armor_2', 's_hp_3'],
     name: 'Железная обшивка III',
     desc: '+3% брони манекена',
-    cost: 16, currency: 'blue',
+    cost: 24, currency: 'blue',
     effect: { kind: 'armor', value: 0.03 },
   },
 ];

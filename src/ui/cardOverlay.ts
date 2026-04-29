@@ -135,6 +135,10 @@ export class CardOverlay {
   isVisible(): boolean {
     return this.root.classList.contains('visible');
   }
+
+  getRootElement(): HTMLElement {
+    return this.root;
+  }
 }
 
 /** Build one card in the Reaper-Hunt-style layout: angled top with a category
