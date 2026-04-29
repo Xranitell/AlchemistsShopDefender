@@ -111,7 +111,22 @@ export class CardOverlay {
 
     this.root.appendChild(stage);
     this.root.classList.add('visible');
+
+    // Lock all interactive elements for 2 seconds so a player who is mid-click
+    // when the draft pops up doesn't immediately auto-pick a card / reroll /
+    // skip. We add a CSS class that disables pointer events on the cards and
+    // action row, then remove it after the delay.
+    this.root.classList.add('cards-pre-lock');
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+    }
+    this.preLockTimeout = window.setTimeout(() => {
+      this.root.classList.remove('cards-pre-lock');
+      this.preLockTimeout = null;
+    }, 2000);
   }
+
+  private preLockTimeout: number | null = null;
 
   showSimple(opts: {
     title: string;
@@ -151,9 +166,14 @@ export class CardOverlay {
   }
 
   hide(): void {
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+      this.preLockTimeout = null;
+    }
     this.root.classList.remove('visible');
     this.root.classList.remove('cards-mode');
     this.root.classList.remove('cursed-mode');
+    this.root.classList.remove('cards-pre-lock');
     this.root.innerHTML = '';
   }
 
@@ -271,7 +291,7 @@ function formatEffectLine(line: string): string {
   // We avoid matching plain "10 сек" as a value chip — only flag explicit
   // multipliers / percentages / signed numbers.
   return escaped.replace(
-    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|\+\s?\d+(?:[.,]\d+)?)/g,
+    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|[+\-−]\s?\d+(?:[.,]\d+)?)/g,
     '<span class="card-rh-val">$1</span>',
   );
 }
