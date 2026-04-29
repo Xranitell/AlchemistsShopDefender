@@ -24,7 +24,7 @@ export function currentWaveDuration(state: GameState): number {
 /** Length of the prep window shown BEFORE the very first wave of a run.
  *  Gives the player a moment to read the scene, place a starter tower, and
  *  pick a target before slimes arrive. */
-export const INITIAL_PREP_DURATION = 12;
+export const INITIAL_PREP_DURATION = 18;
 
 /** Configured length of the upcoming pause (used while the game is in the
  *  'preparing' phase). Falls back to a sensible default when no wave has run
@@ -307,6 +307,13 @@ export function confirmEndlessModifier(state: GameState): void {
 export function totalWaves(state?: GameState): number {
   if (state) return activeWaves(state).length;
   return WAVES.length;
+}
+
+export function isNextWaveBoss(state: GameState): boolean {
+  const waves = activeWaves(state);
+  const nextIdx = state.waveState.currentIndex + 1;
+  if (nextIdx < 0 || nextIdx >= waves.length) return false;
+  return !!waves[nextIdx]!.isBoss;
 }
 
 // Project a world-space angle onto a point just off the arena bounds so an

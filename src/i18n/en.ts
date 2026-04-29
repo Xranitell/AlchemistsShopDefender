@@ -48,6 +48,11 @@ export const EN: Record<string, string> = {
   'ui.hud.module.chronos': 'Chronos',
   'ui.hud.module.transmute': 'Transmute',
   'ui.hud.module.alch_dome': 'Dome',
+  'ui.hud.magnet': 'MAGNET',
+  'ui.hud.ability': 'ABILITY',
+  'ui.hud.abilityComingSoon': 'Coming soon',
+  'ui.hud.overload': 'OVERLOAD',
+  'ui.hud.bossIncoming': '⚠ BOSS WAVE ⚠',
 
   // ── Card overlay (draft) ─────────────────────────────────────────────
   'ui.cards.empty': 'No more upgrade cards — hit "Continue".',
@@ -219,6 +224,7 @@ export const EN: Record<string, string> = {
   // ── Tower shop popup ─────────────────────────────────────────────────
   'ui.tower.cancel': 'Cancel',
   'ui.tower.close': 'Close',
+  'ui.tower.sell': 'Sell',
   'ui.tower.cost.archmaster': '{n}g (Archmaster +25%)',
   'ui.tower.cost.discount': '{n}g (−{d})',
   'ui.tower.cost.plain': '{n}g',

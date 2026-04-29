@@ -364,22 +364,17 @@ export function tryBossDodge(state: GameState, e: Enemy): void {
 
 export function updateGoldPickups(state: GameState, dt: number): void {
   const m = state.mannequin;
-  const radius = m.baseLootRadius * state.modifiers.lootRadiusMult;
-  const magnetActive = state.magnetTimer > 0;
-  if (magnetActive) state.magnetTimer -= dt;
+  if (state.magnetTimer > 0) state.magnetTimer -= dt;
   const remove: number[] = [];
   for (let i = 0; i < state.goldPickups.length; i++) {
     const g = state.goldPickups[i]!;
     g.life -= dt;
     const d = dist(g.pos, m.pos);
-    // While the magnet pulse is active every pickup is pulled in hard; else
-    // only pickups inside the loot radius are drawn toward the hero.
-    if (magnetActive || d < radius) {
-      const dir = norm(sub(m.pos, g.pos));
-      const sp = magnetActive ? 820 : 240 + (radius - d) * 1.4;
-      g.pos.x += dir.x * sp * dt;
-      g.pos.y += dir.y * sp * dt;
-    }
+    // All pickups are always attracted toward the hero automatically.
+    const dir = norm(sub(m.pos, g.pos));
+    const sp = 280 + Math.max(0, 600 - d) * 1.2;
+    g.pos.x += dir.x * sp * dt;
+    g.pos.y += dir.y * sp * dt;
     if (d < 18 || g.life <= 0) {
       if (d < 18) {
         state.gold += g.value;

@@ -510,6 +510,36 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
     }
 
+    // Boss visual distinction: pulsing red/purple glow + crown marker
+    if (e.kind.isBoss) {
+      const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
+      ctx.save();
+      ctx.globalAlpha = 0.35 * bPulse;
+      const bossGlow = ctx.createRadialGradient(
+        e.pos.x, e.pos.y, e.kind.radius * 0.3,
+        e.pos.x, e.pos.y, e.kind.radius * 2.2,
+      );
+      bossGlow.addColorStop(0, 'rgba(255, 50, 50, 0.6)');
+      bossGlow.addColorStop(0.5, 'rgba(180, 40, 120, 0.3)');
+      bossGlow.addColorStop(1, 'rgba(180, 40, 120, 0)');
+      ctx.fillStyle = bossGlow;
+      ctx.fillRect(
+        e.pos.x - e.kind.radius * 2.2,
+        e.pos.y - e.kind.radius * 2.2,
+        e.kind.radius * 4.4,
+        e.kind.radius * 4.4,
+      );
+      ctx.restore();
+
+      // Crown symbol above boss
+      ctx.save();
+      ctx.font = `${Math.round(e.kind.radius * 0.7)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText('👑', e.pos.x, e.pos.y - e.kind.radius - 6 + bob);
+      ctx.restore();
+    }
+
     drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
 
     // Close ethereal phase-out transparency.

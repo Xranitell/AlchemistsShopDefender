@@ -169,10 +169,6 @@ function applyEffect(state: GameState, upg: MetaUpgrade): void {
     case 'goldDrop':
       m.goldDropMult *= e.value;
       break;
-    case 'lootRadius':
-      m.lootRadiusMult *= e.value;
-      break;
-
     // Combat extras (v2)
     case 'armorPen':
       // Stack additively, capped at 0.85 so even fully-invested players still

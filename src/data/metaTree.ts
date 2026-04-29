@@ -190,7 +190,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     branch: 'potions',
     kind: 'small',
     pos: { x: 410, y: 240 },
-    connects: ['p_dmg_1', 'p_aim_2', 'eco_loot_1'],
+    connects: ['p_dmg_1', 'p_aim_2', 'eco_essence_notable'],
     name: 'Прицельный бросок',
     desc: '+5% бонус за ручное попадание',
     cost: 10, currency: 'blue',
@@ -594,7 +594,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     branch: 'survival',
     kind: 'notable',
     pos: { x: 600, y: 210 },
-    connects: ['eco_essence_1', 'eco_gold_1', 'eco_loot_1'],
+    connects: ['eco_essence_1', 'eco_gold_1', 'p_aim_1'],
     name: 'Эссенциальная жатва II',
     desc: '+25% Синей Эссенции за забег',
     cost: 80, currency: 'blue',
@@ -622,18 +622,6 @@ export const META_UPGRADES: MetaUpgrade[] = [
     cost: 20, currency: 'blue',
     effect: { kind: 'startGold', value: 30 },
   },
-  {
-    id: 'eco_loot_1',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 510, y: 210 },
-    connects: ['eco_essence_notable', 'p_aim_1'],
-    name: 'Магнит',
-    desc: '+15% радиус подбора золота',
-    cost: 14, currency: 'blue',
-    effect: { kind: 'lootRadius', value: 1.15 },
-  },
-
   // ─────────────────────────── v2: Alchemy expansion ───────────────────────
   {
     id: 'p_dmg_3',

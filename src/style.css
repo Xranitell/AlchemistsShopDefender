@@ -373,7 +373,7 @@ body {
   border-radius: 50%;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.85;
+  opacity: 0.45;
   /* The conic gradient is set inline by hud.ts via background */
 }
 
@@ -897,6 +897,8 @@ body {
 }
 .tower-shop button:disabled { opacity: 0.4; cursor: not-allowed; }
 .tower-shop .cost { color: var(--gold); }
+.tower-shop-sell { border-color: #ff6a3d !important; }
+.tower-shop-sell:hover:not(:disabled) { border-color: #ff8c3a !important; color: #ff8c3a !important; }
 .tower-shop-rune-banner {
   font-family: 'VT323', monospace;
   font-size: 13px;
@@ -2318,8 +2320,8 @@ body {
 
 .hud-timer-bar {
   position: relative;
-  width: 220px;
-  height: 14px;
+  width: 280px;
+  height: 22px;
   background: rgba(10, 5, 20, 0.85);
   border: 1px solid var(--bg-frame-mid);
   border-radius: 3px;
@@ -2341,11 +2343,28 @@ body {
   align-items: center;
   justify-content: center;
   font-family: 'VT323', monospace;
-  font-size: 12px;
+  font-size: 16px;
   letter-spacing: 1px;
   color: #ffffff;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(0, 0, 0, 0.8);
   pointer-events: none;
+}
+
+/* Boss wave warning indicator */
+.hud-boss-indicator {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #ff5a5a;
+  text-shadow: 0 0 6px rgba(255, 90, 90, 0.7), 0 0 12px rgba(255, 40, 40, 0.4);
+  text-align: center;
+  padding: 3px 8px;
+  margin-top: 3px;
+  animation: boss-blink 1s ease-in-out infinite;
+}
+@keyframes boss-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ============ Battle Pass polish ============ */

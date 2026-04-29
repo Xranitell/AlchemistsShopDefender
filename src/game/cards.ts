@@ -209,9 +209,6 @@ export function applyCard(state: GameState, card: CardDef): void {
       mq.maxHp += 25;
       mq.hp = Math.min(mq.maxHp, mq.hp + 25);
       break;
-    case 'magnet':
-      m.lootRadiusMult *= 1.5;
-      break;
     case 'chronos':
       // Card overrides the active module slot for the run, regardless of what
       // the player picked in the meta menu.

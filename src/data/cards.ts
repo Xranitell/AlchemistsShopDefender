@@ -103,13 +103,6 @@ export const CARDS: CardDef[] = [
     desc: '+25 максимального HP Манекена и +25 текущего HP.',
   },
   {
-    id: 'magnet',
-    name: 'Магнитный резонанс',
-    category: 'ritual',
-    rarity: 'common',
-    desc: '+50% радиус сбора золота.',
-  },
-  {
     id: 'chronos',
     name: 'Хронос',
     category: 'ritual',

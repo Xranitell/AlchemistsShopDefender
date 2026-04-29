@@ -56,6 +56,24 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   return true;
 }
 
+export function sellTower(state: GameState, towerId: number): boolean {
+  const idx = state.towers.findIndex((x) => x.id === towerId);
+  if (idx < 0) return false;
+  const tower = state.towers[idx]!;
+  const rp = state.runePoints.find((r) => r.id === tower.runePointId);
+  const baseCost = tower.kind.cost;
+  let totalInvested = baseCost;
+  for (let lvl = 1; lvl < tower.level; lvl++) {
+    totalInvested += towerUpgradeCost(lvl);
+  }
+  const refund = Math.floor(totalInvested * 0.5);
+  state.gold += refund;
+  state.towers.splice(idx, 1);
+  if (rp) rp.towerId = null;
+  spawnFloatingText(state, `+${refund}g`, tower.pos, '#ffd166');
+  return true;
+}
+
 export function upgradeTower(state: GameState, towerId: number): boolean {
   const t = state.towers.find((x) => x.id === towerId);
   if (!t) return false;
