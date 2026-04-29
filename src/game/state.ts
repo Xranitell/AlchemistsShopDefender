@@ -347,8 +347,8 @@ export interface EndlessModifier {
 }
 
 export const ENDLESS_MODIFIER_POOL: EndlessModifier[] = [
-  { id: 'hp_x125',         label: 'Живучесть',       desc: '×1.25 HP врагов' },
-  { id: 'speed_x110',      label: 'Прыткость',       desc: '×1.10 скорость врагов' },
+  { id: 'hp_x125',         label: 'Живучесть',       desc: '+25% ХП врагов' },
+  { id: 'speed_x110',      label: 'Прыткость',       desc: '+10% скорость врагов' },
   { id: 'gold_minus10',    label: 'Скупость',         desc: '−10% золота' },
   { id: 'extra_enemies',   label: 'Подкрепление',     desc: '+2 врага в каждой волне' },
   { id: 'elites_on_normal', label: 'Элитный патруль', desc: 'Элиты на обычных волнах' },

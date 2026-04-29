@@ -14,6 +14,32 @@ function activeWaves(state: GameState): readonly import('../game/types').WaveDef
   return state.difficulty === 'boss_challenge' ? BOSS_WAVES : WAVES;
 }
 
+// ── Linear per-wave difficulty scaling ──────────────────────────────────────
+// Every wave adds a fixed increment to enemy HP and speed so difficulty
+// grows linearly rather than exponentially. The formula counts the
+// effective wave number across endless loops so the curve stays smooth.
+
+/** Additive HP increment per wave (4 % of base per wave). */
+const HP_PER_WAVE = 0.04;
+/** Additive speed increment per wave (1 % of base per wave). */
+const SPEED_PER_WAVE = 0.01;
+
+/** 0-based effective wave number counting across endless loops. */
+function effectiveWaveNumber(state: GameState): number {
+  const wavesPerCycle = activeWaves(state).length;
+  return state.endlessLoop * wavesPerCycle + Math.max(0, state.waveState.currentIndex);
+}
+
+/** Linear HP scaling multiplier for the current wave. */
+export function waveHpScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * HP_PER_WAVE;
+}
+
+/** Linear speed scaling multiplier for the current wave. */
+export function waveSpeedScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * SPEED_PER_WAVE;
+}
+
 /** Configured length of the active wave in seconds, or 0 if no wave is set. */
 export function currentWaveDuration(state: GameState): number {
   const waves = activeWaves(state);
@@ -180,7 +206,7 @@ export function spawnEnemy(
   splitGeneration = 0,
 ): void {
   const mod = state.difficultyModifier;
-  let maxHp = Math.round(kind.hp * mod.hpMult);
+  let maxHp = Math.round(kind.hp * mod.hpMult * waveHpScale(state));
   const abilities = pickEnemyAbilities(kind.id, mod.abilities);
   // Homunculus enters phase 1 and starts summoning minions every 4 sec.
   const isHomunculus = kind.id === 'boss_homunculus';
@@ -284,10 +310,10 @@ export function confirmEndlessModifier(state: GameState): void {
   // Apply the modifier to the difficulty bundle.
   switch (modId) {
     case 'hp_x125':
-      state.difficultyModifier.hpMult *= 1.25;
+      state.difficultyModifier.hpMult += 0.25;
       break;
     case 'speed_x110':
-      state.difficultyModifier.speedMult *= 1.10;
+      state.difficultyModifier.speedMult += 0.10;
       break;
     case 'gold_minus10':
       state.difficultyModifier.goldMult *= 0.90;

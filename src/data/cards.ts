@@ -25,11 +25,11 @@ export interface CardBullet {
 // wins. Patterns are anchored to whole-word substrings (with optional
 // preceding "макс. " etc.) and case-insensitive.
 //
-// `+` is normally GOOD for the player (more damage / radius / HP / gold);
+// `+` is normally GOOD for the player (more damage / radius / ХП / gold);
 // these patterns mark a `+` bullet as a DRAWBACK because they buff enemies
 // or inflate cooldowns / costs.
 const PLUS_IS_NEGATIVE: RegExp[] = [
-  /HP\s+врагов/i,           // +X% enemy HP
+  /ХП\s+врагов/i,           // +X% enemy ХП
   /скорость\s+врагов/i,     // +X% enemy speed (NB: NOT "скорость атаки стоек")
   /урон\s+врагов/i,         // +X% enemy damage
   /стоимость\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cost
@@ -37,17 +37,17 @@ const PLUS_IS_NEGATIVE: RegExp[] = [
   /(?:^|\s)откат\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cooldown (rare)
   /\bcost\b/i,
   /\bcooldown\b/i,
-  /\benemy\s+HP\b/i,
+  /\benemy\s+ХП\b/i,
   /\benemy\s+speed\b/i,
   /\benemy\s+damage\b/i,
 ];
 
-// `−` is normally BAD for the player (less HP / less damage / less gold);
+// `−` is normally BAD for the player (less ХП / less damage / less gold);
 // these patterns mark a `−` bullet as a DRAWBACK because they reduce a
 // player-beneficial stat. Anything that ISN'T in this list is treated as
 // debuffing enemies (e.g. `−50% брони цели` is good for the player).
 const MINUS_IS_NEGATIVE: RegExp[] = [
-  /макс\.?\s*HP\s+(?:Манекена|Mannequin)/i,
+  /макс\.?\s*ХП\s+(?:Манекена|Mannequin)/i,
   /\bурон\s+склянок/i,
   /\bурон\s+стоек/i,
   /\bурон\s+реакций/i,
@@ -58,7 +58,7 @@ const MINUS_IS_NEGATIVE: RegExp[] = [
   /\bpotion\s+(damage|radius)\b/i,
   /\btower\s+(damage|range|fire-rate)\b/i,
   /\bgold\b/i,
-  /\bmax\s+(?:mannequin\s+)?HP\b/i,
+  /\bmax\s+(?:mannequin\s+)?ХП\b/i,
 ];
 
 /** Classify a single bullet as `pos` or `neg` for the player based on
@@ -122,83 +122,83 @@ export function cardBullets(card: CardDef): CardBullet[] {
 const NORMAL_CARDS: CardDef[] = [
   // Potion damage
   { id: 'pdmg_c', name: 'Тяжёлый состав I', category: 'recipe', rarity: 'common',
-    desc: '+15% урона склянок.' },
+    desc: '+8% урона склянок.' },
   { id: 'pdmg_r', name: 'Тяжёлый состав II', category: 'recipe', rarity: 'rare',
-    desc: '+30% урона склянок.' },
+    desc: '+15% урона склянок.' },
   { id: 'pdmg_e', name: 'Тяжёлый состав III', category: 'recipe', rarity: 'epic',
-    desc: '+50% урона склянок.' },
+    desc: '+25% урона склянок.' },
   { id: 'pdmg_l', name: 'Тяжёлый состав IV', category: 'recipe', rarity: 'legendary',
-    desc: '+80% урона склянок.' },
+    desc: '+40% урона склянок.' },
 
   // Potion radius
   { id: 'prad_c', name: 'Широкий всплеск I', category: 'recipe', rarity: 'common',
-    desc: '+15% радиус взрыва склянок.' },
+    desc: '+8% радиус взрыва склянок.' },
   { id: 'prad_r', name: 'Широкий всплеск II', category: 'recipe', rarity: 'rare',
-    desc: '+25% радиус взрыва склянок.' },
+    desc: '+13% радиус взрыва склянок.' },
   { id: 'prad_e', name: 'Широкий всплеск III', category: 'recipe', rarity: 'epic',
-    desc: '+45% радиус взрыва склянок.' },
+    desc: '+23% радиус взрыва склянок.' },
   { id: 'prad_l', name: 'Широкий всплеск IV', category: 'recipe', rarity: 'legendary',
-    desc: '+70% радиус взрыва склянок.' },
+    desc: '+35% радиус взрыва склянок.' },
 
   // Potion cooldown reduction
   { id: 'pcd_c', name: 'Алхимический хват I', category: 'recipe', rarity: 'common',
-    desc: '−12% откат склянок.' },
+    desc: '−6% откат склянок.' },
   { id: 'pcd_r', name: 'Алхимический хват II', category: 'recipe', rarity: 'rare',
-    desc: '−22% откат склянок.' },
+    desc: '−11% откат склянок.' },
   { id: 'pcd_e', name: 'Алхимический хват III', category: 'recipe', rarity: 'epic',
-    desc: '−35% откат склянок.' },
+    desc: '−18% откат склянок.' },
   { id: 'pcd_l', name: 'Алхимический хват IV', category: 'recipe', rarity: 'legendary',
-    desc: '−50% откат склянок.' },
+    desc: '−25% откат склянок.' },
 
   // Tower damage
   { id: 'tdmg_c', name: 'Точная наводка I', category: 'engineering', rarity: 'common',
-    desc: '+15% урона стоек.' },
+    desc: '+8% урона стоек.' },
   { id: 'tdmg_r', name: 'Точная наводка II', category: 'engineering', rarity: 'rare',
-    desc: '+30% урона стоек.' },
+    desc: '+15% урона стоек.' },
   { id: 'tdmg_e', name: 'Точная наводка III', category: 'engineering', rarity: 'epic',
-    desc: '+50% урона стоек.' },
+    desc: '+25% урона стоек.' },
   { id: 'tdmg_l', name: 'Точная наводка IV', category: 'engineering', rarity: 'legendary',
-    desc: '+80% урона стоек.' },
+    desc: '+40% урона стоек.' },
 
   // Tower fire rate
   { id: 'tfr_c', name: 'Смазанные механизмы I', category: 'engineering', rarity: 'common',
-    desc: '+12% скорость атаки стоек.' },
+    desc: '+6% скорость атаки стоек.' },
   { id: 'tfr_r', name: 'Смазанные механизмы II', category: 'engineering', rarity: 'rare',
-    desc: '+22% скорость атаки стоек.' },
+    desc: '+11% скорость атаки стоек.' },
   { id: 'tfr_e', name: 'Смазанные механизмы III', category: 'engineering', rarity: 'epic',
-    desc: '+40% скорость атаки стоек.' },
+    desc: '+20% скорость атаки стоек.' },
   { id: 'tfr_l', name: 'Смазанные механизмы IV', category: 'engineering', rarity: 'legendary',
-    desc: '+60% скорость атаки стоек.' },
+    desc: '+30% скорость атаки стоек.' },
 
   // Tower range
   { id: 'trng_c', name: 'Расширенные линзы I', category: 'engineering', rarity: 'common',
-    desc: '+10% радиус стоек.' },
+    desc: '+5% радиус стоек.' },
   { id: 'trng_r', name: 'Расширенные линзы II', category: 'engineering', rarity: 'rare',
-    desc: '+20% радиус стоек.' },
+    desc: '+10% радиус стоек.' },
   { id: 'trng_e', name: 'Расширенные линзы III', category: 'engineering', rarity: 'epic',
-    desc: '+35% радиус стоек.' },
+    desc: '+18% радиус стоек.' },
   { id: 'trng_l', name: 'Расширенные линзы IV', category: 'engineering', rarity: 'legendary',
-    desc: '+55% радиус стоек.' },
+    desc: '+28% радиус стоек.' },
 
-  // Mannequin HP
+  // Mannequin ХП
   { id: 'hp_c', name: 'Укреплённый каркас I', category: 'ritual', rarity: 'common',
-    desc: '+25 макс. HP Манекена и +25 текущего HP.' },
+    desc: '+13 макс. ХП Манекена и +13 текущего ХП.' },
   { id: 'hp_r', name: 'Укреплённый каркас II', category: 'ritual', rarity: 'rare',
-    desc: '+50 макс. HP Манекена и +50 текущего HP.' },
+    desc: '+25 макс. ХП Манекена и +25 текущего ХП.' },
   { id: 'hp_e', name: 'Укреплённый каркас III', category: 'ritual', rarity: 'epic',
-    desc: '+90 макс. HP Манекена и +90 текущего HP.' },
+    desc: '+45 макс. ХП Манекена и +45 текущего ХП.' },
   { id: 'hp_l', name: 'Укреплённый каркас IV', category: 'ritual', rarity: 'legendary',
-    desc: '+150 макс. HP Манекена и +150 текущего HP.' },
+    desc: '+75 макс. ХП Манекена и +75 текущего ХП.' },
 
   // Gold drop
   { id: 'gold_c', name: 'Золотая лихорадка I', category: 'ritual', rarity: 'common',
-    desc: '+15% золота с врагов.' },
+    desc: '+8% золота с врагов.' },
   { id: 'gold_r', name: 'Золотая лихорадка II', category: 'ritual', rarity: 'rare',
-    desc: '+30% золота с врагов.' },
+    desc: '+15% золота с врагов.' },
   { id: 'gold_e', name: 'Золотая лихорадка III', category: 'ritual', rarity: 'epic',
-    desc: '+50% золота с врагов.' },
+    desc: '+25% золота с врагов.' },
   { id: 'gold_l', name: 'Золотая лихорадка IV', category: 'ritual', rarity: 'legendary',
-    desc: '+80% золота с врагов.' },
+    desc: '+40% золота с врагов.' },
 
 ];
 
@@ -210,49 +210,49 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_flammable_mix',
     name: 'Договор Пламени',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+огненная лужа от склянок (8 урон/с, 3 с) · +30% урон склянок · +15% HP врагов.',
+    desc: '+огненная лужа от склянок (8 урон/с, 3 с) · +15% урон склянок · +15% ХП врагов.',
   },
   {
     id: 'curse_unstable_flask',
     name: 'Нестабильная колба (проклятая)',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+50% шанс вторичного микровзрыва (+50% доп. урона) · +25% радиус склянок · +20% откат склянок.',
+    desc: '+50% шанс вторичного микровзрыва (+50% доп. урона) · +13% радиус склянок · +20% откат склянок.',
   },
   {
     id: 'curse_frost_brew',
     name: 'Морозный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Мороза ко всем склянкам · +30% радиус склянок · +15% HP врагов.',
+    desc: '+стихия Мороза ко всем склянкам · +15% радиус склянок · +15% ХП врагов.',
   },
   {
     id: 'curse_acid_brew',
     name: 'Кислотный пакт',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели 4 с) · +30% урон склянок · +15% HP врагов.',
+    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели 4 с) · +15% урон склянок · +15% ХП врагов.',
   },
   {
     id: 'curse_mercury_brew',
     name: 'Ртутный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Ртути ко всем склянкам · +25% урон и +20% радиус склянок · −25% золота.',
+    desc: '+стихия Ртути ко всем склянкам · +13% урон и +10% радиус склянок · −25% золота.',
   },
   {
     id: 'curse_aether_brew',
     name: 'Эфирный заговор',
     category: 'recipe', rarity: 'legendary', isCursed: true,
-    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +40% урон склянок · +20% HP врагов.',
+    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +20% урон склянок · +20% ХП врагов.',
   },
   {
     id: 'curse_mutagen_brew',
     name: 'Мутагенное проклятие',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+яд от склянок (4 ур/с 5 с, игнор брони) · +35% урон склянок · +20% HP врагов.',
+    desc: '+яд от склянок (4 ур/с 5 с, игнор брони) · +18% урон склянок · +20% ХП врагов.',
   },
   {
     id: 'curse_triple_throw',
     name: 'Тройной обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+веер из 3 склянок раз в 8 с · −20% откат склянок · −20% радиус склянок.',
+    desc: '+веер из 3 склянок раз в 8 с · −10% откат склянок · −20% радиус склянок.',
   },
 
   // Engineering / towers
@@ -260,25 +260,25 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_crossfire',
     name: 'Перекрёстный огонь (проклятый)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+30% урон стоек по горящим врагам · +20% урон стоек · +15% скорость врагов.',
+    desc: '+30% урон стоек по горящим врагам · +10% урон стоек · +15% скорость врагов.',
   },
   {
     id: 'curse_mercury_coating',
     name: 'Ртутное покрытие (проклятое)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+20% замедление от стоек · +25% скорость атаки стоек · −30 макс. HP Манекена.',
+    desc: '+20% замедление от стоек · +13% скорость атаки стоек · −30 макс. ХП Манекена.',
   },
   {
     id: 'curse_acid_tips',
     name: 'Кислотные наконечники (проклятые)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '−15% брони цели при попадании стоек · +25% урон стоек · +30% стоимость стоек.',
+    desc: '−15% брони цели при попадании стоек · +13% урон стоек · +30% стоимость стоек.',
   },
   {
     id: 'curse_synchronized_volley',
     name: 'Синхронный залп (проклятый)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+1 двойной выстрел каждые 4 атаки · +20% урон стоек · +20% HP врагов.',
+    desc: '+1 двойной выстрел каждые 4 атаки · +10% урон стоек · +20% ХП врагов.',
   },
 
   // Rituals / Mannequin
@@ -286,19 +286,19 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_thorny_shell',
     name: 'Шипастая оболочка (проклятая)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+8 урон в ответ при касании Манекена · +50 макс. HP Манекена · −20% золота.',
+    desc: '+8 урон в ответ при касании Манекена · +25 макс. ХП Манекена · −20% золота.',
   },
   {
     id: 'curse_chronos',
     name: 'Хронос (проклятый)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+5 с замедления всех врагов от Overload (заменяет Громоотвод) · +30% урон склянок · +20% откат склянок.',
+    desc: '+5 с замедления всех врагов от Перегруза (заменяет Громоотвод) · +15% урон склянок · +20% откат склянок.',
   },
   {
     id: 'curse_golem_heart',
     name: 'Сердце Голема (проклятое)',
     category: 'ritual', rarity: 'legendary', isCursed: true,
-    desc: '+1 спасение от смерти на 1 HP и щит 6 с · +75 макс. HP · −30% урон склянок.',
+    desc: '+1 спасение от смерти на 1 ХП и щит 6 с · +38 макс. ХП · −30% урон склянок.',
   },
 
   // Catalysts
@@ -306,31 +306,31 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_fire_ruby',
     name: 'Малый огненный камень (проклятый)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '+поджог каждой 5-й склянкой · +25% урон склянок · +15% скорость врагов.',
+    desc: '+поджог каждой 5-й склянкой · +13% урон склянок · +15% скорость врагов.',
   },
   {
     id: 'curse_mercury_ring',
     name: 'Ртутный обруч (проклятый)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '−40% скорость врагов рядом с Манекеном · +30% золота · +15% HP врагов.',
+    desc: '−40% скорость врагов рядом с Манекеном · +15% золота · +15% ХП врагов.',
   },
   {
     id: 'curse_acid_prism',
     name: 'Кислотная призма (проклятая)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '+25% урон стихийных реакций · +25% урон склянок · −35 макс. HP Манекена.',
+    desc: '+13% урон стихийных реакций · +13% урон склянок · −35 макс. ХП Манекена.',
   },
   {
     id: 'curse_aether_engine',
     name: 'Эфирный двигатель (проклятый)',
     category: 'catalyst', rarity: 'legendary', isCursed: true,
-    desc: '+15 заряд Overload за реакцию · +35% урон склянок · +20% откат склянок.',
+    desc: '+15 заряд Перегруза за реакцию · +18% урон склянок · +20% откат склянок.',
   },
   {
     id: 'curse_crown_of_elements',
     name: 'Корона стихий (проклятая)',
     category: 'catalyst', rarity: 'legendary', isCursed: true,
-    desc: '+50% урон реакций, +10 Overload, +1 слот катализатора · +25% урон склянок · +20% HP врагов.',
+    desc: '+25% урон реакций, +10 Перегруз, +1 слот катализатора · +13% урон склянок · +20% ХП врагов.',
   },
 
   // Legendary brews / pacts
@@ -338,13 +338,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_salamander',
     name: 'Договор Саламандры',
     category: 'recipe', rarity: 'legendary', isCursed: true,
-    desc: '+огонь и лужа от всех склянок · +50% урон склянок · +25% откат склянок.',
+    desc: '+огонь и лужа от всех склянок · +25% урон склянок · +25% откат склянок.',
   },
   {
     id: 'curse_archmaster',
     name: 'Печать Архимастера',
     category: 'engineering', rarity: 'legendary', isCursed: true,
-    desc: '+1 уровень новой стойки · +25% урон стоек · +35% стоимость стоек.',
+    desc: '+1 уровень новой стойки · +13% урон стоек · +35% стоимость стоек.',
   },
 ];
 
