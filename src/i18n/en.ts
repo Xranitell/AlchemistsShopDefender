@@ -382,6 +382,25 @@ Object.assign(EN, {
   'cards.curse_archmaster.name': "Archmaster's Seal",
   'cards.curse_archmaster.desc': '+1 level on every new tower · +25% tower damage · +25% tower cost.',
 
+  // Random extras rolled onto cursed cards at draft time so each card
+  // shows 4-5 effects with a randomised pos/neg ratio.
+  'cardExtras.extra_pdmg_10.label': '+10% potion damage',
+  'cardExtras.extra_tdmg_10.label': '+10% tower damage',
+  'cardExtras.extra_pcd_-10.label': '−10% potion cooldown',
+  'cardExtras.extra_trng_10.label': '+10% tower range',
+  'cardExtras.extra_tfr_10.label': '+10% tower fire rate',
+  'cardExtras.extra_prad_10.label': '+10% potion radius',
+  'cardExtras.extra_hp_15.label': '+15 max Mannequin HP',
+  'cardExtras.extra_gold_10.label': '+10% gold',
+  'cardExtras.extra_enemy_hp_8.label': '+8% enemy HP',
+  'cardExtras.extra_enemy_speed_8.label': '+8% enemy speed',
+  'cardExtras.extra_gold_-10.label': '−10% gold',
+  'cardExtras.extra_pcd_10.label': '+10% potion cooldown',
+  'cardExtras.extra_tcost_10.label': '+10% tower cost',
+  'cardExtras.extra_hp_-15.label': '−15 max Mannequin HP',
+  'cardExtras.extra_pdmg_-10.label': '−10% potion damage',
+  'cardExtras.extra_tdmg_-10.label': '−10% tower damage',
+
   // Towers
   'towers.needler.name': 'Needler',
   'towers.needler.desc': 'Cheap tower with quick single-target shots.',

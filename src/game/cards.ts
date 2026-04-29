@@ -5,6 +5,7 @@ import {
   isCursedCard,
   normalCardPool,
 } from '../data/cards';
+import { cursedExtraPool, getCursedExtra } from '../data/cursedExtras';
 import type { CardDef, Rarity } from './types';
 import type { GameState } from './state';
 
@@ -133,7 +134,37 @@ export function rollCardOptions(state: GameState): CardDef[] {
     cc.lastLegendaryWave = currentWave;
   }
 
+  // Cursed-only: clone each cursed card and attach 1-2 randomly-rolled
+  // extras so the displayed bullet count lands at 4-5 with a randomised
+  // pos/neg ratio. We clone so we don't mutate the source-of-truth
+  // CURSED_CARDS array — subsequent drafts must roll fresh extras.
+  for (let i = 0; i < result.length; i++) {
+    const c = result[i]!;
+    if (!isCursedCard(c)) continue;
+    result[i] = withRolledExtras(state, c);
+  }
+
   return result;
+}
+
+/** Clone a cursed card and pick `1-2` extras from the shared pool. The
+ *  number of extras and the pos/neg split are RNG-driven; we never pick
+ *  the same effect id twice. Magnitudes are small (≤±10 %) so extras
+ *  flavour the draft without dwarfing the static cursed payload. */
+function withRolledExtras(state: GameState, card: CardDef): CardDef {
+  // 50/50 between 1 and 2 extras → final bullet count is 4 (3 base + 1)
+  // or 5 (3 base + 2).
+  const extraCount = state.rng.chance(0.5) ? 1 : 2;
+  const ids: string[] = [];
+  for (let i = 0; i < extraCount; i++) {
+    // Independent 50/50 polarity per extra so the row of cursed cards in
+    // a single draft can show distinctly different pos/neg ratios.
+    const polarity = state.rng.chance(0.5) ? 'pos' : 'neg';
+    const pool = cursedExtraPool(polarity).filter((e) => !ids.includes(e.id));
+    if (pool.length === 0) continue;
+    ids.push(state.rng.pick(pool).id);
+  }
+  return { ...card, rolledExtraIds: ids };
 }
 
 // Tiny weighted-pick helper that uses the shared RNG for determinism.
@@ -370,6 +401,16 @@ export function applyCard(state: GameState, card: CardDef): void {
 
     default:
       break;
+  }
+
+  // Cursed-only: apply each rolled extra's mutator. Extras are no-ops on
+  // normal cards (rolledExtraIds is undefined). Order doesn't matter
+  // because every extra is a small independent mult on its own field.
+  if (card.rolledExtraIds) {
+    for (const id of card.rolledExtraIds) {
+      const def = getCursedExtra(id);
+      if (def) def.apply(state);
+    }
   }
 
   state.cardChoice.pickedIds.push(card.id);

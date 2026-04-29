@@ -76,6 +76,11 @@ export type TowerBehavior =
 export type CardCategory = 'recipe' | 'engineering' | 'ritual' | 'catalyst';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
+/** Whether an individual effect bullet on a card helps the player (`pos`)
+ *  or hurts them (`neg`). Used both for value-chip colouring and for the
+ *  pos/neg group separator inside the card body. */
+export type EffectPolarity = 'pos' | 'neg';
+
 export interface CardDef {
   id: string;
   name: string;
@@ -87,6 +92,13 @@ export interface CardDef {
    *  are only offered every 3rd wave (see {@link rollCardOptions}) and use a
    *  distinct dark-purple frame in the card draft UI. */
   isCursed?: boolean;
+  /** Cursed-only: extra effect ids rolled at draft time so the rendered
+   *  card has 4-5 bullets with a randomised pos/neg ratio (see
+   *  {@link rollCursedExtras}). The rolled ids resolve to entries in
+   *  CURSED_EXTRA_EFFECTS and are applied alongside the static `curse_*`
+   *  switch arm in `applyCard`. The field is mutated on a per-draft clone,
+   *  never on the source-of-truth `CURSED_CARDS` array. */
+  rolledExtraIds?: string[];
 }
 
 export interface WaveDef {
