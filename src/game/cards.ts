@@ -1,4 +1,10 @@
-import { CARDS, CARD_SYNERGIES } from '../data/cards';
+import {
+  CARDS,
+  CARD_SYNERGIES,
+  cursedCardPool,
+  isCursedCard,
+  normalCardPool,
+} from '../data/cards';
 import type { CardDef, Rarity } from './types';
 import type { GameState } from './state';
 
@@ -16,35 +22,50 @@ const LEGENDARY_WAVE_COOLDOWN = 5;
 /** GDD §8.3: at least one of every 3 drafts must contain a non-Common option. */
 const NON_COMMON_GUARANTEE_GAP = 3;
 
+/** A card draft is "cursed" when the wave that just ended is the 3rd, 6th,
+ *  9th… wave of the run. Cursed drafts pull from the cursed-only pool and
+ *  every option mixes a unique effect with epic stats and a drawback. */
+export function isCursedWave(currentWave: number): boolean {
+  return currentWave > 0 && currentWave % 3 === 0;
+}
+
 /**
  * Roll the 3 cards offered after the current wave. Implements GDD §8.3 rules:
- *  - smart-bias: cards from already-picked categories get a soft weight boost,
- *    and cards listed as synergy partners of picked cards get a stronger one;
+ *  - on cursed waves (every 3rd wave), the entire offer is drawn from the
+ *    cursed pool — combos of stat boosts + unique effects + a drawback;
+ *  - on regular waves, the offer is purely stat-bonus cards whose magnitude
+ *    is pinned to their rarity;
+ *  - smart-bias: cards from already-picked categories get a soft weight
+ *    boost, and cards listed as synergy partners of picked cards get a
+ *    stronger one;
  *  - Legendary may not be offered twice within `LEGENDARY_WAVE_COOLDOWN` waves;
  *  - if no non-Common option has been offered for `NON_COMMON_GUARANTEE_GAP`
- *    consecutive drafts, force at least one non-Common into the result.
+ *    consecutive (regular) drafts, force at least one non-Common.
  *
  * The function ALSO advances the bookkeeping fields on `state.cardChoice`
- * (`lastLegendaryWave`, `lastNonCommonDraft`) so that the next draft sees the
- * updated cooldown windows.
+ * (`lastLegendaryWave`, `lastNonCommonDraft`, `draftCount`) so the next
+ * draft sees the updated cooldown windows.
  */
 export function rollCardOptions(state: GameState): CardDef[] {
   const cc = state.cardChoice;
   const currentWave = state.waveState.currentIndex + 1; // 1-based
   const taken = new Set(cc.pickedIds);
 
-  // Filter out already-picked cards.
-  let pool = CARDS.filter((c) => !taken.has(c.id));
+  const cursed = isCursedWave(currentWave);
+
+  // Choose the appropriate base pool.
+  let pool = (cursed ? cursedCardPool() : normalCardPool()).filter((c) => !taken.has(c.id));
 
   // Catalyst slot cap (GDD §7.5): if the player has filled every catalyst
-  // slot, stop offering catalyst cards. The Crown of Elements legendary
-  // grants its own bonus slot when equipped, so it's still drawable until
-  // the slot count is also exceeded.
+  // slot, stop offering catalyst cards (cursed or otherwise). Crown of
+  // Elements grants its own bonus slot when picked.
   if (state.equippedCatalysts.length >= state.catalystSlots) {
     pool = pool.filter((c) => c.category !== 'catalyst');
   }
 
-  // Legendary cooldown window — drop legendaries if we offered one too recently.
+  // Legendary cooldown window — drop legendaries if we offered one recently.
+  // Cursed waves still respect the cooldown so the player isn't drowned in
+  // legendary-cursed offers.
   const wavesSinceLegendary = currentWave - cc.lastLegendaryWave;
   if (wavesSinceLegendary < LEGENDARY_WAVE_COOLDOWN) {
     pool = pool.filter((c) => c.rarity !== 'legendary');
@@ -86,25 +107,24 @@ export function rollCardOptions(state: GameState): CardDef[] {
     weighted.splice(idx, 1);
   }
 
-  // Non-Common guarantee. If the result is all-Common AND the streak of
-  // common-only drafts has reached the gap, swap one Common for a random
-  // non-Common still in the pool.
-  const hasNonCommon = result.some((c) => c.rarity !== 'common');
-  const draftsSinceNonCommon = cc.draftCount - cc.lastNonCommonDraft;
-  if (!hasNonCommon && draftsSinceNonCommon >= NON_COMMON_GUARANTEE_GAP - 1) {
-    const remainingNonCommons = pool.filter(
-      (c) => c.rarity !== 'common' && !result.includes(c),
-    );
-    if (remainingNonCommons.length > 0) {
-      const replacement = state.rng.pick(remainingNonCommons);
-      const swapIdx = result.findIndex((c) => c.rarity === 'common');
-      if (swapIdx >= 0) result[swapIdx] = replacement;
+  // Non-Common guarantee — only meaningful for regular drafts (cursed cards
+  // are all epic/legendary, so this is always satisfied for them).
+  if (!cursed) {
+    const hasNonCommon = result.some((c) => c.rarity !== 'common');
+    const draftsSinceNonCommon = cc.draftCount - cc.lastNonCommonDraft;
+    if (!hasNonCommon && draftsSinceNonCommon >= NON_COMMON_GUARANTEE_GAP - 1) {
+      const remainingNonCommons = pool.filter(
+        (c) => c.rarity !== 'common' && !result.includes(c),
+      );
+      if (remainingNonCommons.length > 0) {
+        const replacement = state.rng.pick(remainingNonCommons);
+        const swapIdx = result.findIndex((c) => c.rarity === 'common');
+        if (swapIdx >= 0) result[swapIdx] = replacement;
+      }
     }
   }
 
-  // Bookkeeping: record what we just offered so the next draft can apply
-  // the same cooldown rules. We bump `draftCount` here (after the offering)
-  // so the very first draft of the run is index 0.
+  // Bookkeeping.
   cc.draftCount += 1;
   if (result.some((c) => c.rarity !== 'common')) {
     cc.lastNonCommonDraft = cc.draftCount;
@@ -158,123 +178,202 @@ export function rerollForAd(state: GameState): boolean {
   return true;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// applyCard
+//
+// Dispatches on `card.id`. Normal cards (`<stat>_<rarity>`) only mutate the
+// matching modifier or stat. Cursed cards (`curse_*`) layer their unique
+// effect, the bonus stat, and the drawback in a single switch arm.
+// ────────────────────────────────────────────────────────────────────────────
+
 export function applyCard(state: GameState, card: CardDef): void {
   const m = state.modifiers;
   const mq = state.mannequin;
+  const dm = state.difficultyModifier;
 
   // Track equipped catalysts so the renderer can orbit icons around the
   // Mannequin and so the draft pool can stop offering them once the slot
-  // cap is reached. Crown of Elements is itself a catalyst card AND grants
-  // an extra slot — that bonus is applied below once the card resolves.
+  // cap is reached. Cursed catalyst cards count too.
   if (card.category === 'catalyst' && !state.equippedCatalysts.includes(card.id)) {
     state.equippedCatalysts.push(card.id);
   }
 
+  // ── Normal stat-only cards ────────────────────────────────────────────────
   switch (card.id) {
-    case 'heavy_brew':
-      m.potionDamageMult *= 1.25;
-      break;
-    case 'wide_splash':
-      m.potionRadiusMult *= 1.20;
-      break;
-    case 'quick_hands':
-      m.potionCooldownMult *= 0.85;
-      break;
-    case 'flammable_mix':
+    // Potion damage
+    case 'pdmg_c': m.potionDamageMult *= 1.15; break;
+    case 'pdmg_r': m.potionDamageMult *= 1.30; break;
+    case 'pdmg_e': m.potionDamageMult *= 1.50; break;
+    case 'pdmg_l': m.potionDamageMult *= 1.80; break;
+    // Potion radius
+    case 'prad_c': m.potionRadiusMult *= 1.15; break;
+    case 'prad_r': m.potionRadiusMult *= 1.25; break;
+    case 'prad_e': m.potionRadiusMult *= 1.45; break;
+    case 'prad_l': m.potionRadiusMult *= 1.70; break;
+    // Potion cooldown
+    case 'pcd_c': m.potionCooldownMult *= 0.88; break;
+    case 'pcd_r': m.potionCooldownMult *= 0.78; break;
+    case 'pcd_e': m.potionCooldownMult *= 0.65; break;
+    case 'pcd_l': m.potionCooldownMult *= 0.50; break;
+    // Tower damage
+    case 'tdmg_c': m.towerDamageMult *= 1.15; break;
+    case 'tdmg_r': m.towerDamageMult *= 1.30; break;
+    case 'tdmg_e': m.towerDamageMult *= 1.50; break;
+    case 'tdmg_l': m.towerDamageMult *= 1.80; break;
+    // Tower fire rate
+    case 'tfr_c': m.towerFireRateMult *= 1.12; break;
+    case 'tfr_r': m.towerFireRateMult *= 1.22; break;
+    case 'tfr_e': m.towerFireRateMult *= 1.40; break;
+    case 'tfr_l': m.towerFireRateMult *= 1.60; break;
+    // Tower range
+    case 'trng_c': m.towerRangeMult *= 1.10; break;
+    case 'trng_r': m.towerRangeMult *= 1.20; break;
+    case 'trng_e': m.towerRangeMult *= 1.35; break;
+    case 'trng_l': m.towerRangeMult *= 1.55; break;
+    // Mannequin HP
+    case 'hp_c': mq.maxHp += 25;  mq.hp = Math.min(mq.maxHp, mq.hp + 25);  break;
+    case 'hp_r': mq.maxHp += 50;  mq.hp = Math.min(mq.maxHp, mq.hp + 50);  break;
+    case 'hp_e': mq.maxHp += 90;  mq.hp = Math.min(mq.maxHp, mq.hp + 90);  break;
+    case 'hp_l': mq.maxHp += 150; mq.hp = Math.min(mq.maxHp, mq.hp + 150); break;
+    // Gold drops
+    case 'gold_c': m.goldDropMult *= 1.15; break;
+    case 'gold_r': m.goldDropMult *= 1.30; break;
+    case 'gold_e': m.goldDropMult *= 1.50; break;
+    case 'gold_l': m.goldDropMult *= 1.80; break;
+    // ── Cursed cards ────────────────────────────────────────────────────────
+    // Recipes / brews
+    case 'curse_flammable_mix':
       m.potionLeavesFire = true;
+      m.potionDamageMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'unstable_flask':
+    case 'curse_unstable_flask':
       m.potionEchoExplode = Math.max(m.potionEchoExplode, 0.5);
+      m.potionRadiusMult *= 1.25;
+      m.potionCooldownMult *= 1.15;
       break;
-    case 'oiled_gears':
-      m.towerFireRateMult *= 1.15;
-      break;
-    case 'wider_lenses':
-      m.towerRangeMult *= 1.12;
-      m.towerDamageMult *= 1.10;
-      break;
-    case 'crossfire':
-      m.towerBonusVsBurning = true;
-      break;
-    case 'mercury_coating':
-      m.towerMercurySlow = true;
-      break;
-    case 'acid_tips':
-      m.towerAcidBreak = true;
-      break;
-    case 'synchronized_volley':
-      m.towerSyncVolley = true;
-      break;
-    case 'reinforced_frame':
-      mq.maxHp += 25;
-      mq.hp = Math.min(mq.maxHp, mq.hp + 25);
-      break;
-    case 'chronos':
-      // Card overrides the active module slot for the run, regardless of what
-      // the player picked in the meta menu.
-      state.activeModuleId = 'chronos';
-      break;
-    case 'thorny_shell':
-      m.thornyShell = true;
-      break;
-    case 'gold_rush':
-      m.goldDropMult *= 1.3;
-      break;
-    case 'fire_ruby':
-      m.fireRubyCounter = 5;
-      break;
-    case 'mercury_ring':
-      m.mercuryRingActive = true;
-      break;
-    case 'acid_prism':
-      m.reactionDamageMult *= 1.25;
-      break;
-    case 'aether_engine':
-      m.aetherEngineActive = true;
-      break;
-    case 'frost_brew':
+    case 'curse_frost_brew':
       m.potionFrostActive = true;
+      m.potionRadiusMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'acid_brew':
+    case 'curse_acid_brew':
       m.potionAcidActive = true;
+      m.potionDamageMult *= 1.30;
+      dm.hpMult *= 1.10;
       break;
-    case 'mercury_brew':
+    case 'curse_mercury_brew':
       m.potionMercuryActive = true;
+      m.potionDamageMult *= 1.25;
+      m.potionRadiusMult *= 1.20;
+      m.goldDropMult *= 0.80;
       break;
-    case 'aether_brew':
+    case 'curse_aether_brew':
       m.potionAetherActive = true;
+      m.potionDamageMult *= 1.40;
+      dm.hpMult *= 1.15;
       break;
-    case 'mutagen_brew':
+    case 'curse_mutagen_brew':
       m.potionPoisonActive = true;
+      m.potionDamageMult *= 1.35;
+      dm.hpMult *= 1.15;
+      break;
+    case 'curse_triple_throw':
+      m.tripleThrowActive = true;
+      m.tripleThrowTimer = m.tripleThrowInterval;
+      m.potionCooldownMult *= 0.80;
+      m.potionRadiusMult *= 0.85;
       break;
 
-    // High-tier cards
-    case 'triple_throw':
-      m.tripleThrowActive = true;
-      // First fan triggers after the first interval, not immediately.
-      m.tripleThrowTimer = m.tripleThrowInterval;
+    // Engineering / towers
+    case 'curse_crossfire':
+      m.towerBonusVsBurning = true;
+      m.towerDamageMult *= 1.20;
+      dm.speedMult *= 1.10;
       break;
-    case 'salamander':
-      m.salamanderActive = true;
-      m.potionLeavesFire = true;
-      mq.basePotionCooldown *= 1.20;
+    case 'curse_mercury_coating':
+      m.towerMercurySlow = true;
+      m.towerFireRateMult *= 1.25;
+      mq.maxHp = Math.max(50, mq.maxHp - 20);
+      mq.hp = Math.min(mq.maxHp, mq.hp);
       break;
-    case 'archmaster':
-      m.archmasterActive = true;
+    case 'curse_acid_tips':
+      m.towerAcidBreak = true;
+      m.towerDamageMult *= 1.25;
+      m.towerCostMult *= 1.25;
       break;
-    case 'golem_heart':
-      // Idempotent: only ever 1 charge per run.
+    case 'curse_synchronized_volley':
+      m.towerSyncVolley = true;
+      m.towerDamageMult *= 1.20;
+      dm.hpMult *= 1.15;
+      break;
+
+    // Rituals / mannequin
+    case 'curse_thorny_shell':
+      m.thornyShell = true;
+      mq.maxHp += 50; mq.hp = Math.min(mq.maxHp, mq.hp + 50);
+      m.goldDropMult *= 0.85;
+      break;
+    case 'curse_chronos':
+      state.activeModuleId = 'chronos';
+      m.potionDamageMult *= 1.30;
+      m.potionCooldownMult *= 1.15;
+      break;
+    case 'curse_golem_heart':
       state.golemHeartCharges = 1;
+      mq.maxHp += 75; mq.hp = Math.min(mq.maxHp, mq.hp + 75);
+      m.potionDamageMult *= 0.75;
       break;
-    case 'crown_of_elements':
+
+    // Catalysts
+    case 'curse_fire_ruby':
+      m.fireRubyCounter = 5;
+      m.potionDamageMult *= 1.25;
+      dm.speedMult *= 1.10;
+      break;
+    case 'curse_mercury_ring':
+      m.mercuryRingActive = true;
+      m.goldDropMult *= 1.30;
+      dm.hpMult *= 1.10;
+      break;
+    case 'curse_acid_prism':
+      m.reactionDamageMult *= 1.25;
+      m.potionDamageMult *= 1.25;
+      mq.maxHp = Math.max(50, mq.maxHp - 25);
+      mq.hp = Math.min(mq.maxHp, mq.hp);
+      break;
+    case 'curse_aether_engine':
+      m.aetherEngineActive = true;
+      m.potionDamageMult *= 1.35;
+      m.potionCooldownMult *= 1.15;
+      break;
+    case 'curse_crown_of_elements':
       m.reactionDamageMult *= 1.5;
       m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
-      // GDD §8.2: Crown grants +1 catalyst slot on top of its reaction bonus.
       state.catalystSlots += 1;
+      m.potionDamageMult *= 1.25;
+      dm.hpMult *= 1.15;
+      break;
+
+    // Legendary pacts
+    case 'curse_salamander':
+      m.salamanderActive = true;
+      m.potionLeavesFire = true;
+      m.potionDamageMult *= 1.50;
+      mq.basePotionCooldown *= 1.20;
+      break;
+    case 'curse_archmaster':
+      m.archmasterActive = true;
+      m.towerDamageMult *= 1.25;
+      // Cost penalty already part of archmasterActive; no extra towerCostMult.
       break;
 
     default:
       break;
   }
+
   state.cardChoice.pickedIds.push(card.id);
 }
+
+// Re-export for tests / debug tools that previously imported from this file.
+export { isCursedCard };

@@ -58,12 +58,15 @@ export class TowerShop {
         const discount = isFirst ? this.state.metaTowerDiscount : 0;
         const archmaster = this.state.modifiers.archmasterActive;
         const baseCost = Math.max(0, kind.cost - discount);
-        const displayCost = archmaster ? Math.ceil(baseCost * 1.25) : baseCost;
+        const archmasterMult = archmaster ? 1.25 : 1;
+        const displayCost = Math.ceil(
+          baseCost * archmasterMult * this.state.modifiers.towerCostMult,
+        );
         right.textContent = archmaster
           ? t('ui.tower.cost.archmaster', { n: displayCost })
           : (discount > 0
               ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
-              : t('ui.tower.cost.plain', { n: kind.cost }));
+              : t('ui.tower.cost.plain', { n: displayCost }));
         btn.appendChild(left);
         btn.appendChild(right);
         btn.disabled = this.state.gold < displayCost;

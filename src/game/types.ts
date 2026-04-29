@@ -82,6 +82,11 @@ export interface CardDef {
   category: CardCategory;
   rarity: Rarity;
   desc: string;
+  /** Cursed cards combine 2-3 strong stat boosts with a unique effect AND a
+   *  drawback (weakened mannequin / towers, or strengthened enemies). They
+   *  are only offered every 3rd wave (see {@link rollCardOptions}) and use a
+   *  distinct dark-purple frame in the card draft UI. */
+  isCursed?: boolean;
 }
 
 export interface WaveDef {

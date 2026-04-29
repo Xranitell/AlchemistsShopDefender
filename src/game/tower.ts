@@ -29,10 +29,12 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   if (!kind) return false;
   const isFirst = state.towers.length === 0;
   const discount = isFirst ? state.metaTowerDiscount : 0;
-  // Archmaster legendary: +25% cost on every new tower.
+  // Archmaster legendary: +25% cost on every new tower. Cursed Cards may
+  // additionally raise `towerCostMult` (e.g. Acid Tips Pact).
   const archmaster = state.modifiers.archmasterActive;
   const baseCost = Math.max(0, kind.cost - discount);
-  const cost = archmaster ? Math.ceil(baseCost * 1.25) : baseCost;
+  const archmasterMult = archmaster ? 1.25 : 1;
+  const cost = Math.ceil(baseCost * archmasterMult * state.modifiers.towerCostMult);
   if (state.gold < cost) return false;
   state.gold -= cost;
   const baseLevel = isFirst ? state.metaTowerStartLevel : 1;

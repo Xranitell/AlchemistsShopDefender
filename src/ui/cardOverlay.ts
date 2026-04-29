@@ -22,11 +22,20 @@ export class CardOverlay {
     rerollGold?: { cost: number; canAfford: boolean; onReroll: () => void };
     /** When provided, the overlay renders a "free reroll via ad" button. */
     rerollAd?: { onReroll: () => void };
+    /** When provided, the overlay renders a "Skip" pill that lets the player
+     *  decline the current offer entirely (no card applied). */
+    onSkip?: () => void;
+    /** When true, the overlay paints itself in the cursed colourway so the
+     *  player can tell at a glance that this draft is the every-3rd-wave
+     *  cursed offering. */
+    cursed?: boolean;
   }): void {
     this.root.innerHTML = '';
     this.root.classList.add('cards-mode');
+    this.root.classList.toggle('cursed-mode', !!options.cursed);
     const stage = document.createElement('div');
     stage.className = 'cards-stage';
+    if (options.cursed) stage.classList.add('cursed');
 
     const h = document.createElement('h2');
     h.className = 'cards-stage-title';
@@ -55,10 +64,16 @@ export class CardOverlay {
       stage.appendChild(empty);
     }
 
-    // Bottom action strip ("Реролл / Реролл реклама") — modeled after the
-    // Reaper Hunt mockup. Each pill shows a label + counter; the counter is
-    // the gold cost or remaining ad uses.
-    if (options.cards.length > 0 && (options.rerollGold || options.rerollAd)) {
+    // Bottom action strip ("Реролл / Реролл реклама / Пропустить") — modeled
+    // after the Reaper Hunt mockup. Each pill shows a label + optional
+    // counter; the counter is the gold cost or remaining ad uses. The Skip
+    // pill is rendered whenever an `onSkip` callback was provided so the
+    // player can decline the offer entirely (e.g. on a cursed draft they
+    // don't want to take).
+    const showActionRow =
+      options.cards.length > 0 &&
+      (options.rerollGold || options.rerollAd || options.onSkip);
+    if (showActionRow) {
       const row = document.createElement('div');
       row.className = 'cards-action-row';
 
@@ -79,6 +94,15 @@ export class CardOverlay {
             counter: '1',
             accent: true,
             onClick: () => options.rerollAd!.onReroll(),
+          }),
+        );
+      }
+      if (options.onSkip) {
+        row.appendChild(
+          buildActionPill({
+            label: t('ui.cards.skip'),
+            danger: true,
+            onClick: () => options.onSkip!(),
           }),
         );
       }
@@ -129,6 +153,7 @@ export class CardOverlay {
   hide(): void {
     this.root.classList.remove('visible');
     this.root.classList.remove('cards-mode');
+    this.root.classList.remove('cursed-mode');
     this.root.innerHTML = '';
   }
 
@@ -152,6 +177,7 @@ function buildCardElement(
 ): HTMLElement {
   const c = document.createElement('button');
   c.className = `card-rh rarity-${card.rarity} cat-${card.category}`;
+  if (card.isCursed) c.classList.add('cursed');
   c.setAttribute('aria-label', cardName(card));
 
   const frame = document.createElement('div');
@@ -167,8 +193,15 @@ function buildCardElement(
   top.appendChild(glyph);
   frame.appendChild(top);
 
-  // Optional "NEW!" banner for legendary, mirrored from the reference image.
-  if (card.rarity === 'legendary') {
+  // Optional banner: cursed cards are flagged with a red "ПРОКЛЯТАЯ" tag,
+  // legendaries with the existing yellow "НОВОЕ!" badge. Cursed wins if both
+  // apply.
+  if (card.isCursed) {
+    const tag = document.createElement('div');
+    tag.className = 'card-rh-tag cursed';
+    tag.textContent = t('ui.cards.cursed');
+    frame.appendChild(tag);
+  } else if (card.rarity === 'legendary') {
     const tag = document.createElement('div');
     tag.className = 'card-rh-tag';
     tag.textContent = t('ui.cards.new');
@@ -283,23 +316,30 @@ function categoryGlyphSvg(cat: CardDef['category']): string {
  */
 function buildActionPill(opts: {
   label: string;
-  counter: string;
+  /** Optional small chip on the right (gold cost / counter). Hidden when
+   *  omitted, e.g. on the Skip pill. */
+  counter?: string;
   disabled?: boolean;
   accent?: boolean;
+  /** Renders the pill in the warning/red colourway used for "Skip". */
+  danger?: boolean;
   onClick: () => void;
 }): HTMLButtonElement {
   const b = document.createElement('button');
   b.className = 'cards-action-pill';
   if (opts.accent) b.classList.add('accent');
+  if (opts.danger) b.classList.add('danger');
   if (opts.disabled) b.disabled = true;
   const lab = document.createElement('span');
   lab.className = 'cards-action-label';
   lab.textContent = opts.label;
-  const cnt = document.createElement('span');
-  cnt.className = 'cards-action-counter';
-  cnt.textContent = opts.counter;
   b.appendChild(lab);
-  b.appendChild(cnt);
+  if (opts.counter !== undefined) {
+    const cnt = document.createElement('span');
+    cnt.className = 'cards-action-counter';
+    cnt.textContent = opts.counter;
+    b.appendChild(cnt);
+  }
   b.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   b.addEventListener('click', () => {
     audio.playSfx('uiClick');
