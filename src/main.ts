@@ -315,15 +315,10 @@ function handleClick(at: { x: number; y: number }): void {
   if (mannequinShop.isOpen()) mannequinShop.close();
 }
 
-function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
-  const rect = c.getBoundingClientRect();
-  const sx = rect.width / c.width;
-  const sy = rect.height / c.height;
-  const parent = c.parentElement!.getBoundingClientRect();
-  return {
-    x: rect.left - parent.left + gamePos.x * sx,
-    y: rect.top - parent.top + gamePos.y * sy,
-  };
+function canvasToScreen(_c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
+  // #hud is a fixed 1280×720 container scaled via CSS transform, so popup
+  // positions are in the same coordinate space as the canvas buffer.
+  return { x: gamePos.x, y: gamePos.y };
 }
 
 function showCardOverlay(): void {
