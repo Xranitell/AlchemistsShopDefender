@@ -684,8 +684,9 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.setLineDash([]);
     }
 
-    // HP bar
-    if (e.hp < e.maxHp) {
+    // HP bar (+ optional bonus shield bar above it for cursed-extra shielded
+    // enemies). The shield bar shrinks left-to-right as it gets soaked.
+    if (e.hp < e.maxHp || e.extraShield > 0) {
       const w = Math.max(20, e.kind.radius * 2.4);
       const x = Math.round(e.pos.x - w / 2);
       const y = Math.round(e.pos.y - e.kind.radius - 10);
@@ -697,6 +698,17 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
       ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
+
+      if (e.extraShield > 0 && e.extraShieldMax > 0) {
+        const shieldFrac = e.extraShield / e.extraShieldMax;
+        const sy = y - 4;
+        ctx.fillStyle = '#0d0a14';
+        ctx.fillRect(x - 1, sy - 1, w + 2, 4);
+        ctx.fillStyle = 'rgba(125, 200, 255, 0.85)';
+        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 2);
+        ctx.fillStyle = 'rgba(220, 240, 255, 0.85)';
+        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 1);
+      }
 
       // Elite badge above HP bar.
       if (e.elite) {

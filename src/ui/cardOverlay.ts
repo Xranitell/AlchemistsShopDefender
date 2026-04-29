@@ -1,5 +1,5 @@
-import type { CardDef } from '../game/types';
-import { pickedSynergyNames, cardName, cardDesc } from '../data/cards';
+import type { CardDef, EffectPolarity } from '../game/types';
+import { cardBullets, cardName, pickedSynergyNames } from '../data/cards';
 import { audio } from '../audio/audio';
 import { t } from '../i18n';
 
@@ -111,7 +111,22 @@ export class CardOverlay {
 
     this.root.appendChild(stage);
     this.root.classList.add('visible');
+
+    // Lock all interactive elements for 2 seconds so a player who is mid-click
+    // when the draft pops up doesn't immediately auto-pick a card / reroll /
+    // skip. We add a CSS class that disables pointer events on the cards and
+    // action row, then remove it after the delay.
+    this.root.classList.add('cards-pre-lock');
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+    }
+    this.preLockTimeout = window.setTimeout(() => {
+      this.root.classList.remove('cards-pre-lock');
+      this.preLockTimeout = null;
+    }, 2000);
   }
+
+  private preLockTimeout: number | null = null;
 
   showSimple(opts: {
     title: string;
@@ -151,9 +166,14 @@ export class CardOverlay {
   }
 
   hide(): void {
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+      this.preLockTimeout = null;
+    }
     this.root.classList.remove('visible');
     this.root.classList.remove('cards-mode');
     this.root.classList.remove('cursed-mode');
+    this.root.classList.remove('cards-pre-lock');
     this.root.innerHTML = '';
   }
 
@@ -219,22 +239,29 @@ function buildCardElement(
   div.className = 'card-rh-divider';
   frame.appendChild(div);
 
-  // Effects: split desc into bullets at sentence-like boundaries and wrap any
-  // numeric tokens with a bright value chip so the chrome reads at a glance.
-  // For cursed cards, lines that describe unique effects (not plain stat
-  // changes) get a distinct frame + background so the player can tell the
-  // special ability apart from the stat boosts.
+  // Effects: render bullets grouped by polarity (positive first, a thin
+  // separator, then drawbacks). Each value chip is tinted green/red based
+  // on whether the bullet helps or hurts the player. See `classifyBullet`
+  // in `data/cards.ts` for the heuristic.
   const ul = document.createElement('ul');
   ul.className = 'card-rh-effects';
-  const descLines = splitDesc(cardDesc(card));
-  for (const line of descLines) {
+  const bullets = cardBullets(card);
+  const positives = bullets.filter((b) => b.polarity === 'pos');
+  const negatives = bullets.filter((b) => b.polarity === 'neg');
+  const renderBullet = (text: string, polarity: EffectPolarity) => {
     const li = document.createElement('li');
-    li.innerHTML = formatEffectLine(line);
-    if (card.isCursed && isUniqueEffectLine(line)) {
-      li.classList.add('card-rh-unique');
-    }
+    li.className = polarity === 'pos' ? 'card-rh-bullet-pos' : 'card-rh-bullet-neg';
+    li.innerHTML = formatEffectLine(text, polarity);
     ul.appendChild(li);
+  };
+  for (const b of positives) renderBullet(b.text, 'pos');
+  if (positives.length > 0 && negatives.length > 0) {
+    const sep = document.createElement('li');
+    sep.className = 'card-rh-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    ul.appendChild(sep);
   }
+  for (const b of negatives) renderBullet(b.text, 'neg');
   frame.appendChild(ul);
 
   // Synergy footer (GDD §15.2): "Синергирует с: ..." below the effects, kept
@@ -256,44 +283,24 @@ function buildCardElement(
   return c;
 }
 
-/** Detect whether a description bullet describes a unique effect (vs a plain
- *  stat change). Stat lines start with +/-/×/numbers; unique lines start with
- *  verbs/nouns describing a special mechanic. */
-function isUniqueEffectLine(line: string): boolean {
-  const trimmed = line.trim();
-  // Stat-change lines start with +, -, −, ×, or a digit (e.g. "50% шанс...")
-  if (/^[+\-−×\d]/.test(trimmed)) return false;
-  // Lines about enemies getting buffs are drawbacks, not unique effects
-  if (/^враги\b/i.test(trimmed)) return false;
-  // Lines about cooldown/cost penalties
-  if (/откат|стоят|стоимость/i.test(trimmed) && /\+\d/.test(trimmed)) return false;
-  return true;
-}
-
-/** Split the card description into 1-3 short bullets at sentence-ish
- *  delimiters: ". ", "; ", " · ". Empty fragments are dropped. */
-function splitDesc(desc: string): string[] {
-  const parts = desc
-    .split(/(?:\.\s+|;\s+|\s\u00B7\s)/)
-    .map((p) => p.trim().replace(/\.$/, ''))
-    .filter((p) => p.length > 0);
-  return parts.length > 0 ? parts : [desc];
-}
-
-/** Wrap numeric tokens like "+30%", "×1.5", "5–8 врагов", "10 сек" with a
- *  highlighted value chip so the card chrome echoes the reference design. */
-function formatEffectLine(line: string): string {
+/** Wrap numeric tokens with a highlighted value chip. The chip class
+ *  encodes polarity so positive bullets get the green tint and drawbacks
+ *  get the red tint (see `card-rh-val-pos` / `-neg` in style.css). */
+function formatEffectLine(line: string, polarity: EffectPolarity): string {
   // Escape HTML first.
   const escaped = line
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+  const cls = polarity === 'pos'
+    ? 'card-rh-val card-rh-val-pos'
+    : 'card-rh-val card-rh-val-neg';
   // Numeric tokens: leading +/- optional, integers / decimals, optional %.
   // We avoid matching plain "10 сек" as a value chip — only flag explicit
   // multipliers / percentages / signed numbers.
   return escaped.replace(
-    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|\+\s?\d+(?:[.,]\d+)?)/g,
-    '<span class="card-rh-val">$1</span>',
+    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|[+\-−]\s?\d+(?:[.,]\d+)?)/g,
+    `<span class="${cls}">$1</span>`,
   );
 }
 
