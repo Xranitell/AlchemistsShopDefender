@@ -137,7 +137,7 @@ export function buildInitialState(
   const biomeId: BiomeId = biome ?? biomeFromSeed(actualSeed);
   return {
     rng: new Rng(actualSeed),
-    phase: 'preparing',
+    phase: 'menu',
     arena: {
       width: ARENA_W,
       height: ARENA_H,

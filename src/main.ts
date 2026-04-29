@@ -57,6 +57,14 @@ const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
+const appRoot = document.getElementById('app')!;
+function updateUiScale(): void {
+  const s = Math.min(appRoot.clientWidth / 1280, appRoot.clientHeight / 720);
+  document.documentElement.style.setProperty('--ui-scale', String(s));
+}
+updateUiScale();
+window.addEventListener('resize', updateUiScale);
+
 let meta: MetaSave = loadMeta();
 // Apply the saved locale before any UI is rendered so the very first
 // frames already show the player's language preference.
@@ -749,6 +757,9 @@ function showReviveOverlay(): void {
 
 function restart(): void {
   overlay.hide();
+  state = buildInitialState();
+  towerShop.attach(state);
+  mannequinShop.attach(state);
   showMainMenu();
 }
 
