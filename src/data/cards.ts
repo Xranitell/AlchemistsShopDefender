@@ -210,49 +210,49 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_flammable_mix',
     name: 'Договор Пламени',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+огненная лужа от склянок (8 урон/с, 3 с) · +30% урон склянок · +10% HP врагов.',
+    desc: '+огненная лужа от склянок (8 урон/с, 3 с) · +30% урон склянок · +15% HP врагов.',
   },
   {
     id: 'curse_unstable_flask',
     name: 'Нестабильная колба (проклятая)',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+50% шанс вторичного микровзрыва (+50% доп. урона) · +25% радиус склянок · +15% откат склянок.',
+    desc: '+50% шанс вторичного микровзрыва (+50% доп. урона) · +25% радиус склянок · +20% откат склянок.',
   },
   {
     id: 'curse_frost_brew',
     name: 'Морозный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Мороза ко всем склянкам · +30% радиус склянок · +10% HP врагов.',
+    desc: '+стихия Мороза ко всем склянкам · +30% радиус склянок · +15% HP врагов.',
   },
   {
     id: 'curse_acid_brew',
     name: 'Кислотный пакт',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели 4 с) · +30% урон склянок · +10% HP врагов.',
+    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели 4 с) · +30% урон склянок · +15% HP врагов.',
   },
   {
     id: 'curse_mercury_brew',
     name: 'Ртутный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Ртути ко всем склянкам · +25% урон и +20% радиус склянок · −20% золота.',
+    desc: '+стихия Ртути ко всем склянкам · +25% урон и +20% радиус склянок · −25% золота.',
   },
   {
     id: 'curse_aether_brew',
     name: 'Эфирный заговор',
     category: 'recipe', rarity: 'legendary', isCursed: true,
-    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +40% урон склянок · +15% HP врагов.',
+    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +40% урон склянок · +20% HP врагов.',
   },
   {
     id: 'curse_mutagen_brew',
     name: 'Мутагенное проклятие',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+яд от склянок (4 ур/с 5 с, игнор брони) · +35% урон склянок · +15% HP врагов.',
+    desc: '+яд от склянок (4 ур/с 5 с, игнор брони) · +35% урон склянок · +20% HP врагов.',
   },
   {
     id: 'curse_triple_throw',
     name: 'Тройной обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+веер из 3 склянок раз в 8 с · −20% откат склянок · −15% радиус склянок.',
+    desc: '+веер из 3 склянок раз в 8 с · −20% откат склянок · −20% радиус склянок.',
   },
 
   // Engineering / towers
@@ -260,25 +260,25 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_crossfire',
     name: 'Перекрёстный огонь (проклятый)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+30% урон стоек по горящим врагам · +20% урон стоек · +10% скорость врагов.',
+    desc: '+30% урон стоек по горящим врагам · +20% урон стоек · +15% скорость врагов.',
   },
   {
     id: 'curse_mercury_coating',
     name: 'Ртутное покрытие (проклятое)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+20% замедление от стоек · +25% скорость атаки стоек · −20 макс. HP Манекена.',
+    desc: '+20% замедление от стоек · +25% скорость атаки стоек · −30 макс. HP Манекена.',
   },
   {
     id: 'curse_acid_tips',
     name: 'Кислотные наконечники (проклятые)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '−15% брони цели при попадании стоек · +25% урон стоек · +25% стоимость стоек.',
+    desc: '−15% брони цели при попадании стоек · +25% урон стоек · +30% стоимость стоек.',
   },
   {
     id: 'curse_synchronized_volley',
     name: 'Синхронный залп (проклятый)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+1 двойной выстрел каждые 4 атаки · +20% урон стоек · +15% HP врагов.',
+    desc: '+1 двойной выстрел каждые 4 атаки · +20% урон стоек · +20% HP врагов.',
   },
 
   // Rituals / Mannequin
@@ -286,19 +286,19 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_thorny_shell',
     name: 'Шипастая оболочка (проклятая)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+8 урон в ответ при касании Манекена · +50 макс. HP Манекена · −15% золота.',
+    desc: '+8 урон в ответ при касании Манекена · +50 макс. HP Манекена · −20% золота.',
   },
   {
     id: 'curse_chronos',
     name: 'Хронос (проклятый)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+5 с замедления всех врагов от Overload (заменяет Громоотвод) · +30% урон склянок · +15% откат склянок.',
+    desc: '+5 с замедления всех врагов от Overload (заменяет Громоотвод) · +30% урон склянок · +20% откат склянок.',
   },
   {
     id: 'curse_golem_heart',
     name: 'Сердце Голема (проклятое)',
     category: 'ritual', rarity: 'legendary', isCursed: true,
-    desc: '+1 спасение от смерти на 1 HP и щит 6 с · +75 макс. HP · −25% урон склянок.',
+    desc: '+1 спасение от смерти на 1 HP и щит 6 с · +75 макс. HP · −30% урон склянок.',
   },
 
   // Catalysts
@@ -306,31 +306,31 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_fire_ruby',
     name: 'Малый огненный камень (проклятый)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '+поджог каждой 5-й склянкой · +25% урон склянок · +10% скорость врагов.',
+    desc: '+поджог каждой 5-й склянкой · +25% урон склянок · +15% скорость врагов.',
   },
   {
     id: 'curse_mercury_ring',
     name: 'Ртутный обруч (проклятый)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '−40% скорость врагов рядом с Манекеном · +30% золота · +10% HP врагов.',
+    desc: '−40% скорость врагов рядом с Манекеном · +30% золота · +15% HP врагов.',
   },
   {
     id: 'curse_acid_prism',
     name: 'Кислотная призма (проклятая)',
     category: 'catalyst', rarity: 'epic', isCursed: true,
-    desc: '+25% урон стихийных реакций · +25% урон склянок · −25 макс. HP Манекена.',
+    desc: '+25% урон стихийных реакций · +25% урон склянок · −35 макс. HP Манекена.',
   },
   {
     id: 'curse_aether_engine',
     name: 'Эфирный двигатель (проклятый)',
     category: 'catalyst', rarity: 'legendary', isCursed: true,
-    desc: '+15 заряд Overload за реакцию · +35% урон склянок · +15% откат склянок.',
+    desc: '+15 заряд Overload за реакцию · +35% урон склянок · +20% откат склянок.',
   },
   {
     id: 'curse_crown_of_elements',
     name: 'Корона стихий (проклятая)',
     category: 'catalyst', rarity: 'legendary', isCursed: true,
-    desc: '+50% урон реакций, +10 Overload, +1 слот катализатора · +25% урон склянок · +15% HP врагов.',
+    desc: '+50% урон реакций, +10 Overload, +1 слот катализатора · +25% урон склянок · +20% HP врагов.',
   },
 
   // Legendary brews / pacts
@@ -338,13 +338,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_salamander',
     name: 'Договор Саламандры',
     category: 'recipe', rarity: 'legendary', isCursed: true,
-    desc: '+огонь и лужа от всех склянок · +50% урон склянок · +20% откат склянок.',
+    desc: '+огонь и лужа от всех склянок · +50% урон склянок · +25% откат склянок.',
   },
   {
     id: 'curse_archmaster',
     name: 'Печать Архимастера',
     category: 'engineering', rarity: 'legendary', isCursed: true,
-    desc: '+1 уровень новой стойки · +25% урон стоек · +25% стоимость стоек.',
+    desc: '+1 уровень новой стойки · +25% урон стоек · +35% стоимость стоек.',
   },
 ];
 
