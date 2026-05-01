@@ -776,7 +776,7 @@ body {
   padding: 0;
   cursor: pointer;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 3 / 4.4;
   /* Two chained drop-shadows: the dark one underneath the card, plus a
    * rarity-colored bloom that's visible OUTSIDE the clipped frame (because
    * `clip-path` on `.card-rh-frame` would otherwise eat any outer

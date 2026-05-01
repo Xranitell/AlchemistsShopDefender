@@ -79,18 +79,6 @@ export function classifyBullet(text: string): EffectPolarity {
   return 'pos';
 }
 
-/** Detect whether a bullet describes a unique mechanic (not a plain stat
- *  +/−X% change). Unique bullets typically start with `+` followed by a
- *  word rather than a number, or describe a game-changing ability. */
-function isUniqueBullet(text: string): boolean {
-  const t = text.trim();
-  // Starts with + but no number right after → mechanic like "+огненная лужа"
-  if (/^\+[^\d\s−]/.test(t)) return true;
-  // Explicit mechanic keywords (RU + EN)
-  if (/(?:лужа|стихия|яд|веер|замедление|поджог|спасение|заряд|двойной\s+выстрел|удвоен|element|puddle|ignite|fan|double\s+shot|slow|death\s+save)/i.test(t)) return true;
-  return false;
-}
-
 /** Split a card description into its `·`-separated bullets, classify each
  *  as pos/neg, and append any rolled-extra bullets attached to a per-draft
  *  card instance. Returns the bullets in their original order; the renderer
@@ -105,7 +93,7 @@ export function cardBullets(card: CardDef): CardBullet[] {
   const base: CardBullet[] = (parts.length > 0 ? parts : [desc]).map((text, idx) => ({
     text,
     polarity: classifyBullet(text),
-    isUnique: isCursed && idx === 0 && isUniqueBullet(text),
+    isUnique: isCursed && idx === 0,
   }));
   const extras = card.rolledExtraIds ?? [];
   for (const id of extras) {
