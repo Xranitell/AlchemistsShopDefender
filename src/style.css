@@ -2377,26 +2377,6 @@ body {
   text-align: right;
 }
 
-/* ============ Main menu illustration ============ */
-.mm-illustration {
-  width: min(92%, 500px);
-  aspect-ratio: 11/9;
-  background:
-    radial-gradient(ellipse at 50% 55%, rgba(125, 249, 255, 0.16), transparent 48%),
-    linear-gradient(180deg, #111827 0%, #101522 100%);
-  border: 0;
-  border-radius: 12px;
-  padding: 0;
-  filter: drop-shadow(0 13px 20px rgba(0, 0, 0, 0.45));
-  box-shadow: none;
-}
-.mm-illustration svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  image-rendering: pixelated;
-}
-
 /* Extra currencies shown at top of the menu */
 .mm-currency.epic-key strong { color: #c084fc; }
 .mm-currency.ancient-key strong { color: #ffd166; }

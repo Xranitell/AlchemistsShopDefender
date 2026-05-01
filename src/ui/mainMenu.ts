@@ -124,12 +124,6 @@ export class MainMenu {
     title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
     midCol.appendChild(title);
 
-    // Central illustration — pixel-art style alchemist's shop with hero in front.
-    const illu = document.createElement('div');
-    illu.className = 'mm-illustration';
-    illu.innerHTML = shopIllustrationSVG();
-    midCol.appendChild(illu);
-
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
     battleBtn.textContent = t('ui.menu.toBattle');
@@ -208,52 +202,6 @@ export class MainMenu {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
-}
-
-// Pixel-art-ish storefront illustration drawn in SVG so it ships with zero
-// asset pipeline. Colours match the in-game palette (wood + copper + purple
-// potions + warm lantern glow).
-function shopIllustrationSVG(): string {
-  return `<svg viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
-    <defs>
-      <radialGradient id="sky" cx="50%" cy="48%" r="72%">
-        <stop offset="0%" stop-color="#27445b"/>
-        <stop offset="58%" stop-color="#121a2a"/>
-        <stop offset="100%" stop-color="#080b12"/>
-      </radialGradient>
-      <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#ffd27a" stop-opacity="0.8"/>
-        <stop offset="100%" stop-color="#ffd27a" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <rect width="220" height="180" fill="url(#sky)"/>
-    <ellipse cx="110" cy="139" rx="76" ry="26" fill="#151c2c"/>
-    <polygon points="56,122 110,96 164,122 110,154" fill="#4d596f"/>
-    <polygon points="56,122 110,154 110,166 48,132" fill="#2c3448"/>
-    <polygon points="164,122 110,154 110,166 172,132" fill="#242b3d"/>
-    <polygon points="62,120 110,98 158,120 110,147" fill="#758096"/>
-    <polyline points="72,122 110,104 148,122" fill="none" stroke="#9ba6bb" stroke-width="2"/>
-    <polyline points="82,128 110,115 138,128" fill="none" stroke="#59657f" stroke-width="2"/>
-    <polygon points="74,92 110,64 146,92 110,112" fill="#9a5a2a" stroke="#2a1810" stroke-width="3"/>
-    <polygon points="82,92 110,70 138,92 110,107" fill="#c07a3e"/>
-    <polygon points="78,94 110,111 110,143 78,126" fill="#6b4026" stroke="#2a1810" stroke-width="2"/>
-    <polygon points="142,94 110,111 110,143 142,126" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
-    <polygon points="92,102 110,111 110,136 92,127" fill="#2a1810"/>
-    <polygon points="119,106 134,99 134,122 119,130" fill="#24445d" stroke="#182436" stroke-width="2"/>
-    <rect x="74" y="113" width="9" height="28" fill="#5a3622"/>
-    <rect x="137" y="112" width="8" height="27" fill="#5a3622"/>
-    <rect x="100" y="53" width="9" height="16" fill="#454a60" stroke="#1a1d28" stroke-width="2"/>
-    <ellipse cx="103" cy="49" rx="7" ry="3" fill="#9c8a90" opacity="0.6"/>
-    <circle cx="126" cy="112" r="12" fill="url(#glow)"/>
-    <rect x="124" y="111" width="4" height="7" fill="#ffd166"/>
-    <rect x="65" y="128" width="12" height="19" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
-    <rect x="145" y="130" width="18" height="17" fill="#b78250" stroke="#2a1810" stroke-width="2"/>
-    <circle cx="89" cy="136" r="3" fill="#7df9ff"/>
-    <circle cx="133" cy="132" r="3" fill="#c084fc"/>
-    <circle cx="153" cy="139" r="3" fill="#4fd36a"/>
-    <rect x="44" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
-    <rect x="154" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
-  </svg>`;
 }
 
 /** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).
