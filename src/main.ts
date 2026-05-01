@@ -45,6 +45,32 @@ import { audio } from './audio/audio';
 import { tutorial } from './ui/tutorial';
 import { setLocale, t, onLocaleChange } from './i18n';
 
+// ── Mobile viewport scaling ──────────────────────────────────────────
+// On small screens (phones / small tablets) we override the viewport
+// width to 1280 CSS-px so the browser renders the page at the same scale
+// as a 1280-wide PC window and then CSS-scales it down to fit. This
+// preserves the exact same look as the desktop version.
+const DESIGN_WIDTH = 1280;
+const MOBILE_BREAKPOINT = 1024;
+
+function applyMobileViewport(): void {
+  const vpMeta = document.querySelector('meta[name="viewport"]');
+  if (!vpMeta) return;
+  const physSmall = Math.min(screen.width, screen.height);
+  if (physSmall < MOBILE_BREAKPOINT) {
+    vpMeta.setAttribute(
+      'content',
+      `width=${DESIGN_WIDTH}, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1`,
+    );
+  }
+  // Try to lock orientation to landscape on mobile.
+  try {
+    const orient = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    if (orient?.lock) orient.lock('landscape').catch(() => {});
+  } catch { /* not supported — no-op */ }
+}
+applyMobileViewport();
+
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
 const overlayRoot = document.getElementById('overlay') as HTMLDivElement | null;
@@ -100,6 +126,21 @@ function startAudioOnGesture(): void {
 }
 ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
   window.addEventListener(evt, startAudioOnGesture, { once: true, passive: true });
+});
+
+// On mobile, request fullscreen on first tap to hide the browser chrome
+// and give the game the entire screen. `requestFullscreen` must be called
+// from inside a user-gesture handler.
+function requestFullscreenOnMobile(): void {
+  const isMobile = Math.min(screen.width, screen.height) < MOBILE_BREAKPOINT;
+  if (!isMobile) return;
+  const el = document.documentElement;
+  const rfs = el.requestFullscreen
+    ?? (el as unknown as Record<string, unknown>).webkitRequestFullscreen;
+  if (typeof rfs === 'function') rfs.call(el).catch(() => {});
+}
+['pointerdown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, requestFullscreenOnMobile, { once: true, passive: true });
 });
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
@@ -174,6 +215,14 @@ const loop = new Loop((dt) => tick(dt));
 onLocaleChange(() => {
   if (mainMenu.isVisible?.()) showMainMenu();
   else if (settingsOverlay.isVisible?.()) showSettings();
+  // Update portrait-warning text for the current locale.
+  const pw = document.getElementById('portrait-warning');
+  if (pw) {
+    const main = pw.querySelector('[data-i18n="ui.rotate"]');
+    const sub = pw.querySelector('[data-i18n="ui.rotate.sub"]');
+    if (main) main.textContent = t('ui.rotate');
+    if (sub) sub.textContent = t('ui.rotate.sub');
+  }
 });
 
 tutorial.attach(canvas, {

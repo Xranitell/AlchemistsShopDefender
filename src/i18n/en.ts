@@ -4,6 +4,10 @@
  * untranslated text to anyone playing on EN locale.
  */
 export const EN: Record<string, string> = {
+  // ── Mobile orientation warning ──────────────────────────────────────
+  'ui.rotate': 'Rotate your device to landscape',
+  'ui.rotate.sub': 'The game is designed for landscape orientation',
+
   // ── Locale switcher ──────────────────────────────────────────────────
   'ui.lang.ru': 'RU',
   'ui.lang.en': 'EN',
