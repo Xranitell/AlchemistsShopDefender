@@ -3570,3 +3570,25 @@ body {
 .ps-row.ps-debuff .ps-value { color: #ff6a6a; text-shadow: 0 0 6px rgba(255, 106, 106, 0.4); }
 .ps-row.ps-unique .ps-value { color: #c084fc; text-shadow: 0 0 6px rgba(192, 132, 252, 0.5); }
 .ps-row.ps-unique .ps-label { color: #e0d4ff; }
+
+/* Description row under each unique effect in the pause stats overlay */
+.ps-row.ps-unique-desc {
+  color: rgba(224, 212, 255, 0.65);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 2px 0 4px 78px;
+  line-height: 1.25;
+}
+
+/* Line separator between unique effects in the pause stats overlay */
+.ps-unique-sep {
+  height: 1px;
+  margin: 8px 12px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(192, 132, 252, 0.30) 20%,
+    rgba(192, 132, 252, 0.30) 80%,
+    transparent 100%
+  );
+}

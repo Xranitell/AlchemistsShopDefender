@@ -18,6 +18,9 @@ export function cardDesc(card: CardDef): string {
 export interface CardBullet {
   text: string;
   polarity: EffectPolarity;
+  /** True when this bullet describes a unique mechanic (not a plain stat
+   *  bonus). Used by the card renderer to paint a special backing. */
+  isUnique?: boolean;
 }
 
 // Patterns that flip the natural sign-based polarity. Order is checked
@@ -76,6 +79,18 @@ export function classifyBullet(text: string): EffectPolarity {
   return 'pos';
 }
 
+/** Detect whether a bullet describes a unique mechanic (not a plain stat
+ *  +/−X% change). Unique bullets typically start with `+` followed by a
+ *  word rather than a number, or describe a game-changing ability. */
+function isUniqueBullet(text: string): boolean {
+  const t = text.trim();
+  // Starts with + but no number right after → mechanic like "+огненная лужа"
+  if (/^\+[^\d\s−]/.test(t)) return true;
+  // Explicit mechanic keywords (RU + EN)
+  if (/(?:лужа|стихия|яд|веер|замедление|поджог|спасение|заряд|двойной\s+выстрел|удвоен|element|puddle|ignite|fan|double\s+shot|slow|death\s+save)/i.test(t)) return true;
+  return false;
+}
+
 /** Split a card description into its `·`-separated bullets, classify each
  *  as pos/neg, and append any rolled-extra bullets attached to a per-draft
  *  card instance. Returns the bullets in their original order; the renderer
@@ -86,9 +101,11 @@ export function cardBullets(card: CardDef): CardBullet[] {
     .split(/(?:\.\s+|;\s+|\s\u00B7\s)/)
     .map((p) => p.trim().replace(/\.$/, ''))
     .filter((p) => p.length > 0);
-  const base: CardBullet[] = (parts.length > 0 ? parts : [desc]).map((text) => ({
+  const isCursed = card.isCursed === true;
+  const base: CardBullet[] = (parts.length > 0 ? parts : [desc]).map((text, idx) => ({
     text,
     polarity: classifyBullet(text),
+    isUnique: isCursed && idx === 0 && isUniqueBullet(text),
   }));
   const extras = card.rolledExtraIds ?? [];
   for (const id of extras) {

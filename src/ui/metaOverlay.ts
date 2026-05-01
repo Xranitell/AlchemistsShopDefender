@@ -311,6 +311,19 @@ export class MetaOverlay {
       const allocated = allocatedSet(opts.meta);
       const drawnEdges = new Set<string>();
 
+      // 0) Decorative radial guide circles — thin rings emanating from
+      //    the tree centre to reinforce the radial layout.
+      for (const ringR of [85, 150, 215, 275, 340]) {
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', String(TREE_CX));
+        ring.setAttribute('cy', String(TREE_CY));
+        ring.setAttribute('r', String(ringR));
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', 'rgba(255,255,255,0.06)');
+        ring.setAttribute('stroke-width', '1');
+        svg.appendChild(ring);
+      }
+
       // 1) Edges first (so they sit behind the nodes). PoE-style: every
       //    edge is a quadratic Bézier curve whose control point sits
       //    *outside* the line connecting the two nodes, biased away from

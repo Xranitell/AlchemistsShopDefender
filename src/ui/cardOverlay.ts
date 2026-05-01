@@ -243,17 +243,31 @@ function buildCardElement(
   // separator, then drawbacks). Each value chip is tinted green/red based
   // on whether the bullet helps or hurts the player. See `classifyBullet`
   // in `data/cards.ts` for the heuristic.
+  // Unique-effect bullets get the `card-rh-unique` class for the special
+  // purple backing so they visually stand out from plain stat bonuses.
   const ul = document.createElement('ul');
   ul.className = 'card-rh-effects';
   const bullets = cardBullets(card);
-  const positives = bullets.filter((b) => b.polarity === 'pos');
+  const uniques = bullets.filter((b) => b.isUnique);
+  const positives = bullets.filter((b) => b.polarity === 'pos' && !b.isUnique);
   const negatives = bullets.filter((b) => b.polarity === 'neg');
-  const renderBullet = (text: string, polarity: EffectPolarity) => {
+  const renderBullet = (text: string, polarity: EffectPolarity, unique?: boolean) => {
     const li = document.createElement('li');
-    li.className = polarity === 'pos' ? 'card-rh-bullet-pos' : 'card-rh-bullet-neg';
+    if (unique) {
+      li.className = 'card-rh-unique';
+    } else {
+      li.className = polarity === 'pos' ? 'card-rh-bullet-pos' : 'card-rh-bullet-neg';
+    }
     li.innerHTML = formatEffectLine(text, polarity);
     ul.appendChild(li);
   };
+  for (const b of uniques) renderBullet(b.text, 'pos', true);
+  if (uniques.length > 0 && (positives.length > 0 || negatives.length > 0)) {
+    const sep = document.createElement('li');
+    sep.className = 'card-rh-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    ul.appendChild(sep);
+  }
   for (const b of positives) renderBullet(b.text, 'pos');
   if (positives.length > 0 && negatives.length > 0) {
     const sep = document.createElement('li');
