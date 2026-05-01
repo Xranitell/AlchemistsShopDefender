@@ -35,11 +35,16 @@ export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_
   const points: RunePoint[] = [];
   const cx = width / 2;
   const cy = height / 2;
-  // Scale the rune ring to roughly one-third of the smaller axis so the
-  // ring keeps a comfortable distance from both the mannequin in the
-  // centre and the screen edges, no matter the viewport aspect ratio.
-  const rx = Math.min(width, height) * 0.35;
-  const ry = Math.min(width, height) * 0.18;
+  // Fixed pixel offsets for the rune ring. The dais sprite is drawn at a
+  // hard-coded radius (DAIS_RADIUS_OUTER = 170) so the runes have to sit
+  // at the same hard-coded distance to land just outside the dais — on PC,
+  // mobile (CSS-forced 1280-wide viewport), and any aspect ratio in between.
+  // Previously the ring was scaled by the smaller of width/height, which
+  // pushed the runes inward on landscape phones (~576px tall) until they
+  // overlapped the central character. Pinning the radii reproduces the
+  // 1920×1080 layout exactly on every viewport.
+  const rx = Math.min(378, Math.max(0, width / 2 - 24));
+  const ry = Math.min(194, Math.max(0, height / 2 - 24));
   // Visual angles around the dais.
   const angles = [
     -Math.PI / 2,                  // 0  top         (active)
