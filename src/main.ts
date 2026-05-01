@@ -61,7 +61,7 @@ function applyMobileViewport(): void {
   if (physSmall < MOBILE_BREAKPOINT) {
     vpMeta.setAttribute(
       'content',
-      `width=${DESIGN_WIDTH}, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1`,
+      `width=${DESIGN_WIDTH}, viewport-fit=cover, user-scalable=no`,
     );
   }
   // Try to lock orientation to landscape on mobile.
@@ -156,7 +156,12 @@ const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
-const pauseStats = new PauseStatsOverlay(document.body);
+const pauseStats = new PauseStatsOverlay(document.body, {
+  onClose: () => {
+    userPaused = false;
+    hud.setPaused(false);
+  },
+});
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -270,7 +275,14 @@ function tick(dt: number): void {
     }
   }
 
-  state.worldTime += dt;
+  // Tutorial pause — freeze simulation while a tutorial tooltip is visible
+  // so the player can read the hint without enemies advancing. We still
+  // process input so the player can fulfil the step's dismiss condition
+  // (e.g. clicking a rune point to place a tower).
+  const tutorialFrozen = tutorial.isShowingStep()
+    && (state.phase === 'wave' || state.phase === 'preparing');
+
+  if (!tutorialFrozen) state.worldTime += dt;
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
@@ -320,57 +332,59 @@ function tick(dt: number): void {
   }
   input.endFrame();
 
-  // Phase update.
-  if (state.phase === 'preparing') {
-    state.waveState.pauseTime += dt;
-    state.waveState.pauseDurationLeft -= dt;
-    if (state.waveState.pauseDurationLeft <= 0) {
-      towerShop.close();
-      startNextWave(state);
+  // Phase update — skip all simulation ticks while tutorial is frozen.
+  if (!tutorialFrozen) {
+    if (state.phase === 'preparing') {
+      state.waveState.pauseTime += dt;
+      state.waveState.pauseDurationLeft -= dt;
+      if (state.waveState.pauseDurationLeft <= 0) {
+        towerShop.close();
+        startNextWave(state);
+      }
     }
-  }
 
-  if (state.phase === 'wave' && !state.revivePaused) {
-    updateMannequin(state, dt);
-    updateTowers(state, dt);
-    updateProjectiles(state, dt);
-    updateEnemies(state, dt);
-    updateFirePools(state, dt);
-    updateReactionPools(state, dt);
-    updateGoldPickups(state, dt);
-    updateFloatingTexts(state, dt);
-    tickOverloadEffect(dt);
-    tickModuleTimers(state, dt);
-    tickActivePotions(state, dt);
-    updateWave(state, dt);
-  } else if (state.phase === 'preparing') {
-    // Allow projectile and gold pickup decay during pause for clean transitions.
-    updateProjectiles(state, dt);
-    updateGoldPickups(state, dt);
-    updateFloatingTexts(state, dt);
-    tickActivePotions(state, dt);
-  }
-
-  // Auto-repair ticks in both wave and preparing phases
-  if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0 && !state.revivePaused) {
-    state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
-    if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
-      state.mannequin.hp = Math.min(
-        state.mannequin.maxHp,
-        state.mannequin.hp + state.metaAutoRepairRate * dt,
-      );
+    if (state.phase === 'wave' && !state.revivePaused) {
+      updateMannequin(state, dt);
+      updateTowers(state, dt);
+      updateProjectiles(state, dt);
+      updateEnemies(state, dt);
+      updateFirePools(state, dt);
+      updateReactionPools(state, dt);
+      updateGoldPickups(state, dt);
+      updateFloatingTexts(state, dt);
+      tickOverloadEffect(dt);
+      tickModuleTimers(state, dt);
+      tickActivePotions(state, dt);
+      updateWave(state, dt);
+    } else if (state.phase === 'preparing') {
+      // Allow projectile and gold pickup decay during pause for clean transitions.
+      updateProjectiles(state, dt);
+      updateGoldPickups(state, dt);
+      updateFloatingTexts(state, dt);
+      tickActivePotions(state, dt);
     }
-  }
 
-  // Vital Pulse aura — heals the mannequin while a wave is in progress.
-  // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
-  // with Auto-Repair without trivialising tougher waves.
-  if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
-    if (state.mannequin.hp < state.mannequin.maxHp) {
-      state.mannequin.hp = Math.min(
-        state.mannequin.maxHp,
-        state.mannequin.hp + 1 * dt,
-      );
+    // Auto-repair ticks in both wave and preparing phases
+    if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0 && !state.revivePaused) {
+      state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
+      if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
+        state.mannequin.hp = Math.min(
+          state.mannequin.maxHp,
+          state.mannequin.hp + state.metaAutoRepairRate * dt,
+        );
+      }
+    }
+
+    // Vital Pulse aura — heals the mannequin while a wave is in progress.
+    // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
+    // with Auto-Repair without trivialising tougher waves.
+    if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
+      if (state.mannequin.hp < state.mannequin.maxHp) {
+        state.mannequin.hp = Math.min(
+          state.mannequin.maxHp,
+          state.mannequin.hp + 1 * dt,
+        );
+      }
     }
   }
 
