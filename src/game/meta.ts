@@ -1,4 +1,10 @@
-import { META_BY_ID, META_UPGRADES, type MetaUpgrade } from '../data/metaTree';
+import {
+  META_BY_ID,
+  META_UPGRADES,
+  ROOT_NODE_IDS,
+  type MetaUpgrade,
+  type MetaEffect,
+} from '../data/metaTree';
 import {
   ACTIVE_MODULES,
   AURA_MODULES,
@@ -15,15 +21,29 @@ import type { MetaSave } from './save';
 import type { GameState } from './state';
 import { runeUnlockSlotToIndex } from './world';
 
-/** Always-allocated ids that don't need to be in the save file (the root
- *  is granted for free). Keeping them in a single place lets the UI and the
- *  effect application agree on what is pre-allocated. */
-export const ROOT_NODE_ID = 'heart_root';
+/** Always-allocated ids that don't need to be in the save file (the per-tree
+ *  roots are granted for free). Keeping them in a single place lets the UI
+ *  and the effect application agree on what is pre-allocated.
+ *
+ *  Three diamond trees mean three roots — see `metaTree.ts`. */
+export { ROOT_NODE_IDS };
 
-/** Snapshot the set of allocated upgrade ids. Includes the implicit root. */
+/** Backwards-compatible singular alias used by callers that just need *some*
+ *  root id (e.g. when the UI needs a default selection). */
+export const ROOT_NODE_ID = ROOT_NODE_IDS[0] ?? '';
+
+/** Set of all root node ids — used to pre-allocate every tree's entry node. */
+const ROOT_SET = new Set<string>(ROOT_NODE_IDS);
+
+/** Is `id` one of the always-allocated root nodes? */
+export function isRootNode(id: string): boolean {
+  return ROOT_SET.has(id);
+}
+
+/** Snapshot the set of allocated upgrade ids. Includes every implicit root. */
 export function allocatedSet(meta: MetaSave): Set<string> {
   const s = new Set(meta.purchased);
-  s.add(ROOT_NODE_ID);
+  for (const r of ROOT_NODE_IDS) s.add(r);
   return s;
 }
 
@@ -83,7 +103,13 @@ export function getModuleDef(id: string): { name: string; desc: string; slot: 'a
 }
 
 function applyEffect(state: GameState, upg: MetaUpgrade): void {
-  const e = upg.effect;
+  applySingleEffect(state, upg.effect);
+  if (upg.extraEffects) {
+    for (const extra of upg.extraEffects) applySingleEffect(state, extra);
+  }
+}
+
+function applySingleEffect(state: GameState, e: MetaEffect): void {
   const m = state.modifiers;
   switch (e.kind) {
     // Potions
@@ -224,16 +250,16 @@ export function buyMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
 }
 
 /** Remove an allocated node and refund its cost, but only if doing so keeps
- *  the rest of the allocated tree connected to the root. This is the standard
- *  PoE "respec a single node" behaviour. */
+ *  the rest of the allocated nodes connected to a root. This is the standard
+ *  PoE "respec a single node" behaviour, generalised across the three trees:
+ *  every remaining allocated node must still be reachable from at least one
+ *  per-tree root through allocated edges only. */
 export function refundMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
   if (!meta.purchased.includes(upg.id)) return false;
   if (upg.kind === 'root') return false;
 
-  // After removal, every other allocated node must still have a path to the
-  // root through allocated edges only.
   const after = new Set(meta.purchased.filter((id) => id !== upg.id));
-  after.add(ROOT_NODE_ID);
+  for (const r of ROOT_NODE_IDS) after.add(r);
   if (!isAllocationConnected(after)) return false;
 
   meta.purchased = meta.purchased.filter((id) => id !== upg.id);
@@ -243,9 +269,15 @@ export function refundMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
 }
 
 function isAllocationConnected(allocated: Set<string>): boolean {
-  if (!allocated.has(ROOT_NODE_ID)) return false;
+  // BFS from every per-tree root and require that every allocated node ends
+  // up visited. Trees are independent graphs — nodes can only reach their
+  // own tree's root, but every tree's root is always allocated, so every
+  // valid allocation across all three trees is reachable.
   const visited = new Set<string>();
-  const queue: string[] = [ROOT_NODE_ID];
+  const queue: string[] = [];
+  for (const r of ROOT_NODE_IDS) {
+    if (allocated.has(r)) queue.push(r);
+  }
   while (queue.length > 0) {
     const id = queue.shift()!;
     if (visited.has(id)) continue;

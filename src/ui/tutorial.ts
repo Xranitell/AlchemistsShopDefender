@@ -127,6 +127,10 @@ class TutorialController {
    *  the tutorial never runs again. */
   isActive(): boolean { return this.active; }
 
+  /** True when a tutorial tooltip is currently on-screen. Used by main.ts
+   *  to freeze the simulation while the player reads the hint. */
+  isShowingStep(): boolean { return this.currentStep !== null; }
+
   // -- DOM ----------------------------------------------------------------
 
   private buildDom(): void {
@@ -260,6 +264,15 @@ class TutorialController {
 
     this.tooltipText.textContent = tWithFallback(`tutorial.${step.id}`, step.text);
     this.tooltipActions.innerHTML = '';
+    // Close button — always present so the player can dismiss any tutorial
+    // step at will (critical for steps like tower-upgrade where the player
+    // may not have the gold to proceed).
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tutorial-ok-btn';
+    closeBtn.textContent = t('ui.tutorial.ok');
+    closeBtn.addEventListener('click', () => this.completeStep());
+    this.tooltipActions.appendChild(closeBtn);
+
     if (step.showSkip) {
       const skipBtn = document.createElement('button');
       skipBtn.className = 'tutorial-skip-btn';
@@ -268,15 +281,6 @@ class TutorialController {
         this.skipAll();
       });
       this.tooltipActions.appendChild(skipBtn);
-    }
-    // For text-only steps (`auto` dismiss / `centered` target) the player
-    // can also tap the tooltip to dismiss early.
-    if (step.dismiss.kind === 'auto') {
-      const okBtn = document.createElement('button');
-      okBtn.className = 'tutorial-ok-btn';
-      okBtn.textContent = t('ui.tutorial.ok');
-      okBtn.addEventListener('click', () => this.completeStep());
-      this.tooltipActions.appendChild(okBtn);
     }
 
     if (step.target.kind === 'hud' && this.arrowEl) {

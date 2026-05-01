@@ -1,4 +1,4 @@
-import { dist } from '../engine/math';
+
 import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost, WATCH_TOWER_AURA, ETHER_COIL_CHAIN, towerName } from '../data/towers';
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
@@ -53,6 +53,7 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   };
   state.towers.push(tower);
   rp.towerId = tower.id;
+  invalidateTowerCaches();
   spawnFloatingText(state, towerName(kind), rp.pos, '#7df9ff');
   tutorial.notify('towerPlaced');
   return true;
@@ -72,6 +73,7 @@ export function sellTower(state: GameState, towerId: number): boolean {
   state.gold += refund;
   state.towers.splice(idx, 1);
   if (rp) rp.towerId = null;
+  invalidateTowerCaches();
   spawnFloatingText(state, `+${refund}g`, tower.pos, '#ffd166');
   return true;
 }
@@ -89,6 +91,40 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
   return true;
 }
 
+/** Per-frame cache: rune-point lookup keyed by `state.runePoints` reference
+ *  and a count of aura towers, so we can skip the inner aura loop entirely
+ *  when no Сторожевой фонарь is on the field. */
+let cachedRunePoints: GameState['runePoints'] | null = null;
+let cachedRuneById: Map<number, GameState['runePoints'][number]> | null = null;
+let cachedAuraCount = -1;
+let cachedTowers: GameState['towers'] | null = null;
+
+export function invalidateTowerCaches(): void {
+  cachedRunePoints = null;
+  cachedRuneById = null;
+  cachedAuraCount = -1;
+  cachedTowers = null;
+}
+
+function getRuneById(state: GameState, id: number): GameState['runePoints'][number] | undefined {
+  if (cachedRunePoints !== state.runePoints || !cachedRuneById) {
+    cachedRunePoints = state.runePoints;
+    cachedRuneById = new Map();
+    for (const rp of state.runePoints) cachedRuneById.set(rp.id, rp);
+  }
+  return cachedRuneById.get(id);
+}
+
+function getAuraCount(state: GameState): number {
+  if (cachedTowers !== state.towers || cachedAuraCount < 0) {
+    cachedTowers = state.towers;
+    let n = 0;
+    for (const t of state.towers) if (t.kind.behavior === 'aura') n++;
+    cachedAuraCount = n;
+  }
+  return cachedAuraCount;
+}
+
 export function towerStats(state: GameState, t: Tower) {
   let damage = t.kind.damage *
     Math.pow(TOWER_UPGRADE_DAMAGE_MULT, t.level - 1) *
@@ -101,7 +137,7 @@ export function towerStats(state: GameState, t: Tower) {
   let baseRange = t.kind.range * state.modifiers.towerRangeMult * towerRangeMultiplier(state);
 
   // GDD §7.4: rune-point kind buffs the tower placed on it.
-  const rp = state.runePoints.find((r) => r.id === t.runePointId);
+  const rp = getRuneById(state, t.runePointId);
   if (rp) {
     const bonus = runeKindMultipliers(rp, state.worldTime);
     damage *= bonus.damage;
@@ -111,16 +147,22 @@ export function towerStats(state: GameState, t: Tower) {
 
   // Сторожевой фонарь aura: each watch tower whose range covers `t` adds its
   // multipliers. Aura towers don't buff themselves and don't stack with copies
-  // of themselves on the same rune (only one tower per rune anyway).
+  // of themselves on the same rune (only one tower per rune anyway). We skip
+  // the loop entirely when there are no aura towers — the common case.
   let rateMult = 1;
   let rangeMult = 1;
-  for (const other of state.towers) {
-    if (other.id === t.id) continue;
-    if (other.kind.behavior !== 'aura') continue;
-    const auraRange = other.kind.range * state.modifiers.towerRangeMult * towerRangeMultiplier(state);
-    if (dist(other.pos, t.pos) > auraRange) continue;
-    rateMult *= WATCH_TOWER_AURA.fireRateMult;
-    rangeMult *= WATCH_TOWER_AURA.rangeMult;
+  if (getAuraCount(state) > 0) {
+    const rangeMod = state.modifiers.towerRangeMult * towerRangeMultiplier(state);
+    for (const other of state.towers) {
+      if (other.id === t.id) continue;
+      if (other.kind.behavior !== 'aura') continue;
+      const auraRange = other.kind.range * rangeMod;
+      const dx = other.pos.x - t.pos.x;
+      const dy = other.pos.y - t.pos.y;
+      if (dx * dx + dy * dy > auraRange * auraRange) continue;
+      rateMult *= WATCH_TOWER_AURA.fireRateMult;
+      rangeMult *= WATCH_TOWER_AURA.rangeMult;
+    }
   }
   return { damage, rate: baseRate * rateMult, range: baseRange * rangeMult };
 }
@@ -160,41 +202,45 @@ export function runeKindMultipliers(
 function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | null {
   let best: Enemy | null = null;
   let bestScore = -Infinity;
+  const range2 = range * range;
+  const mode = t.targetingMode;
+  const mx = state.mannequin.pos.x;
+  const my = state.mannequin.pos.y;
   for (const e of state.enemies) {
-    const d = dist(e.pos, t.pos);
-    if (d > range) continue;
+    const dx = e.pos.x - t.pos.x;
+    const dy = e.pos.y - t.pos.y;
+    if (dx * dx + dy * dy > range2) continue;
     let score = 0;
-    switch (t.targetingMode) {
+    switch (mode) {
       case 'nearest':
-        // "nearest to mannequin" — higher score = closer to mannequin.
-        score = -dist(e.pos, state.mannequin.pos);
+      case 'first':
+        // "nearest to mannequin" / "first along path" — higher score = closer
+        // to mannequin. We compare by squared distance (monotonic) so we can
+        // skip the per-enemy sqrt; the relative ordering is preserved.
+        {
+          const dmx = e.pos.x - mx;
+          const dmy = e.pos.y - my;
+          score = -(dmx * dmx + dmy * dmy);
+        }
         break;
       case 'strongest':
-        // Highest current HP wins.
         score = e.hp;
         break;
       case 'fastest':
-        // Highest base speed (ignore slow factor so stacking slows doesn't
-        // thrash targeting).
         score = e.kind.speed;
         break;
-      case 'debuffed':
-        // Any enemy with an active debuff gets a big bonus; within debuffed
-        // enemies, prefer the nearest to mannequin.
-        {
-          const hasDebuff = e.status.burnTime > 0
-            || e.status.slowTime > 0
-            || e.status.armorBreakTime > 0
-            || e.status.aetherMarkTime > 0
-            || e.status.frostMarkTime > 0
-            || e.status.poisonTime > 0;
-          score = (hasDebuff ? 10000 : 0) - dist(e.pos, state.mannequin.pos);
-        }
+      case 'debuffed': {
+        const hasDebuff = e.status.burnTime > 0
+          || e.status.slowTime > 0
+          || e.status.armorBreakTime > 0
+          || e.status.aetherMarkTime > 0
+          || e.status.frostMarkTime > 0
+          || e.status.poisonTime > 0;
+        const dmx = e.pos.x - mx;
+        const dmy = e.pos.y - my;
+        score = (hasDebuff ? 10000 : 0) - (dmx * dmx + dmy * dmy);
         break;
-      case 'first':
-        // "First along the path" = closest to mannequin (most progress).
-        score = -dist(e.pos, state.mannequin.pos);
-        break;
+      }
     }
     if (score > bestScore) {
       bestScore = score;
@@ -287,11 +333,13 @@ function fireChainLightning(
   for (let h = 0; h < ETHER_COIL_CHAIN.hops; h++) {
     dmg *= ETHER_COIL_CHAIN.falloff;
     let next: Enemy | null = null;
-    let nextD = ETHER_COIL_CHAIN.range;
+    let nextD2 = ETHER_COIL_CHAIN.range * ETHER_COIL_CHAIN.range;
     for (const e of state.enemies) {
       if (hit.has(e.id)) continue;
-      const d = dist(e.pos, current.pos);
-      if (d <= nextD) { nextD = d; next = e; }
+      const dx = e.pos.x - current.pos.x;
+      const dy = e.pos.y - current.pos.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= nextD2) { nextD2 = d2; next = e; }
     }
     if (!next) break;
     hit.add(next.id);

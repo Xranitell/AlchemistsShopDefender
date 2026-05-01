@@ -28,6 +28,7 @@ import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import { LeaderboardOverlay } from './ui/leaderboardOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
+import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import type { GameState } from './game/state';
@@ -44,6 +45,32 @@ import type { IngredientId } from './data/potions';
 import { audio } from './audio/audio';
 import { tutorial } from './ui/tutorial';
 import { setLocale, t, onLocaleChange } from './i18n';
+
+// ── Mobile viewport scaling ──────────────────────────────────────────
+// On small screens (phones / small tablets) we override the viewport
+// width to 1280 CSS-px so the browser renders the page at the same scale
+// as a 1280-wide PC window and then CSS-scales it down to fit. This
+// preserves the exact same look as the desktop version.
+const DESIGN_WIDTH = 1280;
+const MOBILE_BREAKPOINT = 1024;
+
+function applyMobileViewport(): void {
+  const vpMeta = document.querySelector('meta[name="viewport"]');
+  if (!vpMeta) return;
+  const physSmall = Math.min(screen.width, screen.height);
+  if (physSmall < MOBILE_BREAKPOINT) {
+    vpMeta.setAttribute(
+      'content',
+      `width=${DESIGN_WIDTH}, viewport-fit=cover, user-scalable=no`,
+    );
+  }
+  // Try to lock orientation to landscape on mobile.
+  try {
+    const orient = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    if (orient?.lock) orient.lock('landscape').catch(() => {});
+  } catch { /* not supported — no-op */ }
+}
+applyMobileViewport();
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -101,6 +128,21 @@ function startAudioOnGesture(): void {
 ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
   window.addEventListener(evt, startAudioOnGesture, { once: true, passive: true });
 });
+
+// On mobile, request fullscreen on first tap to hide the browser chrome
+// and give the game the entire screen. `requestFullscreen` must be called
+// from inside a user-gesture handler.
+function requestFullscreenOnMobile(): void {
+  const isMobile = Math.min(screen.width, screen.height) < MOBILE_BREAKPOINT;
+  if (!isMobile) return;
+  const el = document.documentElement;
+  const rfs = el.requestFullscreen
+    ?? (el as unknown as Record<string, unknown>).webkitRequestFullscreen;
+  if (typeof rfs === 'function') rfs.call(el).catch(() => {});
+}
+['pointerdown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, requestFullscreenOnMobile, { once: true, passive: true });
+});
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);
@@ -114,6 +156,12 @@ const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
+const pauseStats = new PauseStatsOverlay(document.body, {
+  onClose: () => {
+    userPaused = false;
+    hud.setPaused(false);
+  },
+});
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -132,10 +180,16 @@ function togglePause(): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') {
     userPaused = false;
     hud.setPaused(false);
+    pauseStats.hide();
     return;
   }
   userPaused = !userPaused;
   hud.setPaused(userPaused);
+  if (userPaused) {
+    pauseStats.show(state);
+  } else {
+    pauseStats.hide();
+  }
 }
 
 const hud = new Hud(hudRoot, {
@@ -174,6 +228,14 @@ const loop = new Loop((dt) => tick(dt));
 onLocaleChange(() => {
   if (mainMenu.isVisible?.()) showMainMenu();
   else if (settingsOverlay.isVisible?.()) showSettings();
+  // Update portrait-warning text for the current locale.
+  const pw = document.getElementById('portrait-warning');
+  if (pw) {
+    const main = pw.querySelector('[data-i18n="ui.rotate"]');
+    const sub = pw.querySelector('[data-i18n="ui.rotate.sub"]');
+    if (main) main.textContent = t('ui.rotate');
+    if (sub) sub.textContent = t('ui.rotate.sub');
+  }
 });
 
 tutorial.attach(canvas, {
@@ -213,7 +275,14 @@ function tick(dt: number): void {
     }
   }
 
-  state.worldTime += dt;
+  // Tutorial pause — freeze simulation while a tutorial tooltip is visible
+  // so the player can read the hint without enemies advancing. We still
+  // process input so the player can fulfil the step's dismiss condition
+  // (e.g. clicking a rune point to place a tower).
+  const tutorialFrozen = tutorial.isShowingStep()
+    && (state.phase === 'wave' || state.phase === 'preparing');
+
+  if (!tutorialFrozen) state.worldTime += dt;
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
@@ -263,57 +332,59 @@ function tick(dt: number): void {
   }
   input.endFrame();
 
-  // Phase update.
-  if (state.phase === 'preparing') {
-    state.waveState.pauseTime += dt;
-    state.waveState.pauseDurationLeft -= dt;
-    if (state.waveState.pauseDurationLeft <= 0) {
-      towerShop.close();
-      startNextWave(state);
+  // Phase update — skip all simulation ticks while tutorial is frozen.
+  if (!tutorialFrozen) {
+    if (state.phase === 'preparing') {
+      state.waveState.pauseTime += dt;
+      state.waveState.pauseDurationLeft -= dt;
+      if (state.waveState.pauseDurationLeft <= 0) {
+        towerShop.close();
+        startNextWave(state);
+      }
     }
-  }
 
-  if (state.phase === 'wave' && !state.revivePaused) {
-    updateMannequin(state, dt);
-    updateTowers(state, dt);
-    updateProjectiles(state, dt);
-    updateEnemies(state, dt);
-    updateFirePools(state, dt);
-    updateReactionPools(state, dt);
-    updateGoldPickups(state, dt);
-    updateFloatingTexts(state, dt);
-    tickOverloadEffect(dt);
-    tickModuleTimers(state, dt);
-    tickActivePotions(state, dt);
-    updateWave(state, dt);
-  } else if (state.phase === 'preparing') {
-    // Allow projectile and gold pickup decay during pause for clean transitions.
-    updateProjectiles(state, dt);
-    updateGoldPickups(state, dt);
-    updateFloatingTexts(state, dt);
-    tickActivePotions(state, dt);
-  }
-
-  // Auto-repair ticks in both wave and preparing phases
-  if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0 && !state.revivePaused) {
-    state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
-    if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
-      state.mannequin.hp = Math.min(
-        state.mannequin.maxHp,
-        state.mannequin.hp + state.metaAutoRepairRate * dt,
-      );
+    if (state.phase === 'wave' && !state.revivePaused) {
+      updateMannequin(state, dt);
+      updateTowers(state, dt);
+      updateProjectiles(state, dt);
+      updateEnemies(state, dt);
+      updateFirePools(state, dt);
+      updateReactionPools(state, dt);
+      updateGoldPickups(state, dt);
+      updateFloatingTexts(state, dt);
+      tickOverloadEffect(dt);
+      tickModuleTimers(state, dt);
+      tickActivePotions(state, dt);
+      updateWave(state, dt);
+    } else if (state.phase === 'preparing') {
+      // Allow projectile and gold pickup decay during pause for clean transitions.
+      updateProjectiles(state, dt);
+      updateGoldPickups(state, dt);
+      updateFloatingTexts(state, dt);
+      tickActivePotions(state, dt);
     }
-  }
 
-  // Vital Pulse aura — heals the mannequin while a wave is in progress.
-  // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
-  // with Auto-Repair without trivialising tougher waves.
-  if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
-    if (state.mannequin.hp < state.mannequin.maxHp) {
-      state.mannequin.hp = Math.min(
-        state.mannequin.maxHp,
-        state.mannequin.hp + 1 * dt,
-      );
+    // Auto-repair ticks in both wave and preparing phases
+    if ((state.phase === 'wave' || state.phase === 'preparing') && state.metaAutoRepairRate > 0 && !state.revivePaused) {
+      state.metaAutoRepairCooldown = Math.max(0, state.metaAutoRepairCooldown - dt);
+      if (state.metaAutoRepairCooldown <= 0 && state.mannequin.hp < state.mannequin.maxHp) {
+        state.mannequin.hp = Math.min(
+          state.mannequin.maxHp,
+          state.mannequin.hp + state.metaAutoRepairRate * dt,
+        );
+      }
+    }
+
+    // Vital Pulse aura — heals the mannequin while a wave is in progress.
+    // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
+    // with Auto-Repair without trivialising tougher waves.
+    if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
+      if (state.mannequin.hp < state.mannequin.maxHp) {
+        state.mannequin.hp = Math.min(
+          state.mannequin.maxHp,
+          state.mannequin.hp + 1 * dt,
+        );
+      }
     }
   }
 

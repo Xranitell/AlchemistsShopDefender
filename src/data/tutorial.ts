@@ -101,7 +101,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'w5-boss',
     trigger: { kind: 'waveStart', wave: 5 },
-    text: 'Босс! Заполни шкалу Overload реакциями и бросками — потом нажми кнопку, чтобы ударить молнией.',
+    text: 'Босс! Заполни шкалу Перегруза реакциями и бросками — потом нажми кнопку, чтобы ударить молнией.',
     target: { kind: 'hud', selector: '[data-tutorial-target="overload"]', arrow: 'down' },
     dismiss: { kind: 'overloadActivated' },
   },
