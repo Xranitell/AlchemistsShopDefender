@@ -311,14 +311,20 @@ body {
 }
 
 /* ============ HUD: bottom row (MAGNET / CTA / ABILITY+OVERLOAD) ============ */
+/* The bottom row uses a 3-column grid (1fr | auto | 1fr) so the centre
+ * column — which holds the hint, the "В БОЙ" CTA and the potion belt —
+ * is always horizontally centred relative to the screen, regardless of
+ * how wide the right-side ABILITY/OVERLOAD buttons get. The two flexible
+ * 1fr columns act as symmetric spacers so the centre block doesn't drift
+ * left when only the right column has content. */
 .hud-bottom-row {
   position: absolute;
   bottom: 18px;
   left: 22px;
   right: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
   gap: 12px;
   pointer-events: none;
 }
@@ -327,13 +333,14 @@ body {
  * it toward the screen centre so the inventory is closer to the player's
  * thumbs and reads alongside the action area. The right-side round
  * buttons (ABILITY / OVERLOAD) stay anchored at the bottom of the row
- * because they sit in their own flex sibling. */
+ * because they sit in their own grid column. */
 .hud-center-bottom {
+  grid-column: 2;
+  justify-self: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  flex: 1;
   text-align: center;
   transform: translateY(-72px);
 }
@@ -383,7 +390,13 @@ body {
 .hud-skip-btn:disabled { opacity: 0; pointer-events: none; }
 
 /* Round icon buttons (MAGNET / ABILITY / OVERLOAD) */
-.hud-bottom-right { display: flex; gap: 14px; align-items: center; }
+.hud-bottom-right {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
 
 .hud-round-btn {
   pointer-events: auto;
@@ -669,6 +682,17 @@ body {
   justify-content: center;
 }
 
+/* For the first 2 seconds after the card draft appears we lock all clickable
+ * surfaces inside the overlay so an in-progress click on the game canvas
+ * doesn't accidentally pick a card / reroll / skip. The cards visibly fade
+ * and lose their hover affordance during that window. */
+#overlay.cards-mode.cards-pre-lock .card-rh,
+#overlay.cards-mode.cards-pre-lock .cards-action-row {
+  pointer-events: none;
+  filter: brightness(0.78) saturate(0.85);
+  transition: filter 250ms ease;
+}
+
 .cards-stage {
   display: flex;
   flex-direction: column;
@@ -734,6 +758,14 @@ body {
   .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 }
 
+/* Animated rotating-angle custom prop powering the running outline + bloom
+ * sweep on every card. Registered via @property so we can transition it. */
+@property --rh-shim-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
 /* Single card. Frame is a flex column so the title / divider / effects
  * stack with the divider taking the natural width. The card itself adds
  * the glow and angled clip-path corners. */
@@ -753,12 +785,90 @@ body {
     drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6))
     drop-shadow(0 0 12px var(--rh-glow, rgba(255, 255, 255, 0.18)));
   transition: transform 120ms ease, filter 120ms ease;
+  /* Default shimmer tint — overridden per rarity below. */
+  --rh-shim: rgba(255, 255, 255, 0.95);
 }
 .card-rh:hover {
   transform: translateY(-6px) scale(1.03);
   filter:
     drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7))
     drop-shadow(0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.28)));
+}
+
+/* Running outline + bloom sweep. Two pseudos sit BEHIND the frame:
+ *   - ::before is a thin (2 px) outset of the card silhouette and carries
+ *     the bright rotating conic gradient — this is the "бегущая обводка"
+ *     that travels around the border.
+ *   - ::after is a much larger, heavily-blurred copy of the same gradient;
+ *     it provides the bloom that bleeds outside the card.
+ *
+ * The conic gradient has two opposing bright sweeps so the running light
+ * is visible from any side at all times. The animation rotates the
+ * gradient angle continuously via the @property-registered
+ * `--rh-shim-angle` custom variable. Per-rarity tints come from
+ * `--rh-shim` set on `.card-rh.rarity-*` rules below. */
+.card-rh::before,
+.card-rh::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--rh-shim-angle, 0deg),
+    transparent 0deg,
+    var(--rh-shim) 22deg,
+    var(--rh-shim) 38deg,
+    transparent 70deg,
+    transparent 180deg,
+    var(--rh-shim) 202deg,
+    var(--rh-shim) 218deg,
+    transparent 250deg,
+    transparent 360deg
+  );
+  animation: rh-shim 3.4s linear infinite;
+}
+/* Thin outline — barely larger than the frame so only a 2 px halo of the
+ * sweep peeks out around the silhouette. */
+.card-rh::before {
+  inset: -2px;
+  z-index: -1;
+  clip-path: polygon(
+    14px 0, calc(100% - 14px) 0, 100% 14px,
+    100% 100%, 0 100%, 0 14px
+  );
+}
+/* Big blurry bloom — extends well outside the card and is heavily blurred
+ * so the running sweep paints a soft halo that drifts around the card. */
+.card-rh::after {
+  inset: -18px;
+  z-index: -2;
+  filter: blur(20px) saturate(1.3);
+  opacity: 0.6;
+  clip-path: polygon(
+    18px 0, calc(100% - 18px) 0, 100% 18px,
+    100% 100%, 0 100%, 0 18px
+  );
+}
+@keyframes rh-shim {
+  to { --rh-shim-angle: 360deg; }
+}
+/* Stagger the shimmer phase across the row so the cards don't pulse
+ * in lockstep — each draft typically shows three cards. */
+.cards-rh > .card-rh:nth-child(2)::before,
+.cards-rh > .card-rh:nth-child(2)::after { animation-delay: -1.1s; }
+.cards-rh > .card-rh:nth-child(3)::before,
+.cards-rh > .card-rh:nth-child(3)::after { animation-delay: -2.2s; }
+.cards-rh > .card-rh:nth-child(4)::before,
+.cards-rh > .card-rh:nth-child(4)::after { animation-delay: -0.6s; }
+/* Pause the sweep while the draft is still locked, so the visual cue
+ * matches the dimmed/non-interactive state. */
+#overlay.cards-mode.cards-pre-lock .card-rh::before,
+#overlay.cards-mode.cards-pre-lock .card-rh::after {
+  animation-play-state: paused;
+}
+/* Honour reduced-motion preferences — drop the rotation entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .card-rh::before,
+  .card-rh::after { animation: none; }
 }
 
 .card-rh-frame {
@@ -783,13 +893,27 @@ body {
     0 0 18px var(--rh-glow, rgba(255, 255, 255, 0.18)) inset;
 }
 
-/* Per-rarity glow + border colors. */
-.card-rh.rarity-common  { --rh-color: #6d8a64; --rh-glow: rgba(132, 220, 100, 0.22); }
-.card-rh.rarity-rare    { --rh-color: #6ec1ff; --rh-glow: rgba(110, 193, 255, 0.28); }
-.card-rh.rarity-epic    { --rh-color: #c084fc; --rh-glow: rgba(192, 132, 252, 0.32); }
+/* Per-rarity glow + border colors. `--rh-shim` is the colour of the
+ * running outline + bloom sweep defined above. */
+.card-rh.rarity-common  {
+  --rh-color: #6d8a64;
+  --rh-glow: rgba(132, 220, 100, 0.22);
+  --rh-shim: rgba(170, 240, 140, 0.95);
+}
+.card-rh.rarity-rare    {
+  --rh-color: #6ec1ff;
+  --rh-glow: rgba(110, 193, 255, 0.28);
+  --rh-shim: rgba(170, 220, 255, 1);
+}
+.card-rh.rarity-epic    {
+  --rh-color: #c084fc;
+  --rh-glow: rgba(192, 132, 252, 0.32);
+  --rh-shim: rgba(220, 170, 255, 1);
+}
 .card-rh.rarity-legendary {
   --rh-color: #ffb86b;
   --rh-glow: rgba(255, 184, 107, 0.45);
+  --rh-shim: rgba(255, 220, 140, 1);
 }
 
 /* Cursed cards override the rarity colourway entirely with a deep
@@ -799,6 +923,7 @@ body {
 .card-rh.cursed {
   --rh-color: #ff4e6b;
   --rh-glow: rgba(255, 78, 107, 0.5);
+  --rh-shim: rgba(255, 130, 160, 1);
 }
 .card-rh.cursed .card-rh-frame {
   background: linear-gradient(180deg, rgba(48, 14, 28, 0.98), rgba(20, 6, 14, 0.98));
@@ -911,12 +1036,59 @@ body {
 .card-rh-effects li {
   line-height: 1.3;
 }
+.card-rh-effects li.card-rh-unique {
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 4px -4px;
+  color: #e0d4ff;
+}
 .card-rh-val {
   display: inline-block;
   color: var(--rh-color);
   font-weight: bold;
   text-shadow: 0 0 4px var(--rh-glow);
   margin-right: 3px;
+}
+
+/* The value chip is tinted by polarity so the player can scan a card and
+ * tell at a glance which numbers help (green) and which hurt (red). The
+ * polarity is decided in src/data/cards.ts based on sign + a keyword
+ * heuristic — `+50 HP` is green, `−10 % получаемого урона` is also green
+ * (less damage taken is good), `+10 % HP врагов` is red. */
+.card-rh-val-pos {
+  color: #6dec97;
+  text-shadow: 0 0 6px rgba(110, 240, 150, 0.55);
+}
+.card-rh-val-neg {
+  color: #ff6b6b;
+  text-shadow: 0 0 6px rgba(255, 90, 90, 0.55);
+}
+
+/* Drawback bullets are slightly desaturated so the eye gravitates to the
+ * positive list first. */
+.card-rh-effects li.card-rh-bullet-neg {
+  color: rgba(225, 235, 245, 0.78);
+}
+
+/* Thin horizontal divider between the positive and negative groups. The
+ * line is drawn full-width within the existing 4 px padding of
+ * `.card-rh-effects` so it lines up neatly with the bullets above and
+ * below. The element is empty — purely decorative — and is announced as
+ * aria-hidden in the renderer. */
+.card-rh-effects li.card-rh-sep {
+  list-style: none;
+  height: 1px;
+  margin: 6px 6px;
+  padding: 0;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 18%,
+    rgba(255, 255, 255, 0.32) 82%,
+    transparent 100%
+  );
 }
 
 .card-rh-synergy {
@@ -2411,6 +2583,8 @@ body {
 }
 .mp-stat-value.up { color: #ff6a3d; font-weight: bold; }
 .mp-stat-value.down { color: #7df9ff; }
+.mp-stat-value.buff { color: #7df9ff; font-weight: bold; }
+.mp-stat-value.debuff { color: #ff6a3d; font-weight: bold; }
 
 .mp-lines {
   margin: 0 0 14px 0;
@@ -3369,29 +3543,106 @@ body {
   line-height: 1;
 }
 
-/* ============ Mobile / touch-device refinements ============ */
-/* On touch devices buttons should not show :hover styles (no persistent
-   hover state on mobile — avoids sticky highlights after taps). */
-@media (pointer: coarse) {
-  /* Increase hit-area padding on touch devices for small interactive
-     elements. The visual appearance stays the same; only the touch-
-     target grows via transparent padding. */
-  .hud-pause-btn {
-    min-width: 52px;
-    min-height: 52px;
-  }
-  /* Remove hover transforms that feel wrong on mobile (no hover event). */
-  .hud-pause-btn:hover,
-  .hud-round-btn:hover:not(:disabled) {
-    transform: none;
-  }
-  /* Faster tap feedback. */
-  .hud-round-btn:active:not(:disabled),
-  .hud-pause-btn:active {
-    transform: scale(0.95);
-  }
-  /* Prevent long-press context menus on game elements. */
-  #app, #game-canvas, #hud {
-    -webkit-touch-callout: none;
-  }
+/* ============ Pause stats overlay ============ */
+.pause-stats-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(6, 4, 12, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 150ms ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.pause-stats-inner {
+  position: relative;
+  width: min(640px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px 24px 20px;
+  background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.pause-stats-inner .overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+}
+
+.ps-section {
+  margin-bottom: 18px;
+}
+.ps-section.ps-unique {
+  background: rgba(192, 132, 252, 0.08);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: 8px;
+  padding: 12px 14px 8px;
+}
+
+.ps-section-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  color: #ffd166;
+  letter-spacing: 1px;
+  margin: 0 0 10px;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.4);
+}
+
+.ps-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 3px 0;
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+}
+.ps-value {
+  min-width: 72px;
+  text-align: right;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.ps-label {
+  color: #d8d2c0;
+}
+.ps-empty {
+  color: rgba(255,255,255,0.3);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  padding: 4px 0;
+}
+
+/* Buff (good for player) = green, Debuff (bad) = red, Unique = purple */
+.ps-row.ps-buff .ps-value { color: #7df9a8; text-shadow: 0 0 6px rgba(125, 249, 168, 0.4); }
+.ps-row.ps-debuff .ps-value { color: #ff6a6a; text-shadow: 0 0 6px rgba(255, 106, 106, 0.4); }
+.ps-row.ps-unique .ps-value { color: #c084fc; text-shadow: 0 0 6px rgba(192, 132, 252, 0.5); }
+.ps-row.ps-unique .ps-label { color: #e0d4ff; }
+
+/* Description row under each unique effect in the pause stats overlay */
+.ps-row.ps-unique-desc {
+  color: rgba(224, 212, 255, 0.65);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 2px 0 4px 78px;
+  line-height: 1.25;
+}
+
+/* Line separator between unique effects in the pause stats overlay */
+.ps-unique-sep {
+  height: 1px;
+  margin: 8px 12px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(192, 132, 252, 0.30) 20%,
+    rgba(192, 132, 252, 0.30) 80%,
+    transparent 100%
+  );
 }

@@ -35,10 +35,10 @@ export class ModifierPreviewOverlay {
     const stats = document.createElement('div');
     stats.className = 'mp-stats';
     const mod = def.modifier;
-    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d'));
-    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6'));
-    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166'));
-    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc'));
+    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d', true));
+    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6', true));
+    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166', true));
+    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc', false));
     panel.appendChild(stats);
 
     // Bullet list — human-friendly description
@@ -84,20 +84,23 @@ export class ModifierPreviewOverlay {
   }
 }
 
-function statBar(icon: string, label: string, mult: number, color: string): HTMLElement {
+function statBar(icon: string, label: string, mult: number, color: string, enemyStat: boolean): HTMLElement {
   const row = document.createElement('div');
   row.className = 'mp-stat';
   const iconEl = document.createElement('span');
   iconEl.className = 'mp-stat-icon';
   iconEl.textContent = icon;
   row.appendChild(iconEl);
-  // Value FIRST, then the label — bonus labels follow the
-  // "value then name" convention (e.g. "+25% tower cost").
   const value = document.createElement('span');
   value.className = 'mp-stat-value';
   value.textContent = `×${mult.toFixed(2)}`;
-  if (mult > 1) value.classList.add('up');
-  else if (mult < 1) value.classList.add('down');
+  if (enemyStat) {
+    if (mult > 1) value.classList.add('debuff');
+    else if (mult < 1) value.classList.add('buff');
+  } else {
+    if (mult > 1) value.classList.add('buff');
+    else if (mult < 1) value.classList.add('debuff');
+  }
   row.appendChild(value);
   const labelEl = document.createElement('span');
   labelEl.className = 'mp-stat-label';
