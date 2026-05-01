@@ -459,6 +459,12 @@ body {
   padding: 28px 32px;
   max-width: 760px;
   width: min(92vw, 760px);
+  /* Cap modal height to viewport so popups never escape the screen on
+     short landscape phones (e.g. 2400×1080 → ~410 CSS px tall).
+     Internal content scrolls when it overflows. */
+  max-height: min(95dvh, 95vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow:
     inset 0 0 0 1px var(--bg-frame-light),
     inset 0 0 0 5px var(--hud-frame-dark),
@@ -3313,4 +3319,249 @@ body {
 .mm-slot-potion {
   font-size: 22px;
   line-height: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Mobile-landscape adaptation
+ *
+ * Targets phones held sideways — the dominant aspect for our gameplay.
+ * Common physical resolutions (e.g. 2400×1080 with DPR ~2.625) translate
+ * to roughly 800–960 CSS px wide × 360–410 CSS px tall in landscape.
+ *
+ * Strategy: keep the desktop look intact and only collapse paddings,
+ * font sizes and the bottom-row vertical lift when the viewport is
+ * actually short / narrow. All interactive elements are bumped to a
+ * 44 × 44 minimum so they're comfortably tappable.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Honor iOS / Android safe-area (notch) on the in-game HUD only.
+ * The fullscreen menu / meta-tree already self-pad with clamp(). */
+#hud .hud-top {
+  top: max(4px, env(safe-area-inset-top));
+  left: max(18px, env(safe-area-inset-left));
+  right: max(18px, env(safe-area-inset-right));
+}
+#hud .hud-bottom-row {
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(22px, env(safe-area-inset-left));
+  right: max(22px, env(safe-area-inset-right));
+}
+
+/* Ensure all interactive HUD / shop / menu controls meet the 44×44
+ * recommended minimum touch-target size on coarse pointers. */
+@media (pointer: coarse) {
+  .tower-shop button,
+  .menu-buttons button,
+  .lb-tab,
+  .mm-mode-btn,
+  .mm-lang-btn,
+  .settings-lang-btn,
+  .overlay-close,
+  .meta-loadout-btn {
+    min-height: 44px;
+  }
+  .mm-lang-btn,
+  .settings-lang-btn {
+    min-width: 44px;
+  }
+  /* Daily / weekly cells double as buttons on this overlay */
+  .daily-cell {
+    min-height: 96px;
+  }
+  /* Prevent iOS double-tap-zoom and accidental text selection on
+     interactive UI without disabling pinch-zoom in the menu. */
+  .tower-shop button,
+  .hud-round-btn,
+  .hud-pause-btn,
+  .hud-skip-btn,
+  .hud-potion-slot,
+  .menu-buttons button,
+  .panel button,
+  .mm-section,
+  .mm-lab-btn,
+  .mm-settings-btn,
+  .mm-bp-btn,
+  .mm-daily-btn,
+  .mm-mode-btn,
+  .mm-battle-btn,
+  .mm-shop-btn {
+    touch-action: manipulation;
+  }
+}
+
+/* ─── Short-landscape (≤540 CSS px tall) — phones in landscape ────── */
+@media (orientation: landscape) and (max-height: 540px) {
+  /* Compress popup chrome so 92dvh of room is enough for the title +
+     content + actions. */
+  .panel {
+    padding: 14px 18px;
+    max-height: 94dvh;
+  }
+  .panel h2 { font-size: 15px; margin-bottom: 4px; }
+  .panel .subtitle { font-size: 14px; margin-bottom: 12px; }
+
+  /* HUD top row — tighten so badges don't crowd a 410px tall stage. */
+  .hud-top { gap: 8px; }
+  .hud-badge { padding: 6px 10px 8px; font-size: 11px; gap: 6px; }
+  .hud-pause-btn { width: 44px; height: 44px; font-size: 14px; }
+
+  /* HUD bottom row — the previous translateY(-72px) lift was tuned for
+     720px desktop. On landscape mobile it forces the potion bar above
+     the visible viewport. Drop it and let the row sit at the bottom. */
+  .hud-bottom-row { gap: 8px; }
+  .hud-center-bottom { transform: none; gap: 4px; }
+  .hud-hint { font-size: 13px; max-width: 60vw; }
+  .hud-skip-btn { padding: 10px 24px; font-size: 12px; letter-spacing: 1px; }
+  .hud-bottom-right { gap: 8px; }
+  .hud-round-btn { width: 64px; height: 64px; }
+  .hud-round-btn .sprite { transform: scale(0.75); transform-origin: center; }
+  .hud-icon-label { font-size: 6px; }
+  .hud-overload-module { bottom: -10px; font-size: 10px; }
+  .hud-potion-bar { gap: 6px; margin-top: 0; }
+  .hud-potion-slot { width: 44px; height: 44px; font-size: 22px; }
+  .hud-potion-key { font-size: 10px; }
+  .hud-effect-chip { padding: 2px 7px; font-size: 13px; }
+  .hud-timer-bar { width: 200px; height: 18px; }
+  .hud-timer-label { font-size: 13px; }
+  .hud-difficulty-badge { font-size: 8px; padding: 2px 6px; }
+
+  /* Card draft — keep 3 columns but slimmer. */
+  .cards { gap: 8px; }
+  .card { min-height: 0; padding: 10px; }
+  .cards-rh { gap: 10px; }
+
+  /* Daily / battle pass — make the grids and chips fit. */
+  .daily-grid { gap: 5px; }
+  .daily-cell { padding: 6px 4px; min-height: 64px; gap: 2px; }
+  .daily-icon { font-size: 22px; }
+  .daily-day-label { font-size: 7px; }
+  .daily-reward-label { font-size: 12px; }
+  .daily-claim-btn { font-size: 12px; padding: 9px 24px 11px; }
+  .bp-cell { padding: 6px 4px; font-size: 12px; min-width: 52px; }
+  .bp-track-label { width: 64px; font-size: 8px; }
+  .bp-claim-all { font-size: 12px; padding: 9px 24px 11px; }
+  .bp-xp-bar { height: 18px; }
+
+  /* Difficulty select — 4 cards × 240px-tall don't fit; tighten and let
+     them grow vertically across two rows. */
+  .difficulty-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .difficulty-card { min-height: 0; padding: 10px; gap: 4px; }
+  .difficulty-icon { font-size: 32px; margin: 4px 0; }
+  .difficulty-name { font-size: 10px; }
+  .difficulty-flavor { font-size: 12px; min-height: 0; }
+  .difficulty-cost { padding: 4px 8px; font-size: 12px; }
+  .difficulty-label { font-size: 9px; margin-top: -16px; padding: 2px 6px; }
+  .difficulty-header h2 { font-size: 13px; }
+  .difficulty-subtitle { font-size: 14px; }
+  .difficulty-panel { padding: 12px 16px; }
+
+  /* Modifier preview popup — used in the difficulty flow. */
+  .mp-stat { font-size: 13px; grid-template-columns: 24px 80px 1fr 56px; }
+  .mp-stat-icon { font-size: 16px; }
+  .mp-lines { font-size: 14px; padding-left: 16px; }
+  .mp-warn { font-size: 13px; padding: 6px 10px; }
+  .mp-btn { padding: 9px 18px; font-size: 10px; }
+
+  /* Endless modifier popup. */
+  .em-card { padding: 10px 14px; margin-bottom: 10px; }
+  .em-confirm { padding: 9px 24px; font-size: 10px; }
+
+  /* Settings overlay — small panel becomes an internal-scroller. */
+  .settings-section { padding: 10px; }
+  .settings-section h3 { font-size: 13px; }
+  .settings-stat,
+  .settings-volume-label,
+  .settings-volume-value { font-size: 13px; }
+
+  /* Crafting overlay — wide panel, force scrolling below 410px tall. */
+  .craft-panel { padding: 14px 16px; max-height: 94dvh; }
+  .craft-header h2 { font-size: 14px; }
+
+  /* Victory chest. */
+  .chest-overlay { padding: 16px 12px; gap: 10px; }
+  .chest-icon { font-size: 64px; }
+  .chest-hint { font-size: 9px; }
+  .chest-progress { width: 140px; }
+
+  /* Leaderboard. */
+  .lb-panel { padding: 14px 16px; }
+  .lb-title { font-size: 12px; margin-bottom: 8px; }
+  .lb-body { min-height: 120px; }
+
+  /* Revive. */
+  .revive-panel { padding: 18px 16px; }
+  .revive-title { font-size: 12px; }
+  .revive-desc { font-size: 14px; margin-bottom: 14px; }
+
+  /* Tutorial tooltip — keep it inside the viewport. */
+  .tutorial-tooltip {
+    max-width: min(70vw, 320px);
+    font-size: 14px;
+    padding: 10px 12px 8px;
+  }
+
+  /* Main menu — collapse the side columns and the title so battle CTA
+     stays on-screen on a 410px tall phone. */
+  .main-menu { padding: clamp(6px, 1vw, 14px); gap: 8px; }
+  .mm-top-bar { padding: 0 4px 6px; font-size: 10px; gap: 6px; }
+  .mm-currency { padding: 5px 8px; }
+  .mm-center { gap: 8px; }
+  .mm-left, .mm-right { flex: 0 0 clamp(150px, 18vw, 200px); }
+  .mm-section,
+  .mm-lab-btn,
+  .mm-settings-btn,
+  .mm-bp-btn,
+  .mm-daily-btn { padding: 8px 10px; }
+  .mm-section-title { font-size: 9px; margin-bottom: 4px; }
+  .mm-mid { gap: 10px; }
+  .mm-illustration { display: none; }
+  .mm-battle-btn { padding: 10px 32px 12px; font-size: clamp(15px, 2.2vw, 22px); }
+
+  /* Skill tree — already viewport-fill, just make the side panel
+     scroll instead of cropping. */
+  .meta-tree-side { padding: 10px 12px 12px; font-size: 16px; }
+  .meta-side-name { font-size: 13px; }
+  .meta-side-desc { font-size: 16px; }
+
+  /* Tower-shop popup — clamped via JS, but compress text + buttons so
+     it fits if the player taps near the screen edge. */
+  .tower-shop {
+    font-size: 14px;
+    min-width: 170px;
+    /* Hard-cap the popup height so up to 6 buttons + a banner can
+       always fit on a 410px tall stage. */
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .tower-shop button { padding: 8px 9px; font-size: 13px; }
+}
+
+/* ─── Narrow landscape (≤900 CSS px wide) — phones in landscape ──── */
+@media (orientation: landscape) and (max-width: 900px) {
+  .hud-top { left: 12px; right: 12px; }
+  .hud-bottom-row { left: 12px; right: 12px; }
+  .hud-hint { max-width: 50vw; }
+
+  /* Stack the leaderboard / battle pass header more compactly. */
+  .bp-header h2,
+  .daily-header h2,
+  .difficulty-header h2 { font-size: 13px; }
+
+  /* Card draft — drop to 2 columns, the third card scrolls. */
+  .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  /* Main menu side columns shrink further. */
+  .mm-left, .mm-right { flex: 0 0 clamp(140px, 22vw, 180px); }
+}
+
+/* ─── Very short (<420px tall) — common on 19.5:9 / 20:9 phones ──── */
+@media (orientation: landscape) and (max-height: 420px) {
+  /* Last-resort tightening: the overload conic ring and badges sit on
+     edge of the visible row. Pull every interactive control inward. */
+  .hud-bottom-row { bottom: max(8px, env(safe-area-inset-bottom)); }
+  .hud-top { top: max(2px, env(safe-area-inset-top)); }
+  .hud-badge { font-size: 10px; padding: 4px 8px 6px; }
+  .hud-round-btn { width: 56px; height: 56px; }
+  .hud-icon-label { display: none; }
+  .hud-potion-slot { width: 40px; height: 40px; font-size: 20px; }
 }
