@@ -211,25 +211,25 @@ export class PauseStatsOverlay {
       });
     }
 
-    // Boolean modifiers that come from unique effects
-    if (m.potionLeavesFire) lines.push({ label: tWithFallback('ui.pause.effect.fire', 'Горящая лужа'), value: '●', kind: 'unique' });
-    if (m.potionFrostActive) lines.push({ label: tWithFallback('ui.pause.effect.frost', 'Стихия Мороза'), value: '●', kind: 'unique' });
-    if (m.potionAcidActive) lines.push({ label: tWithFallback('ui.pause.effect.acid', 'Стихия Кислоты'), value: '●', kind: 'unique' });
-    if (m.potionMercuryActive) lines.push({ label: tWithFallback('ui.pause.effect.mercury', 'Стихия Ртути'), value: '●', kind: 'unique' });
-    if (m.potionAetherActive) lines.push({ label: tWithFallback('ui.pause.effect.aether', 'Стихия Эфира'), value: '●', kind: 'unique' });
-    if (m.potionPoisonActive) lines.push({ label: tWithFallback('ui.pause.effect.poison', 'Отравление'), value: '●', kind: 'unique' });
-    if (m.towerBonusVsBurning) lines.push({ label: tWithFallback('ui.pause.effect.crossfire', '+30% урона горящим'), value: '●', kind: 'unique' });
-    if (m.towerMercurySlow) lines.push({ label: tWithFallback('ui.pause.effect.mercSlow', 'Ртутное замедление'), value: '●', kind: 'unique' });
-    if (m.towerAcidBreak) lines.push({ label: tWithFallback('ui.pause.effect.acidBreak', 'Кислотный слом'), value: '●', kind: 'unique' });
-    if (m.towerSyncVolley) lines.push({ label: tWithFallback('ui.pause.effect.syncVolley', 'Синхронный залп'), value: '●', kind: 'unique' });
-    if (m.thornyShell) lines.push({ label: tWithFallback('ui.pause.effect.thorns', 'Шипастая оболочка'), value: '●', kind: 'unique' });
-    if (m.vitalPulseRegen) lines.push({ label: tWithFallback('ui.pause.effect.regen', 'Регенерация ХП'), value: '●', kind: 'unique' });
-    if (m.tripleThrowActive) lines.push({ label: tWithFallback('ui.pause.effect.triple', 'Тройной бросок'), value: `${m.tripleThrowInterval}с`, kind: 'unique' });
-    if (m.salamanderActive) lines.push({ label: tWithFallback('ui.pause.effect.salamander', 'Саламандра'), value: '●', kind: 'unique' });
-    if (m.archmasterActive) lines.push({ label: tWithFallback('ui.pause.effect.archmaster', 'Архимастер'), value: '●', kind: 'unique' });
-    if (m.fireRubyActive || m.fireRubyCounter > 0) lines.push({ label: tWithFallback('ui.pause.effect.fireRuby', 'Огненный рубин'), value: `${m.fireRubyCounter}`, kind: 'unique' });
-    if (m.mercuryRingActive) lines.push({ label: tWithFallback('ui.pause.effect.mercRing', 'Ртутный обруч'), value: '●', kind: 'unique' });
-    if (m.aetherEngineActive) lines.push({ label: tWithFallback('ui.pause.effect.aetherEngine', 'Эфирный двигатель'), value: '●', kind: 'unique' });
+    // Boolean modifiers that come from unique effects — now with descriptions
+    if (m.potionLeavesFire) lines.push({ label: tWithFallback('ui.pause.effect.fire', 'Горящая лужа'), desc: tWithFallback('ui.pause.effect.fire.desc', 'Склянки оставляют огненную лужу (8 ур/с, 3 с)'), value: '●', kind: 'unique' });
+    if (m.potionFrostActive) lines.push({ label: tWithFallback('ui.pause.effect.frost', 'Стихия Мороза'), desc: tWithFallback('ui.pause.effect.frost.desc', 'Склянки наносят урон холодом и замедляют врагов'), value: '●', kind: 'unique' });
+    if (m.potionAcidActive) lines.push({ label: tWithFallback('ui.pause.effect.acid', 'Стихия Кислоты'), desc: tWithFallback('ui.pause.effect.acid.desc', 'Склянки снижают броню цели на 50% на 4 сек'), value: '●', kind: 'unique' });
+    if (m.potionMercuryActive) lines.push({ label: tWithFallback('ui.pause.effect.mercury', 'Стихия Ртути'), desc: tWithFallback('ui.pause.effect.mercury.desc', 'Склянки замедляют врагов ртутью'), value: '●', kind: 'unique' });
+    if (m.potionAetherActive) lines.push({ label: tWithFallback('ui.pause.effect.aether', 'Стихия Эфира'), desc: tWithFallback('ui.pause.effect.aether.desc', 'Склянки наносят урон эфиром и запускают реакции'), value: '●', kind: 'unique' });
+    if (m.potionPoisonActive) lines.push({ label: tWithFallback('ui.pause.effect.poison', 'Отравление'), desc: tWithFallback('ui.pause.effect.poison.desc', 'Склянки отравляют цели (4 ур/с, 5 с, игнор брони)'), value: '●', kind: 'unique' });
+    if (m.towerBonusVsBurning) lines.push({ label: tWithFallback('ui.pause.effect.crossfire', '+30% урона горящим'), desc: tWithFallback('ui.pause.effect.crossfire.desc', 'Стойки наносят +30% урона горящим врагам'), value: '●', kind: 'unique' });
+    if (m.towerMercurySlow) lines.push({ label: tWithFallback('ui.pause.effect.mercSlow', 'Ртутное замедление'), desc: tWithFallback('ui.pause.effect.mercSlow.desc', 'Стойки замедляют врагов на 20%'), value: '●', kind: 'unique' });
+    if (m.towerAcidBreak) lines.push({ label: tWithFallback('ui.pause.effect.acidBreak', 'Кислотный слом'), desc: tWithFallback('ui.pause.effect.acidBreak.desc', 'Попадания стоек снижают броню цели на 15%'), value: '●', kind: 'unique' });
+    if (m.towerSyncVolley) lines.push({ label: tWithFallback('ui.pause.effect.syncVolley', 'Синхронный залп'), desc: tWithFallback('ui.pause.effect.syncVolley.desc', 'Каждую 4-ю атаку стойка стреляет дважды'), value: '●', kind: 'unique' });
+    if (m.thornyShell) lines.push({ label: tWithFallback('ui.pause.effect.thorns', 'Шипастая оболочка'), desc: tWithFallback('ui.pause.effect.thorns.desc', '+8 урон в ответ при касании Манекена'), value: '●', kind: 'unique' });
+    if (m.vitalPulseRegen) lines.push({ label: tWithFallback('ui.pause.effect.regen', 'Регенерация ХП'), desc: tWithFallback('ui.pause.effect.regen.desc', '+1 ХП/сек регенерация во время волн'), value: '●', kind: 'unique' });
+    if (m.tripleThrowActive) lines.push({ label: tWithFallback('ui.pause.effect.triple', 'Тройной бросок'), desc: tWithFallback('ui.pause.effect.triple.desc', 'Веер из 3 склянок каждые N секунд'), value: `${m.tripleThrowInterval}с`, kind: 'unique' });
+    if (m.salamanderActive) lines.push({ label: tWithFallback('ui.pause.effect.salamander', 'Саламандра'), desc: tWithFallback('ui.pause.effect.salamander.desc', 'Все склянки поджигают и оставляют лужу'), value: '●', kind: 'unique' });
+    if (m.archmasterActive) lines.push({ label: tWithFallback('ui.pause.effect.archmaster', 'Архимастер'), desc: tWithFallback('ui.pause.effect.archmaster.desc', '+1 стартовый уровень каждой новой стойке'), value: '●', kind: 'unique' });
+    if (m.fireRubyActive || m.fireRubyCounter > 0) lines.push({ label: tWithFallback('ui.pause.effect.fireRuby', 'Огненный рубин'), desc: tWithFallback('ui.pause.effect.fireRuby.desc', 'Каждая 5-я склянка поджигает цели'), value: `${m.fireRubyCounter}`, kind: 'unique' });
+    if (m.mercuryRingActive) lines.push({ label: tWithFallback('ui.pause.effect.mercRing', 'Ртутный обруч'), desc: tWithFallback('ui.pause.effect.mercRing.desc', '−40% скорость врагов рядом с Манекеном'), value: '●', kind: 'unique' });
+    if (m.aetherEngineActive) lines.push({ label: tWithFallback('ui.pause.effect.aetherEngine', 'Эфирный двигатель'), desc: tWithFallback('ui.pause.effect.aetherEngine.desc', '+15 заряд Перегруза за каждую реакцию'), value: '●', kind: 'unique' });
 
     return lines;
   }
@@ -255,7 +255,8 @@ export class PauseStatsOverlay {
       return section;
     }
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const row = document.createElement('div');
       row.className = `ps-row ps-${line.kind}`;
       const val = document.createElement('span');
@@ -267,6 +268,19 @@ export class PauseStatsOverlay {
       lab.textContent = line.label;
       row.appendChild(lab);
       section.appendChild(row);
+      // Render description below unique effect labels
+      if (uniqueSection && line.desc) {
+        const descRow = document.createElement('div');
+        descRow.className = 'ps-row ps-unique-desc';
+        descRow.textContent = line.desc;
+        section.appendChild(descRow);
+      }
+      // Add visual separator between unique effects (not after last)
+      if (uniqueSection && i < lines.length - 1) {
+        const sep = document.createElement('div');
+        sep.className = 'ps-unique-sep';
+        section.appendChild(sep);
+      }
     }
     return section;
   }
@@ -276,6 +290,8 @@ interface StatLine {
   label: string;
   value: string;
   kind: 'buff' | 'debuff' | 'unique';
+  /** Optional description shown below the label for unique effects. */
+  desc?: string;
 }
 
 function abilityLabel(ab: string): string {
