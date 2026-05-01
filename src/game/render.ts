@@ -15,6 +15,7 @@ import { COLORS } from '../render/palette';
 import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
+import { drawRadialGlow, getVignette } from '../render/glowCache';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -27,6 +28,8 @@ const SPRITE_SCALE = 2;
 const HERO_SCALE = 3;
 const TOWER_SCALE = 3;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
+
+let lastRenderTime = -1;
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
@@ -70,8 +73,16 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawMannequin(ctx, state);
   drawProjectiles(ctx, state);
   drawChainBolts(ctx, state);
-  // Update and draw particle system
-  updateParticles(1 / 60);
+  // Update and draw particle system. Use real frame delta derived from
+  // worldTime so particles stay frame-rate independent. Clamp the delta to
+  // avoid huge jumps after tab-switch / pause; a missed frame should never
+  // teleport particles across the screen.
+  let particleDt = 1 / 60;
+  if (lastRenderTime >= 0) {
+    particleDt = Math.max(0, Math.min(1 / 20, state.worldTime - lastRenderTime));
+  }
+  lastRenderTime = state.worldTime;
+  updateParticles(particleDt);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
   drawAimReticle(ctx, state);
@@ -209,15 +220,14 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow under base.
     drawShadow(ctx, t.pos.x, t.pos.y + 22, 24, 7, 0.42);
 
-    // Base glow
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    const baseGlow = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 28);
-    baseGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-    baseGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = baseGlow;
-    ctx.fillRect(t.pos.x - 28, t.pos.y - 28, 56, 56);
-    ctx.restore();
+    // Base glow (cached halo to avoid per-frame gradient allocation).
+    drawRadialGlow(
+      ctx,
+      { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+      t.pos.x,
+      t.pos.y,
+      0.08,
+    );
 
     // Base sprite
     let base = s.towerNeedler;
@@ -306,16 +316,15 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Drop shadow
   drawShadow(ctx, m.pos.x, m.pos.y + 28, 32, 9, 0.52);
 
-  // Core glow pulse
+  // Core glow pulse (cached halo).
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
-  ctx.save();
-  ctx.globalAlpha = 0.12 + corePulse * 0.06;
-  const mannGlow = ctx.createRadialGradient(m.pos.x, m.pos.y - 4, 0, m.pos.x, m.pos.y - 4, 40);
-  mannGlow.addColorStop(0, 'rgba(125, 249, 255, 0.4)');
-  mannGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = mannGlow;
-  ctx.fillRect(m.pos.x - 40, m.pos.y - 44, 80, 80);
-  ctx.restore();
+  drawRadialGlow(
+    ctx,
+    { radius: 40, inner: 'rgba(125, 249, 255, 0.4)', outer: 'rgba(125, 249, 255, 0)' },
+    m.pos.x,
+    m.pos.y - 4,
+    0.12 + corePulse * 0.06,
+  );
 
   // Idle bob (slow breathing); throw window lunges forward one pixel toward
   // the aim direction to sell the motion without needing extra sprite frames.
@@ -584,23 +593,20 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Boss visual distinction: pulsing red/purple glow + crown marker
     if (e.kind.isBoss) {
       const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
-      ctx.save();
-      ctx.globalAlpha = 0.35 * bPulse;
-      const bossGlow = ctx.createRadialGradient(
-        e.pos.x, e.pos.y, e.kind.radius * 0.3,
-        e.pos.x, e.pos.y, e.kind.radius * 2.2,
+      drawRadialGlow(
+        ctx,
+        {
+          radius: 64,
+          inner: 'rgba(255, 50, 50, 0.6)',
+          mid: 'rgba(180, 40, 120, 0.3)',
+          midStop: 0.5,
+          outer: 'rgba(180, 40, 120, 0)',
+        },
+        e.pos.x,
+        e.pos.y,
+        0.35 * bPulse,
+        e.kind.radius * 2.2,
       );
-      bossGlow.addColorStop(0, 'rgba(255, 50, 50, 0.6)');
-      bossGlow.addColorStop(0.5, 'rgba(180, 40, 120, 0.3)');
-      bossGlow.addColorStop(1, 'rgba(180, 40, 120, 0)');
-      ctx.fillStyle = bossGlow;
-      ctx.fillRect(
-        e.pos.x - e.kind.radius * 2.2,
-        e.pos.y - e.kind.radius * 2.2,
-        e.kind.radius * 4.4,
-        e.kind.radius * 4.4,
-      );
-      ctx.restore();
 
       // Crown symbol above boss
       ctx.save();
@@ -648,15 +654,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (Math.random() < 0.4) {
         spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
       }
-      // Under-glow
-      ctx.save();
-      ctx.globalAlpha = 0.15;
-      const fireGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 2);
-      fireGlow.addColorStop(0, 'rgba(255, 140, 58, 0.4)');
-      fireGlow.addColorStop(1, 'rgba(255, 140, 58, 0)');
-      ctx.fillStyle = fireGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
-      ctx.restore();
+      // Under-glow (cached halo).
+      drawRadialGlow(
+        ctx,
+        { radius: 32, inner: 'rgba(255, 140, 58, 0.4)', outer: 'rgba(255, 140, 58, 0)' },
+        e.pos.x,
+        e.pos.y,
+        0.15,
+        e.kind.radius * 2,
+      );
     }
     if (e.status.slowTime > 0) {
       ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
@@ -664,15 +670,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
-      // Frost shimmer
-      ctx.save();
-      ctx.globalAlpha = 0.1;
-      const frostGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 1.5);
-      frostGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-      frostGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-      ctx.fillStyle = frostGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
-      ctx.restore();
+      // Frost shimmer (cached halo).
+      drawRadialGlow(
+        ctx,
+        { radius: 24, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+        e.pos.x,
+        e.pos.y,
+        0.1,
+        e.kind.radius * 1.5,
+      );
     }
     if (e.status.armorBreakTime > 0) {
       ctx.strokeStyle = `rgba(210, 245, 90, 0.6)`;
@@ -951,32 +957,40 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): v
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
 
-  // Mannequin core glow
+  // Mannequin core glow (cached halo).
   const m = state.mannequin;
-  const coreGlow = ctx.createRadialGradient(m.pos.x, m.pos.y, 0, m.pos.x, m.pos.y, 80);
-  coreGlow.addColorStop(0, 'rgba(125, 249, 255, 0.06)');
-  coreGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = coreGlow;
-  ctx.fillRect(m.pos.x - 80, m.pos.y - 80, 160, 160);
+  drawRadialGlow(
+    ctx,
+    { radius: 80, inner: 'rgba(125, 249, 255, 0.06)', outer: 'rgba(125, 249, 255, 0)' },
+    m.pos.x,
+    m.pos.y,
+    1,
+  );
 
-  // Fire pool lights
+  // Fire pool lights — base alpha is folded into a single cached halo;
+  // per-pool fade is applied via globalAlpha (no gradient re-allocation).
   for (const fp of state.firePools) {
     const fadeOut = Math.max(0, Math.min(1, fp.time / 0.5));
-    const r = fp.radius * 3;
-    const g = ctx.createRadialGradient(fp.pos.x, fp.pos.y, 0, fp.pos.x, fp.pos.y, r);
-    g.addColorStop(0, `rgba(255, 140, 58, ${0.08 * fadeOut})`);
-    g.addColorStop(1, 'rgba(255, 140, 58, 0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(fp.pos.x - r, fp.pos.y - r, r * 2, r * 2);
+    if (fadeOut <= 0) continue;
+    drawRadialGlow(
+      ctx,
+      { radius: 64, inner: 'rgba(255, 140, 58, 0.08)', outer: 'rgba(255, 140, 58, 0)' },
+      fp.pos.x,
+      fp.pos.y,
+      fadeOut,
+      fp.radius * 3,
+    );
   }
 
-  // Tower range glow (subtle)
+  // Tower range glow (cached halo).
   for (const t of state.towers) {
-    const tg = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 30);
-    tg.addColorStop(0, 'rgba(125, 249, 255, 0.03)');
-    tg.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = tg;
-    ctx.fillRect(t.pos.x - 30, t.pos.y - 30, 60, 60);
+    drawRadialGlow(
+      ctx,
+      { radius: 30, inner: 'rgba(125, 249, 255, 0.03)', outer: 'rgba(125, 249, 255, 0)' },
+      t.pos.x,
+      t.pos.y,
+      1,
+    );
   }
 
   ctx.restore();
@@ -1012,14 +1026,15 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = COLORS.whiteSoft;
     ctx.fillRect(Math.round(p.x) - 3, Math.round(p.y) - 3, 6, 6);
-    // Point glow
-    ctx.globalAlpha = alpha * 0.3;
-    const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
-    pg.addColorStop(0, 'rgba(189, 246, 255, 0.5)');
-    pg.addColorStop(1, 'rgba(189, 246, 255, 0)');
-    ctx.fillStyle = pg;
-    ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
     ctx.restore();
+    // Point glow (cached halo).
+    drawRadialGlow(
+      ctx,
+      { radius: 20, inner: 'rgba(189, 246, 255, 0.5)', outer: 'rgba(189, 246, 255, 0)' },
+      p.x,
+      p.y,
+      alpha * 0.3,
+    );
     // Spawn spark particles
     if (alpha > 0.5 && Math.random() < 0.6) {
       spawnBurst(p.x, p.y, 2, AETHER_COLORS, 40, 0.2, 1.5, 50);
@@ -1047,14 +1062,21 @@ interface AmbientParticle {
 }
 
 const ambientParticles: AmbientParticle[] = [];
+const AMBIENT_PARTICLE_CAP = 80;
 let lastAmbientSpawn = 0;
+let lastAmbientTime = -1;
 
 function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
   const t = state.worldTime;
+  const dt = lastAmbientTime < 0 ? 1 / 60 : Math.min(1 / 20, Math.max(0, t - lastAmbientTime));
+  lastAmbientTime = t;
 
-  // Spawn new particles periodically
-  if (t - lastAmbientSpawn > 0.08) {
+  // Spawn new particles periodically. Capped so we never accumulate a huge
+  // backlog if the tab was unfocused (worldTime stops, but spawn cadence is
+  // still time-based so the next visible frame would dump dozens of dust
+  // motes at once).
+  if (t - lastAmbientSpawn > 0.08 && ambientParticles.length < AMBIENT_PARTICLE_CAP) {
     lastAmbientSpawn = t;
     const biomePal = getActiveBiomePalette();
     const colors = biomePal.ambientColors;
@@ -1070,33 +1092,38 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
     });
   }
 
-  // Update and draw
+  // Update and draw. Single save/restore pair around the whole batch — the
+  // previous version saved/restored per particle which costs more than the
+  // actual fillRect for a mote-sized sprite.
+  ctx.save();
+  let lastAlpha = -1;
+  let lastColor = '';
   for (let i = ambientParticles.length - 1; i >= 0; i--) {
     const p = ambientParticles[i]!;
-    p.life -= 0.016;
+    p.life -= dt;
     if (p.life <= 0) {
-      ambientParticles.splice(i, 1);
+      // Swap-remove: O(1) compared to splice-shift through the tail.
+      ambientParticles[i] = ambientParticles[ambientParticles.length - 1]!;
+      ambientParticles.pop();
       continue;
     }
-    p.x += p.vx * 0.016;
-    p.y += p.vy * 0.016;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
     const alpha = Math.min(1, p.life / p.maxLife) * Math.min(1, (p.maxLife - p.life) / 0.5);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color;
+    if (alpha !== lastAlpha) {
+      ctx.globalAlpha = alpha;
+      lastAlpha = alpha;
+    }
+    if (p.color !== lastColor) {
+      ctx.fillStyle = p.color;
+      lastColor = p.color;
+    }
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
-    ctx.restore();
   }
+  ctx.restore();
 
-  // Vignette overlay for cinematic depth
-  const grad = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.25,
-    width / 2, height / 2, Math.max(width, height) * 0.7,
-  );
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+  // Vignette overlay for cinematic depth (cached canvas keyed by size).
+  ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
 }
 
 // Export camera config for input system

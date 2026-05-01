@@ -76,6 +76,35 @@ export class Hud {
   private potionSlots: HTMLButtonElement[] = [];
   private effectsBar!: HTMLDivElement;
 
+  // Diff cache: HUD.update is called every render frame (60Hz). Without this
+  // we'd write to `style.width`, `style.background` (conic-gradient) and
+  // `innerHTML` regardless of whether the value actually changed, which
+  // forces the browser to re-style/relayout/repaint the HUD every frame.
+  private prevHpRatio = -1;
+  private prevHpLabel = '';
+  private prevOverloadDeg = -1;
+  private prevGold = -1;
+  private prevEssence = -1;
+  private prevWaveValue = '';
+  private prevCatalystVisible = -1; // -1 = unset, 0 = hidden, 1 = visible
+  private prevCatalystValue = '';
+  private prevDifficulty = '';
+  private prevDifficultyHidden = -1;
+  private prevSkipVisible = -1;
+  private prevSkipText = '';
+  private prevOverloadDisabled: boolean | null = null;
+  private prevOverloadReady: boolean | null = null;
+  private prevOverloadModule = '';
+  private prevHint = '';
+  private prevBossVisible = -1;
+  private prevTimerBarDisplay = '';
+  private prevTimerFillRatio = -1;
+  private prevTimerLabel = '';
+  private prevTimerClass = '';
+  private prevPotionInteractive = -1;
+  private prevPotionState: Array<string | null> = [];
+  private prevEffectsHtml = '';
+
   constructor(root: HTMLElement, handlers: HudHandlers) {
     this.root = root;
     this.handlers = handlers;
@@ -318,74 +347,137 @@ export class Hud {
   update(state: GameState): void {
     const m = state.mannequin;
     const ratio = Math.max(0, m.hp / m.maxHp);
-    this.hpFill.style.width = `${ratio * 100}%`;
-    this.hpLabel.textContent = `${Math.max(0, Math.round(m.hp))} / ${m.maxHp}`;
+    // Quantise to 0.1% so we don't churn the DOM for sub-pixel HP changes.
+    const ratioRounded = Math.round(ratio * 1000) / 1000;
+    if (ratioRounded !== this.prevHpRatio) {
+      this.hpFill.style.width = `${ratioRounded * 100}%`;
+      this.prevHpRatio = ratioRounded;
+    }
+    const hpLabel = `${Math.max(0, Math.round(m.hp))} / ${m.maxHp}`;
+    if (hpLabel !== this.prevHpLabel) {
+      this.hpLabel.textContent = hpLabel;
+      this.prevHpLabel = hpLabel;
+    }
 
     const o = state.overload;
     const ocharge = o.charge / o.maxCharge;
-    this.overloadFill.style.background = `conic-gradient(var(--cool-glow) ${ocharge * 360}deg, transparent ${ocharge * 360}deg)`;
+    // Round to whole degrees — conic-gradient changes below 1° are invisible
+    // but every write triggers a full repaint of the overload ring.
+    const odeg = Math.round(ocharge * 360);
+    if (odeg !== this.prevOverloadDeg) {
+      this.overloadFill.style.background = `conic-gradient(var(--cool-glow) ${odeg}deg, transparent ${odeg}deg)`;
+      this.prevOverloadDeg = odeg;
+    }
 
-    this.goldLabel.textContent = `${state.gold}`;
-    this.essenceLabel.textContent = `${state.essence}`;
+    if (state.gold !== this.prevGold) {
+      this.goldLabel.textContent = `${state.gold}`;
+      this.prevGold = state.gold;
+    }
+    if (state.essence !== this.prevEssence) {
+      this.essenceLabel.textContent = `${state.essence}`;
+      this.prevEssence = state.essence;
+    }
 
     // Catalyst counter — show only when there's at least 1 slot.
     if (state.catalystSlots > 0) {
-      this.catalystBadge.style.display = '';
-      this.catalystValue.textContent = `${state.equippedCatalysts.length}/${state.catalystSlots}`;
-    } else {
+      if (this.prevCatalystVisible !== 1) {
+        this.catalystBadge.style.display = '';
+        this.prevCatalystVisible = 1;
+      }
+      const cv = `${state.equippedCatalysts.length}/${state.catalystSlots}`;
+      if (cv !== this.prevCatalystValue) {
+        this.catalystValue.textContent = cv;
+        this.prevCatalystValue = cv;
+      }
+    } else if (this.prevCatalystVisible !== 0) {
       this.catalystBadge.style.display = 'none';
+      this.prevCatalystVisible = 0;
     }
 
     const ws = state.waveState;
     const idx = ws.currentIndex;
     const total = totalWaves(state);
+    let waveText: string;
     if (state.difficulty === 'endless') {
-      // Show loop count instead of total so the player sees progress across
-      // wave loops (waves reset to 0 each loop).
       const loop = state.endlessLoop;
-      this.waveValue.textContent = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
+      waveText = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
     } else if (idx < 0) {
-      this.waveValue.textContent = `0 / ${total}`;
+      waveText = `0 / ${total}`;
     } else {
-      this.waveValue.textContent = `${idx + 1} / ${total}`;
+      waveText = `${idx + 1} / ${total}`;
+    }
+    if (waveText !== this.prevWaveValue) {
+      this.waveValue.textContent = waveText;
+      this.prevWaveValue = waveText;
     }
 
-    const difDef = DIFFICULTY_MODES[state.difficulty];
-    this.difficultyBadge.textContent = t(`ui.difficulty.${state.difficulty}.short`);
-    this.difficultyBadge.style.color = difDef.color;
-    this.difficultyBadge.style.borderColor = difDef.color;
-    this.difficultyBadge.style.display = state.difficulty === 'normal' ? 'none' : '';
+    if (state.difficulty !== this.prevDifficulty) {
+      const difDef = DIFFICULTY_MODES[state.difficulty];
+      this.difficultyBadge.textContent = t(`ui.difficulty.${state.difficulty}.short`);
+      this.difficultyBadge.style.color = difDef.color;
+      this.difficultyBadge.style.borderColor = difDef.color;
+      this.prevDifficulty = state.difficulty;
+    }
+    const difHidden = state.difficulty === 'normal' ? 1 : 0;
+    if (difHidden !== this.prevDifficultyHidden) {
+      this.difficultyBadge.style.display = difHidden ? 'none' : '';
+      this.prevDifficultyHidden = difHidden;
+    }
 
     // Skip-wave button only active during preparing phase
     const showSkip = state.phase === 'preparing';
-    this.skipBtn.style.display = showSkip ? '' : 'none';
-    this.skipBtn.disabled = !showSkip;
-    if (showSkip && idx < 0) {
-      this.skipBtn.textContent = t('ui.hud.toBattleNow');
-    } else {
-      this.skipBtn.textContent = t('ui.hud.nextWave');
+    const showSkipFlag = showSkip ? 1 : 0;
+    if (showSkipFlag !== this.prevSkipVisible) {
+      this.skipBtn.style.display = showSkip ? '' : 'none';
+      this.skipBtn.disabled = !showSkip;
+      this.prevSkipVisible = showSkipFlag;
+    }
+    const skipText = (showSkip && idx < 0) ? t('ui.hud.toBattleNow') : t('ui.hud.nextWave');
+    if (skipText !== this.prevSkipText) {
+      this.skipBtn.textContent = skipText;
+      this.prevSkipText = skipText;
     }
 
     // Overload button enabled when fully charged
-    this.overloadButton.disabled = state.overload.charge < state.overload.maxCharge;
-    this.overloadButton.classList.toggle('ready', state.overload.charge >= state.overload.maxCharge);
-    this.overloadModule.textContent = activeModuleShortLabel(state.activeModuleId);
+    const overloadDisabled = state.overload.charge < state.overload.maxCharge;
+    if (overloadDisabled !== this.prevOverloadDisabled) {
+      this.overloadButton.disabled = overloadDisabled;
+      this.prevOverloadDisabled = overloadDisabled;
+    }
+    const overloadReady = !overloadDisabled;
+    if (overloadReady !== this.prevOverloadReady) {
+      this.overloadButton.classList.toggle('ready', overloadReady);
+      this.prevOverloadReady = overloadReady;
+    }
+    const moduleLabel = activeModuleShortLabel(state.activeModuleId);
+    if (moduleLabel !== this.prevOverloadModule) {
+      this.overloadModule.textContent = moduleLabel;
+      this.prevOverloadModule = moduleLabel;
+    }
 
     // Hints
+    let hintText: string;
     if (state.phase === 'preparing') {
       const next = idx + 1;
-      this.hint.textContent = next === 0
+      hintText = next === 0
         ? t('ui.hud.hint.first')
         : t('ui.hud.hint.next', { n: next + 1 });
     } else if (state.phase === 'wave') {
-      this.hint.textContent = t('ui.hud.hint.wave', { idx: idx + 1, total });
+      hintText = t('ui.hud.hint.wave', { idx: idx + 1, total });
     } else {
-      this.hint.textContent = '';
+      hintText = '';
+    }
+    if (hintText !== this.prevHint) {
+      this.hint.textContent = hintText;
+      this.prevHint = hintText;
     }
 
     // Boss wave indicator
-    const showBoss = state.phase === 'preparing' && isNextWaveBoss(state);
-    this.bossIndicator.style.display = showBoss ? '' : 'none';
+    const showBoss = state.phase === 'preparing' && isNextWaveBoss(state) ? 1 : 0;
+    if (showBoss !== this.prevBossVisible) {
+      this.bossIndicator.style.display = showBoss ? '' : 'none';
+      this.prevBossVisible = showBoss;
+    }
 
     // Wave / pause progress bar. Shown during 'wave' and 'preparing' only.
     this.updateTimerBar(state);
@@ -417,13 +509,21 @@ export class Hud {
 
   private updatePotionBar(state: GameState): void {
     const interactive = state.phase === 'wave' || state.phase === 'preparing';
-    this.potionBar.style.display = interactive ? '' : 'none';
-    this.effectsBar.style.display = interactive ? '' : 'none';
+    const interactiveFlag = interactive ? 1 : 0;
+    if (interactiveFlag !== this.prevPotionInteractive) {
+      this.potionBar.style.display = interactive ? '' : 'none';
+      this.effectsBar.style.display = interactive ? '' : 'none';
+      this.prevPotionInteractive = interactiveFlag;
+    }
     if (!interactive) return;
 
+    // Potion slots: only re-render the slot when the recipe id changed.
     for (let i = 0; i < this.potionSlots.length; i++) {
       const btn = this.potionSlots[i]!;
       const id = state.inventory[i];
+      const key = id ? id : '__empty__';
+      if (this.prevPotionState[i] === key) continue;
+      this.prevPotionState[i] = key;
       const recipe = id ? POTION_BY_ID[id] : null;
       btn.disabled = !recipe;
       if (recipe) {
@@ -439,54 +539,79 @@ export class Hud {
       }
     }
 
-    // Effect chips: timed potions + storm charges + shield HP.
-    const chips: string[] = [];
+    // Effect chips: timed potions + storm charges + shield HP. Build the
+    // HTML in a string buffer and only write innerHTML when it actually
+    // changed — `innerHTML` triggers a full re-parse + reflow each call.
+    let chipsHtml = '';
     for (const ap of state.activePotions) {
       const recipe: PotionRecipe | undefined = POTION_BY_ID[ap.id];
       if (!recipe) continue;
       const sec = Math.max(0, ap.timeLeft).toFixed(0);
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${recipe.color};color:${recipe.color}"><span>${recipe.glyph}</span><span>${sec}s</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${recipe.color};color:${recipe.color}"><span>${recipe.glyph}</span><span>${sec}s</span></span>`;
     }
     if (state.stormCharges > 0) {
       const r = POTION_BY_ID['storm']!;
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${state.stormCharges}×</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${state.stormCharges}×</span></span>`;
     }
     if (state.potionShieldHp > 0) {
       const r = POTION_BY_ID['stoneShield']!;
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}HP</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}HP</span></span>`;
     }
-    this.effectsBar.innerHTML = chips.join('');
+    if (chipsHtml !== this.prevEffectsHtml) {
+      this.effectsBar.innerHTML = chipsHtml;
+      this.prevEffectsHtml = chipsHtml;
+    }
   }
 
   private updateTimerBar(state: GameState): void {
     const ws = state.waveState;
+    let display: string;
+    let classMode = '';
+    let ratioRounded = -1;
+    let label = '';
+
     if (state.phase === 'wave') {
       const total = currentWaveDuration(state);
       const elapsed = Math.max(0, ws.timeInWave);
       const ratio = total > 0 ? Math.min(1, elapsed / total) : 0;
-      this.timerBar.style.display = '';
-      this.timerBar.classList.remove('pause');
-      this.timerBar.classList.add('wave');
-      this.timerFill.style.width = `${ratio * 100}%`;
+      display = '';
+      classMode = 'wave';
+      ratioRounded = Math.round(ratio * 1000) / 1000;
       const left = Math.max(0, total - elapsed);
-      this.timerLabel.textContent = t('ui.hud.timer.battle', { sec: left.toFixed(1) });
+      label = t('ui.hud.timer.battle', { sec: left.toFixed(1) });
     } else if (state.phase === 'preparing') {
       const total = currentPauseDuration(state);
       const left = Math.max(0, ws.pauseDurationLeft);
       const ratio = total > 0 ? 1 - Math.min(1, left / total) : 0;
-      this.timerBar.style.display = '';
-      this.timerBar.classList.remove('wave');
-      this.timerBar.classList.add('pause');
-      this.timerFill.style.width = `${ratio * 100}%`;
-      this.timerLabel.textContent = t('ui.hud.timer.pause', { sec: left.toFixed(1) });
+      display = '';
+      classMode = 'pause';
+      ratioRounded = Math.round(ratio * 1000) / 1000;
+      label = t('ui.hud.timer.pause', { sec: left.toFixed(1) });
     } else {
-      this.timerBar.style.display = 'none';
+      display = 'none';
+    }
+
+    if (display !== this.prevTimerBarDisplay) {
+      this.timerBar.style.display = display;
+      this.prevTimerBarDisplay = display;
+    }
+    if (display === 'none') return;
+
+    if (classMode !== this.prevTimerClass) {
+      this.timerBar.classList.toggle('wave', classMode === 'wave');
+      this.timerBar.classList.toggle('pause', classMode === 'pause');
+      this.prevTimerClass = classMode;
+    }
+    if (ratioRounded !== this.prevTimerFillRatio) {
+      this.timerFill.style.width = `${ratioRounded * 100}%`;
+      this.prevTimerFillRatio = ratioRounded;
+    }
+    if (label !== this.prevTimerLabel) {
+      this.timerLabel.textContent = label;
+      this.prevTimerLabel = label;
     }
   }
 }
