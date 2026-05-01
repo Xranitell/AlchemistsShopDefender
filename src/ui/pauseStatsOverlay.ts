@@ -8,9 +8,11 @@ import { tWithFallback } from '../i18n';
 export class PauseStatsOverlay {
   private root: HTMLElement;
   private panel: HTMLElement | null = null;
+  private onCloseCallback: (() => void) | null = null;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, opts?: { onClose?: () => void }) {
     this.root = root;
+    this.onCloseCallback = opts?.onClose ?? null;
   }
 
   show(state: GameState): void {
@@ -25,7 +27,10 @@ export class PauseStatsOverlay {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'overlay-close';
     closeBtn.textContent = '✕';
-    closeBtn.addEventListener('click', () => this.hide());
+    closeBtn.addEventListener('click', () => {
+      this.hide();
+      if (this.onCloseCallback) this.onCloseCallback();
+    });
     inner.appendChild(closeBtn);
 
     // ── Player stats ──────────────────────────────────────────────────────
