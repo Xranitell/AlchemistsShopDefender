@@ -28,40 +28,75 @@ export interface CardBullet {
 // wins. Patterns are anchored to whole-word substrings (with optional
 // preceding "макс. " etc.) and case-insensitive.
 //
+// Each rule is written to match BOTH the Russian source description and the
+// English translation, since both render through `classifyBullet` depending
+// on the active locale (see `cardDesc`). When in doubt, prefer adding to
+// these lists rather than relying on the sign alone — silent
+// misclassifications turn drawbacks into buffs in the UI (e.g. green
+// `−30 max mannequin HP`).
+//
 // `+` is normally GOOD for the player (more damage / radius / ХП / gold);
 // these patterns mark a `+` bullet as a DRAWBACK because they buff enemies
 // or inflate cooldowns / costs.
 const PLUS_IS_NEGATIVE: RegExp[] = [
-  /ХП\s+врагов/i,           // +X% enemy ХП
-  /скорость\s+врагов/i,     // +X% enemy speed (NB: NOT "скорость атаки стоек")
-  /урон\s+врагов/i,         // +X% enemy damage
-  /стоимость\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cost
-  /(?:^|\s)откат\s+склянок/i,        // +X% potion cooldown
-  /(?:^|\s)откат\s+ст(?:о[ея]ек|ойки)/i, // +X% tower cooldown (rare)
+  // Enemy stat buffs (+ enemy HP / speed / damage / armor / dodge /
+  // shield / regen). Match Russian "X врагов" and English "enemy X"
+  // forms in one rule each.
+  /(?:ХП|HP)\s+врагов/i,
+  /\benem(?:y|ies)\s+(?:HP|ХП)\b/i,
+  /скорость\s+врагов/i,
+  /\benem(?:y|ies)\s+speed\b/i,
+  /урон\s+врагов/i,
+  /\benem(?:y|ies)\s+damage\b/i,
+  /брон[ия]\s+врагов/i,
+  /\benem(?:y|ies)\s+armou?r\b/i,
+  /шанс\s+уворота\s+врагов/i,
+  /\benem(?:y|ies)\s+dodge\b/i,
+  /щит\s+врагов/i,
+  /\benem(?:y|ies)\s+shield\b/i,
+  /регенерация\s+врагов/i,
+  /\benem(?:y|ies)\s+regen(?:eration)?\b/i,
+
+  // Cost / cooldown inflations.
+  /стоимость\s+ст(?:оек|ойк[аиу])/i,
+  /\btower\s+cost\b/i,
+  /(?:^|\s)откат\s+(?:склянок|ст(?:оек|ойк[аиу]))/i,
+  /(?:^|\s)перезарядк[аи]\s+(?:склянок|ст(?:оек|ойк[аиу]))/i,
+  /\b(?:potion|tower)\s+cooldown\b/i,
+
+  // Generic catch-alls — only fire when none of the more specific rules
+  // match. Keep these last so they don't shadow good detections.
   /\bcost\b/i,
   /\bcooldown\b/i,
-  /\benemy\s+ХП\b/i,
-  /\benemy\s+speed\b/i,
-  /\benemy\s+damage\b/i,
 ];
 
 // `−` is normally BAD for the player (less ХП / less damage / less gold);
 // these patterns mark a `−` bullet as a DRAWBACK because they reduce a
 // player-beneficial stat. Anything that ISN'T in this list is treated as
 // debuffing enemies (e.g. `−50% брони цели` is good for the player).
+//
+// IMPORTANT: JS regex `\b` only treats ASCII letters as word characters,
+// so `\bурон` does NOT match against a Cyrillic-prefixed string. Cyrillic
+// patterns therefore avoid `\b` and rely on the keywords being unique
+// enough that mid-word collisions are not a concern (e.g. `урон склянок`
+// will never appear as a sub-fragment of a different real word).
 const MINUS_IS_NEGATIVE: RegExp[] = [
-  /макс\.?\s*ХП\s+(?:Манекена|Mannequin)/i,
-  /\bурон\s+склянок/i,
-  /\bурон\s+стоек/i,
-  /\bурон\s+реакций/i,
-  /\bрадиус\s+склянок/i,
-  /\bрадиус\s+стоек/i,
-  /\bскорость\s+атаки\s+ст(?:о[ея]ек|ойки)/i,
-  /\bзолот[ао]/i,
-  /\bpotion\s+(damage|radius)\b/i,
-  /\btower\s+(damage|range|fire-rate)\b/i,
+  // Mannequin / hero HP loss.
+  /макс\.?\s*(?:ХП|HP)\s+(?:Манекена|Mannequin)/i,
+  /\bmax\s+(?:mannequin\s+)?(?:ХП|HP)\b/i,
+  // Player-side stat reductions (Russian).
+  /урон\s+склянок/i,
+  /урон\s+стоек/i,
+  /урон\s+реакций/i,
+  /радиус\s+склянок/i,
+  /радиус\s+стоек/i,
+  /скорость\s+атаки\s+ст(?:оек|ойк[аиу])/i,
+  /золот[ао]/i,
+  // Player-side stat reductions (English).
+  /\bpotion\s+(?:damage|radius)\b/i,
+  /\btower\s+(?:damage|range|fire[\s-]?rate)\b/i,
   /\bgold\b/i,
-  /\bmax\s+(?:mannequin\s+)?ХП\b/i,
+  /\breaction\s+damage\b/i,
 ];
 
 /** Classify a single bullet as `pos` or `neg` for the player based on
@@ -82,11 +117,18 @@ export function classifyBullet(text: string): EffectPolarity {
 /** Split a card description into its `·`-separated bullets, classify each
  *  as pos/neg, and append any rolled-extra bullets attached to a per-draft
  *  card instance. Returns the bullets in their original order; the renderer
- *  is responsible for grouping by polarity. */
+ *  is responsible for grouping by polarity.
+ *
+ *  Splits exclusively on the middle-dot (`·`) separator — never on `. ` or
+ *  `; `, because Russian abbreviations like `макс. ХП Манекена` and
+ *  `доп. урона` would otherwise be torn in half (and the resulting
+ *  fragment-classifier would lose the keyword and treat a drawback as a
+ *  positive). All cards (and i18n descs) are authored with `·` as the
+ *  bullet separator. */
 export function cardBullets(card: CardDef): CardBullet[] {
   const desc = cardDesc(card);
   const parts = desc
-    .split(/(?:\.\s+|;\s+|\s\u00B7\s)/)
+    .split(/\s*\u00B7\s*/)
     .map((p) => p.trim().replace(/\.$/, ''))
     .filter((p) => p.length > 0);
   const isCursed = card.isCursed === true;
