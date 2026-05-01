@@ -36,6 +36,12 @@
 
 html, body, #app { margin: 0; padding: 0; height: 100%; width: 100%; }
 
+html {
+  /* Prevent rubber-band overscroll on mobile (iOS Safari, Chrome). */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   background:
     radial-gradient(ellipse at 50% 45%, rgba(60, 95, 125, 0.28) 0%, rgba(12, 17, 28, 0.98) 62%),
@@ -46,6 +52,7 @@ body {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  overscroll-behavior: none;
 }
 
 #app {
@@ -66,6 +73,45 @@ body {
   margin: 0;
 }
 
+/* ============ Portrait orientation warning (mobile only) ============ */
+/* Shown on touch devices held in portrait mode. The viewport-width
+   override in main.ts keeps PC scale, but portrait aspect ratio makes
+   the game nearly unplayable — prompt the user to rotate. */
+#portrait-warning {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(7, 10, 18, 0.96);
+  color: var(--fg);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 28px;
+  text-align: center;
+  padding: 24px;
+}
+#portrait-warning .rotate-icon {
+  font-size: 64px;
+  animation: portrait-rotate 2s ease-in-out infinite;
+}
+@keyframes portrait-rotate {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(90deg); }
+}
+
+/* On mobile touch devices in portrait: show the warning, hide the game.
+   `pointer: coarse` limits this to touch devices (phones/tablets) so
+   desktop windows resized to portrait are not affected. The viewport
+   override in main.ts sets CSS width=1280 on mobile, so a max-width
+   guard would never match — `pointer: coarse` alone is sufficient. */
+@media (orientation: portrait) and (pointer: coarse) {
+  #portrait-warning { display: flex; }
+  #app { display: none; }
+}
+
 #hud {
   position: absolute;
   inset: 0;
@@ -73,6 +119,14 @@ body {
   font-size: 18px;
   font-family: 'VT323', 'Courier New', monospace;
   letter-spacing: 0.5px;
+  /* On notched devices, pad the HUD inward so controls don't sit
+     behind the notch / rounded corners. The canvas fills edge-to-edge
+     but HUD elements stay within the safe area. */
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
 }
 
 /* ============ HUD: top row (WAVE / HP / GOLD+ESSENCE) ============ */

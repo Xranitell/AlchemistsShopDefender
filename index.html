@@ -17,6 +17,14 @@
     <script src="https://yandex.ru/games/sdk/v2"></script>
   </head>
   <body>
+    <!-- Portrait-orientation warning for mobile — hidden by default,
+         revealed by CSS when the device is in portrait mode. -->
+    <div id="portrait-warning">
+      <span class="rotate-icon">📱</span>
+      <span data-i18n="ui.rotate">Поверните устройство горизонтально</span>
+      <span data-i18n="ui.rotate.sub" style="font-size:20px;color:rgba(240,227,200,0.55);">Rotate your device to landscape</span>
+    </div>
+
     <div id="app">
       <canvas id="game-canvas" width="1280" height="720"></canvas>
       <div id="hud"></div>

@@ -5,6 +5,10 @@
  * for new keys — add them here first, then mirror them in `en.ts`.
  */
 export const RU: Record<string, string> = {
+  // ── Mobile orientation warning ──────────────────────────────────────
+  'ui.rotate': 'Поверните устройство горизонтально',
+  'ui.rotate.sub': 'Игра предназначена для альбомной ориентации',
+
   // ── Locale switcher ──────────────────────────────────────────────────
   'ui.lang.ru': 'RU',
   'ui.lang.en': 'EN',
