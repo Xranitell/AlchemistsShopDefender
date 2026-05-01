@@ -1477,6 +1477,19 @@ body {
   flex: 1 1 auto;
   display: block;
 }
+/* Per-tree title rendered above each diamond. Colour is set inline via
+   `fill` so each tree picks up its own branch colour. */
+.meta-tree-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 26px;
+  letter-spacing: 1px;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 1;
+  pointer-events: none;
+  user-select: none;
+  text-transform: uppercase;
+}
 /* Glyph rendered inside each node — tinted via the `fill` attribute set
    in metaOverlay.ts, but the font / stroke is shared. */
 .meta-node-glyph {

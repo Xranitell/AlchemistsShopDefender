@@ -10,6 +10,7 @@ import {
   POTION_INVENTORY_SIZE,
   type IngredientId,
 } from '../data/potions';
+import { META_BY_ID } from '../data/metaTree';
 
 const SAVE_KEY = 'asd_meta_v2';
 
@@ -108,6 +109,21 @@ function sanitizeIngredients(
   return out;
 }
 
+/** Drop any allocated upgrade ids that are no longer present in the meta
+ *  tree. Old saves built against the previous tree layout would otherwise
+ *  carry ghost ids that confuse refund-connectivity checks. */
+function sanitizePurchased(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string') continue;
+    if (!META_BY_ID[id]) continue;
+    if (out.includes(id)) continue;
+    out.push(id);
+  }
+  return out;
+}
+
 function sanitizeInventory(raw: unknown): (string | null)[] {
   const out = emptyInventory();
   if (!Array.isArray(raw)) return out;
@@ -137,7 +153,7 @@ export function loadMeta(): MetaSave {
       keys: data.keys ?? 0,
       epicKeys: data.epicKeys ?? 1,
       ancientKeys: data.ancientKeys ?? 1,
-      purchased: Array.isArray(data.purchased) ? data.purchased : [],
+      purchased: sanitizePurchased(data.purchased),
       bestWave: data.bestWave ?? 0,
       totalRuns: data.totalRuns ?? 0,
       dailyDay: data.dailyDay ?? 0,
