@@ -53,12 +53,6 @@ body {
   -webkit-user-select: none;
   touch-action: none;
   overscroll-behavior: none;
-  /* Account for notches / safe-area insets on modern phones. */
-  padding:
-    env(safe-area-inset-top)
-    env(safe-area-inset-right)
-    env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
 }
 
 #app {
@@ -108,8 +102,12 @@ body {
   50% { transform: rotate(90deg); }
 }
 
-/* On mobile touch devices in portrait: show the warning, hide the game. */
-@media (orientation: portrait) and (pointer: coarse) and (max-width: 1024px) {
+/* On mobile touch devices in portrait: show the warning, hide the game.
+   `pointer: coarse` limits this to touch devices (phones/tablets) so
+   desktop windows resized to portrait are not affected. The viewport
+   override in main.ts sets CSS width=1280 on mobile, so a max-width
+   guard would never match — `pointer: coarse` alone is sufficient. */
+@media (orientation: portrait) and (pointer: coarse) {
   #portrait-warning { display: flex; }
   #app { display: none; }
 }
@@ -121,6 +119,14 @@ body {
   font-size: 18px;
   font-family: 'VT323', 'Courier New', monospace;
   letter-spacing: 0.5px;
+  /* On notched devices, pad the HUD inward so controls don't sit
+     behind the notch / rounded corners. The canvas fills edge-to-edge
+     but HUD elements stay within the safe area. */
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
 }
 
 /* ============ HUD: top row (WAVE / HP / GOLD+ESSENCE) ============ */
