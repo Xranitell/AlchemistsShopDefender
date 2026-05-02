@@ -14,6 +14,7 @@ import {
 import { COLORS } from '../render/palette';
 import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
+import { getViewportSize } from './world';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
 import { drawRadialGlow, getVignette } from '../render/glowCache';
 import type { DifficultyMode } from '../data/difficulty';
@@ -33,20 +34,25 @@ let lastRenderTime = -1;
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
+  const { width: canvasW, height: canvasH } = getViewportSize();
   ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, canvasW, canvasH);
 
   // Set biome so the room backdrop picks the right palette.
   setBiome(state.biomeId);
 
-  // Dark background fill (visible at corners due to rotation)
+  // Dark background fill — covers the full canvas in viewport pixels so
+  // any tiny gap left by float-rounding the world transform is filled.
   const pal = getActiveBiomePalette();
   ctx.fillStyle = pal.bg;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasW, canvasH);
 
-  // Flat 2D camera (identity transform). Kept as save/restore so per-frame
-  // world drawing can still freely mutate the canvas state.
-  const camera: Camera = { cx: width / 2, cy: height / 2, scale: 1 };
+  // World→canvas camera. `width`/`height` are world dimensions, `canvasH`
+  // is the actual canvas pixel height; `getRenderCamera()` returns a scale
+  // such that ctx.scale(scale, scale) maps world (0..width, 0..height) onto
+  // canvas (0..canvasW, 0..canvasH). On a 1920×1080 PC viewport scale === 1
+  // and the transform is a no-op (existing behaviour preserved).
+  const camera: Camera = getRenderCamera(width, height);
   ctx.save();
   applyIsoTransform(ctx, camera);
 
@@ -1126,7 +1132,13 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
   ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
 }
 
-// Export camera config for input system
-export function getRenderCamera(width: number, height: number): Camera {
-  return { cx: width / 2, cy: height / 2, scale: 1 };
+// Export camera config for input system. Maps world coordinates onto canvas
+// pixels via a single uniform scale that fits the world height (`height`)
+// into the canvas height. World width matches canvas aspect (see
+// `setArenaSize`), so the same scale also maps world (0..world.w) onto
+// canvas (0..canvas.w) with no horizontal letterboxing.
+export function getRenderCamera(_width: number, height: number): Camera {
+  const { height: canvasH } = getViewportSize();
+  const scale = canvasH / height;
+  return { cx: 0, cy: 0, scale };
 }

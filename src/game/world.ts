@@ -135,19 +135,44 @@ export function buildWaveState(): WaveState {
   };
 }
 
-/** Module-level dynamic arena size, set by `setArenaSize` from main.ts on
- *  window resize. Values default to the legacy 1280x720 layout so existing
- *  call-sites work unchanged when the host hasn't called `setArenaSize`. */
-let CURRENT_W = ARENA_W;
-let CURRENT_H = ARENA_H;
+/** PC reference world height. The world is always this many world-units
+ *  tall regardless of the viewport: rendering scales it down to fit short
+ *  landscape phones (so the dais / runes / enemies look ~PC-proportioned),
+ *  and on PC at native 1080-tall viewports the scale becomes 1 and we get
+ *  pixel-for-pixel parity with the desktop layout. */
+const WORLD_REF_H = 1080;
+const WORLD_MIN_W = 1440;
 
-export function setArenaSize(width: number, height: number): void {
-  CURRENT_W = Math.max(640, Math.floor(width));
-  CURRENT_H = Math.max(360, Math.floor(height));
+/** Module-level dynamic arena size, set by `setArenaSize` from main.ts on
+ *  window resize. Values default to the 1920x1080 reference world. The
+ *  *world* width tracks the viewport aspect (so the floor fills the canvas
+ *  exactly via the camera transform), while the *world* height is pinned
+ *  to WORLD_REF_H. */
+let CURRENT_W = 1920;
+let CURRENT_H = WORLD_REF_H;
+let VIEWPORT_W = 1920;
+let VIEWPORT_H = WORLD_REF_H;
+
+export function setArenaSize(viewportWidth: number, viewportHeight: number): void {
+  // Track the actual canvas (viewport) size — `getViewportSize()` exposes it
+  // so render code can derive the camera scale that maps world coords onto
+  // canvas pixels.
+  VIEWPORT_W = Math.max(640, Math.floor(viewportWidth));
+  VIEWPORT_H = Math.max(360, Math.floor(viewportHeight));
+  // World height is fixed at WORLD_REF_H; world width is proportional to the
+  // viewport's aspect ratio so a `ctx.scale(viewport.h / world.h, ...)`
+  // transform fills the canvas without letterboxing.
+  CURRENT_H = WORLD_REF_H;
+  const aspect = VIEWPORT_W / VIEWPORT_H;
+  CURRENT_W = Math.max(WORLD_MIN_W, Math.floor(WORLD_REF_H * aspect));
 }
 
 export function getArenaSize(): { width: number; height: number } {
   return { width: CURRENT_W, height: CURRENT_H };
+}
+
+export function getViewportSize(): { width: number; height: number } {
+  return { width: VIEWPORT_W, height: VIEWPORT_H };
 }
 
 /** Resize an existing run to fit a new viewport. Re-positions the
@@ -157,9 +182,9 @@ export function getArenaSize(): { width: number; height: number } {
  *  appear in the same world spot, which is now in a different visual
  *  position relative to the new edges. The next wave / drop will already
  *  use the new dimensions. */
-export function resizeArena(state: GameState, width: number, height: number): void {
-  const w = Math.max(640, Math.floor(width));
-  const h = Math.max(360, Math.floor(height));
+export function resizeArena(state: GameState, viewportWidth: number, viewportHeight: number): void {
+  setArenaSize(viewportWidth, viewportHeight);
+  const { width: w, height: h } = getArenaSize();
   state.arena.width = w;
   state.arena.height = h;
   state.arena.center = v2(w / 2, h / 2);

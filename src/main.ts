@@ -13,7 +13,7 @@ import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifi
 import { applyCard, beginNewDraft, isCursedWave, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
-import { screenToWorld } from './render/camera';
+import { screenToWorld, worldToScreen } from './render/camera';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
@@ -85,10 +85,12 @@ if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
 /** Resize the canvas + game arena to fully cover the current viewport.
- *  We keep the canvas internal resolution at the CSS pixel size (without
- *  multiplying by devicePixelRatio) so 1280x720-tuned positions translate
- *  directly into world coordinates and the existing renderer doesn't need
- *  to know about HiDPI scaling. */
+ *  The canvas internal resolution matches the CSS viewport (no DPR
+ *  multiplication; existing render code is not HiDPI-aware). The world is
+ *  separately sized in `setArenaSize` to a 1080-tall reference and is
+ *  scaled-to-fit by `getRenderCamera()` — so on a 1280×576 mobile viewport
+ *  the world is 2400×1080 and is rendered at scale 0.533, giving the same
+ *  dais-to-canvas ratio the player sees on PC. */
 function syncArenaToViewport(): void {
   const c = canvas!;
   const w = Math.max(640, Math.floor(window.innerWidth));
@@ -424,22 +426,38 @@ function tick(dt: number): void {
   tutorial.update(state);
 }
 
+/** Hit-test thresholds in world units, scaled up so the equivalent screen-px
+ *  hit zone stays the same on zoomed-out viewports (mobile). At PC scale=1
+ *  the rune threshold is 22 world units = 22 px on screen, matching the
+ *  tuned-on-desktop touch target; on a 1280×576 mobile viewport scale≈0.53
+ *  so the world threshold becomes ~41 to keep the same 22-px screen radius. */
+function runeHitRadius(): number {
+  const cam = getRenderCamera(state.arena.width, state.arena.height);
+  return 22 / Math.max(0.1, cam.scale);
+}
+function mannequinHitRadius(): number {
+  const cam = getRenderCamera(state.arena.width, state.arena.height);
+  return 32 / Math.max(0.1, cam.scale);
+}
+
 /** True when the cursor is over an in-world UI hot-spot (rune point or the
  *  mannequin) and a click would trigger a popup rather than throwing. */
 function isHoveringInteractive(at: { x: number; y: number }): boolean {
+  const rR = runeHitRadius();
   for (const rp of state.runePoints) {
     if (!rp.active) continue;
-    if (dist(at, rp.pos) < 22) return true;
+    if (dist(at, rp.pos) < rR) return true;
   }
-  if (dist(at, state.mannequin.pos) < 32) return true;
+  if (dist(at, state.mannequin.pos) < mannequinHitRadius()) return true;
   return false;
 }
 
 function handleClick(at: { x: number; y: number }): void {
   // Rune point click → tower shop.
+  const rR = runeHitRadius();
   for (const rp of state.runePoints) {
     if (!rp.active) continue;
-    if (dist(at, rp.pos) < 22) {
+    if (dist(at, rp.pos) < rR) {
       const screen = canvasToScreen(canvas!, rp.pos);
       mannequinShop.close();
       towerShop.open(rp.id, screen);
@@ -448,7 +466,7 @@ function handleClick(at: { x: number; y: number }): void {
   }
 
   // Mannequin click → repair / shield popup. Only useful between waves.
-  if (dist(at, state.mannequin.pos) < 32) {
+  if (dist(at, state.mannequin.pos) < mannequinHitRadius()) {
     const screen = canvasToScreen(canvas!, state.mannequin.pos);
     towerShop.close();
     mannequinShop.open(screen);
@@ -464,14 +482,22 @@ function handleClick(at: { x: number; y: number }): void {
   if (mannequinShop.isOpen()) mannequinShop.close();
 }
 
+/** Translate a *world* coordinate into a DOM-space pixel position so popups
+ *  (tower-shop / mannequin-shop) can be anchored to in-game entities. The
+ *  world→canvas step uses the active render camera (so a rune at world
+ *  (1578, 540) on a zoomed-out mobile viewport correctly maps to the canvas
+ *  pixel position where it actually appears), then canvas→DOM scales by the
+ *  CSS display size of the canvas element. */
 function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
+  const cam = getRenderCamera(state.arena.width, state.arena.height);
+  const canvasPos = worldToScreen(gamePos.x, gamePos.y, cam);
   const rect = c.getBoundingClientRect();
   const sx = rect.width / c.width;
   const sy = rect.height / c.height;
   const parent = c.parentElement!.getBoundingClientRect();
   return {
-    x: rect.left - parent.left + gamePos.x * sx,
-    y: rect.top - parent.top + gamePos.y * sy,
+    x: rect.left - parent.left + canvasPos.x * sx,
+    y: rect.top - parent.top + canvasPos.y * sy,
   };
 }
 

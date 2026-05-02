@@ -3725,44 +3725,43 @@ body {
   .panel h2 { font-size: 15px; margin-bottom: 4px; }
   .panel .subtitle { font-size: 14px; margin-bottom: 12px; }
 
-  /* HUD top row — shrink badges ~20% relative to desktop so the WAVE / HP /
-     GOLD / ESSENCE / КАТАЛИЗАТОРЫ widgets don't dominate a short landscape
-     phone stage. Pause / overload / "В БОЙ" buttons stay closer to desktop
-     size below since they need a comfortable thumb target. */
-  .hud-top { gap: 8px; }
-  .hud-badge { padding: 6px 10px 8px; font-size: 11px; gap: 6px; }
-  .hud-wave-badge { min-width: 104px; }
-  .hud-wave-value { font-size: 18px; }
-  .hud-hp-badge { flex-basis: 336px; padding: 6px 10px 8px; }
-  .hud-hp-bar { height: 16px; }
-  .hud-hp-label-num { font-size: 9px; }
-  .hud-resource-badge { min-width: 126px; padding: 6px 10px; }
-  .hud-resource-value { font-size: 16px; }
-  .hud-catalyst-badge { min-width: 88px; padding: 5px 8px; }
-  .hud-catalyst-badge .hud-resource-value { font-size: 13px; }
-  .hud-pause-btn { width: 56px; height: 56px; font-size: 16px; }
+  /* HUD top row — keep badges close to desktop sizes (the camera is now
+     scaled-to-fit so the world doesn't compete with HUD chrome for room).
+     We only trim padding/gap a bit to keep everything on a single row at
+     1280-wide CSS, and bump the pause button to a comfortable thumb size. */
+  .hud-top { gap: 12px; }
+  .hud-badge { padding: 9px 14px 11px; gap: 9px; }
+  .hud-wave-badge { min-width: 124px; }
+  .hud-wave-value { font-size: 22px; }
+  .hud-hp-badge { flex-basis: 400px; padding: 8px 14px 10px; }
+  .hud-hp-bar { height: 20px; }
+  .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
+  .hud-resource-value { font-size: 20px; }
+  .hud-catalyst-badge { min-width: 104px; padding: 6px 10px; }
+  .hud-catalyst-badge .hud-resource-value { font-size: 16px; }
+  .hud-pause-btn { width: 60px; height: 60px; font-size: 18px; }
 
   /* HUD bottom row — the previous translateY(-72px) lift was tuned for
      720px desktop. On landscape mobile it forces the potion bar above
      the visible viewport. Drop it and let the row sit at the bottom. */
-  .hud-bottom-row { gap: 8px; }
-  .hud-center-bottom { transform: none; gap: 4px; }
-  .hud-hint { font-size: 13px; max-width: 60vw; }
-  /* Yellow CTA + circular OVERLOAD/ABILITY: keep them close to desktop
-     size so the player can land them easily with a thumb. */
-  .hud-skip-btn { padding: 12px 32px; font-size: 14px; letter-spacing: 2px; }
-  .hud-bottom-right { gap: 10px; }
-  .hud-round-btn { width: 76px; height: 76px; }
-  .hud-round-btn .sprite { transform: scale(0.85); transform-origin: center; }
-  .hud-icon-label { font-size: 7px; }
-  .hud-overload-module { bottom: -10px; font-size: 10px; }
-  .hud-potion-bar { gap: 6px; margin-top: 0; }
-  .hud-potion-slot { width: 44px; height: 44px; font-size: 22px; }
-  .hud-potion-key { font-size: 10px; }
-  .hud-effect-chip { padding: 2px 7px; font-size: 13px; }
-  .hud-timer-bar { width: 160px; height: 14px; }
-  .hud-timer-label { font-size: 11px; }
-  .hud-difficulty-badge { font-size: 8px; padding: 2px 6px; }
+  .hud-bottom-row { gap: 10px; }
+  .hud-center-bottom { transform: none; gap: 6px; }
+  .hud-hint { font-size: 14px; max-width: 60vw; }
+  /* Yellow CTA + circular OVERLOAD/ABILITY: bumped a bit larger than
+     desktop so the thumb has a comfortable target on mobile. */
+  .hud-skip-btn { padding: 14px 36px 16px; font-size: 16px; letter-spacing: 2px; }
+  .hud-bottom-right { gap: 12px; }
+  .hud-round-btn { width: 84px; height: 84px; }
+  .hud-round-btn .sprite { transform: scale(0.95); transform-origin: center; }
+  .hud-icon-label { font-size: 8px; }
+  .hud-overload-module { bottom: -10px; font-size: 11px; }
+  .hud-potion-bar { gap: 8px; margin-top: 0; }
+  .hud-potion-slot { width: 52px; height: 52px; font-size: 24px; }
+  .hud-potion-key { font-size: 11px; }
+  .hud-effect-chip { padding: 3px 8px; font-size: 14px; }
+  .hud-timer-bar { width: 180px; height: 16px; }
+  .hud-timer-label { font-size: 12px; }
+  .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
 
   /* Card draft — keep 3 columns but slimmer. */
   .cards { gap: 8px; }
