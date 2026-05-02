@@ -2984,13 +2984,18 @@ body {
   font-size: 13px;
   padding: 4px 2px;
 }
+/* Body is ~3× the original 110px so the player sees a useful slice of the
+   table directly in the main menu. The list itself scrolls if the topN
+   ever overflows so layout never grows unbounded. */
 .lb-panel-compact .lb-body {
-  min-height: 110px;
+  min-height: 330px;
+  max-height: 330px;
+  overflow-y: auto;
 }
 .lb-panel-compact .lb-loading,
 .lb-panel-compact .lb-empty {
   font-size: 13px;
-  padding: 22px 0;
+  padding: 80px 0;
 }
 .lb-panel-compact .lb-row {
   padding: 3px 6px;
@@ -4018,6 +4023,16 @@ body {
   .mm-mid { gap: 10px; }
   .mm-illustration { display: none; }
   .mm-battle-btn { padding: 10px 32px 12px; font-size: clamp(15px, 2.2vw, 22px); }
+
+  /* The inline leaderboard in the main menu has a ~330px-tall body on PC
+     so the player sees the top of the table without scrolling. On a
+     phone in landscape (≤540 CSS px tall) the full title + body + battle
+     button must fit inside ~440 usable px, so we cap the body to 50vh
+     and let it scroll when the list is longer. */
+  .lb-panel-compact .lb-body {
+    min-height: 0;
+    max-height: 50dvh;
+  }
 
   /* Skill tree — already viewport-fill, just make the side panel
      scroll instead of cropping. */

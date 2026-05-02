@@ -537,8 +537,7 @@ Object.assign(EN, {
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Leaderboards',
   'ui.lb.tab.endlessWaves': 'Best Wave',
-  'ui.lb.tab.bestScore': 'Best Score',
-  'ui.lb.tab.dailyWaves': 'Daily',
+  'ui.lb.tab.dailyWaves': 'Daily Event',
   'ui.lb.loading': 'Loading…',
   'ui.lb.empty': 'No entries yet.',
 

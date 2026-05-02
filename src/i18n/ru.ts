@@ -541,8 +541,7 @@ Object.assign(RU, {
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Лидерборды',
   'ui.lb.tab.endlessWaves': 'Лучшая волна',
-  'ui.lb.tab.bestScore': 'Лучший счёт',
-  'ui.lb.tab.dailyWaves': 'Дневной',
+  'ui.lb.tab.dailyWaves': 'Дневное событие',
   'ui.lb.loading': 'Загрузка…',
   'ui.lb.empty': 'Пока записей нет.',
 

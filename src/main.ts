@@ -614,14 +614,13 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   persistRunInventory(state, meta);
   saveMeta(meta);
 
-  // Submit scores to leaderboards. The three board ids (`endlessWaves`,
-  // `bestScore`, `dailyWaves_YYYYMMDD`) match the public-facing names in
-  // the Yandex Games dashboard. The daily board is rolled over at 00:00
-  // Europe/Moscow because `dailyBoardId()` builds its date from MSK.
+  // Submit scores to the two Yandex Games leaderboards. `endlessWaves`
+  // tracks the highest wave reached across any run; `dailyWaves` is a
+  // permanent board for daily-event runs (no per-day rollover — the same
+  // table is reused every weekday).
   void yandex.setLeaderboardScore('endlessWaves', wave);
-  const score = wave * 1000 + state.totalKills;
-  void yandex.setLeaderboardScore('bestScore', score);
   if (state.difficulty === 'daily') {
+    const score = wave * 1000 + state.totalKills;
     void yandex.setLeaderboardScore(dailyBoardId(), score);
   }
 

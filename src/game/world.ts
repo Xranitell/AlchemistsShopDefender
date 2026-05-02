@@ -325,13 +325,12 @@ export function dailySeed(): number {
   return ((y * 10000 + m * 100 + d) >>> 0);
 }
 
-/** Board id for today's daily leaderboard: `dailyWaves_YYYYMMDD` where the
- *  date is the current day in Europe/Moscow. The daily leaderboard rolls
- *  over at 00:00 MSK because this id changes once per Moscow midnight. */
+/** Board id for the daily-event leaderboard. Static (`dailyWaves`) — the
+ *  same Yandex board is reused every day instead of rolling over per-MSK
+ *  midnight, so players see the same accumulated table no matter which
+ *  weekday's event they ran. */
 export function dailyBoardId(): string {
-  const { y, m, d } = moscowToday();
-  const pad = (v: number) => String(v).padStart(2, '0');
-  return `dailyWaves_${y}${pad(m)}${pad(d)}`;
+  return 'dailyWaves';
 }
 
 /** Apply passive biome modifiers to the state. Call once after

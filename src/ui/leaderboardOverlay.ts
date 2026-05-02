@@ -2,14 +2,14 @@ import { yandex, type LeaderboardEntry } from '../yandex';
 import { t } from '../i18n';
 import { dailyBoardId } from '../game/world';
 
-// Three logical leaderboards exposed by the game. The technical board ids
-// match what we submit in main.ts: `endlessWaves`, `bestScore`,
-// `dailyWaves_YYYYMMDD` (daily resolved at fetch time via dailyBoardId()).
-type BoardTab = 'endlessWaves' | 'bestScore' | 'dailyWaves';
+// Two leaderboards exposed by the game. The technical board ids match
+// what we submit in main.ts: `endlessWaves` (any-mode best wave) and
+// `dailyWaves` (permanent daily-event board, resolved at fetch time via
+// dailyBoardId()).
+type BoardTab = 'endlessWaves' | 'dailyWaves';
 
 const TABS: { id: BoardTab; labelKey: string }[] = [
   { id: 'endlessWaves', labelKey: 'ui.lb.tab.endlessWaves' },
-  { id: 'bestScore', labelKey: 'ui.lb.tab.bestScore' },
   { id: 'dailyWaves', labelKey: 'ui.lb.tab.dailyWaves' },
 ];
 
@@ -44,9 +44,8 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
     tabBar.querySelectorAll('.lb-tab').forEach((el) => el.classList.remove('active'));
     tabBar.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
     body.innerHTML = `<div class="lb-loading">${t('ui.lb.loading')}</div>`;
-    // Daily tab resolves to today's MSK-suffixed board id so the table
-    // rolls over at 00:00 Europe/Moscow. `endlessWaves` and `bestScore`
-    // are persistent across the lifetime of the game.
+    // Daily tab resolves through dailyBoardId() so we always read the
+    // same permanent board name across the lifetime of the game.
     const boardId = tab === 'dailyWaves' ? dailyBoardId() : tab;
     void yandex.getTopPlayers(boardId, topN).then((entries) => {
       renderEntries(body, entries);
