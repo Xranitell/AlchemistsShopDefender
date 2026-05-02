@@ -148,13 +148,11 @@ function drawPlankFloor(
   const span = Math.max(w, h);
   const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
   ctx.save();
-  // Shear + 90° clockwise rotate + X mirror around the canvas centre.
-  // The combined effect is a parallelogram floor whose plank rows lie
-  // on the iso 2:1 axis going up-right — same axis as the rhombus
-  // tiles in the other biomes.
+  // Shear + 90° clockwise rotate around the canvas centre. The user
+  // asked for an extra X flip on top of the previous chain — two X
+  // flips cancel out, so the final chain is just rotate + shear.
   ctx.translate(w / 2, h / 2);
   ctx.rotate(Math.PI / 2);
-  ctx.scale(-1, 1);
   ctx.translate(-w / 2, -h / 2);
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
 
