@@ -110,37 +110,62 @@ export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: n
 /**
  * Cosy alchemist's lab plank floor.
  *
- * Renders horizontal wooden boards across the arena. Each board is split
- * into a sequence of plank segments by short vertical seams, and each
- * plank gets one of three warm brown shades + per-plank wear (grain
- * lines, knots, scuffs) keyed off a deterministic hash so the floor
- * stays stable across renders.
+ * Renders wooden boards across the arena, sheared along the iso 2:1 plane
+ * so they sit on the same diagonal as the old rhombus tile floor instead
+ * of reading as flat top-down rectangles. Each board is split into a
+ * sequence of plank segments by short vertical seams, and each plank
+ * carries dense per-pixel wear (grain stripes, knots, fibres, scuffs,
+ * nails) at ~64x64 sample density so the texture reads as crafted
+ * pixel-art rather than flat colour bands.
  */
+// `FLOOR_TILT` is the *pre-transform* shear; the plank floor is then
+// rotated 90° clockwise and X-mirrored, so the final visible slope is
+// `1 / FLOOR_TILT`. We want the planks to lie on the iso 2:1 axis going
+// up-right (slope ≈ -0.5, ~-26.57°) — matching the red parallelogram
+// reference the user drew on top of the rhombus tile floor — so the
+// pre-transform tilt has to be -2.0.
+const FLOOR_TILT = -2.0;
+
 function drawPlankFloor(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   pal: BiomePalette,
 ): void {
-  const BOARD_H = 56;
-  const PLANK_MIN = 110;
-  const PLANK_MAX = 220;
+  // Slimmer boards + shorter planks = denser detail per square inch and
+  // a more crafted pixel-art read at the requested ~64x64 granularity.
+  const BOARD_H = 38;
+  const PLANK_MIN = 64;
+  const PLANK_MAX = 132;
 
   // Base fill so any uncovered pixel still looks like dark wood.
   ctx.fillStyle = pal.tileCrack;
   ctx.fillRect(0, 0, w, h);
 
+  // After the iso shear plus 90° CW rotation + X mirror, the planks live
+  // on a parallelogram-shaped patch noticeably bigger than the canvas,
+  // so we pad the drawing range generously so coverage stays full.
+  const span = Math.max(w, h);
+  const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
+  ctx.save();
+  // Shear + 90° clockwise rotate around the canvas centre. The user
+  // asked for an extra X flip on top of the previous chain — two X
+  // flips cancel out, so the final chain is just rotate + shear.
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.translate(-w / 2, -h / 2);
+  ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
+
   let row = 0;
-  for (let y = 0; y < h; y += BOARD_H) {
+  for (let y = -padY; y < h + padY; y += BOARD_H) {
     // Alternate the starting offset of plank seams between rows so the
     // joints don't line up in a brick-pattern column.
     const seamOffset = (row & 1) === 0 ? 0 : Math.floor(PLANK_MAX * 0.45);
 
-    let x = -seamOffset;
+    let x = -padY - seamOffset;
     let plankIdx = 0;
-    while (x < w) {
+    while (x < w + padY) {
       const seed = hash2((plankIdx + 1) * 191, row * 311 + 17);
-      // Plank width — varies between PLANK_MIN..PLANK_MAX.
       const widthSpan = PLANK_MAX - PLANK_MIN;
       const pw = PLANK_MIN + (seed % widthSpan);
 
@@ -149,13 +174,12 @@ function drawPlankFloor(
       const shadeBits = (seed >> 4) & 0b11;
       const body = shadeBits === 0 ? pal.tileC : shadeBits === 1 ? pal.tileA : pal.tileB;
 
-      // Plank body with a 1-px highlight along the top edge and a 1-px
-      // shadow along the bottom — sells board-on-board layering.
       ctx.fillStyle = body;
       ctx.fillRect(x, y, pw, BOARD_H);
-      ctx.fillStyle = 'rgba(255, 220, 170, 0.10)';
+      // Top highlight + bottom shadow sell board-on-board layering.
+      ctx.fillStyle = 'rgba(255, 220, 170, 0.12)';
       ctx.fillRect(x, y, pw, 1);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
       ctx.fillRect(x, y + BOARD_H - 1, pw, 1);
 
       // Vertical seam — dark gap between this plank and the next.
@@ -173,11 +197,14 @@ function drawPlankFloor(
     // Horizontal gap between rows of boards — adds the "stacked
     // floorboard" look from the reference art.
     ctx.fillStyle = pal.tileCrack;
-    ctx.fillRect(0, y + BOARD_H - 2, w, 2);
+    ctx.fillRect(-padY, y + BOARD_H - 2, w + padY * 2, 2);
     row++;
   }
 
-  // Soft edge vignette pushing focus toward the centre.
+  ctx.restore();
+
+  // Soft edge vignette pushing focus toward the centre. Drawn AFTER the
+  // shear so it stays a clean radial without smearing.
   const grad = ctx.createRadialGradient(
     w / 2,
     h / 2,
@@ -199,9 +226,14 @@ function drawPlankFloor(
   ctx.fillRect(0, 0, w, h);
 }
 
-/** Per-plank wear: long horizontal grain stripes, a knot or two, the
- * occasional dark stain. Deterministic — driven entirely by the seed
- * the layout passes in. */
+/** Per-plank wear at ~64x64 pixel-art density. Layered:
+ *  1. Long grain stripes (3-6 per plank).
+ *  2. Short fibre flecks (lots of 1-2px streaks → 'wood texture').
+ *  3. Pin-point pixel noise so flat colour breaks up under close zoom.
+ *  4. Knots (~1 in 2 planks now) with a bright rim.
+ *  5. Two nail pixels per plank end + brass head highlight.
+ *  6. Optional polish highlight + dark stain accents.
+ *  All deterministic — driven entirely by the layout seed. */
 function addPlankDetails(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -211,52 +243,85 @@ function addPlankDetails(
   seed: number,
   pal: BiomePalette,
 ): void {
-  // Grain — 2 to 4 thin horizontal stripes per plank, interpolated
-  // between the plank's body and a slightly darker tone so the floor
-  // doesn't read as flat colour.
-  const grainCount = 2 + ((seed >> 2) & 0b11);
+  // 1) Grain — 3-6 thin horizontal stripes per plank.
+  const grainCount = 3 + ((seed >> 2) & 0b11);
   for (let g = 0; g < grainCount; g++) {
-    const gy = y + 4 + Math.floor(((seed >> (g * 3 + 5)) & 0xff) / 255 * (ph - 8));
-    const gx = x + 4 + Math.floor(((seed >> (g * 3 + 11)) & 0xff) / 255 * (pw - 12));
-    const len = 18 + ((seed >> (g * 5 + 9)) & 0x3f);
-    ctx.fillStyle = 'rgba(45, 25, 15, 0.18)';
-    ctx.fillRect(gx, gy, Math.min(len, x + pw - 4 - gx), 1);
+    const gy = y + 3 + Math.floor(((seed >> (g * 3 + 5)) & 0xff) / 255 * (ph - 6));
+    const gx = x + 3 + Math.floor(((seed >> (g * 3 + 11)) & 0xff) / 255 * (pw - 8));
+    const len = 14 + ((seed >> (g * 5 + 9)) & 0x3f);
+    ctx.fillStyle = (g & 1) === 0
+      ? 'rgba(40, 22, 12, 0.22)'
+      : 'rgba(255, 215, 160, 0.06)';
+    ctx.fillRect(gx, gy, Math.min(len, x + pw - 3 - gx), 1);
   }
 
-  // Knot — small dark ellipse with a bright rim, ~1 in 4 planks.
-  if (((seed >> 8) & 0b11) === 0b10 && pw > 90) {
-    const kx = x + 24 + ((seed >> 12) & 0x3f);
-    const ky = y + Math.floor(ph / 2);
-    ctx.fillStyle = 'rgba(20, 10, 5, 0.7)';
-    ctx.beginPath();
-    ctx.ellipse(kx, ky, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(80, 45, 25, 0.7)';
-    ctx.beginPath();
-    ctx.ellipse(kx, ky, 3, 2, 0, 0, Math.PI * 2);
-    ctx.fill();
+  // 2) Short fibre flecks — 6-10 little streaks across the plank, the
+  // signature of the iso pixel-art floors in the reference art.
+  const fibreCount = 6 + ((seed >> 6) & 0b111);
+  for (let f = 0; f < fibreCount; f++) {
+    const fx = x + 2 + Math.floor(((seed * (f + 13)) >>> 0) & 0xff) / 255 * (pw - 4);
+    const fy = y + 2 + Math.floor(((seed * (f + 31)) >>> 0) >> 8 & 0xff) / 255 * (ph - 4);
+    const fl = 2 + ((seed >> (f + 4)) & 0b11);
+    ctx.fillStyle = ((seed >> f) & 1)
+      ? 'rgba(20, 10, 5, 0.40)'
+      : 'rgba(255, 220, 170, 0.10)';
+    ctx.fillRect(Math.floor(fx), Math.floor(fy), fl, 1);
   }
 
-  // Subtle highlight smear — a streak of brighter tone roughly along the
-  // grain direction, sells weathered wax / polish.
+  // 3) Pixel noise — sprinkle of single-pixel speckles so the wood
+  // doesn't read flat under the spotlight.
+  for (let n = 0; n < 14; n++) {
+    const r = ((seed * (n + 7)) ^ (n * 91)) >>> 0;
+    const nx = x + 1 + (r % (pw - 2));
+    const ny = y + 1 + ((r >>> 9) % (ph - 2));
+    const dark = (r & 0b11) === 0;
+    ctx.fillStyle = dark ? 'rgba(15, 8, 4, 0.30)' : 'rgba(255, 220, 170, 0.07)';
+    ctx.fillRect(nx, ny, 1, 1);
+  }
+
+  // 4) Knot — small dark ellipse with a bright rim, ~1 in 2 planks now.
+  if (((seed >> 8) & 0b1) === 0b1 && pw > 70) {
+    const kx = x + 14 + ((seed >> 12) & 0x3f);
+    const ky = y + 4 + ((seed >> 18) & 0xf);
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.78)';
+    ctx.beginPath();
+    ctx.ellipse(kx, ky, 4, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(95, 55, 30, 0.75)';
+    ctx.beginPath();
+    ctx.ellipse(kx, ky, 2, 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Faint ring around the knot.
+    ctx.strokeStyle = 'rgba(30, 16, 8, 0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(kx, ky, 6, 3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 5) Polish highlight — a streak of brighter tone roughly along the
+  // grain direction, sells weathered wax.
   if (((seed >> 14) & 0b111) === 0b011) {
-    ctx.fillStyle = 'rgba(255, 220, 160, 0.07)';
-    ctx.fillRect(x + 6, y + 6, Math.max(0, pw - 16), 2);
+    ctx.fillStyle = 'rgba(255, 230, 180, 0.08)';
+    ctx.fillRect(x + 4, y + 5, Math.max(0, pw - 12), 2);
   }
 
-  // Dark stain — a short oblong patch.
+  // 6) Dark stain — a short oblong patch (rare).
   if (((seed >> 17) & 0b1111) === 0b0101) {
-    ctx.fillStyle = 'rgba(15, 8, 4, 0.35)';
+    ctx.fillStyle = 'rgba(15, 8, 4, 0.40)';
     ctx.beginPath();
-    ctx.ellipse(x + Math.floor(pw / 2), y + Math.floor(ph / 2), 8, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + Math.floor(pw / 2), y + Math.floor(ph / 2), 6, 2, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Anchored "nail" pixel near each plank end — sells the floorboard
-  // construction beat.
+  // 7) Two nail pixels per plank — one at each end — with a brass head
+  // highlight that catches the warm spotlight.
   ctx.fillStyle = pal.tileCrack;
-  ctx.fillRect(x + 4, y + 4, 2, 2);
-  ctx.fillRect(x + pw - 6, y + ph - 6, 2, 2);
+  ctx.fillRect(x + 4, y + 3, 2, 2);
+  ctx.fillRect(x + pw - 6, y + ph - 5, 2, 2);
+  ctx.fillStyle = COLORS.brassHi;
+  ctx.fillRect(x + 4, y + 3, 1, 1);
+  ctx.fillRect(x + pw - 6, y + ph - 5, 1, 1);
 }
 
 // Iso rhombus tile floor covering the entire canvas.
@@ -410,6 +475,46 @@ function drawWorkshopDecor(
     if (dx * dx + dy * dy < 1) continue;
 
     const pick = i % 16;
+    // Each prop gets its own deterministic rotation so the floor stops
+    // reading like a tidy product shelf. `kind` controls the *style* of
+    // rotation: tall props (bottles, candles, mortar, ink, herbs) get
+    // a gentle ±18° tilt, flat props (scrolls, open books) can lie at
+    // any angle, stacks stay near upright.
+    const kind = pick <= 3 || pick === 9 || pick === 10 || pick === 11 || pick === 12 || pick === 14
+      ? 'tall'
+      : pick === 6 || pick === 13
+        ? 'stack'
+        : 'flat';
+    const rotSeed = ((r >>> 19) & 0xff) / 255; // 0..1
+    let angle: number;
+    if (kind === 'tall') {
+      angle = (rotSeed - 0.5) * (Math.PI / 5); // ±18°
+    } else if (kind === 'stack') {
+      angle = (rotSeed - 0.5) * (Math.PI / 9); // ±10°
+    } else {
+      angle = (rotSeed - 0.5) * (Math.PI * 2); // any
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    switch (pick) {
+      case 0: drawPotionBottle(ctx, 0, 0, 'green', r); break;
+      case 1: drawPotionBottle(ctx, 0, 0, 'blue',  r); break;
+      case 2: drawPotionBottle(ctx, 0, 0, 'red',   r); break;
+      case 3: drawPotionBottle(ctx, 0, 0, 'amber', r); break;
+      case 4: drawClosedBook(ctx, 0, 0, r); break;
+      case 5: drawClosedBook(ctx, 0, 0, r ^ 0x2a); break;
+      case 6: drawBookStack(ctx, 0, 0, r); break;
+      case 7: drawOpenBookCosy(ctx, 0, 0, r); break;
+      case 8: drawScroll(ctx, 0, 0, r); break;
+      case 9: drawCandleStub(ctx, 0, 0); break;
+      case 10: drawMortarPestle(ctx, 0, 0); break;
+      case 11: drawInkAndQuill(ctx, 0, 0); break;
+      case 12: drawHerbBundle(ctx, 0, 0, r); break;
+      case 13: drawSmallCrate(ctx, 0, 0); break;
+      case 14: drawPotionBottle(ctx, 0, 0, 'green', r ^ 0x55); break;
+      default: drawScroll(ctx, 0, 0, r ^ 0x77); break;
     // Per-prop tilt — small angle in radians derived from the seed so
     // each prop sits at a slightly different orientation. Without this
     // the floor reads as a perfectly-aligned grid of stamped stickers.
@@ -432,6 +537,7 @@ function drawWorkshopDecor(
       case 14: drawPotionBottle(ctx, x, y, 'green', r ^ 0x55, tilt); break;
       default: drawScroll(ctx, x, y, r ^ 0x77, tilt); break;
     }
+    ctx.restore();
   }
 }
 
