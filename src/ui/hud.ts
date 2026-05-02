@@ -39,9 +39,9 @@ export class Hud {
   private difficultyBadge!: HTMLDivElement;
   /** Side panel container holding the picked blessings/curses, the
    *  wave-rotating dungeon laws, and the run contracts. Anchored to
-   *  the right edge of the screen, below the gold/essence stack, so
-   *  the player can read the active rules, effects, and goals at all
-   *  times during a run without overlapping the prep timer. */
+   *  the left edge of the screen, below the wave/difficulty cluster,
+   *  so the player can read the active rules, effects, and goals at
+   *  all times during a run. */
   private runSidebar!: HTMLDivElement;
   /** Section inside the sidebar listing the picked blessings (and curse
    *  in Ancient). Built once per run since the picks don't change. */
@@ -172,8 +172,8 @@ export class Hud {
 
     top.appendChild(waveStack);
 
-    // Run sidebar — vertical panel anchored to the RIGHT edge of the
-    // screen, below the gold/essence stack. Holds blessings, dungeon
+    // Run sidebar — vertical panel anchored to the LEFT edge of the
+    // screen, below the wave/difficulty cluster. Holds blessings, dungeon
     // laws, and run contracts as expanded cards (icon + name + short
     // description) so the player doesn't need to open the pause overlay
     // to read the current rules and goals.

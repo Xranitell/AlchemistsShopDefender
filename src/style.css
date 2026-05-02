@@ -2798,10 +2798,9 @@ body {
    rules at all times during a run. */
 .hud-run-sidebar {
   position: absolute;
-  /* Anchored to the RIGHT edge of the screen, below the gold/essence
-     resource stack. The previous left-side anchor overlapped the prep
-     timer and the WAVE/HP/difficulty cluster on narrow viewports. */
-  right: 18px;
+  /* Anchored to the LEFT edge of the screen, below the wave/difficulty
+     cluster, so the player can read the active rules at all times. */
+  left: 18px;
   top: 200px;
   max-height: calc(100vh - 280px);
   overflow-y: auto;
@@ -4087,9 +4086,35 @@ body {
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Group wrapper: holds left (stats) + right (blessings/laws/contracts)
+   panels side-by-side and centers the pair on screen. */
+.pause-stats-group {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 96vw;
+  max-height: 92vh;
+}
+
 .pause-stats-inner {
   position: relative;
-  width: min(640px, 92vw);
+  width: min(640px, 46vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px 24px 20px;
+  background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+/* Right side panel for blessings, laws, contracts. */
+.pause-stats-side {
+  position: relative;
+  width: min(440px, 42vw);
   max-height: 85vh;
   overflow-y: auto;
   padding: 28px 24px 20px;
@@ -4290,7 +4315,7 @@ body {
   .hud-timer-bar { width: 180px; height: 16px; }
   .hud-timer-label { font-size: 12px; }
   .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
-  .hud-run-sidebar { right: 8px; top: 170px; max-width: 200px; max-height: calc(100vh - 260px); }
+  .hud-run-sidebar { left: 8px; top: 170px; max-width: 200px; max-height: calc(100vh - 260px); }
   .hud-run-card { padding: 3px 5px; min-height: 28px; }
   .hud-run-card-name { font-size: 8px; }
   .hud-run-card-desc { font-size: 11px; }
@@ -4416,11 +4441,21 @@ body {
   }
   .tower-shop button { padding: 8px 9px; font-size: 13px; }
 
-  /* Pause-stats overlay — shrink so the run-modifier list fits on a
-     short landscape phone without clipping the close (✕) button. */
+  /* Pause-stats overlay — on small viewports stack panels vertically. */
+  .pause-stats-group {
+    flex-direction: column;
+    align-items: center;
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
   .pause-stats-inner {
     width: min(560px, 94vw);
-    max-height: 92dvh;
+    max-height: none;
+    padding: 18px 16px 14px;
+  }
+  .pause-stats-side {
+    width: min(560px, 94vw);
+    max-height: none;
     padding: 18px 16px 14px;
   }
   .ps-section { margin-bottom: 12px; }
