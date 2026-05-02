@@ -476,49 +476,27 @@ function drawWorkshopDecor(
 
     const pick = i % 16;
     // Each prop gets its own deterministic rotation so the floor stops
-    // reading like a tidy product shelf. `kind` controls the *style* of
-    // rotation: tall props (bottles, candles, mortar, ink, herbs) get
-    // a gentle ±18° tilt, flat props (scrolls, open books) can lie at
-    // any angle, stacks stay near upright.
+    // reading like a tidy product shelf. `kind` controls the *amount*
+    // of rotation: tall props (bottles, candles, mortar, ink, herbs)
+    // get a gentle ±18° tilt, flat props (scrolls, open books) can lie
+    // at any angle, stacks stay near upright. The drawer applies the
+    // tilt internally via withTilt() so the floor shadow stays flat
+    // even for arbitrarily-rotated bodies.
     const kind = pick <= 3 || pick === 9 || pick === 10 || pick === 11 || pick === 12 || pick === 14
       ? 'tall'
       : pick === 6 || pick === 13
         ? 'stack'
         : 'flat';
     const rotSeed = ((r >>> 19) & 0xff) / 255; // 0..1
-    let angle: number;
+    let tilt: number;
     if (kind === 'tall') {
-      angle = (rotSeed - 0.5) * (Math.PI / 5); // ±18°
+      tilt = (rotSeed - 0.5) * (Math.PI / 5); // ±18°
     } else if (kind === 'stack') {
-      angle = (rotSeed - 0.5) * (Math.PI / 9); // ±10°
+      tilt = (rotSeed - 0.5) * (Math.PI / 9); // ±10°
     } else {
-      angle = (rotSeed - 0.5) * (Math.PI * 2); // any
+      tilt = (rotSeed - 0.5) * (Math.PI * 2); // any angle
     }
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    switch (pick) {
-      case 0: drawPotionBottle(ctx, 0, 0, 'green', r); break;
-      case 1: drawPotionBottle(ctx, 0, 0, 'blue',  r); break;
-      case 2: drawPotionBottle(ctx, 0, 0, 'red',   r); break;
-      case 3: drawPotionBottle(ctx, 0, 0, 'amber', r); break;
-      case 4: drawClosedBook(ctx, 0, 0, r); break;
-      case 5: drawClosedBook(ctx, 0, 0, r ^ 0x2a); break;
-      case 6: drawBookStack(ctx, 0, 0, r); break;
-      case 7: drawOpenBookCosy(ctx, 0, 0, r); break;
-      case 8: drawScroll(ctx, 0, 0, r); break;
-      case 9: drawCandleStub(ctx, 0, 0); break;
-      case 10: drawMortarPestle(ctx, 0, 0); break;
-      case 11: drawInkAndQuill(ctx, 0, 0); break;
-      case 12: drawHerbBundle(ctx, 0, 0, r); break;
-      case 13: drawSmallCrate(ctx, 0, 0); break;
-      case 14: drawPotionBottle(ctx, 0, 0, 'green', r ^ 0x55); break;
-      default: drawScroll(ctx, 0, 0, r ^ 0x77); break;
-    // Per-prop tilt — small angle in radians derived from the seed so
-    // each prop sits at a slightly different orientation. Without this
-    // the floor reads as a perfectly-aligned grid of stamped stickers.
-    const tilt = (((r >>> 21) & 0xff) / 0xff - 0.5) * 0.5;
     switch (pick) {
       case 0: drawPotionBottle(ctx, x, y, 'green', r, tilt); break;
       case 1: drawPotionBottle(ctx, x, y, 'blue',  r, tilt); break;
@@ -537,7 +515,6 @@ function drawWorkshopDecor(
       case 14: drawPotionBottle(ctx, x, y, 'green', r ^ 0x55, tilt); break;
       default: drawScroll(ctx, x, y, r ^ 0x77, tilt); break;
     }
-    ctx.restore();
   }
 }
 
