@@ -3,6 +3,7 @@ import { v2 } from '../engine/math';
 import type { Entrance } from './types';
 import {
   newModifiers,
+  newContractStats,
   type GameState,
   type Mannequin,
   type RunePoint,
@@ -12,6 +13,7 @@ import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { biomeFromSeed, BIOMES, type BiomeId } from '../data/biomes';
 import { getEventForWeekday, type DailyEventDef } from '../data/dailyEvents';
 import { MUTATORS, MUTATOR_BY_ID, mutatorCountForDifficulty, type MutatorId } from '../data/mutators';
+import { CONTRACTS, contractCountForDifficulty, type ContractId } from '../data/contracts';
 import { ENDLESS_MODIFIER_POOL } from './state';
 
 const ARENA_W = 1280;
@@ -270,6 +272,8 @@ export function buildInitialState(
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
     dailyEventId: null,
     activeMutatorIds: [],
+    activeContractIds: [],
+    contractStats: newContractStats(),
     spawnCountMult: 1,
     nightModeActive: false,
     endlessLoop: 0,
@@ -446,4 +450,16 @@ export function applyRunMutators(state: GameState): void {
     def.apply(state);
     state.activeMutatorIds.push(id);
   }
+}
+
+/** Roll N distinct run contracts for the given difficulty (2 in Epic, 3 in
+ *  Ancient; none in other modes) and stamp them on `state`. Contracts only
+ *  read from `state.contractStats` so this never mutates anything besides
+ *  `state.activeContractIds`. */
+export function applyRunContracts(state: GameState): void {
+  const count = contractCountForDifficulty(state.difficulty);
+  if (count <= 0) return;
+  const pool = state.rng.shuffle(CONTRACTS.map((c) => c.id));
+  const picked: ContractId[] = pool.slice(0, count);
+  state.activeContractIds = picked;
 }

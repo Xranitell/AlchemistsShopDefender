@@ -285,6 +285,7 @@ export function spawnEnemy(
     bossDodgeDir: { x: 0, y: 0 },
     bossDodgeSpeed: 0,
     bossSlamWindup: 0,
+    lastHitElement: 'neutral',
   });
 }
 

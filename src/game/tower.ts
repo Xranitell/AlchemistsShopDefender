@@ -56,6 +56,10 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
   invalidateTowerCaches();
   spawnFloatingText(state, towerName(kind), rp.pos, '#7df9ff');
   tutorial.notify('towerPlaced');
+  // Run-contract bookkeeping: count cumulative tower buys (selling and
+  // re-buying does count again — the contract rewards activity, not
+  // simultaneous board state).
+  state.contractStats.towersBuilt += 1;
   return true;
 }
 

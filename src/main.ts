@@ -8,6 +8,7 @@ import {
   applyBiomeModifiers,
   applyDailyEventModifiers,
   applyRunMutators,
+  applyRunContracts,
   getTodayDailyEvent,
   dailySeed,
   dailyBoardId,
@@ -41,6 +42,7 @@ import { ReviveOverlay } from './ui/reviveOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
+import { CONTRACT_BY_ID, type ContractId, type ContractDef } from './data/contracts';
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
@@ -398,6 +400,13 @@ function tick(dt: number): void {
         );
       }
     }
+
+    // Run-contract bookkeeping: track the highest gold balance ever seen
+    // during the run for the gold-hoarder contract. Cheap — a single
+    // numeric compare per frame.
+    if (state.gold > state.contractStats.goldPeak) {
+      state.contractStats.goldPeak = state.gold;
+    }
   }
 
   // Phase transitions that drive overlays.
@@ -563,6 +572,7 @@ function renderCardOverlay(): void {
     // notify the tutorial so the "you've seen the draft" gate trips.
     onSkip: options.length > 0 ? () => {
       tutorial.notify('cardPicked');
+      state.contractStats.cardSkipUsed = true;
       overlay.hide();
       startPause(state);
       yandex.gameplayStart();
@@ -599,9 +609,38 @@ function showEndlessModifierOverlay(): void {
   });
 }
 
-function awardRunEssence(victory: boolean): { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number } {
+function awardRunEssence(victory: boolean): { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number; contractBlue: number; contractAncient: number; completedContracts: ContractId[] } {
   const wave = state.waveState.currentIndex + 1;
   const reward = calcRunEssence(meta, wave, state.totalKills, victory, state.difficulty);
+  // Score completed contracts and add their bonuses on top of the base
+  // reward. Contracts pay out on both victory and defeat — they're
+  // "side bets" the player completes during the run, not victory-only
+  // achievements. (The flawless-late contract still requires reaching
+  // wave 10, so naturally short defeats can't complete every contract.)
+  const completedContracts: ContractId[] = [];
+  let contractBlue = 0;
+  let contractAncient = 0;
+  let contractEpicKeys = 0;
+  let blueMultBonus = 0;
+  for (const id of state.activeContractIds) {
+    const def: ContractDef | undefined = CONTRACT_BY_ID[id];
+    if (!def) continue;
+    if (!def.progress(state).done) continue;
+    completedContracts.push(id);
+    switch (def.reward.kind) {
+      case 'blue': contractBlue += def.reward.amount; break;
+      case 'ancient': contractAncient += def.reward.amount; break;
+      case 'epicKey': contractEpicKeys += def.reward.amount; break;
+      case 'blueMult': blueMultBonus += def.reward.amount; break;
+    }
+  }
+  // Apply the multiplier bump retroactively to the *base* blue total —
+  // not to the flat contractBlue add-ons (so a +25% reward feels valuable
+  // without runaway scaling when stacked).
+  const blueMultBonusGain = Math.round(reward.blue * blueMultBonus);
+  reward.blue += blueMultBonusGain + contractBlue;
+  reward.ancient += contractAncient;
+  reward.epicKeys += contractEpicKeys;
   meta.blueEssence += reward.blue;
   meta.ancientEssence += reward.ancient;
   meta.epicKeys += reward.epicKeys;
@@ -633,7 +672,7 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
     void yandex.setLeaderboardScore(dailyBoardId(), score);
   }
 
-  return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp };
+  return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp, contractBlue, contractAncient, completedContracts };
 }
 
 /** Compose a reward-breakdown subtitle string for victory/defeat screens. */
@@ -649,6 +688,31 @@ function rewardBreakdown(r: { blue: number; ancient: number; epicKeys: number; a
   parts.push(t('ui.reward.bpGain', { n: r.bpXp }));
   if (victory) parts.unshift(t('ui.reward.chestOpened'));
   return parts.join(' • ');
+}
+
+/** Build a small list element summarising the run's active contracts —
+ *  completed ones get a green checkmark + bonus reward note, others are
+ *  greyed out. Returns null if the run had no contracts. */
+function renderContractsSummary(completedIds: ContractId[]): HTMLElement | null {
+  if (state.activeContractIds.length === 0) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'chest-contracts';
+  const heading = document.createElement('div');
+  heading.className = 'chest-contracts-heading';
+  heading.textContent = t('ui.contract.summaryTitle');
+  wrap.appendChild(heading);
+  const completedSet = new Set(completedIds);
+  for (const id of state.activeContractIds) {
+    const def = CONTRACT_BY_ID[id];
+    if (!def) continue;
+    const row = document.createElement('div');
+    row.className = 'chest-contract-row';
+    const done = completedSet.has(id);
+    if (done) row.classList.add('done');
+    row.textContent = `${done ? '✔' : '✗'} ${def.icon} ${t(def.i18nName)}`;
+    wrap.appendChild(row);
+  }
+  return wrap;
 }
 
 /** Award the same reward payload again (chest doubling via rewarded ad). */
@@ -738,6 +802,12 @@ function showVictory(): void {
         rewardText.className = 'chest-reward';
         rewardText.textContent = rewardBreakdown(reward, state.totalKills, wave, true);
         rewardContainer.appendChild(rewardText);
+
+        // Per-contract summary: highlight goals that resolved as completed
+        // and grey-out unfinished ones. Empty for runs without contracts.
+        const contractSummary = renderContractsSummary(reward.completedContracts);
+        if (contractSummary) rewardContainer.appendChild(contractSummary);
+
         rewardContainer.style.display = '';
 
         // Show action buttons
@@ -947,6 +1017,10 @@ function startRun(mode: DifficultyMode): void {
   // Roll the per-run "dungeon law" mutators (1 in Epic, 2 in Ancient).
   // No-op for other modes. Stacks on top of biome / daily event.
   applyRunMutators(state);
+  // Roll the per-run side contracts (2 in Epic, 3 in Ancient). Contracts
+  // are pure scoring goals — they don't touch combat numbers, only the
+  // final reward bundle.
+  applyRunContracts(state);
   attachRunInventory(state, meta);
   state.onIngredientDrop = (id, amount) => {
     const key = id as IngredientId;
