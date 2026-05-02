@@ -32,8 +32,6 @@ export const RU: Record<string, string> = {
   'ui.menu.tooltip.ancientEssence': 'Древняя эссенция',
   'ui.menu.tooltip.epicKey': 'Эпический ключ',
   'ui.menu.tooltip.ancientKey': 'Древний ключ',
-  'ui.menu.dailyExperiment': 'ДНЕВНОЕ СОБЫТИЕ',
-  'ui.menu.leaderboards': 'ЛИДЕРБОРДЫ',
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'ВОЛНА',

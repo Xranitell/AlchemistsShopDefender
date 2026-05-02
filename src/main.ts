@@ -35,7 +35,6 @@ import { SettingsOverlay } from './ui/settingsOverlay';
 import { DifficultyOverlay } from './ui/difficultyOverlay';
 import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
-import { LeaderboardOverlay } from './ui/leaderboardOverlay';
 import { DailyEventOverlay } from './ui/dailyEventOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
@@ -165,7 +164,6 @@ const settingsOverlay = new SettingsOverlay(overlayRoot);
 const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
-const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
 const dailyEventOverlay = new DailyEventOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
@@ -849,23 +847,6 @@ function showMainMenu(): void {
       mainMenu.hide();
       showSettings();
     },
-    onDailyExperiment: () => {
-      mainMenu.hide();
-      dailyEventOverlay.show({
-        onStart: () => {
-          dailyEventOverlay.hide();
-          startRun('daily');
-        },
-        onClose: () => {
-          dailyEventOverlay.hide();
-          showMainMenu();
-        },
-      });
-    },
-    onLeaderboards: () => {
-      mainMenu.hide();
-      showLeaderboards();
-    },
     onCrafting: () => {
       mainMenu.hide();
       showCrafting();
@@ -887,7 +868,22 @@ function showDifficultySelect(): void {
   difficultyOverlay.show({
     meta,
     onSelect: (mode) => {
-      if (mode === 'normal' || mode === 'endless') {
+      if (mode === 'daily') {
+        // Daily lives in the same picker as the regular modes now; route
+        // through the dedicated event-preview overlay so the player sees
+        // today's rotating event before starting.
+        difficultyOverlay.hide();
+        dailyEventOverlay.show({
+          onStart: () => {
+            dailyEventOverlay.hide();
+            startRun('daily');
+          },
+          onClose: () => {
+            dailyEventOverlay.hide();
+            showDifficultySelect();
+          },
+        });
+      } else if (mode === 'normal' || mode === 'endless') {
         difficultyOverlay.hide();
         startRun(mode);
       } else {
@@ -1012,15 +1008,6 @@ function showSettings(): void {
     onReset: () => {
       settingsOverlay.hide();
       meta = loadMeta();
-      showMainMenu();
-    },
-  });
-}
-
-function showLeaderboards(): void {
-  leaderboardOverlay.show({
-    onClose: () => {
-      leaderboardOverlay.hide();
       showMainMenu();
     },
   });

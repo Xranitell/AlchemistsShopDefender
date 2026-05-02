@@ -37,7 +37,11 @@ export class DifficultyOverlay {
     const grid = document.createElement('div');
     grid.className = 'difficulty-grid';
 
-    const modes: DifficultyMode[] = ['normal', 'epic', 'ancient', 'endless'];
+    // Daily slot was previously a separate main-menu button; now it lives
+    // alongside the regular difficulty modes so the player picks it from a
+    // single "where do I want to fight" surface. main.ts intercepts the
+    // selection and shows the event preview overlay before starting the run.
+    const modes: DifficultyMode[] = ['normal', 'epic', 'ancient', 'endless', 'daily'];
     for (const modeId of modes) {
       const def = DIFFICULTY_MODES[modeId];
       const card = document.createElement('button');
