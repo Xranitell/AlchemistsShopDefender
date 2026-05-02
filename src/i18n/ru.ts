@@ -267,7 +267,7 @@ export const RU: Record<string, string> = {
   'ui.meta.auraModule': 'Ауро-модуль',
   'ui.meta.hint.pickNode': 'Выберите узел дерева, чтобы увидеть его эффект и стоимость.',
   'ui.meta.cost.free': 'Стоимость: бесплатно',
-  'ui.meta.cost.amount': 'Стоимость: <strong>{n}</strong> {label}',
+  'ui.meta.cost.prefix': 'Стоимость:',
   'ui.meta.blueEssence': 'Синяя эссенция',
   'ui.meta.ancientEssence': 'Древняя эссенция',
   'ui.meta.status.owned': 'Изучено',
