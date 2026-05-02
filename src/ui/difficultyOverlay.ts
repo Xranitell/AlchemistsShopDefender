@@ -1,6 +1,8 @@
 import type { MetaSave } from '../game/save';
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { t, tWithFallback } from '../i18n';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class DifficultyOverlay {
   private root: HTMLElement;
@@ -72,15 +74,29 @@ export class DifficultyOverlay {
       flav.textContent = tWithFallback(`ui.difficulty.${modeId}.flavor`, def.flavor);
       card.appendChild(flav);
 
-      // Cost footer
+      // Cost footer. The key icons come from the same sprite atlas the
+      // main menu uses so all three places that show key costs (top bar,
+      // difficulty cards, daily-rewards calendar) are visually identical.
       const cost = document.createElement('div');
       cost.className = 'difficulty-cost';
       if (def.keyCost === 'none') {
         cost.textContent = t('ui.difficulty.noKey');
-      } else if (def.keyCost === 'epic') {
-        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.epicKey')}</span><span class="key-count">${opts.meta.epicKeys}</span>`;
       } else {
-        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.ancientKey')}</span><span class="key-count">${opts.meta.ancientKeys}</span>`;
+        const isEpic = def.keyCost === 'epic';
+        const sprite = isEpic ? getSprites().iconEpicKey : getSprites().iconAncientKey;
+        const labelKey = isEpic ? 'ui.difficulty.epicKey' : 'ui.difficulty.ancientKey';
+        const count = isEpic ? opts.meta.epicKeys : opts.meta.ancientKeys;
+        const wrap = document.createElement('span');
+        wrap.className = 'difficulty-cost-label';
+        wrap.appendChild(spriteIcon(sprite, { scale: 2 }));
+        const txt = document.createElement('span');
+        txt.textContent = t(labelKey);
+        wrap.appendChild(txt);
+        cost.appendChild(wrap);
+        const countEl = document.createElement('span');
+        countEl.className = 'key-count';
+        countEl.textContent = `${count}`;
+        cost.appendChild(countEl);
       }
       card.appendChild(cost);
 
