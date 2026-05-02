@@ -23,6 +23,11 @@ export class PauseStatsOverlay {
     const wrap = document.createElement('div');
     wrap.className = 'pause-stats-overlay';
 
+    // Group wrapper: holds two panels side-by-side, centered as a unit.
+    const group = document.createElement('div');
+    group.className = 'pause-stats-group';
+
+    // ── Left panel: player / enemy stats ─────────────────────────────────
     const inner = document.createElement('div');
     inner.className = 'pause-stats-inner';
 
@@ -58,109 +63,119 @@ export class PauseStatsOverlay {
       this.enemyStats(state),
     ));
 
-    // ── Blessings & curses ("Дар алхимика") ──────────────────────────────
-    if (state.activeBlessingIds.length > 0 || state.activeCurseId !== null) {
-      const lines: StatLine[] = [];
-      for (const id of state.activeBlessingIds) {
-        const def = BLESSING_BY_ID[id];
-        if (!def) continue;
-        lines.push({
-          label: `${def.icon} ${t(def.i18nName)}`,
-          value: t(def.i18nEffect),
-          kind: 'buff',
-        });
-      }
-      if (state.activeCurseId) {
-        const def = CURSE_BY_ID[state.activeCurseId];
-        if (def) {
+    group.appendChild(inner);
+
+    // ── Right panel: blessings, laws, contracts ──────────────────────────
+    const hasBlessings = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
+    const hasMutators = state.activeMutatorIds.length > 0;
+    const hasContracts = state.activeContractIds.length > 0;
+    const hasEndless = state.endlessModifiers.length > 0;
+
+    if (hasBlessings || hasMutators || hasContracts || hasEndless) {
+      const side = document.createElement('div');
+      side.className = 'pause-stats-side';
+
+      // ── Blessings & curses ("Дар алхимика") ────────────────────────────
+      if (hasBlessings) {
+        const lines: StatLine[] = [];
+        for (const id of state.activeBlessingIds) {
+          const def = BLESSING_BY_ID[id];
+          if (!def) continue;
           lines.push({
             label: `${def.icon} ${t(def.i18nName)}`,
             value: t(def.i18nEffect),
-            kind: 'debuff',
+            kind: 'buff',
           });
         }
+        if (state.activeCurseId) {
+          const def = CURSE_BY_ID[state.activeCurseId];
+          if (def) {
+            lines.push({
+              label: `${def.icon} ${t(def.i18nName)}`,
+              value: t(def.i18nEffect),
+              kind: 'debuff',
+            });
+          }
+        }
+        side.appendChild(this.buildSection(
+          t('ui.blessing.label'),
+          lines,
+          true,
+        ));
       }
-      inner.appendChild(this.buildSection(
-        t('ui.blessing.label'),
-        lines,
-        true,
-      ));
-    }
 
-    // ── Run mutators ("dungeon laws") ─────────────────────────────────────
-    if (state.activeMutatorIds.length > 0) {
-      const mutLines: StatLine[] = state.activeMutatorIds
-        .map((id) => MUTATOR_BY_ID[id])
-        .filter((def): def is NonNullable<typeof def> => Boolean(def))
-        .map((def) => ({
-          label: `${def.icon} ${t(def.i18nName)}`,
-          value: def.i18nLines.map((k) => t(k)).join(' • '),
-          kind: 'debuff' as const,
-        }));
-      inner.appendChild(this.buildSection(
-        tWithFallback('ui.pause.mutatorsTitle', 'Закон подземелья'),
-        mutLines,
-        true,
-      ));
-    }
-
-    // ── Run contracts ────────────────────────────────────────────────────
-    if (state.activeContractIds.length > 0) {
-      const contractLines: StatLine[] = state.activeContractIds
-        .map((id) => CONTRACT_BY_ID[id])
-        .filter((def): def is NonNullable<typeof def> => Boolean(def))
-        .map((def) => {
-          const prog = def.progress(state);
-          // Pretty-print the goal description with the target number
-          // substituted in (descriptions read like "Kill {n} slimes…").
-          const desc = t(def.i18nDesc, { n: prog.target });
-          // Reward suffix mirrors the contract's payout type (flat
-          // currency vs multiplicative bump). Falls through to '' for
-          // unknown reward kinds defensively.
-          let reward = '';
-          switch (def.reward.kind) {
-            case 'blue': reward = t('ui.contract.rewardBlue', { n: def.reward.amount }); break;
-            case 'ancient': reward = t('ui.contract.rewardAncient', { n: def.reward.amount }); break;
-            case 'epicKey': reward = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
-            case 'blueMult': reward = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
-          }
-          let valueLine: string;
-          if (prog.failed) {
-            valueLine = `${t('ui.contract.failed')} • ${reward}`;
-          } else if (prog.done) {
-            valueLine = `${t('ui.contract.done')} • ${reward}`;
-          } else {
-            valueLine = `${prog.current}/${prog.target} • ${reward} • ${desc}`;
-          }
-          const kind: StatLine['kind'] =
-            prog.failed ? 'debuff' : prog.done ? 'buff' : 'unique';
-          return {
+      // ── Run mutators ("dungeon laws") ──────────────────────────────────
+      if (hasMutators) {
+        const mutLines: StatLine[] = state.activeMutatorIds
+          .map((id) => MUTATOR_BY_ID[id])
+          .filter((def): def is NonNullable<typeof def> => Boolean(def))
+          .map((def) => ({
             label: `${def.icon} ${t(def.i18nName)}`,
-            value: valueLine,
-            kind,
-          };
-        });
-      inner.appendChild(this.buildSection(
-        t('ui.contract.label'),
-        contractLines,
-        true,
-      ));
+            value: def.i18nLines.map((k) => t(k)).join(' • '),
+            kind: 'debuff' as const,
+          }));
+        side.appendChild(this.buildSection(
+          tWithFallback('ui.pause.mutatorsTitle', 'Закон подземелья'),
+          mutLines,
+          true,
+        ));
+      }
+
+      // ── Run contracts ──────────────────────────────────────────────────
+      if (hasContracts) {
+        const contractLines: StatLine[] = state.activeContractIds
+          .map((id) => CONTRACT_BY_ID[id])
+          .filter((def): def is NonNullable<typeof def> => Boolean(def))
+          .map((def) => {
+            const prog = def.progress(state);
+            const desc = t(def.i18nDesc, { n: prog.target });
+            let reward = '';
+            switch (def.reward.kind) {
+              case 'blue': reward = t('ui.contract.rewardBlue', { n: def.reward.amount }); break;
+              case 'ancient': reward = t('ui.contract.rewardAncient', { n: def.reward.amount }); break;
+              case 'epicKey': reward = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
+              case 'blueMult': reward = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
+            }
+            let valueLine: string;
+            if (prog.failed) {
+              valueLine = `${t('ui.contract.failed')} • ${reward}`;
+            } else if (prog.done) {
+              valueLine = `${t('ui.contract.done')} • ${reward}`;
+            } else {
+              valueLine = `${prog.current}/${prog.target} • ${reward} • ${desc}`;
+            }
+            const kind: StatLine['kind'] =
+              prog.failed ? 'debuff' : prog.done ? 'buff' : 'unique';
+            return {
+              label: `${def.icon} ${t(def.i18nName)}`,
+              value: valueLine,
+              kind,
+            };
+          });
+        side.appendChild(this.buildSection(
+          t('ui.contract.label'),
+          contractLines,
+          true,
+        ));
+      }
+
+      // ── Endless modifiers ──────────────────────────────────────────────
+      if (hasEndless) {
+        const endlessList: StatLine[] = state.endlessModifiers.map((em) => ({
+          label: em.label,
+          value: em.desc,
+          kind: 'debuff',
+        }));
+        side.appendChild(this.buildSection(
+          tWithFallback('ui.pause.endlessTitle', 'Бесконечный режим'),
+          endlessList,
+        ));
+      }
+
+      group.appendChild(side);
     }
 
-    // ── Endless modifiers ─────────────────────────────────────────────────
-    if (state.endlessModifiers.length > 0) {
-      const endlessList: StatLine[] = state.endlessModifiers.map((em) => ({
-        label: em.label,
-        value: em.desc,
-        kind: 'debuff',
-      }));
-      inner.appendChild(this.buildSection(
-        tWithFallback('ui.pause.endlessTitle', 'Бесконечный режим'),
-        endlessList,
-      ));
-    }
-
-    wrap.appendChild(inner);
+    wrap.appendChild(group);
     this.panel = wrap;
     this.root.appendChild(wrap);
   }
