@@ -18,7 +18,6 @@ export class MainMenu {
     onDailyRewards: () => void;
     onSettings: () => void;
     onDailyExperiment: () => void;
-    onBossChallenge: () => void;
     onLeaderboards: () => void;
     onCrafting: () => void;
   }): void {
@@ -139,7 +138,9 @@ export class MainMenu {
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
 
-    // Special mode buttons (daily experiment + boss challenge).
+    // Special mode buttons. Boss Challenge is now one of the rotating
+    // Daily-Event days, so the standalone button has been removed; the
+    // remaining "DAILY EXPERIMENT" entry shows today's event preview.
     const modeBtns = document.createElement('div');
     modeBtns.className = 'mm-mode-btns';
 
@@ -148,12 +149,6 @@ export class MainMenu {
     dailyBtn2.textContent = t('ui.menu.dailyExperiment');
     dailyBtn2.addEventListener('click', opts.onDailyExperiment);
     modeBtns.appendChild(dailyBtn2);
-
-    const bossBtn = document.createElement('button');
-    bossBtn.className = 'mm-mode-btn mm-boss-challenge';
-    bossBtn.textContent = t('ui.menu.bossChallenge');
-    bossBtn.addEventListener('click', opts.onBossChallenge);
-    modeBtns.appendChild(bossBtn);
 
     midCol.appendChild(modeBtns);
 

@@ -3,7 +3,16 @@ import { Input } from './engine/input';
 import { Loop } from './engine/loop';
 import { dist } from './engine/math';
 import { yandex } from './yandex';
-import { buildInitialState, applyBiomeModifiers, dailySeed, dailyBoardId, resizeArena, setArenaSize } from './game/world';
+import {
+  buildInitialState,
+  applyBiomeModifiers,
+  applyDailyEventModifiers,
+  getTodayDailyEvent,
+  dailySeed,
+  dailyBoardId,
+  resizeArena,
+  setArenaSize,
+} from './game/world';
 import { updateMannequin } from './game/mannequin';
 import { updateEnemies, updateGoldPickups, updateFirePools, updateFloatingTexts } from './game/enemy';
 import { updateReactionPools } from './game/reactions';
@@ -27,6 +36,7 @@ import { DifficultyOverlay } from './ui/difficultyOverlay';
 import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import { LeaderboardOverlay } from './ui/leaderboardOverlay';
+import { DailyEventOverlay } from './ui/dailyEventOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import type { DifficultyMode } from './data/difficulty';
@@ -156,6 +166,7 @@ const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const leaderboardOverlay = new LeaderboardOverlay(overlayRoot);
+const dailyEventOverlay = new DailyEventOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
 const pauseStats = new PauseStatsOverlay(document.body, {
@@ -605,14 +616,15 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   persistRunInventory(state, meta);
   saveMeta(meta);
 
-  // Submit scores to leaderboards
-  void yandex.setLeaderboardScore('best_wave', wave);
+  // Submit scores to leaderboards. The three board ids (`endlessWaves`,
+  // `bestScore`, `dailyWaves_YYYYMMDD`) match the public-facing names in
+  // the Yandex Games dashboard. The daily board is rolled over at 00:00
+  // Europe/Moscow because `dailyBoardId()` builds its date from MSK.
+  void yandex.setLeaderboardScore('endlessWaves', wave);
   const score = wave * 1000 + state.totalKills;
-  void yandex.setLeaderboardScore('best_score', score);
+  void yandex.setLeaderboardScore('bestScore', score);
   if (state.difficulty === 'daily') {
     void yandex.setLeaderboardScore(dailyBoardId(), score);
-  } else if (state.difficulty === 'boss_challenge') {
-    void yandex.setLeaderboardScore('boss_challenge', score);
   }
 
   return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp };
@@ -839,11 +851,16 @@ function showMainMenu(): void {
     },
     onDailyExperiment: () => {
       mainMenu.hide();
-      startRun('daily');
-    },
-    onBossChallenge: () => {
-      mainMenu.hide();
-      startRun('boss_challenge');
+      dailyEventOverlay.show({
+        onStart: () => {
+          dailyEventOverlay.hide();
+          startRun('daily');
+        },
+        onClose: () => {
+          dailyEventOverlay.hide();
+          showMainMenu();
+        },
+      });
     },
     onLeaderboards: () => {
       mainMenu.hide();
@@ -918,6 +935,11 @@ function startRun(mode: DifficultyMode): void {
   state = buildInitialState(seed, mode);
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
+  // Daily Experiment runs an MSK-day-of-week event with its own modifier
+  // bundle, mannequin tweaks, and visual flags. Stack on top of biome.
+  if (mode === 'daily') {
+    applyDailyEventModifiers(state, getTodayDailyEvent());
+  }
   attachRunInventory(state, meta);
   state.onIngredientDrop = (id, amount) => {
     const key = id as IngredientId;

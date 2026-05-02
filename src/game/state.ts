@@ -6,6 +6,7 @@ import type { ReactionPool } from './reactions';
 import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/difficulty';
 import type { BiomeId } from '../data/biomes';
 import type { EliteModId } from '../data/eliteMods';
+import type { DailyEventId } from '../data/dailyEvents';
 
 export type Phase =
   | 'menu'
@@ -411,6 +412,13 @@ export interface GameState {
   /** The modifier bundle for the active difficulty, already scaled up for
    *  the current endless loop count. */
   difficultyModifier: DifficultyModifier;
+  /** When `difficulty === 'daily'`, the rotating event id selected for
+   *  today's MSK weekday. Drives event-specific gameplay & visual flags. */
+  dailyEventId: DailyEventId | null;
+  /** Multiplier applied to per-wave spawn count (Horde event). 1 = default. */
+  spawnCountMult: number;
+  /** Render-side darkness flag — drawn on top of the world (Night event). */
+  nightModeActive: boolean;
   /** In endless mode, how many full wave-lists we have already completed. */
   endlessLoop: number;
   /** Biome selected for this run. Affects palette and passive modifiers. */

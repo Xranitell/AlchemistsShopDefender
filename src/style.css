@@ -3126,6 +3126,190 @@ body {
 }
 .lb-close:hover { background: rgba(142, 202, 230, 0.22); }
 
+/* ============ Daily Event preview overlay ============ */
+.dev-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.78);
+  z-index: 2000;
+}
+.dev-panel {
+  --accent: #f9c74f;
+  background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 24px;
+  width: min(94vw, 640px);
+  max-width: 640px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.dev-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+.dev-icon {
+  font-size: 56px;
+  filter: drop-shadow(2px 2px 0 #07080e);
+  flex: 0 0 auto;
+}
+.dev-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.dev-day {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--fg-dim, #a0a0b0);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.dev-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 18px;
+  color: var(--accent);
+}
+.dev-flavor {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg, #e6e6f0);
+  font-style: italic;
+}
+.dev-desc {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--fg, #e6e6f0);
+  margin-bottom: 12px;
+}
+.dev-lines {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dev-lines li {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--fg, #e6e6f0);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--accent);
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+}
+.dev-week {
+  margin-bottom: 14px;
+}
+.dev-week-title {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: var(--fg-dim, #a0a0b0);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.dev-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.dev-week-cell {
+  --accent: #6b6580;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 0.65;
+  text-align: center;
+}
+.dev-week-cell.today {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 40%, transparent);
+  opacity: 1;
+}
+.dev-week-day {
+  font-family: 'VT323', monospace;
+  font-size: 11px;
+  color: var(--fg-dim, #a0a0b0);
+  text-transform: uppercase;
+}
+.dev-week-icon {
+  font-size: 22px;
+  filter: drop-shadow(1px 1px 0 #07080e);
+}
+.dev-week-name {
+  font-family: 'VT323', monospace;
+  font-size: 11px;
+  color: var(--fg, #e6e6f0);
+  line-height: 1.1;
+  word-break: break-word;
+  hyphens: auto;
+}
+.dev-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+.dev-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 10px 24px 12px;
+  border-radius: 4px;
+  border: 2px solid;
+  text-transform: uppercase;
+}
+.dev-cancel {
+  border-color: var(--bg-frame-mid, #46394e);
+  color: var(--fg-dim, #a0a0b0);
+}
+.dev-cancel:hover { color: var(--fg, #e6e6f0); border-color: var(--fg-dim, #a0a0b0); }
+.dev-start {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.dev-start:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+/* Mobile-landscape (2400×1080-class) tweaks. Shrink padding & font sizes
+   and keep the panel within safe height. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .dev-panel { padding: 14px; width: min(96vw, 600px); max-height: 96dvh; }
+  .dev-icon { font-size: 36px; }
+  .dev-name { font-size: 14px; }
+  .dev-flavor { font-size: 13px; }
+  .dev-desc { font-size: 13px; }
+  .dev-lines li { font-size: 13px; padding: 4px 8px; }
+  .dev-week-cell { padding: 4px 2px; }
+  .dev-week-icon { font-size: 16px; }
+  .dev-week-day, .dev-week-name { font-size: 9px; }
+  .dev-btn { font-size: 11px; padding: 8px 18px 10px; }
+}
+@media (pointer: coarse) {
+  .dev-btn { min-height: 44px; }
+}
+
 /* ============ Revive overlay ============ */
 .revive-overlay {
   position: fixed;

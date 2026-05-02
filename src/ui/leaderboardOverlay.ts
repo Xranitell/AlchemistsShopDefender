@@ -2,12 +2,15 @@ import { yandex, type LeaderboardEntry } from '../yandex';
 import { t } from '../i18n';
 import { dailyBoardId } from '../game/world';
 
-type BoardTab = 'best_wave' | 'daily' | 'boss_challenge';
+// Three logical leaderboards exposed by the game. The technical board ids
+// match what we submit in main.ts: `endlessWaves`, `bestScore`,
+// `dailyWaves_YYYYMMDD` (daily resolved at fetch time via dailyBoardId()).
+type BoardTab = 'endlessWaves' | 'bestScore' | 'dailyWaves';
 
 const TABS: { id: BoardTab; labelKey: string }[] = [
-  { id: 'best_wave', labelKey: 'ui.lb.tab.bestWave' },
-  { id: 'daily', labelKey: 'ui.lb.tab.daily' },
-  { id: 'boss_challenge', labelKey: 'ui.lb.tab.bossChallenge' },
+  { id: 'endlessWaves', labelKey: 'ui.lb.tab.endlessWaves' },
+  { id: 'bestScore', labelKey: 'ui.lb.tab.bestScore' },
+  { id: 'dailyWaves', labelKey: 'ui.lb.tab.dailyWaves' },
 ];
 
 export class LeaderboardOverlay {
@@ -43,7 +46,10 @@ export class LeaderboardOverlay {
       tabBar.querySelectorAll('.lb-tab').forEach((el) => el.classList.remove('active'));
       tabBar.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
       body.innerHTML = `<div class="lb-loading">${t('ui.lb.loading')}</div>`;
-      const boardId = tab === 'daily' ? dailyBoardId() : tab;
+      // Daily tab resolves to today's MSK-suffixed board id so the table
+      // rolls over at 00:00 Europe/Moscow. `endlessWaves` and `bestScore`
+      // are persistent across the lifetime of the game.
+      const boardId = tab === 'dailyWaves' ? dailyBoardId() : tab;
       void yandex.getTopPlayers(boardId, 10).then((entries) => {
         this.renderEntries(body, entries);
       });
@@ -72,7 +78,7 @@ export class LeaderboardOverlay {
     this.root.classList.add('visible');
 
     // Load first tab
-    loadTab('best_wave');
+    loadTab('endlessWaves');
   }
 
   private renderEntries(body: HTMLElement, entries: LeaderboardEntry[]): void {

@@ -7,11 +7,26 @@ import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
 import type { EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
+import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
 
 /** Return the active wave list for the current difficulty mode. */
 function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
-  return state.difficulty === 'boss_challenge' ? BOSS_WAVES : WAVES;
+  // Daily Event: Boss-day uses BOSS_WAVES; the rest of the events use the
+  // standard wave list and rely on enemy/spawn modifiers for their twist.
+  // Boss Challenge is no longer a standalone difficulty — it lives as one
+  // of the rotating daily events (Tuesday).
+  if (state.difficulty === 'daily' && state.dailyEventId) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    if (ev?.useBossWaves) return BOSS_WAVES;
+  }
+  return WAVES;
+}
+
+/** True when the current run should loop wave 1 → end → wave 1 again
+ *  (endless mode + every Daily Event since the user wants infinite waves). */
+function isInfiniteRun(state: GameState): boolean {
+  return state.difficulty === 'endless' || state.difficulty === 'daily';
 }
 
 // ── Linear per-wave difficulty scaling ──────────────────────────────────────
@@ -68,9 +83,10 @@ export function startNextWave(state: GameState): void {
   ws.currentIndex += 1;
   const waves = activeWaves(state);
   if (ws.currentIndex >= waves.length) {
-    if (state.difficulty === 'endless') {
-      // Endless: loop back to wave 0 with stiffer modifiers + random
-      // modifier from the pool. Show the modifier selector overlay first.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: loop back to wave 0 with stiffer modifiers +
+      // a random modifier from the pool. Show the modifier selector overlay
+      // first so the player can read the new twist.
       state.endlessLoop += 1;
       ws.currentIndex = 0;
 
@@ -107,6 +123,20 @@ function doStartWave(state: GameState): void {
       at: state.rng.range(0, def.durationSec - 1),
       entrance: state.rng.int(0, 4),
     });
+  }
+  // Daily-event Horde / similar: copy a fraction of base spawns at random
+  // times to inflate density. `spawnCountMult` of 1.5 ⇒ +50% extra spawns.
+  const mult = state.spawnCountMult ?? 1;
+  if (mult > 1 && baseSpawns.length > 0) {
+    const bonus = Math.round(baseSpawns.length * (mult - 1));
+    for (let i = 0; i < bonus; i++) {
+      const template = baseSpawns[i % baseSpawns.length]!;
+      extra.push({
+        kind: template.kind,
+        at: state.rng.range(0, def.durationSec - 1),
+        entrance: state.rng.int(0, 4),
+      });
+    }
   }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
 
@@ -178,8 +208,9 @@ export function updateWave(state: GameState, dt: number): void {
 
   // Wave is over when all spawns finished and arena is empty.
   if (ws.pendingSpawns.length === 0 && state.enemies.length === 0) {
-    if (state.difficulty === 'endless') {
-      // Award end-of-wave gold and trigger card draft — no victory.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: award end-of-wave gold and trigger card
+      // draft — there is no victory screen.
       const reward = 25 + ws.currentIndex * 8;
       state.gold += reward;
       state.phase = 'card_select';
