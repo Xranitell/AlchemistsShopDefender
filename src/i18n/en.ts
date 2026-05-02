@@ -266,7 +266,7 @@ export const EN: Record<string, string> = {
   'ui.meta.auraModule': 'Aura module',
   'ui.meta.hint.pickNode': 'Select a tree node to view its effect and cost.',
   'ui.meta.cost.free': 'Cost: free',
-  'ui.meta.cost.amount': 'Cost: <strong>{n}</strong> {label}',
+  'ui.meta.cost.prefix': 'Cost:',
   'ui.meta.blueEssence': 'Blue Essence',
   'ui.meta.ancientEssence': 'Ancient Essence',
   'ui.meta.status.owned': 'Learned',

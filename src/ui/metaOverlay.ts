@@ -286,8 +286,22 @@ export class MetaOverlay {
       if (node.cost <= 0) {
         cost.textContent = t('ui.meta.cost.free');
       } else {
-        const label = node.currency === 'blue' ? t('ui.meta.blueEssence') : t('ui.meta.ancientEssence');
-        cost.innerHTML = t('ui.meta.cost.amount', { n: node.cost, label });
+        // Built as `[Cost:] [N] [pixel-icon]` so the player sees the same
+        // currency sprite that appears in the menu top bar / HUD instead
+        // of a plain "Древняя эссенция" string. Ancient currency reuses
+        // the `glow-gold` halo for visual hierarchy.
+        const prefix = document.createElement('span');
+        prefix.textContent = t('ui.meta.cost.prefix') + ' ';
+        cost.appendChild(prefix);
+        const amount = document.createElement('strong');
+        amount.textContent = `${node.cost}`;
+        cost.appendChild(amount);
+        const isAncient = node.currency === 'ancient';
+        const sprite = isAncient ? sprites.iconAncientEssence : sprites.iconBlueEssence;
+        cost.appendChild(spriteIcon(sprite, {
+          scale: 2,
+          extraClass: isAncient ? 'glow-gold' : undefined,
+        }));
       }
       sidePanel.appendChild(cost);
 

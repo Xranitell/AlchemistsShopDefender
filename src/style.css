@@ -1586,8 +1586,12 @@ body {
 .meta-side-cost {
   color: #7df9ff;
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .meta-side-cost strong { color: #ffd166; font-weight: normal; }
+.meta-side-cost .pixel-icon { display: inline-block; }
 .meta-side-status { font-size: 16px; }
 .meta-side-actions {
   margin-top: auto;
