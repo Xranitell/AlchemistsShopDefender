@@ -145,14 +145,8 @@ function drawPlankFloor(
   // cover the canvas after the transform.
   const padY = Math.ceil(Math.abs(w * FLOOR_TILT)) + BOARD_H * 2;
   ctx.save();
-  // Mirror the plank layer on both axes — the user iterated through the
-  // four orientations and landed on the 180° one (Y flip + X flip on
-  // top), which keeps the diagonal pointing toward the bottom-right
-  // corner while mirroring the highlight/shadow side of each plank.
-  ctx.translate(w, 0);
-  ctx.scale(-1, 1);
-  ctx.translate(0, h);
-  ctx.scale(1, -1);
+  // Plank rows shear toward the bottom-right corner at 45°, matching
+  // the iso direction the user pinned down with a reference screenshot.
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
 
   let row = 0;
