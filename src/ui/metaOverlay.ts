@@ -10,6 +10,8 @@ import {
   type MetaBranch,
 } from '../data/metaTree';
 import { t } from '../i18n';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
 import {
   isRootNode,
   allocatedSet,
@@ -159,13 +161,38 @@ export class MetaOverlay {
     h.textContent = t('ui.meta.title');
     header.appendChild(h);
 
+    // Currency strip — pixel sprite icon next to the amount, matching the
+    // main-menu top bar so the player has one consistent way to read
+    // currencies across every screen.
     const currencies = document.createElement('div');
     currencies.className = 'meta-currencies';
-    currencies.innerHTML = `
-      <span class="meta-currency blue">${t('ui.meta.blue')}<strong>${opts.meta.blueEssence}</strong></span>
-      <span class="meta-currency ancient">${t('ui.meta.ancient')}<strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="meta-stats">${t('ui.meta.statsLine', { runs: opts.meta.totalRuns, wave: opts.meta.bestWave })}</span>
-    `;
+    const sprites = getSprites();
+    const blueChip = document.createElement('span');
+    blueChip.className = 'meta-currency blue';
+    blueChip.appendChild(spriteIcon(sprites.iconBlueEssence, { scale: 2 }));
+    const blueLabel = document.createElement('span');
+    blueLabel.textContent = t('ui.meta.blue');
+    blueChip.appendChild(blueLabel);
+    const blueAmount = document.createElement('strong');
+    blueAmount.textContent = `${opts.meta.blueEssence}`;
+    blueChip.appendChild(blueAmount);
+    currencies.appendChild(blueChip);
+
+    const ancientChip = document.createElement('span');
+    ancientChip.className = 'meta-currency ancient';
+    ancientChip.appendChild(spriteIcon(sprites.iconAncientEssence, { scale: 2 }));
+    const ancientLabel = document.createElement('span');
+    ancientLabel.textContent = t('ui.meta.ancient');
+    ancientChip.appendChild(ancientLabel);
+    const ancientAmount = document.createElement('strong');
+    ancientAmount.textContent = `${opts.meta.ancientEssence}`;
+    ancientChip.appendChild(ancientAmount);
+    currencies.appendChild(ancientChip);
+
+    const stats = document.createElement('span');
+    stats.className = 'meta-stats';
+    stats.textContent = t('ui.meta.statsLine', { runs: opts.meta.totalRuns, wave: opts.meta.bestWave });
+    currencies.appendChild(stats);
     header.appendChild(currencies);
 
     panel.appendChild(header);

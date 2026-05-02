@@ -175,6 +175,17 @@ body {
 
 .hud-sprite { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
 
+/* Generic pixel-art sprite element. Used by every menu/overlay that wants to
+ * embed an icon rendered from the in-game sprite atlas (gold coin, blue
+ * essence, ancient essence, epic/ancient keys, etc.) so the visual language
+ * stays identical between the gameplay HUD and the meta menus. */
+.pixel-icon {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 /* WAVE widget */
 .hud-wave-badge { min-width: 130px; }
 .hud-wave-col { display: flex; flex-direction: column; gap: 3px; }
@@ -1236,6 +1247,14 @@ body {
   font-family: 'VT323', monospace;
   font-size: 18px;
 }
+.meta-currency {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.meta-currency .pixel-icon {
+  filter: drop-shadow(1px 1px 0 #000);
+}
 .meta-currency.blue { color: #7df9ff; }
 .meta-currency.ancient { color: #c084fc; }
 .meta-currency strong { color: #ffd166; }
@@ -1708,50 +1727,16 @@ body {
 }
 .mm-currency.blue-essence strong { color: #7df9ff; }
 .mm-currency.ancient-essence strong { color: #ffd166; }
-.mm-currency.keys strong { color: #c084fc; }
-.mm-res-icon { position: relative; display: inline-block; width: 22px; height: 22px; image-rendering: pixelated; }
-/* Blue Essence — cyan crystal vial. Replaces the misleading "coin" icon
-   that used to be shown in the main-menu top bar. */
-.mm-res-icon.blue-essence {
-  width: 17px;
-  height: 23px;
-  border: 3px solid #1a2845;
-  border-radius: 8px 8px 10px 10px;
-  background: linear-gradient(180deg, #e0faff, #7df9ff 38%, #2c6cd6 100%);
-  box-shadow: 0 -5px 0 -2px #bdf6ff, 0 0 9px rgba(125, 249, 255, 0.45);
+.mm-currency.epic-key strong { color: #c084fc; }
+.mm-currency.ancient-key strong { color: #ffd166; }
+.mm-currency .pixel-icon {
+  display: inline-block;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
+  /* Drop a thin shadow so the icon reads against the gradient chip background. */
+  filter: drop-shadow(1px 1px 0 #07080e);
+  flex-shrink: 0;
 }
-/* Ancient Essence — golden / amber crystal. Used to be the cyan "essence"
-   icon, which read identically to the blue one. */
-.mm-res-icon.ancient-essence {
-  width: 17px;
-  height: 23px;
-  border: 3px solid #4a2a08;
-  border-radius: 8px 8px 10px 10px;
-  background: linear-gradient(180deg, #fff1a8, #ffd166 38%, #a86a14 100%);
-  box-shadow: 0 -5px 0 -2px #ffe9a8, 0 0 9px rgba(255, 209, 102, 0.45);
-}
-.mm-res-icon.key::before {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 8px;
-  height: 8px;
-  border: 3px solid currentColor;
-  border-radius: 50%;
-}
-.mm-res-icon.key::after {
-  content: '';
-  position: absolute;
-  left: 12px;
-  top: 9px;
-  width: 12px;
-  height: 5px;
-  background: currentColor;
-  box-shadow: 6px 5px 0 -2px currentColor, 10px 5px 0 -2px currentColor;
-}
-.mm-res-icon.epic { color: #c084fc; }
-.mm-res-icon.ancient { color: #ffd166; }
 .mm-center {
   display: flex;
   gap: clamp(10px, 1.5vw, 24px);
@@ -2141,7 +2126,18 @@ body {
   color: #d8ddea;
   text-transform: uppercase;
 }
-.daily-icon { font-size: 28px; filter: drop-shadow(2px 2px 0 #07080e); }
+/* Daily reward icon container. Holds either a checkmark glyph (claimed) or a
+ * scaled-up pixel-art canvas (unclaimed). The flex centring makes the canvas
+ * sit perfectly between the day label and the reward amount. */
+.daily-icon {
+  font-size: 28px;
+  filter: drop-shadow(2px 2px 0 #07080e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+.daily-icon .pixel-icon { display: block; }
 .daily-reward-label { font-size: 14px; color: var(--fg); }
 .daily-actions { display: flex; justify-content: center; }
 .daily-claim-btn {
@@ -2271,6 +2267,14 @@ body {
 .bp-cell.claimed { border-color: #5a8c14; opacity: 0.6; }
 .bp-cell.locked { opacity: 0.3; }
 .bp-cell.empty { opacity: 0.15; }
+/* `[pixel-icon][amount]` reward chip rendered inside .bp-cell. */
+.bp-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bp-reward .pixel-icon { display: block; filter: drop-shadow(1px 1px 0 #07080e); }
+.bp-reward-amt { font-family: 'VT323', monospace; }
 .bp-actions { display: flex; justify-content: center; }
 .bp-claim-all {
   font-family: 'Press Start 2P', 'VT323', monospace;
@@ -2502,6 +2506,14 @@ body {
 .difficulty-cost .key-count {
   color: var(--dif-color);
   font-weight: bold;
+}
+.difficulty-cost-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.difficulty-cost .pixel-icon {
+  filter: drop-shadow(1px 1px 0 #000);
 }
 .difficulty-lock {
   position: absolute;

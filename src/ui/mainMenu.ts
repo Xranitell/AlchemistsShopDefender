@@ -3,6 +3,8 @@ import { canClaimDaily, saveMeta } from '../game/save';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
 import { buildLeaderboardPanel } from './leaderboardOverlay';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -24,15 +26,37 @@ export class MainMenu {
     const wrap = document.createElement('div');
     wrap.className = 'main-menu';
 
-    // Top bar — currencies
+    // Top bar — currencies. Each chip is built as `[pixel-icon]
+    // [amount]` so the icon comes from the same sprite atlas the in-game
+    // HUD uses, keeping the visual language consistent across menu and
+    // gameplay.
     const topBar = document.createElement('div');
     topBar.className = 'mm-top-bar';
-    topBar.innerHTML = `
-      <span class="mm-currency blue-essence" title="${t('ui.menu.tooltip.blueEssence')}"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency ancient-essence" title="${t('ui.menu.tooltip.ancientEssence')}"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="mm-currency epic-key" title="${t('ui.menu.tooltip.epicKey')}"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
-      <span class="mm-currency ancient-key" title="${t('ui.menu.tooltip.ancientKey')}"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
-    `;
+    const sprites = getSprites();
+    topBar.appendChild(buildCurrencyChip(
+      'blue-essence',
+      spriteIcon(sprites.iconBlueEssence, { scale: 2 }),
+      opts.meta.blueEssence,
+      t('ui.menu.tooltip.blueEssence'),
+    ));
+    topBar.appendChild(buildCurrencyChip(
+      'ancient-essence',
+      spriteIcon(sprites.iconAncientEssence, { scale: 2 }),
+      opts.meta.ancientEssence,
+      t('ui.menu.tooltip.ancientEssence'),
+    ));
+    topBar.appendChild(buildCurrencyChip(
+      'epic-key',
+      spriteIcon(sprites.iconEpicKey, { scale: 2 }),
+      opts.meta.epicKeys,
+      t('ui.menu.tooltip.epicKey'),
+    ));
+    topBar.appendChild(buildCurrencyChip(
+      'ancient-key',
+      spriteIcon(sprites.iconAncientKey, { scale: 2 }),
+      opts.meta.ancientKeys,
+      t('ui.menu.tooltip.ancientKey'),
+    ));
     // RU/EN switcher in the top-right corner of the main menu (PR-9 i18n).
     topBar.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
     wrap.appendChild(topBar);
@@ -186,6 +210,26 @@ export class MainMenu {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
+}
+
+/** Builds a single `[pixel-icon] [amount]` chip for the main-menu top bar.
+ *  Centralised so all four currencies look identical (icon size, padding,
+ *  number colour) and so future currencies can be added without copy-paste.
+ */
+function buildCurrencyChip(
+  modifier: string,
+  icon: HTMLElement,
+  amount: number,
+  tooltip: string,
+): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = `mm-currency ${modifier}`;
+  chip.title = tooltip;
+  chip.appendChild(icon);
+  const amt = document.createElement('strong');
+  amt.textContent = `${amount}`;
+  chip.appendChild(amt);
+  return chip;
 }
 
 /** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).

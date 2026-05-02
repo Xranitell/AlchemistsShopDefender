@@ -1,7 +1,7 @@
 import type { GameState } from '../game/state';
 import { totalWaves, currentWaveDuration, currentPauseDuration, isNextWaveBoss } from '../game/wave';
 import { getSprites } from '../render/sprites';
-import type { BakedSprite } from '../render/sprite';
+import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 import {
   POTION_BY_ID,
@@ -597,18 +597,10 @@ export function roundIconButton(extraClass: string): HTMLDivElement {
   return el;
 }
 
-// Embed a baked sprite as an HTMLCanvasElement scaled up via CSS image-rendering: pixelated.
-function spriteEl(sprite: BakedSprite, scale: number): HTMLCanvasElement {
-  const out = document.createElement('canvas');
-  out.width = sprite.width;
-  out.height = sprite.height;
-  out.className = 'hud-sprite';
-  const c = out.getContext('2d')!;
-  c.imageSmoothingEnabled = false;
-  c.drawImage(sprite.canvas, 0, 0);
-  out.style.width = `${sprite.width * scale}px`;
-  out.style.height = `${sprite.height * scale}px`;
-  return out;
+// HUD-flavoured wrapper around the shared sprite helper. The HUD adds a
+// `hud-sprite` class so existing CSS selectors keep working.
+function spriteEl(sprite: import('../render/sprite').BakedSprite, scale: number): HTMLCanvasElement {
+  return spriteIcon(sprite, { scale, extraClass: 'hud-sprite' });
 }
 
 function activeModuleShortLabel(id: string): string {

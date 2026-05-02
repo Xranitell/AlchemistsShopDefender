@@ -47,6 +47,17 @@ export interface Sprites {
   iconAbility: BakedSprite;
   iconWavePip: BakedSprite;
   iconHpHeart: BakedSprite;
+  // Meta-progression resource icons. Same flat pixel-art language as the
+  // HUD icons so the main menu / overlays read as part of the game instead
+  // of looking like CSS chrome.
+  iconBlueEssence: BakedSprite;
+  iconAncientEssence: BakedSprite;
+  iconEpicKey: BakedSprite;
+  iconAncientKey: BakedSprite;
+  iconKey: BakedSprite;
+  iconRerolls: BakedSprite;
+  iconCrystal: BakedSprite;
+  iconOrb: BakedSprite;
   flyingFlask: BakedSprite;
   shaman: BakedSprite;
   ratKing: BakedSprite;
@@ -1105,6 +1116,196 @@ function bakeAll(): Sprites {
         },
       },
       { x: 3.5, y: 3.5 },
+    ),
+
+    // ──────────── Meta currencies ────────────
+    // Blue Essence — cyan crystal vial. Same silhouette as the in-run
+    // essence icon so the player intuitively reads them as the same family,
+    // just retinted to the cool blue palette used everywhere else for the
+    // "blue" currency.
+    iconBlueEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDPpppDD.',
+          'dDPppPpppD',
+          'dDpPpppppD',
+          'dDppppPpPD',
+          'dDPpppPpPD',
+          'dDpppppppD',
+          '.dDppPppDd',
+          '..ddpppdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'crystalD',
+          D: 'crystalC',
+          p: 'crystalB',
+          P: 'crystalA',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Ancient Essence — amber/gold crystal vial. Distinct from the regular
+    // gold coin (which is a flat disc) and from the cyan blue-essence vial.
+    iconAncientEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDPpppDD.',
+          'dDPppPpppD',
+          'dDpPpppppD',
+          'dDppppPpPD',
+          'dDPpppPpPD',
+          'dDpppppppD',
+          '.dDppPppDd',
+          '..ddpppdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'brassDark',
+          D: 'goldC',
+          p: 'goldB',
+          P: 'goldA',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Epic key — purple skeleton key. Bow on the left with a hole, three
+    // teeth carved into the shaft. Used in the main-menu top bar and the
+    // difficulty-select overlay (replaces the 🗝️ emoji that broke the
+    // pixel-art look).
+    iconEpicKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'essenceA',
+          D: 'essenceC',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Ancient key — gold skeleton key. Same silhouette as the epic key so
+    // the two read as a paired set.
+    iconAncientKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'goldA',
+          D: 'brassDark',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Generic key — used for "+N keys" rewards (battle pass, daily) where
+    // the tier doesn't matter. Slightly muted gold so it doesn't look
+    // identical to the ancient key.
+    iconKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brassDark',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Rerolls — two stacked arrows / dice face. Replaces the 🔄 emoji used
+    // for the "free reroll" daily reward.
+    iconRerolls: bakeSprite(
+      {
+        rows: [
+          '..LLLLLL..',
+          '.LDDDDDDL.',
+          'LDD.LL.DDL',
+          'LDLLDDLLDL',
+          'LDLLDDLLDL',
+          'LDD.LL.DDL',
+          '.LDDDDDDL.',
+          '..LLLLLL..',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brass',
+        },
+      },
+      { x: 5, y: 4 },
+    ),
+
+    // Crystal gem — diamond shape used as a generic "essence shard" reward
+    // glyph (replaces 💎 emoji in the daily-rewards calendar).
+    iconCrystal: bakeSprite(
+      {
+        rows: [
+          '..LL..',
+          '.LDDL.',
+          'LDOODL',
+          'LDOODL',
+          '.LDDL.',
+          '..LL..',
+        ],
+        legend: {
+          L: 'crystalA',
+          D: 'crystalB',
+          O: 'crystalC',
+        },
+      },
+      { x: 3, y: 3 },
+    ),
+
+    // Mystic orb — spherical purple/cyan orb (replaces 🔮). Used as the
+    // ancient-essence reward glyph in the daily calendar.
+    iconOrb: bakeSprite(
+      {
+        rows: [
+          '..LLLL..',
+          '.LppppL.',
+          'LpPPpPpL',
+          'LpPpppdL',
+          'LppppddL',
+          'LpdpdddL',
+          '.LdddddL',
+          '..LLLL..',
+        ],
+        legend: {
+          L: 'essenceD',
+          P: 'essenceA',
+          p: 'essenceB',
+          d: 'essenceC',
+        },
+      },
+      { x: 4, y: 4 },
     ),
   };
 }

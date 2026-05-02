@@ -1,4 +1,6 @@
 import { t } from '../i18n';
+import { getSprites } from '../render/sprites';
+import type { BakedSprite } from '../render/sprite';
 
 export interface DailyReward {
   day: number;
@@ -29,12 +31,18 @@ export function rewardLabel(r: DailyReward): string {
   return t(`reward.${r.type}`, { n: r.amount });
 }
 
-export function rewardIcon(type: DailyReward['type']): string {
+/**
+ * Returns the baked pixel-art sprite that represents a given reward type.
+ * Used by the daily-rewards calendar and the battle-pass track so both
+ * surfaces speak the same visual language as the in-game HUD.
+ */
+export function rewardSprite(type: DailyReward['type']): BakedSprite {
+  const s = getSprites();
   switch (type) {
-    case 'gold': return '🪙';
-    case 'blue_essence': return '💎';
-    case 'ancient_essence': return '🔮';
-    case 'keys': return '🗝️';
-    case 'rerolls': return '🔄';
+    case 'gold': return s.iconCoin;
+    case 'blue_essence': return s.iconBlueEssence;
+    case 'ancient_essence': return s.iconAncientEssence;
+    case 'keys': return s.iconKey;
+    case 'rerolls': return s.iconRerolls;
   }
 }
