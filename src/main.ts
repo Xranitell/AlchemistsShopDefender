@@ -25,6 +25,9 @@ import { applyCard, beginNewDraft, isCursedWave, rerollForAd, rerollForGold, rol
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld, worldToScreen } from './render/camera';
+import { getSprites } from './render/sprites';
+import { spriteIcon } from './render/spriteIcon';
+import type { BakedSprite } from './render/sprite';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
@@ -700,6 +703,40 @@ function rewardBreakdown(r: { blue: number; ancient: number; epicKeys: number; a
   return parts.join(' • ');
 }
 
+/** Build the per-currency reward grid that replaces the old single-line
+ *  text breakdown on the victory chest screen. Each non-zero currency
+ *  becomes a tile with the canonical pixel-art icon + amount, matching
+ *  the Daily Rewards and Battle Pass visual language. The same factory
+ *  is reused by the falling-icons animation: every tile is paired with a
+ *  flying clone of the icon that drops out of the chest and lands on
+ *  the tile. Returns the list of {sprite, tile} pairs so the caller can
+ *  schedule the animations. */
+interface ChestRewardEntry {
+  sprite: BakedSprite;
+  amount: number;
+  label: string;
+  glow?: boolean;
+}
+
+function buildChestRewardEntries(
+  r: { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number },
+): ChestRewardEntry[] {
+  const sprites = getSprites();
+  const entries: ChestRewardEntry[] = [];
+  // The kill counter is shown alongside the meta-currency tiles so the
+  // chest reads as a "what you walked away with" board — same gold-coin
+  // glyph the in-run HUD uses, with the run's kill total. Other tiles
+  // are skipped when the currency value is 0 (a defeat-on-victory edge
+  // case), so the grid never shows empty slots.
+  entries.push({ sprite: sprites.iconCoin, amount: state.totalKills, label: t('ui.chest.label.kills') });
+  if (r.blue > 0) entries.push({ sprite: sprites.iconBlueEssence, amount: r.blue, label: t('ui.chest.label.blue') });
+  if (r.ancient > 0) entries.push({ sprite: sprites.iconAncientEssence, amount: r.ancient, label: t('ui.chest.label.ancient'), glow: true });
+  if (r.epicKeys > 0) entries.push({ sprite: sprites.iconEpicKey, amount: r.epicKeys, label: t('ui.chest.label.epicKey') });
+  if (r.ancientKeys > 0) entries.push({ sprite: sprites.iconAncientKey, amount: r.ancientKeys, label: t('ui.chest.label.ancientKey'), glow: true });
+  if (r.bpXp > 0) entries.push({ sprite: sprites.iconRerolls, amount: r.bpXp, label: t('ui.chest.label.bpXp') });
+  return entries;
+}
+
 /** Build a small list element summarising the run's active contracts —
  *  completed ones get a green checkmark + bonus reward note, others are
  *  greyed out. Returns null if the run had no contracts. */
@@ -745,9 +782,12 @@ function showVictory(): void {
   tutorial.stop();
   const reward = awardRunEssence(true);
   const wave = state.waveState.currentIndex + 1;
+  const sprites = getSprites();
 
-  // Chest click-to-open mechanic: player taps the chest 3 times, then
-  // it opens revealing the reward breakdown + double/menu buttons.
+  // Chest click-to-open mechanic: player taps the chest 3 times, then it
+  // opens, the chest sprite swaps to the "open" frame, and per-currency
+  // reward icons fly out of the chest in a parabolic arc and land into
+  // their tiles in the reward grid.
   const TAPS_NEEDED = 3;
   let tapCount = 0;
   let chestOpened = false;
@@ -763,10 +803,42 @@ function showVictory(): void {
   title.textContent = t('ui.victory.title');
   panel.appendChild(title);
 
-  const chestIcon = document.createElement('div');
-  chestIcon.className = 'chest-icon';
-  chestIcon.textContent = '🧰';
-  panel.appendChild(chestIcon);
+  // Wave / kills summary line — matches the small subtitle line under the
+  // big title in the reference mock-up. Replaces the bullet-separated
+  // text dump that used to live below the chest.
+  const summary = document.createElement('div');
+  summary.className = 'chest-summary';
+  summary.textContent = t('ui.chest.summary', {
+    wave,
+    total: totalWaves(state),
+    kills: state.totalKills,
+  });
+  panel.appendChild(summary);
+
+  // Chest stage: holds the radial-rays backdrop, the chest sprite, and
+  // the layer where flying-out icons are spawned. Position: relative so
+  // the flying icons (position: absolute) anchor to the chest centre.
+  const stage = document.createElement('div');
+  stage.className = 'chest-stage';
+  panel.appendChild(stage);
+
+  const rays = document.createElement('div');
+  rays.className = 'chest-rays';
+  stage.appendChild(rays);
+
+  const flyLayer = document.createElement('div');
+  flyLayer.className = 'chest-fly-layer';
+  stage.appendChild(flyLayer);
+
+  // Chest sprite — closed initially, swapped to the open frame on the
+  // final tap. We wrap the sprite in a button so the click target also
+  // reads as "press me" to keyboards / screen readers.
+  const chestBtn = document.createElement('button');
+  chestBtn.type = 'button';
+  chestBtn.className = 'chest-button';
+  const closedIcon = spriteIcon(sprites.iconChestClosed, { scale: 6, extraClass: 'chest-sprite chest-sprite-closed' });
+  chestBtn.appendChild(closedIcon);
+  stage.appendChild(chestBtn);
 
   const hint = document.createElement('div');
   hint.className = 'chest-hint';
@@ -782,94 +854,212 @@ function showVictory(): void {
   panel.appendChild(progressBar);
 
   const rewardContainer = document.createElement('div');
+  rewardContainer.className = 'chest-reward-container';
   rewardContainer.style.display = 'none';
   panel.appendChild(rewardContainer);
 
-  chestIcon.addEventListener('click', () => {
+  chestBtn.addEventListener('click', () => {
     if (chestOpened) return;
     tapCount++;
     audio.playSfx('uiClick');
 
-    // Shake animation
-    chestIcon.classList.remove('shake');
-    void chestIcon.offsetWidth; // reflow to re-trigger animation
-    chestIcon.classList.add('shake');
+    chestBtn.classList.remove('shake');
+    void chestBtn.offsetWidth; // reflow to re-trigger the animation
+    chestBtn.classList.add('shake');
 
     progressFill.style.width = `${Math.min(100, (tapCount / TAPS_NEEDED) * 100)}%`;
     hint.textContent = t('ui.chest.opening');
 
     if (tapCount >= TAPS_NEEDED) {
       chestOpened = true;
-      chestIcon.classList.remove('shake');
-      chestIcon.classList.add('opened');
-      chestIcon.textContent = '✨';
+      chestBtn.classList.remove('shake');
+      chestBtn.classList.add('opened');
+      chestBtn.disabled = true;
+
+      // Swap closed → open chest sprite. We rebuild the open icon (rather
+      // than re-skinning the closed one) because both are baked-canvas
+      // sprites; cheaper to swap children than redraw.
+      closedIcon.remove();
+      const openIcon = spriteIcon(sprites.iconChestOpen, { scale: 6, extraClass: 'chest-sprite chest-sprite-open' });
+      chestBtn.appendChild(openIcon);
+      rays.classList.add('blasting');
+
       hint.style.display = 'none';
       progressBar.style.display = 'none';
 
-      // Show reward after short delay
-      setTimeout(() => {
-        const rewardText = document.createElement('div');
-        rewardText.className = 'chest-reward';
-        rewardText.textContent = rewardBreakdown(reward, state.totalKills, wave, true);
-        rewardContainer.appendChild(rewardText);
+      // Build the reward grid + per-tile flying icons. The reward grid
+      // is rendered immediately but with `landed=false`; each tile waits
+      // for its own flying icon to "land" on it before flipping to the
+      // landed visual. See `spawnFlyOut` below.
+      const rewardGrid = document.createElement('div');
+      rewardGrid.className = 'chest-reward-grid';
+      rewardContainer.appendChild(rewardGrid);
 
-        // Per-contract summary: highlight goals that resolved as completed
-        // and grey-out unfinished ones. Empty for runs without contracts.
-        const contractSummary = renderContractsSummary(reward.completedContracts);
-        if (contractSummary) rewardContainer.appendChild(contractSummary);
+      const entries = buildChestRewardEntries(reward);
+      const tiles: HTMLElement[] = [];
+      for (const e of entries) {
+        const tile = document.createElement('div');
+        tile.className = 'chest-reward-tile';
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'chest-reward-tile-icon';
+        // Placeholder canvas (invisible) so the tile reserves the icon
+        // slot height; the actual icon is filled in once the flying
+        // copy lands.
+        iconWrap.appendChild(spriteIcon(e.sprite, { scale: 2, extraClass: e.glow ? 'glow-gold' : '' }));
+        tile.appendChild(iconWrap);
+        const amt = document.createElement('div');
+        amt.className = 'chest-reward-tile-amount';
+        amt.textContent = `+${e.amount}`;
+        tile.appendChild(amt);
+        const lab = document.createElement('div');
+        lab.className = 'chest-reward-tile-label';
+        lab.textContent = e.label;
+        tile.appendChild(lab);
+        tile.classList.add('pending');
+        rewardGrid.appendChild(tile);
+        tiles.push(tile);
+      }
 
-        rewardContainer.style.display = '';
+      // Per-contract summary: highlight goals that resolved as completed
+      // and grey-out unfinished ones. Empty for runs without contracts.
+      const contractSummary = renderContractsSummary(reward.completedContracts);
+      if (contractSummary) rewardContainer.appendChild(contractSummary);
 
-        // Show action buttons
-        let doubled = false;
-        const wrap = document.createElement('div');
-        wrap.className = 'menu-buttons';
-        wrap.style.marginTop = '12px';
+      rewardContainer.style.display = '';
 
-        const adBtn = document.createElement('button');
-        adBtn.textContent = t('ui.victory.doubleAd');
-        adBtn.style.borderColor = 'var(--accent)';
-        adBtn.style.color = 'var(--accent)';
-        adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
-        adBtn.addEventListener('click', () => {
-          audio.playSfx('uiClick');
-          if (doubled) return;
-          void yandex.showRewarded().then((ok) => {
-            if (!ok) return;
-            doubled = true;
-            doubleRewards(reward);
-            overlay.showSimple({
-              title: t('ui.victory.doubled'),
-              subtitle: t('ui.victory.doubledSubtitle', {
-                blue: reward.blue * 2,
-                ancient: reward.ancient > 0
-                  ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
-                  : '',
-              }),
-              buttons: [
-                { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
-              ],
-            });
+      // Spawn the flying-out icon animation. Each entry gets a clone of
+      // its sprite that starts at the chest centre, arcs upward, then
+      // falls into the matching tile's icon slot. We use FLIP-style
+      // measurement: read the chest-centre and tile-centre coordinates
+      // *after* layout, then animate the clone with absolute pixel
+      // offsets so it lines up perfectly regardless of viewport size.
+      requestAnimationFrame(() => {
+        const stageRect = stage.getBoundingClientRect();
+        const chestRect = chestBtn.getBoundingClientRect();
+        const startX = chestRect.left - stageRect.left + chestRect.width / 2;
+        const startY = chestRect.top - stageRect.top + chestRect.height * 0.4;
+        for (let i = 0; i < entries.length; i++) {
+          const e = entries[i]!;
+          const tile = tiles[i]!;
+          const tileIconEl = tile.querySelector<HTMLElement>('.chest-reward-tile-icon');
+          if (!tileIconEl) continue;
+          const tileRect = tileIconEl.getBoundingClientRect();
+          const endX = tileRect.left - stageRect.left + tileRect.width / 2;
+          const endY = tileRect.top - stageRect.top + tileRect.height / 2;
+          // Mid-arc apex sits a chest-height above the chest centre, with
+          // a slight horizontal lean toward the tile so the arc reads as
+          // a believable parabola (not a rainbow).
+          const peakX = startX + (endX - startX) * 0.4;
+          const peakY = startY - 140 - Math.random() * 40;
+          spawnFlyOut({
+            layer: flyLayer,
+            tile,
+            sprite: e.sprite,
+            glow: !!e.glow,
+            startX,
+            startY,
+            peakX,
+            peakY,
+            endX,
+            endY,
+            delayMs: 90 * i,
+          });
+        }
+      });
+
+      // Action buttons (Double via ad / To menu) — same logic as before,
+      // but now grouped under a footer so the reward grid stays visually
+      // separate from the CTA.
+      let doubled = false;
+      const footer = document.createElement('div');
+      footer.className = 'menu-buttons chest-footer';
+
+      const adBtn = document.createElement('button');
+      adBtn.textContent = t('ui.victory.doubleAd');
+      adBtn.className = 'chest-cta-double';
+      adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+      adBtn.addEventListener('click', () => {
+        audio.playSfx('uiClick');
+        if (doubled) return;
+        void yandex.showRewarded().then((ok) => {
+          if (!ok) return;
+          doubled = true;
+          doubleRewards(reward);
+          overlay.showSimple({
+            title: t('ui.victory.doubled'),
+            subtitle: t('ui.victory.doubledSubtitle', {
+              blue: reward.blue * 2,
+              ancient: reward.ancient > 0
+                ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
+                : '',
+            }),
+            buttons: [
+              { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
+            ],
           });
         });
-        wrap.appendChild(adBtn);
+      });
+      footer.appendChild(adBtn);
 
-        const menuBtn = document.createElement('button');
-        menuBtn.textContent = t('ui.common.toMenu');
-        menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
-        menuBtn.addEventListener('click', () => {
-          audio.playSfx('uiClick');
-          restart();
-        });
-        wrap.appendChild(menuBtn);
+      const menuBtn = document.createElement('button');
+      menuBtn.textContent = t('ui.common.toMenu');
+      menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+      menuBtn.addEventListener('click', () => {
+        audio.playSfx('uiClick');
+        restart();
+      });
+      footer.appendChild(menuBtn);
 
-        rewardContainer.appendChild(wrap);
-      }, 500);
+      rewardContainer.appendChild(footer);
     }
   });
 
   root.appendChild(panel);
   root.classList.add('visible');
+}
+
+/** Spawn one icon that flies out of the chest, peaks, and falls onto
+ *  its target reward tile. Driven by stacked CSS animations: the X axis
+ *  follows a `chest-fly-x` linear ease (start→peakX→endX in two halves)
+ *  and the Y axis a `chest-fly-y` cubic ease so the arc looks like a
+ *  parabolic toss. On animationend the flying clone is removed and the
+ *  tile flips to its `landed` state, triggering the small bounce + glow
+ *  pulse defined in CSS. */
+function spawnFlyOut(args: {
+  layer: HTMLElement;
+  tile: HTMLElement;
+  sprite: BakedSprite;
+  glow: boolean;
+  startX: number;
+  startY: number;
+  peakX: number;
+  peakY: number;
+  endX: number;
+  endY: number;
+  delayMs: number;
+}): void {
+  const fly = document.createElement('div');
+  fly.className = 'chest-fly-out';
+  const icon = spriteIcon(args.sprite, {
+    scale: 3,
+    extraClass: args.glow ? 'glow-gold' : '',
+  });
+  fly.appendChild(icon);
+  // CSS variables drive the keyframe trajectory; this lets us reuse a
+  // single keyframe pair for any number of icons / target positions.
+  fly.style.setProperty('--start-x', `${args.startX}px`);
+  fly.style.setProperty('--start-y', `${args.startY}px`);
+  fly.style.setProperty('--peak-x', `${args.peakX}px`);
+  fly.style.setProperty('--peak-y', `${args.peakY}px`);
+  fly.style.setProperty('--end-x', `${args.endX}px`);
+  fly.style.setProperty('--end-y', `${args.endY}px`);
+  fly.style.animationDelay = `${args.delayMs}ms`;
+  args.layer.appendChild(fly);
+  fly.addEventListener('animationend', () => {
+    fly.remove();
+    args.tile.classList.remove('pending');
+    args.tile.classList.add('landed');
+  }, { once: true });
 }
 
 function showGameOver(): void {

@@ -3990,25 +3990,145 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 32px 24px;
+  gap: 14px;
+  padding: 28px 28px 24px;
+  position: relative;
+  /* Pixel-art gold corner ornaments matching the card panels — anchored
+   * to the panel's outer rim so the chest screen reads as part of the
+   * same in-game UI family (run banners, card picker, etc). */
+  isolation: isolate;
 }
-.chest-icon {
-  font-size: 96px;
+.chest-overlay::before,
+.chest-overlay::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, var(--accent) 50%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.chest-overlay::before { top: 6px; left: 6px; }
+.chest-overlay::after {
+  bottom: 6px;
+  right: 6px;
+  background: linear-gradient(-45deg, var(--accent) 50%, transparent 50%);
+}
+
+.chest-summary {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: var(--fg-dim);
+  text-align: center;
+  margin-top: -2px;
+}
+
+/* Stage = positioning context for chest sprite + radial-rays backdrop +
+ * flying icon layer. The flying icons (`.chest-fly-out`) use absolute
+ * positioning relative to this element. */
+.chest-stage {
+  position: relative;
+  width: 100%;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 0 6px;
+}
+
+/* Radial gold rays behind the chest. Built from two stacked conic
+ * gradients so the "rays" look stripey instead of a flat blob. The
+ * `blasting` class pulses the size up to sell the chest-opens-with-a-
+ * burst-of-light moment. */
+.chest-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 380px;
+  height: 380px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(255, 220, 130, 0.45) 0%, rgba(255, 200, 90, 0.18) 30%, transparent 60%),
+    conic-gradient(
+      from 0deg,
+      rgba(255, 209, 102, 0.18) 0deg, transparent 14deg,
+      rgba(255, 209, 102, 0.18) 28deg, transparent 42deg,
+      rgba(255, 209, 102, 0.18) 56deg, transparent 70deg,
+      rgba(255, 209, 102, 0.18) 84deg, transparent 98deg,
+      rgba(255, 209, 102, 0.18) 112deg, transparent 126deg,
+      rgba(255, 209, 102, 0.18) 140deg, transparent 154deg,
+      rgba(255, 209, 102, 0.18) 168deg, transparent 182deg,
+      rgba(255, 209, 102, 0.18) 196deg, transparent 210deg,
+      rgba(255, 209, 102, 0.18) 224deg, transparent 238deg,
+      rgba(255, 209, 102, 0.18) 252deg, transparent 266deg,
+      rgba(255, 209, 102, 0.18) 280deg, transparent 294deg,
+      rgba(255, 209, 102, 0.18) 308deg, transparent 322deg,
+      rgba(255, 209, 102, 0.18) 336deg, transparent 350deg
+    );
+  filter: blur(0.5px);
+  opacity: 0.6;
+  animation: chest-rays-spin 22s linear infinite;
+}
+.chest-rays.blasting {
+  animation:
+    chest-rays-spin 12s linear infinite,
+    chest-rays-burst 0.8s ease-out forwards;
+}
+@keyframes chest-rays-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes chest-rays-burst {
+  0% { opacity: 0.6; }
+  40% { opacity: 1; }
+  100% { opacity: 0.95; }
+}
+
+.chest-fly-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Chest "button" — the actual interactive sprite + click target. Built
+ * as a transparent button so the sprite renders cleanly while keyboards
+ * / screen readers still see a focusable control. */
+.chest-button {
+  position: relative;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
   cursor: pointer;
-  user-select: none;
+  outline: none;
+  z-index: 2;
   transition: transform 120ms ease;
-  filter: drop-shadow(0 4px 12px rgba(255, 180, 60, 0.5));
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 12px rgba(255, 209, 102, 0.45));
 }
-.chest-icon:hover { transform: scale(1.08); }
-.chest-icon:active { transform: scale(0.95); }
-.chest-icon.shake {
-  animation: chest-shake 0.35s ease;
+.chest-button:hover { transform: translateY(-1px) scale(1.03); }
+.chest-button:active { transform: translateY(2px) scale(0.97); }
+.chest-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
 }
-.chest-icon.opened {
-  animation: chest-open 0.5s ease forwards;
+.chest-button.shake { animation: chest-shake 0.35s ease; }
+.chest-button.opened {
   cursor: default;
+  animation: chest-open-pop 0.55s ease forwards;
 }
+.chest-button:disabled { cursor: default; }
+
+.chest-sprite {
+  display: block;
+  image-rendering: pixelated;
+}
+.chest-sprite-open {
+  filter: drop-shadow(0 0 16px rgba(255, 220, 120, 0.8));
+}
+
 .chest-hint {
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
@@ -4018,47 +4138,183 @@ body {
   animation: chest-hint-pulse 1.2s ease-in-out infinite;
 }
 .chest-progress {
-  width: 180px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.12);
+  width: 200px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid #0b0d15;
   border-radius: 4px;
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px var(--hud-frame-rim);
 }
 .chest-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffd166, #ff9d3a);
-  border-radius: 4px;
-  transition: width 200ms ease;
+  background:
+    linear-gradient(180deg, #ffe27a 0%, #ffd166 45%, #c9941a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32);
+  transition: width 220ms cubic-bezier(0.34, 1.6, 0.64, 1);
 }
-.chest-reward {
+
+.chest-reward-container {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Reward grid — per-currency tiles, each with its baked sprite + amount
+ * + short label. Mirrors the visual language of the daily-rewards
+ * calendar so the player parses both surfaces as "loot pulled from a
+ * box". */
+.chest-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 10px;
+}
+.chest-reward-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px 10px;
+  background: linear-gradient(180deg, rgba(51, 60, 86, 0.98), rgba(20, 25, 40, 0.98));
+  border: 3px solid #0b0d15;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 2px var(--hud-frame-rim),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 rgba(0, 0, 0, 0.55);
+}
+.chest-reward-tile.pending .chest-reward-tile-icon,
+.chest-reward-tile.pending .chest-reward-tile-amount,
+.chest-reward-tile.pending .chest-reward-tile-label {
+  visibility: hidden;
+}
+.chest-reward-tile.landed {
+  animation: chest-tile-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) both;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(255, 209, 102, 0.4);
+}
+.chest-reward-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+}
+.chest-reward-tile-amount {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: #fff2c2;
+  text-shadow:
+    -1px -1px 0 #141018, 1px -1px 0 #141018,
+    -1px 1px 0 #141018, 1px 1px 0 #141018,
+    0 0 8px rgba(255, 209, 102, 0.45);
+}
+.chest-reward-tile-label {
   font-family: 'VT323', monospace;
-  font-size: 22px;
-  color: #ffd166;
-  text-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  color: var(--fg-dim);
   text-align: center;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: chest-reward-in 0.4s ease forwards;
+  line-height: 1.05;
 }
+
+/* Footer (ad / menu buttons) on the chest screen — same `menu-buttons`
+ * row layout as elsewhere, just spaced after the reward grid. The
+ * "double" CTA gets the gold accent treatment to mirror the rewarded-
+ * ad CTA on Daily Rewards. */
+.chest-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.chest-cta-double {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow:
+    0 0 0 2px var(--hud-frame-rim),
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(255, 209, 102, 0.45);
+}
+
+/* Flying icon — copy of the reward sprite that arcs out of the chest
+ * and falls onto its tile. The X axis is animated independently from
+ * the Y axis so we get a believable parabolic arc instead of a straight
+ * line. CSS variables (--start-x..--end-y) are set per-icon by main.ts
+ * after measuring the chest + tile positions. */
+.chest-fly-out {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  transform-origin: center center;
+  animation:
+    chest-fly-x 1100ms cubic-bezier(0.4, 0, 0.6, 1) forwards,
+    chest-fly-y 1100ms cubic-bezier(0.3, 0, 0.7, 1) forwards,
+    chest-fly-spin 1100ms ease-in-out forwards;
+}
+@keyframes chest-fly-x {
+  0%   { left: var(--start-x, 0px); }
+  50%  { left: var(--peak-x, 0px); }
+  100% { left: var(--end-x, 0px); }
+}
+@keyframes chest-fly-y {
+  0%   { top: var(--start-y, 0px); transform: translate(-50%, -50%) scale(0.4); }
+  20%  { transform: translate(-50%, -50%) scale(1.2); }
+  50%  { top: var(--peak-y, 0px); transform: translate(-50%, -50%) scale(1.15); }
+  100% { top: var(--end-y, 0px); transform: translate(-50%, -50%) scale(0.85); }
+}
+@keyframes chest-fly-spin {
+  0%   { filter: drop-shadow(0 0 6px rgba(255, 220, 120, 0.8)); }
+  60%  { filter: drop-shadow(0 0 14px rgba(255, 220, 120, 0.95)); }
+  100% { filter: drop-shadow(0 0 4px rgba(255, 220, 120, 0.5)); }
+}
+
 @keyframes chest-shake {
   0%, 100% { transform: rotate(0deg); }
-  20% { transform: rotate(-8deg) scale(1.05); }
-  40% { transform: rotate(8deg) scale(1.05); }
-  60% { transform: rotate(-5deg); }
-  80% { transform: rotate(5deg); }
+  20% { transform: rotate(-6deg) scale(1.04); }
+  40% { transform: rotate(6deg) scale(1.04); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(4deg); }
 }
-@keyframes chest-open {
+@keyframes chest-open-pop {
   0% { transform: scale(1); }
-  30% { transform: scale(1.2) rotate(-5deg); }
-  60% { transform: scale(1.3); filter: drop-shadow(0 0 24px rgba(255, 220, 80, 0.9)); }
-  100% { transform: scale(1.1); filter: drop-shadow(0 0 32px rgba(255, 220, 80, 0.7)); }
+  35% { transform: scale(1.18); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1.08); }
 }
 @keyframes chest-hint-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.55; }
 }
-@keyframes chest-reward-in {
-  to { opacity: 1; transform: translateY(0); }
+@keyframes chest-tile-pop {
+  0%   { transform: translateY(6px) scale(0.85); opacity: 0.4; }
+  60%  { transform: translateY(-2px) scale(1.04); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chest-rays { animation: none; }
+  .chest-rays.blasting { animation: none; opacity: 0.85; }
+  .chest-button.shake { animation: none; }
+  .chest-fly-out { animation-duration: 1ms !important; }
 }
 
 /* Crafting entry point — shop card on the main menu */
@@ -4396,10 +4652,17 @@ body {
   .craft-header h2 { font-size: 14px; }
 
   /* Victory chest. */
-  .chest-overlay { padding: 16px 12px; gap: 10px; }
-  .chest-icon { font-size: 64px; }
+  .chest-overlay { padding: 18px 14px 16px; gap: 10px; }
+  .chest-stage { min-height: 130px; padding: 8px 0 4px; }
+  .chest-rays { width: 280px; height: 280px; }
+  .chest-button .chest-sprite { transform: scale(0.78); transform-origin: center; }
+  .chest-summary { font-size: 14px; }
   .chest-hint { font-size: 9px; }
-  .chest-progress { width: 140px; }
+  .chest-progress { width: 160px; }
+  .chest-reward-grid { grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; }
+  .chest-reward-tile { padding: 10px 6px 8px; }
+  .chest-reward-tile-amount { font-size: 13px; }
+  .chest-reward-tile-label { font-size: 11px; }
 
   /* Leaderboard. */
   .lb-panel { padding: 14px 16px; }

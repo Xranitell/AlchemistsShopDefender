@@ -105,6 +105,13 @@ export const RU: Record<string, string> = {
   'ui.chest.tapToOpen': 'Нажми, чтобы открыть!',
   'ui.chest.opening': 'Открывается...',
   'ui.chest.opened': 'Награда получена!',
+  'ui.chest.summary': 'Волна {wave}/{total} • Убийств: {kills}',
+  'ui.chest.label.kills': 'Убийств',
+  'ui.chest.label.blue': 'СЭ',
+  'ui.chest.label.ancient': 'ДЭ',
+  'ui.chest.label.epicKey': 'Эпич. ключ',
+  'ui.chest.label.ancientKey': 'Древн. ключ',
+  'ui.chest.label.bpXp': 'Опыт пропуска',
 
   // ── Settings ─────────────────────────────────────────────────────────
   'ui.settings.title': 'Настройки',
