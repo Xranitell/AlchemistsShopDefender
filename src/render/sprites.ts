@@ -57,6 +57,11 @@ export interface Sprites {
   iconRerolls: BakedSprite;
   iconCrystal: BakedSprite;
   iconOrb: BakedSprite;
+  // Treasure chest used by the victory ("Сундук Алхимика") screen. Two
+  // frames: closed (player taps to open) → opened (lid lifted, glow + gold
+  // contents visible). Same canvas size so the swap is in-place.
+  iconChestClosed: BakedSprite;
+  iconChestOpen: BakedSprite;
   flyingFlask: BakedSprite;
   shaman: BakedSprite;
   ratKing: BakedSprite;
@@ -1296,6 +1301,90 @@ function bakeAll(): Sprites {
         },
       },
       { x: 4, y: 4 },
+    ),
+
+    // ──────────── Victory chest ────────────
+    // Wooden treasure chest with brass band + keyhole. Closed frame: lid
+    // sealed. Both sprites are 18×16 so the canvas position is identical
+    // and the open frame can replace the closed one in place. Legend:
+    //   K = woodDark        (outer outline)
+    //   M = woodMid         (dark wood side)
+    //   L = woodLight       (mid wood)
+    //   H = woodHi          (highlight wood, lid top)
+    //   w = woodMid         (body interior)
+    //   G = goldA           (gold band)
+    //   B = brassGlow       (gold band highlight / inside-glow)
+    //   g = brassDark       (gold band shadow ring around keyhole)
+    //   S = ancientShimmer  (white sparkle pixel)
+    iconChestClosed: bakeSprite(
+      {
+        rows: [
+          '..................',
+          '....KKKKKKKKKK....',
+          '..KKMHHHHHHHHMKK..',
+          '.KMHLLLLLLLLLLHMK.',
+          'KMHLLLLLLLLLLLLHMK',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGBGGgggKKgggGGBGK',
+          'KGGGGGggKKggGGGGGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          g: 'brassDark',
+        },
+      },
+      { x: 9, y: 8 },
+    ),
+
+    // Open chest: lid hinged back (small trapezoid above body), bright
+    // golden contents inside the body, sparkle pixels for the "treasure"
+    // shine. Drawn at the same 18×16 footprint as `iconChestClosed`.
+    iconChestOpen: bakeSprite(
+      {
+        rows: [
+          '.....KKKKKKKK.....',
+          '...KKMLLLLLLLLMKK.',
+          '..KMLLLLLLLLLLLMK.',
+          '.KKKKKKKKKKKKKKKK.',
+          '.SSS............S.',
+          '....BBBBBBBBBB....',
+          '.KKLLLLLLLLLLLLKK.',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGSBBSwBSBwBSBwBGK',
+          'KGwBSwBwBSwBSwSBGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 9, y: 8 },
     ),
   };
 }

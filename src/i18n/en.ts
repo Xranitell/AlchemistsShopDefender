@@ -104,6 +104,13 @@ export const EN: Record<string, string> = {
   'ui.chest.tapToOpen': 'Tap to open!',
   'ui.chest.opening': 'Opening...',
   'ui.chest.opened': 'Reward received!',
+  'ui.chest.summary': 'Wave {wave}/{total} • Kills: {kills}',
+  'ui.chest.label.kills': 'Kills',
+  'ui.chest.label.blue': 'BE',
+  'ui.chest.label.ancient': 'AE',
+  'ui.chest.label.epicKey': 'Epic key',
+  'ui.chest.label.ancientKey': 'Ancient key',
+  'ui.chest.label.bpXp': 'BP-XP',
 
   // ── Settings ─────────────────────────────────────────────────────────
   'ui.settings.title': 'Settings',
