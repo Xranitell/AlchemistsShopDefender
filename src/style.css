@@ -4525,3 +4525,90 @@ body {
   .hud-potion-slot { width: 40px; height: 40px; font-size: 20px; }
   .hud-skip-btn { padding: 10px 26px; font-size: 13px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MOBILE LANDSCAPE REFINEMENTS — additional fixes for overlays and the
+   main menu on short phones (≤540px CSS height in landscape).
+   ══════════════════════════════════════════════════════════════════════ */
+@media (orientation: landscape) and (max-height: 540px) {
+  /* ── Main menu: allow scrolling so TO BATTLE is always reachable ── */
+  .main-menu {
+    overflow-y: auto;
+    min-height: 0;
+  }
+  /* Shrink the lab description box which pushes content down. */
+  .mm-lab-desc { min-height: 0; }
+  /* Reduce shop slot height. */
+  .mm-shop-slot { height: 28px; }
+  .mm-shop-slots { margin: 6px 0; gap: 4px; }
+  .mm-craft-level { gap: 3px; font-size: 8px; }
+  .mm-craft-bar, .mm-mini-progress { height: 10px; }
+  .mm-stats { font-size: 12px; gap: 1px; margin-top: 4px; }
+  /* Leaderboard: shrink further so the battle button fits. */
+  .lb-panel-compact .lb-body {
+    min-height: 0;
+    max-height: 30dvh;
+  }
+  .lb-panel-compact .lb-loading,
+  .lb-panel-compact .lb-empty { padding: 40px 0; }
+
+  /* ── Card draft: compress cards on very short screens ─────────── */
+  .cards-stage { padding: 14px 18px; gap: 12px; }
+  .cards-stage-title { font-size: 18px; padding: 2px 16px; }
+  .cards-stage-subtitle { font-size: 16px; }
+
+  /* ── Blessing overlay: smaller grid cells ─────────────────────── */
+  .blessing-panel { padding: 14px; max-height: 94dvh; }
+  .blessing-grid { gap: 8px; }
+  .blessing-card { padding: 10px 8px; gap: 4px; }
+  .blessing-icon { font-size: 32px; }
+  .blessing-name { font-size: 9px; }
+  .blessing-flavor { font-size: 12px; }
+  .blessing-effect { font-size: 13px; }
+  .blessing-title { font-size: 13px; }
+  .blessing-subtitle { font-size: 14px; }
+
+  /* ── Meta panel (Laboratory upgrades) ─────────────────────────── */
+  .meta-panel { padding: 14px 16px; }
+  .meta-branches { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .meta-upgrade { padding: 8px 6px; }
+
+  /* ── Daily rewards: tighter cells ─────────────────────────────── */
+  .daily-panel { padding: 14px 16px; }
+  .daily-header h2 { font-size: 15px; }
+
+  /* ── Battle pass: compress cells ──────────────────────────────── */
+  .bp-panel { padding: 14px 16px; }
+
+  /* ── Endless modifier: cap height ─────────────────────────────── */
+  .endless-modifier-panel { max-height: 94dvh; overflow-y: auto; }
+
+  /* ── Modifier preview: cap height ─────────────────────────────── */
+  .modifier-preview-panel { max-height: 94dvh; overflow-y: auto; }
+
+  /* ── Mannequin / tower shop: ensure fit ────────────────────────── */
+  .mannequin-shop { max-height: 88vh; overflow-y: auto; }
+}
+
+/* ── Very narrow landscape (≤740px wide) — additional column collapse ── */
+@media (orientation: landscape) and (max-width: 740px) {
+  /* Blessing grid → 2 columns when viewport is narrow. */
+  .blessing-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Meta branches → 2 columns. */
+  .meta-branches { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Ultra-short (<380px tall) — very tall aspect ratio phones ───────── */
+@media (orientation: landscape) and (max-height: 380px) {
+  .main-menu { gap: 4px; padding: 4px clamp(4px, 1vw, 10px); }
+  .mm-top-bar { padding: 0 2px 4px; font-size: 9px; gap: 4px; }
+  .mm-currency { padding: 3px 6px; font-size: 9px; }
+  .mm-left, .mm-right { flex: 0 0 clamp(120px, 16vw, 160px); }
+  .mm-section { padding: 6px 8px; }
+  .mm-section-title { font-size: 8px; margin-bottom: 2px; }
+  .mm-battle-btn { padding: 8px 24px 10px; font-size: clamp(12px, 2vw, 16px); }
+  .mm-mid-lb { width: min(360px, 85%); }
+  /* Title becomes too large. */
+  .mm-title-top { font-size: clamp(14px, 3vw, 24px); }
+  .mm-title-bottom { font-size: clamp(16px, 3.2vw, 26px); margin-top: 2px; }
+}
