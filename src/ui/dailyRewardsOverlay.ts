@@ -65,7 +65,10 @@ export class DailyRewardsOverlay {
       if (claimed) {
         icon.textContent = '✓';
       } else {
-        icon.appendChild(spriteIcon(rewardSprite(rewardDef.type), { scale: 3 }));
+        // Ancient-tier rewards get a CSS gold glow so the player visibly
+        // sees them as the rarer prize on the calendar.
+        const extraClass = rewardDef.type === 'ancient_essence' ? 'glow-gold' : undefined;
+        icon.appendChild(spriteIcon(rewardSprite(rewardDef.type), { scale: 3, extraClass }));
       }
       cell.appendChild(icon);
 

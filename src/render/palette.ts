@@ -112,6 +112,14 @@ export const COLORS = {
   goldB: '#c9941a',
   goldC: '#7a5b14',
 
+  // Ancient / legendary accents — used by the meta-currency icons (ancient
+  // essence vial, ancient key) so they read as "rich" / "glowing" instead
+  // of just "another gold thing". Pair these with a CSS gold drop-shadow
+  // glow on the rendered canvas.
+  ancientShimmer: '#fff5d0', // near-white shimmer pixel for sparkles
+  ancientCore: '#ffe17a',    // saturated bright yellow — "molten gold" core
+  ancientGem: '#ff5a5a',     // red ruby gem inset (key bow hole)
+
   // Essence (purple potion)
   essenceA: '#e6c2ff',
   essenceB: '#c084fc',

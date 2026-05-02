@@ -200,7 +200,9 @@ export class Hud {
     rightStack.appendChild(goldBadge);
 
     const essBadge = badgeFrame('hud-resource-badge');
-    essBadge.appendChild(spriteEl(getSprites().iconEssence, 3));
+    // Use the same blue-essence sprite as the main menu so the player sees a
+    // single, consistent "essence" icon in the HUD and the meta UI.
+    essBadge.appendChild(spriteEl(getSprites().iconBlueEssence, 3));
     const essInner = document.createElement('div');
     essInner.className = 'hud-resource-inner';
     const essLab = document.createElement('div');

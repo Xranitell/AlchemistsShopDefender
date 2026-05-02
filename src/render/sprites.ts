@@ -41,7 +41,6 @@ export interface Sprites {
   candle: BakedSprite;
   // HUD icons (not drawn on the world canvas; used by hud.ts)
   iconCoin: BakedSprite;
-  iconEssence: BakedSprite;
   iconMagnet: BakedSprite;
   iconLightning: BakedSprite;
   iconAbility: BakedSprite;
@@ -982,34 +981,9 @@ function bakeAll(): Sprites {
       { x: 6, y: 5.5 },
     ),
 
-    // Essence potion (purple, with cork)
-    iconEssence: bakeSprite(
-      {
-        rows: [
-          '..kkkk....',
-          '..ddDD....',
-          '...DD.....',
-          '..ddDDdd..',
-          '.dDPpppDD.',
-          'dDPppPpppD',
-          'dDpPpppppD',
-          'dDppppPpPD',
-          'dDPpppPpPD',
-          'dDpppppppD',
-          '.dDppPppDd',
-          '..ddpppdd.',
-          '...dddd...',
-        ],
-        legend: {
-          k: 'woodDark',
-          d: 'essenceD',
-          D: 'essenceC',
-          p: 'essenceB',
-          P: 'essenceA',
-        },
-      },
-      { x: 5, y: 6.5 },
-    ),
+    // (The old purple `iconEssence` was removed — both the HUD and every
+    // menu now use `iconBlueEssence` so the player sees one canonical
+    // essence vial across the entire game.)
 
     // Magnet U-shape (purple gem)
     iconMagnet: bakeSprite(
@@ -1151,8 +1125,13 @@ function bakeAll(): Sprites {
       { x: 5, y: 6.5 },
     ),
 
-    // Ancient Essence — amber/gold crystal vial. Distinct from the regular
-    // gold coin (which is a flat disc) and from the cyan blue-essence vial.
+    // Ancient Essence — molten-gold crystal vial. Same silhouette as the
+    // blue-essence and in-run essence vials so the player parses it as
+    // "essence", but with a far richer 5-tone palette (deep gold edge →
+    // saturated gold body → bright core → near-white shimmer) plus a
+    // sparkle cluster on the liquid surface. Combined with the
+    // `glow-gold` CSS class on the rendered canvas, this reads as the
+    // game's most legendary currency.
     iconAncientEssence: bakeSprite(
       {
         rows: [
@@ -1160,22 +1139,24 @@ function bakeAll(): Sprites {
           '..ddDD....',
           '...DD.....',
           '..ddDDdd..',
-          '.dDPpppDD.',
-          'dDPppPpppD',
-          'dDpPpppppD',
-          'dDppppPpPD',
-          'dDPpppPpPD',
-          'dDpppppppD',
-          '.dDppPppDd',
-          '..ddpppdd.',
+          '.dDpSSpDD.',
+          'dDpBpPpppD',
+          'dDpBPpPpPD',
+          'dDPBpPppPD',
+          'dDpBPpPppD',
+          'dDpPpBpPpD',
+          '.dDpPpPpDd',
+          '..ddpPpdd.',
           '...dddd...',
         ],
         legend: {
           k: 'woodDark',
           d: 'brassDark',
-          D: 'goldC',
-          p: 'goldB',
-          P: 'goldA',
+          D: 'goldB',
+          p: 'goldA',
+          P: 'brassGlow',
+          B: 'ancientCore',
+          S: 'ancientShimmer',
         },
       },
       { x: 5, y: 6.5 },
@@ -1202,20 +1183,29 @@ function bakeAll(): Sprites {
       { x: 7, y: 2.5 },
     ),
 
-    // Ancient key — gold skeleton key. Same silhouette as the epic key so
-    // the two read as a paired set.
+    // Ancient key — legendary gold skeleton key. Shares the epic key's
+    // overall silhouette so the pair still reads as a set, but adds:
+    //  * a red ruby gem inlaid in the bow's hole (R),
+    //  * bright `brassGlow` highlights on the bow rim (B),
+    //  * `ancientShimmer` sparkle pixels on the corners + first tooth (S).
+    // The CSS `.glow-gold` class on the rendered canvas adds an outer
+    // gold drop-shadow halo so the icon visibly "glints" against any
+    // background.
     iconAncientKey: bakeSprite(
       {
         rows: [
-          '.LLLL.........',
-          'LLDDLLLLLLLLL.',
-          'LD..DL.L.L.L..',
-          'LLDDLLLLLLLLL.',
-          '.LLLL.........',
+          '.LSLL.........',
+          'LBDDBLLLLLLLL.',
+          'LDRRDLSL.L.L..',
+          'LBDDBLLLLLLLL.',
+          '.LLLS.........',
         ],
         legend: {
           L: 'goldA',
+          B: 'brassGlow',
           D: 'brassDark',
+          R: 'ancientGem',
+          S: 'ancientShimmer',
         },
       },
       { x: 7, y: 2.5 },
