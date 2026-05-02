@@ -140,13 +140,22 @@ function drawPlankFloor(
   ctx.fillStyle = pal.tileCrack;
   ctx.fillRect(0, 0, w, h);
 
-  // Shear all the plank geometry along the iso plane. We extend the
-  // drawing range by `padY` so the sheared parallelograms still fully
-  // cover the canvas after the transform.
-  const padY = Math.ceil(Math.abs(w * FLOOR_TILT)) + BOARD_H * 2;
+  // After the iso shear plus a 90° rotation + X mirror, the planks live
+  // on a parallelogram-shaped patch that's larger than the canvas, so we
+  // pad the drawing range generously in BOTH dimensions to keep the
+  // entire visible area covered.
+  const span = Math.max(w, h);
+  const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
   ctx.save();
   // Plank rows shear toward the bottom-right corner at 45°, matching
   // the iso direction the user pinned down with a reference screenshot.
+  // Then we apply a 90° clockwise rotation and an X mirror around the
+  // canvas centre so the wood grain runs the way the user wants — these
+  // two extra ops were added in a follow-up tweak.
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.scale(-1, 1);
+  ctx.translate(-w / 2, -h / 2);
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
 
   let row = 0;
