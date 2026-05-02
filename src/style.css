@@ -5361,6 +5361,311 @@ body {
   right: max(22px, env(safe-area-inset-right));
 }
 
+/* ============ Warm panel redesign (Settings, Daily, Laboratory, Shop) ============
+ * Matches the warm dark-wine / orange-glow palette from the defeat/results
+ * screen. All four panels share the same warm background, border, and corner
+ * ornament treatment; panel-specific overrides follow.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Shared warm panel base ─────────────────────────────────────────── */
+.settings-panel,
+.daily-panel,
+.craft-panel {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255, 140, 50, 0.13) 0%, transparent 55%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+  border: 3px solid #1a0608;
+  box-shadow:
+    inset 0 0 0 2px rgba(210, 79, 28, 0.30),
+    inset 0 0 60px rgba(0, 0, 0, 0.55),
+    0 0 0 1px #0a0608,
+    0 18px 60px rgba(170, 30, 30, 0.30);
+  position: relative;
+  isolation: isolate;
+}
+/* Orange corner ornaments */
+.settings-panel::before,
+.settings-panel::after,
+.daily-panel::before,
+.daily-panel::after,
+.craft-panel::before,
+.craft-panel::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+.settings-panel::before,
+.daily-panel::before,
+.craft-panel::before {
+  top: 6px; left: 6px;
+  background: linear-gradient(135deg, #ff6a3d 50%, transparent 50%);
+}
+.settings-panel::after,
+.daily-panel::after,
+.craft-panel::after {
+  bottom: 6px; right: 6px;
+  background: linear-gradient(-45deg, #ff6a3d 50%, transparent 50%);
+}
+
+/* Meta-tree (laboratory) — fullscreen, slightly different treatment */
+.meta-tree-panel {
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255, 140, 50, 0.10) 0%, transparent 50%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+  border-color: #1a0608;
+  box-shadow:
+    inset 0 0 0 2px rgba(210, 79, 28, 0.22),
+    inset 0 0 80px rgba(0, 0, 0, 0.55);
+  isolation: isolate;
+}
+.meta-tree-panel::before,
+.meta-tree-panel::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+.meta-tree-panel::before {
+  top: 6px; left: 6px;
+  background: linear-gradient(135deg, #ff6a3d 50%, transparent 50%);
+}
+.meta-tree-panel::after {
+  bottom: 6px; right: 6px;
+  background: linear-gradient(-45deg, #ff6a3d 50%, transparent 50%);
+}
+
+/* ── Settings panel warm overrides ──────────────────────────────────── */
+.settings-panel .settings-section {
+  background: linear-gradient(180deg, #2a1820, #140c12);
+  border-color: #2e1418;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.06),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+}
+.settings-panel .settings-section h3 {
+  color: var(--accent);
+}
+.settings-panel .settings-volume-slider {
+  background: linear-gradient(90deg, #ff8c3a 0%, #2a1820 100%);
+}
+.settings-panel .settings-volume-slider::-webkit-slider-thumb {
+  background: linear-gradient(180deg, #ffe27a, #f7b733);
+  border-color: #1a0608;
+}
+.settings-panel .settings-volume-slider::-moz-range-thumb {
+  background: linear-gradient(180deg, #ffe27a, #f7b733);
+  border-color: #1a0608;
+}
+.settings-panel .settings-reset-btn {
+  border-color: #d24f1c;
+  color: #ff6a3d;
+  background: rgba(210, 79, 28, 0.08);
+}
+.settings-panel .settings-reset-btn:hover {
+  background: rgba(210, 79, 28, 0.20);
+}
+.settings-panel .settings-lang-btn {
+  border-color: #3a2018;
+  background: rgba(26, 12, 16, 0.8);
+  color: var(--fg-dim);
+}
+.settings-panel .settings-lang-btn:hover {
+  border-color: #ff8c3a;
+  color: var(--fg);
+}
+.settings-panel .settings-lang-btn.active {
+  background: linear-gradient(180deg, rgba(255, 140, 50, 0.25), rgba(210, 79, 28, 0.15));
+  border-color: #ff8c3a;
+  color: #ffd166;
+}
+
+/* ── Daily Rewards panel warm overrides ─────────────────────────────── */
+.daily-panel .daily-week {
+  background: linear-gradient(180deg, #3a1818, #1a0c10);
+  border-color: #1a0608;
+  box-shadow: 0 0 0 2px #6a3520;
+  color: #ffd166;
+}
+.daily-panel .daily-cell {
+  background: linear-gradient(180deg, #2a1820 0%, #140c12 100%);
+  border-color: #1a0608;
+  box-shadow:
+    0 0 0 2px #4a2820,
+    inset 0 2px 0 rgba(255, 209, 102, 0.06),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.35);
+}
+.daily-panel .daily-cell::after {
+  background: linear-gradient(180deg, rgba(255, 180, 80, 0.04) 0%, transparent 40%);
+}
+.daily-panel .daily-cell.today {
+  border-color: #d24f1c;
+  background: linear-gradient(180deg, #4a2020 0%, #2a1010 100%);
+  box-shadow:
+    0 0 0 2px #ff6a3d,
+    0 0 18px rgba(255, 106, 61, 0.35),
+    inset 0 2px 0 rgba(255, 209, 102, 0.16),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.35);
+}
+.daily-panel .daily-cell.claimed {
+  border-color: #4a3220;
+  opacity: 0.5;
+}
+.daily-panel .daily-claim-btn {
+  background: linear-gradient(180deg, var(--cta-yellow-hi), var(--cta-yellow) 50%, #d98219);
+  border-color: #4a250d;
+  color: #fff;
+  box-shadow:
+    0 0 0 3px #f7cf70,
+    inset 0 3px 0 rgba(255, 255, 255, 0.40),
+    inset 0 -5px 0 rgba(138, 79, 18, 0.50),
+    0 7px 0 #5f320e,
+    0 13px 24px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    -1px -1px 0 #4a250d, 1px -1px 0 #4a250d,
+    -1px 1px 0 #4a250d, 2px 2px 0 #4a250d;
+}
+.daily-panel .daily-claim-btn:not(:disabled):hover {
+  background: linear-gradient(180deg, #fff0a0, #ffc93c 52%, #e08a1f);
+}
+.daily-panel .daily-claim-btn:disabled {
+  opacity: 0.4;
+  border-color: #2a1820;
+  box-shadow: none;
+}
+/* Override the close button inside warm panels to match the warm theme */
+.settings-panel .overlay-close,
+.daily-panel .overlay-close,
+.craft-panel .overlay-close {
+  background: linear-gradient(180deg, #d24f1c, #7a2410);
+  border-color: #1a0608;
+  box-shadow: 0 0 0 2px #6a3520, inset 0 2px 0 rgba(255, 255, 255, 0.20);
+}
+
+/* ── Laboratory (meta-tree) warm overrides ─────────────────────────── */
+.meta-tree-panel .meta-tree-canvas {
+  background: radial-gradient(ellipse at center, #1a1018 0%, #0c0810 70%, #080508 100%);
+  border-color: #2e1418;
+}
+.meta-tree-panel .meta-tree-side {
+  background: rgba(22, 12, 16, 0.90);
+  border-color: #2e1418;
+}
+.meta-tree-panel .meta-loadout {
+  border-color: rgba(255, 140, 50, 0.25);
+  background: rgba(22, 12, 16, 0.55);
+}
+.meta-tree-panel .meta-loadout-btn {
+  background: rgba(26, 14, 18, 0.85);
+  border-color: rgba(255, 140, 50, 0.18);
+}
+.meta-tree-panel .meta-loadout-btn:hover {
+  border-color: rgba(255, 140, 50, 0.45);
+}
+.meta-tree-panel .meta-loadout-btn.selected {
+  background: rgba(255, 140, 50, 0.18);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.meta-tree-panel .meta-loadout-title {
+  color: var(--accent);
+}
+.meta-tree-panel .meta-side-learn {
+  background: linear-gradient(180deg, rgba(60, 36, 24, 0.9), rgba(26, 16, 12, 0.9));
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.meta-tree-panel .meta-side-learn:not(:disabled):hover {
+  background: rgba(255, 209, 102, 0.22);
+}
+.meta-tree-panel .meta-side-refund {
+  background: linear-gradient(180deg, rgba(60, 24, 24, 0.9), rgba(26, 12, 12, 0.9));
+  border-color: #4a2820;
+  color: #ff6a3d;
+}
+.meta-tree-panel .meta-side-refund:hover {
+  background: rgba(210, 79, 28, 0.22);
+}
+.meta-tree-panel .meta-tooltip {
+  background: rgba(22, 12, 16, 0.96);
+  border-color: #2e1418;
+}
+.meta-tree-panel .meta-edge {
+  stroke: #2a1820;
+}
+/* Bottom actions bar in the tree panel */
+.meta-tree-panel > .meta-actions .meta-start {
+  background:
+    linear-gradient(180deg, var(--cta-yellow-hi), var(--cta-yellow) 50%, #d98219);
+  border: 3px solid #4a250d;
+  color: #fff;
+  box-shadow:
+    0 0 0 2px #f7cf70,
+    inset 0 3px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -5px 0 rgba(138, 79, 18, 0.50),
+    0 6px 0 #5f320e;
+  text-shadow:
+    -1px -1px 0 #4a250d, 1px -1px 0 #4a250d,
+    -1px 1px 0 #4a250d, 2px 2px 0 #4a250d;
+}
+.meta-tree-panel > .meta-actions .meta-start:hover {
+  background: linear-gradient(180deg, #fff0a0, #ffc93c 52%, #e08a1f);
+}
+.meta-tree-panel > .meta-actions .meta-reset {
+  border-color: #4a2820;
+  color: #ff6a3d;
+}
+.meta-tree-panel > .meta-actions .meta-reset:hover {
+  border-color: #d24f1c;
+  color: #d24f1c;
+  background: rgba(210, 79, 28, 0.12);
+}
+
+/* ── Shop (crafting) warm overrides ────────────────────────────────── */
+.craft-panel .craft-header h2 {
+  color: #ffd166;
+}
+.craft-panel .craft-inventory,
+.craft-panel .craft-ing-block {
+  background: rgba(26, 14, 18, 0.55);
+  border-color: rgba(255, 140, 50, 0.12);
+}
+.craft-panel .craft-inv-slot {
+  border-color: rgba(255, 140, 50, 0.22);
+}
+.craft-panel .craft-inv-slot.filled {
+  border-color: rgba(255, 180, 80, 0.35);
+  background: rgba(26, 14, 18, 0.65);
+}
+.craft-panel .craft-ing-cell {
+  background: rgba(255, 140, 50, 0.05);
+  border: 1px solid rgba(255, 140, 50, 0.06);
+}
+.craft-panel .craft-recipe {
+  background: rgba(26, 14, 18, 0.50);
+  border-color: rgba(255, 140, 50, 0.10);
+}
+.craft-panel .craft-cost-chip {
+  background: rgba(26, 14, 18, 0.55);
+  border-color: rgba(255, 180, 80, 0.20);
+}
+.craft-panel .craft-cost-chip.missing {
+  border-color: rgba(239, 71, 111, 0.6);
+}
+.craft-panel .craft-brew-btn {
+  background: linear-gradient(180deg, var(--cta-yellow-hi) 0%, var(--cta-yellow) 50%, #d98219 100%);
+  border-color: #4a250d;
+  box-shadow:
+    0 0 0 1px #f7cf70,
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -4px 0 rgba(138, 79, 18, 0.50),
+    0 4px 0 #5f320e;
+}
+
 /* Ensure all interactive HUD / shop / menu controls meet the 44×44
  * recommended minimum touch-target size on coarse pointers. */
 @media (pointer: coarse) {
