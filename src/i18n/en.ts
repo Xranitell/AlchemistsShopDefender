@@ -38,7 +38,6 @@ export const EN: Record<string, string> = {
   'ui.hud.wave': 'WAVE',
   'ui.hud.waveLabel': 'wave',
   'ui.hud.loop': 'loop {n}',
-  'ui.hud.catalysts': 'CATALYSTS',
   'ui.hud.toBattle': 'GO',
   'ui.hud.toBattleNow': 'GO!',
   'ui.hud.nextWave': 'NEXT WAVE',
@@ -440,7 +439,7 @@ Object.assign(EN, {
   'cards.curse_aether_engine.name': 'Aether Engine (Cursed)',
   'cards.curse_aether_engine.desc': '+15 Overload per elemental reaction · +35% potion damage · +20% potion cooldown.',
   'cards.curse_crown_of_elements.name': 'Crown of Elements (Cursed)',
-  'cards.curse_crown_of_elements.desc': '+50% reaction damage, +10 Overload, +1 catalyst slot · +25% potion damage · +20% enemy HP.',
+  'cards.curse_crown_of_elements.desc': '+50% reaction damage, +10 Overload · +25% potion damage · +20% enemy HP.',
   'cards.curse_salamander.name': "Salamander's Pact",
   'cards.curse_salamander.desc': '+fire and puddle on all potions · +50% potion damage · +25% potion cooldown.',
   'cards.curse_archmaster.name': "Archmaster's Seal",
@@ -654,8 +653,9 @@ Object.assign(EN, {
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Abundance',
   'ui.dailyEvent.abundance.flavor': 'Pockets stuffed with gold.',
-  'ui.dailyEvent.abundance.desc': 'An extra catalyst slot and generous rewards. Perfect for stacking-build experiments.',
-  'ui.dailyEvent.abundance.line.cats': '+1 catalyst slot',
+  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger potions. A comfortable day to experiment with builds.',
+  'ui.dailyEvent.abundance.line.hp': '+50% mannequin max HP',
+  'ui.dailyEvent.abundance.line.dmg': '+25% potion damage',
   'ui.dailyEvent.abundance.line.gold': '+50% gold',
 
   // Sunday — Chaos

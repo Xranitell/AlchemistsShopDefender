@@ -257,19 +257,6 @@ body {
 }
 .hud-tag-gold { color: var(--gold); }
 .hud-tag-essence { color: var(--essence); }
-.hud-catalyst-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
-  background: rgba(20, 18, 32, 0.7);
-  border: 1px solid rgba(125, 249, 255, 0.35);
-  border-radius: 4px;
-  min-width: 110px;
-}
-.hud-catalyst-badge .hud-resource-value { font-size: 16px; color: var(--accent); }
-.hud-catalyst-badge .hud-tag-label { color: var(--accent); }
 
 /* Pause button — sits in the top-right HUD stack. Square chunky button so
  * the icon glyph (❚❚ / ▶) is large enough for thumb taps on mobile. */
@@ -3934,8 +3921,6 @@ body {
   .hud-hp-bar { height: 20px; }
   .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
   .hud-resource-value { font-size: 20px; }
-  .hud-catalyst-badge { min-width: 104px; padding: 6px 10px; }
-  .hud-catalyst-badge .hud-resource-value { font-size: 16px; }
   .hud-pause-btn { width: 60px; height: 60px; font-size: 18px; }
 
   /* HUD bottom row — the previous translateY(-72px) lift was tuned for

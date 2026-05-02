@@ -170,10 +170,6 @@ function applySingleEffect(state: GameState, e: MetaEffect): void {
     case 'reactionDamage':
       m.reactionDamageMult *= e.value;
       break;
-    case 'catalystSlot':
-      // GDD §7.5: each allocation grants one extra orbital catalyst slot.
-      state.catalystSlots += e.value;
-      break;
 
     // Survival
     case 'maxHp':

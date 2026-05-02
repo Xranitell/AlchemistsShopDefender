@@ -39,7 +39,6 @@ export const RU: Record<string, string> = {
   'ui.hud.wave': 'ВОЛНА',
   'ui.hud.waveLabel': 'волна',
   'ui.hud.loop': 'круг {n}',
-  'ui.hud.catalysts': 'КАТАЛИЗАТОРЫ',
   'ui.hud.toBattle': 'В БОЙ',
   'ui.hud.toBattleNow': 'В БОЙ!',
   'ui.hud.nextWave': 'СЛЕДУЮЩАЯ ВОЛНА',
@@ -445,7 +444,7 @@ Object.assign(RU, {
   'cards.curse_aether_engine.name': 'Эфирный двигатель (проклятый)',
   'cards.curse_aether_engine.desc': '+15 заряд Перегруза за реакцию · +18% урон склянок · +20% откат склянок.',
   'cards.curse_crown_of_elements.name': 'Корона стихий (проклятая)',
-  'cards.curse_crown_of_elements.desc': '+25% урон реакций, +10 Перегруз, +1 слот катализатора · +13% урон склянок · +20% ХП врагов.',
+  'cards.curse_crown_of_elements.desc': '+25% урон реакций, +10 Перегруз · +20% урон склянок · +20% ХП врагов.',
   'cards.curse_salamander.name': 'Договор Саламандры',
   'cards.curse_salamander.desc': '+огонь и лужа от всех склянок · +25% урон склянок · +25% откат склянок.',
   'cards.curse_archmaster.name': 'Печать Архимастера',
@@ -658,8 +657,9 @@ Object.assign(RU, {
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Изобилие',
   'ui.dailyEvent.abundance.flavor': 'Карманы трещат от золота.',
-  'ui.dailyEvent.abundance.desc': 'Дополнительный слот катализатора и щедрые награды. Идеально для коллекционных билдов.',
-  'ui.dailyEvent.abundance.line.cats': '+1 слот катализатора',
+  'ui.dailyEvent.abundance.desc': 'Щедрые награды, прочный Манекен и более высокий урон склянок. Комфортный день для экспериментов с билдами.',
+  'ui.dailyEvent.abundance.line.hp': '+50% макс. ХП Манекена',
+  'ui.dailyEvent.abundance.line.dmg': '+25% урон склянок',
   'ui.dailyEvent.abundance.line.gold': '+50% к золоту',
 
   // Sunday — Chaos

@@ -73,7 +73,6 @@ const EFFECT_ICONS: Record<string, string> = {
   overloadMaxCharge: '🔋',
   auraRadius: '◯',
   reactionDamage: '✸',
-  catalystSlot: '◆',
   // Survival
   maxHp: '❤',
   armor: '🛡',

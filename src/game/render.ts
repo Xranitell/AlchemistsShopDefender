@@ -385,8 +385,6 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
   }
 
-  drawOrbitalCatalysts(ctx, state, drawX, drawY);
-
   // Translucent blue shield bubble — shown whenever the mannequin has any
   // active barrier (Alch-Dome / boss-wave shield via tempShield, or the
   // crafted "stone shield" potion via potionShieldHp). Drawn last so the
@@ -457,75 +455,6 @@ function drawMannequinShieldBubble(
   );
   ctx.fill();
   ctx.restore();
-}
-
-/** Catalyst color palette (GDD §7.5). Maps each catalyst card id to a
- *  color used for its orbiting orb. Unknown ids fall back to white. */
-const CATALYST_COLORS: Record<string, string> = {
-  curse_fire_ruby: '#ff5a32',
-  curse_mercury_ring: '#c0c0c0',
-  curse_acid_prism: '#a3e36a',
-  curse_aether_engine: '#7df9ff',
-  curse_crown_of_elements: '#ffd166',
-};
-
-/** Render orbiting catalyst icons around the Mannequin. Catalysts are
- *  spaced evenly on the orbit and rotate slowly with `worldTime`. Empty
- *  slots show a faint placeholder ring so the player can see how many
- *  slots are still open. */
-function drawOrbitalCatalysts(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  cx: number,
-  cy: number,
-): void {
-  const slots = Math.max(0, state.catalystSlots);
-  if (slots === 0) return;
-  const equipped = state.equippedCatalysts;
-  const radius = 38;
-  const verticalScale = 0.45; // squashed to match iso plane
-  const phase = state.worldTime * 0.7;
-
-  for (let i = 0; i < slots; i++) {
-    const angle = phase + (i * Math.PI * 2) / slots;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy - 18 + Math.sin(angle) * radius * verticalScale;
-    const equippedId = equipped[i];
-
-    if (!equippedId) {
-      // Empty slot — faint dashed pip.
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.setLineDash([2, 2]);
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      continue;
-    }
-
-    const color = CATALYST_COLORS[equippedId] ?? '#ffffff';
-    // Outer halo
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    // Inner orb
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    // Bright pip
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.beginPath();
-    ctx.arc(x - 0.7, y - 0.7, 0.9, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
 }
 
 function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {

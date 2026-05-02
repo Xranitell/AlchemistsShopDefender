@@ -348,36 +348,36 @@ const CURSED_CARDS: CardDef[] = [
     desc: '+1 спасение от смерти на 1 ХП и щит 6 с · +38 макс. ХП · −30% урон склянок.',
   },
 
-  // Catalysts
+  // Unique reagent effects (formerly «catalysts»)
   {
     id: 'curse_fire_ruby',
     name: 'Малый огненный камень (проклятый)',
-    category: 'catalyst', rarity: 'epic', isCursed: true,
+    category: 'ritual', rarity: 'epic', isCursed: true,
     desc: '+поджог каждой 5-й склянкой · +13% урон склянок · +15% скорость врагов.',
   },
   {
     id: 'curse_mercury_ring',
     name: 'Ртутный обруч (проклятый)',
-    category: 'catalyst', rarity: 'epic', isCursed: true,
+    category: 'ritual', rarity: 'epic', isCursed: true,
     desc: '−40% скорость врагов рядом с Манекеном · +15% золота · +15% ХП врагов.',
   },
   {
     id: 'curse_acid_prism',
     name: 'Кислотная призма (проклятая)',
-    category: 'catalyst', rarity: 'epic', isCursed: true,
+    category: 'ritual', rarity: 'epic', isCursed: true,
     desc: '+13% урон стихийных реакций · +13% урон склянок · −35 макс. ХП Манекена.',
   },
   {
     id: 'curse_aether_engine',
     name: 'Эфирный двигатель (проклятый)',
-    category: 'catalyst', rarity: 'legendary', isCursed: true,
+    category: 'ritual', rarity: 'legendary', isCursed: true,
     desc: '+15 заряд Перегруза за реакцию · +18% урон склянок · +20% откат склянок.',
   },
   {
     id: 'curse_crown_of_elements',
     name: 'Корона стихий (проклятая)',
-    category: 'catalyst', rarity: 'legendary', isCursed: true,
-    desc: '+25% урон реакций, +10 Перегруз, +1 слот катализатора · +13% урон склянок · +20% ХП врагов.',
+    category: 'ritual', rarity: 'legendary', isCursed: true,
+    desc: '+25% урон реакций, +10 Перегруз · +20% урон склянок · +20% ХП врагов.',
   },
 
   // Legendary brews / pacts
@@ -443,7 +443,7 @@ export const CARD_SYNERGIES: Record<string, string[]> = {
   // Survival pacts
   curse_thorny_shell: ['curse_golem_heart'],
   curse_golem_heart: ['curse_thorny_shell'],
-  // Crown / catalysts
+  // Crown / unique reagents
   curse_crown_of_elements: ['curse_acid_prism', 'curse_aether_engine', 'curse_fire_ruby', 'curse_mercury_ring'],
   // Potion utility
   curse_triple_throw: ['curse_unstable_flask'],
