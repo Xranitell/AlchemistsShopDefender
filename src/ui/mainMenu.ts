@@ -2,6 +2,7 @@ import type { MetaSave } from '../game/save';
 import { canClaimDaily, saveMeta } from '../game/save';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
+import { buildLeaderboardPanel } from './leaderboardOverlay';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -17,8 +18,6 @@ export class MainMenu {
     onBattlePass: () => void;
     onDailyRewards: () => void;
     onSettings: () => void;
-    onDailyExperiment: () => void;
-    onLeaderboards: () => void;
     onCrafting: () => void;
   }): void {
     this.root.innerHTML = '';
@@ -123,34 +122,19 @@ export class MainMenu {
     title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
     midCol.appendChild(title);
 
-    // Leaderboards button — placed directly under the logo so it's the first
-    // thing the player sees after the title (between logo and the TO BATTLE
-    // CTA), instead of being buried alongside the special-mode shortcuts.
-    const lbBtn = document.createElement('button');
-    lbBtn.className = 'mm-mode-btn mm-leaderboards mm-leaderboards-top';
-    lbBtn.textContent = t('ui.menu.leaderboards');
-    lbBtn.addEventListener('click', opts.onLeaderboards);
-    midCol.appendChild(lbBtn);
+    // Inline leaderboard panel sitting between the title and the "TO BATTLE"
+    // CTA. The player sees their rank without having to open a modal first;
+    // the daily tab inside it rolls over at 00:00 MSK (see dailyBoardId).
+    const lbWrap = document.createElement('div');
+    lbWrap.className = 'mm-mid-lb';
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
+    midCol.appendChild(lbWrap);
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
     battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
-
-    // Special mode buttons. Boss Challenge is now one of the rotating
-    // Daily-Event days, so the standalone button has been removed; the
-    // remaining "DAILY EXPERIMENT" entry shows today's event preview.
-    const modeBtns = document.createElement('div');
-    modeBtns.className = 'mm-mode-btns';
-
-    const dailyBtn2 = document.createElement('button');
-    dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
-    dailyBtn2.textContent = t('ui.menu.dailyExperiment');
-    dailyBtn2.addEventListener('click', opts.onDailyExperiment);
-    modeBtns.appendChild(dailyBtn2);
-
-    midCol.appendChild(modeBtns);
 
     center.appendChild(midCol);
 
