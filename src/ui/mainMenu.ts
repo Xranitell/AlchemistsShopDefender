@@ -124,10 +124,12 @@ export class MainMenu {
 
     // Inline leaderboard panel sitting between the title and the "TO BATTLE"
     // CTA. The player sees their rank without having to open a modal first;
-    // the daily tab inside it rolls over at 00:00 MSK (see dailyBoardId).
+    // both tabs (`endlessWaves`, `dailyWaves`) point at permanent Yandex
+    // boards. topN is sized to fill the tall body the CSS reserves so the
+    // player can see a meaningful slice of the table at a glance.
     const lbWrap = document.createElement('div');
     lbWrap.className = 'mm-mid-lb';
-    lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 15, compact: true }));
     midCol.appendChild(lbWrap);
 
     const battleBtn = document.createElement('button');
