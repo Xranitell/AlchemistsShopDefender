@@ -4317,6 +4317,395 @@ body {
   .chest-fly-out { animation-duration: 1ms !important; }
 }
 
+/* ============ Defeat ("Mannequin has fallen") overlay ============ */
+/* Mirrors the chest-overlay layout (panel + corner ornaments + stage)
+ * but flips the palette to a smouldering red/black scheme so a defeat
+ * never looks like a victory. The visual hierarchy is built around the
+ * primary "Try again" CTA — every other element (sparks, glitch title,
+ * tip line, reward chips) leads the eye toward it. */
+.defeat-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 28px 22px;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at top, rgba(210, 79, 28, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+  border-color: #3a1212;
+  box-shadow:
+    inset 0 0 0 2px rgba(210, 79, 28, 0.35),
+    0 0 0 1px #0a0608,
+    0 12px 40px rgba(170, 30, 30, 0.35);
+}
+.defeat-overlay::before,
+.defeat-overlay::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, #ff6a3d 50%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.defeat-overlay::before { top: 6px; left: 6px; }
+.defeat-overlay::after {
+  bottom: 6px;
+  right: 6px;
+  background: linear-gradient(-45deg, #ff6a3d 50%, transparent 50%);
+}
+
+/* Stage = positioning context for the broken mannequin sprite + ember
+ * sparks + radial-rays backdrop. */
+.defeat-stage {
+  position: relative;
+  width: 100%;
+  min-height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0 6px;
+  overflow: hidden;
+  border-radius: 6px;
+}
+
+/* Smouldering red rays — same conic-gradient stripes as the chest, but
+ * dimmer and tinted toward fire/ember hues. Slowly rotate so the screen
+ * still feels alive without distracting from the CTA. */
+.defeat-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 360px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(210, 79, 28, 0.45) 0%, rgba(150, 35, 35, 0.18) 30%, transparent 60%),
+    conic-gradient(
+      from 12deg,
+      rgba(255, 106, 61, 0.18) 0deg, transparent 14deg,
+      rgba(255, 106, 61, 0.18) 28deg, transparent 42deg,
+      rgba(255, 106, 61, 0.18) 56deg, transparent 70deg,
+      rgba(255, 106, 61, 0.18) 84deg, transparent 98deg,
+      rgba(255, 106, 61, 0.18) 112deg, transparent 126deg,
+      rgba(255, 106, 61, 0.18) 140deg, transparent 154deg,
+      rgba(255, 106, 61, 0.18) 168deg, transparent 182deg,
+      rgba(255, 106, 61, 0.18) 196deg, transparent 210deg,
+      rgba(255, 106, 61, 0.18) 224deg, transparent 238deg,
+      rgba(255, 106, 61, 0.18) 252deg, transparent 266deg,
+      rgba(255, 106, 61, 0.18) 280deg, transparent 294deg,
+      rgba(255, 106, 61, 0.18) 308deg, transparent 322deg,
+      rgba(255, 106, 61, 0.18) 336deg, transparent 350deg
+    );
+  filter: blur(0.5px);
+  opacity: 0.55;
+  animation: defeat-rays-spin 28s linear infinite reverse;
+}
+@keyframes defeat-rays-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Embers — small dots that drift upward from the bottom of the stage.
+ * Each spark gets randomized x / delay / duration / scale via inline
+ * CSS variables set by main.ts so they desync naturally. */
+.defeat-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.defeat-spark {
+  position: absolute;
+  left: var(--x, 50%);
+  bottom: -6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd166 0%, #ff6a3d 45%, transparent 100%);
+  filter: drop-shadow(0 0 4px rgba(255, 140, 60, 0.85));
+  transform: translateX(-50%) scale(var(--scale, 1));
+  animation: defeat-spark-rise var(--dur, 3s) linear var(--delay, 0s) infinite;
+  opacity: 0;
+}
+@keyframes defeat-spark-rise {
+  0%   { transform: translate(-50%, 0) scale(var(--scale, 1)); opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 0.9; }
+  100% { transform: translate(-50%, -180px) scale(calc(var(--scale, 1) * 0.4)); opacity: 0; }
+}
+
+/* Fallen mannequin sprite — reuses the in-game sprite, tilted + dimmed
+ * to read as "knocked over". A pseudo-element paints a chest-fracture
+ * crack so the silhouette still reads as broken, not just lying down. */
+.defeat-mannequin {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 12px rgba(210, 79, 28, 0.5));
+  transform: rotate(-14deg) translateY(6px);
+  animation: defeat-mannequin-sway 4.2s ease-in-out infinite;
+}
+.defeat-mannequin-sprite {
+  display: block;
+  image-rendering: pixelated;
+  filter: hue-rotate(-25deg) saturate(0.55) brightness(0.7) contrast(1.05);
+}
+.defeat-mannequin::after {
+  /* Diagonal red crack across the chest plate. */
+  content: '';
+  position: absolute;
+  left: 28%;
+  top: 38%;
+  width: 60%;
+  height: 4px;
+  background:
+    linear-gradient(90deg, transparent 0%, #ff8c3a 18%, #ffd166 38%, #ff5a5a 58%, #ff8c3a 80%, transparent 100%);
+  filter: drop-shadow(0 0 8px rgba(255, 100, 60, 0.85));
+  transform: rotate(-22deg);
+  pointer-events: none;
+  animation: defeat-crack-flicker 1.6s ease-in-out infinite;
+}
+@keyframes defeat-mannequin-sway {
+  0%, 100% { transform: rotate(-14deg) translateY(6px); }
+  50%      { transform: rotate(-12deg) translateY(4px); }
+}
+@keyframes defeat-crack-flicker {
+  0%, 100% { opacity: 0.85; }
+  35%      { opacity: 1; }
+  70%      { opacity: 0.55; }
+}
+
+/* Glitched title — chunky pixel font with a subtle red chromatic
+ * aberration. Each character animates independently so the heading feels
+ * like a busted CRT readout rather than a static logo. */
+.defeat-title {
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 28px;
+  letter-spacing: 2px;
+  color: #ffd166;
+  text-shadow:
+    -2px -2px 0 #1a0608, 2px -2px 0 #1a0608,
+    -2px 2px 0 #1a0608, 2px 2px 0 #1a0608,
+    0 0 12px rgba(255, 140, 60, 0.45);
+}
+.defeat-title-char {
+  display: inline-block;
+  position: relative;
+  animation: defeat-title-glitch 2.4s ease-in-out infinite;
+  /* Allow the ::before red ghost to bleed past the character box. */
+  overflow: visible;
+}
+.defeat-title-char::before {
+  /* Red chromatic-aberration ghost — slightly offset duplicate of the
+   * letter so the title feels like it's smearing under stress. */
+  content: attr(data-char);
+  position: absolute;
+  left: -2px;
+  top: 0;
+  color: #ff5a5a;
+  text-shadow: none;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  pointer-events: none;
+  animation: defeat-title-ghost 2.4s ease-in-out infinite;
+}
+@keyframes defeat-title-glitch {
+  0%, 92%, 100% { transform: translate(0, 0); }
+  93%           { transform: translate(1px, -1px); }
+  95%           { transform: translate(-2px, 1px); }
+  97%           { transform: translate(1px, 0); }
+}
+@keyframes defeat-title-ghost {
+  0%, 92%, 100% { transform: translate(0, 0); opacity: 0.7; }
+  93%           { transform: translate(-2px, 1px); opacity: 0.95; }
+  95%           { transform: translate(2px, -1px); opacity: 1; }
+  97%           { transform: translate(-1px, 1px); opacity: 0.85; }
+}
+
+.defeat-tagline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.45);
+  margin-top: -4px;
+  animation: defeat-tagline-pulse 1.8s ease-in-out infinite;
+}
+@keyframes defeat-tagline-pulse {
+  0%, 100% { opacity: 0.85; transform: translateY(0); }
+  50%      { opacity: 1; transform: translateY(-1px); }
+}
+
+.defeat-summary {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: var(--fg-dim);
+  text-align: center;
+}
+
+/* Reward chips — compact horizontal row, lighter weight than the victory
+ * tile grid. Each chip = pixel icon + amount, with a subtle red border
+ * so it reads as "salvaged from the wreckage", not "victory loot". */
+.defeat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.defeat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, rgba(60, 24, 30, 0.95), rgba(28, 10, 14, 0.95));
+  border: 2px solid #2a0c10;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255, 140, 60, 0.35),
+    inset 0 1px 0 rgba(255, 140, 60, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+.defeat-chip canvas {
+  image-rendering: pixelated;
+}
+.defeat-chip span {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  color: #fff2c2;
+  text-shadow:
+    -1px -1px 0 #141018, 1px -1px 0 #141018,
+    -1px 1px 0 #141018, 1px 1px 0 #141018,
+    0 0 6px rgba(255, 209, 102, 0.4);
+}
+
+.defeat-tip {
+  max-width: 420px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--fg-dim);
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid var(--accent);
+  border-right: 3px solid var(--accent);
+}
+
+/* Footer / CTA hierarchy.
+ *
+ * Primary CTA is huge, gold, and pulses — the defeat screen should make
+ * "try again" feel like the obvious move. Secondary actions (rewarded
+ * ad to double the partial reward, return to menu) are demoted to a
+ * smaller row beneath. */
+.defeat-cta-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+.defeat-cta-primary {
+  position: relative;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 16px 20px;
+  color: #1a0608;
+  background: linear-gradient(180deg, #ffe27a 0%, #ffd166 50%, #c9941a 100%);
+  border: 3px solid #6a3a06;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(255, 209, 102, 0.7);
+  animation: defeat-cta-pulse 1.6s ease-in-out infinite;
+  transition: transform 90ms ease;
+}
+.defeat-cta-primary:hover {
+  transform: translateY(-1px) scale(1.02);
+  filter: brightness(1.08);
+}
+.defeat-cta-primary:active {
+  transform: translateY(2px) scale(0.99);
+}
+.defeat-cta-primary:focus-visible {
+  outline: 3px solid #fff2c2;
+  outline-offset: 4px;
+}
+@keyframes defeat-cta-pulse {
+  0%, 100% { box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+      0 4px 0 rgba(0, 0, 0, 0.55),
+      0 0 18px rgba(255, 209, 102, 0.6); }
+  50%      { box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+      0 4px 0 rgba(0, 0, 0, 0.55),
+      0 0 30px rgba(255, 209, 102, 0.95); }
+}
+
+.defeat-secondary-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.defeat-cta-secondary {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 10px 14px;
+  color: var(--fg-dim);
+  background: linear-gradient(180deg, #2a1820 0%, #160a10 100%);
+  border: 2px solid #3a1818;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 100, 60, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.55);
+  transition: transform 90ms ease, color 120ms ease;
+}
+.defeat-cta-secondary:hover {
+  color: var(--fg);
+  transform: translateY(-1px);
+}
+.defeat-cta-secondary:active { transform: translateY(1px); }
+.defeat-cta-double {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(255, 209, 102, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .defeat-rays { animation: none; }
+  .defeat-mannequin { animation: none; }
+  .defeat-mannequin::after { animation: none; }
+  .defeat-title-char { animation: none; }
+  .defeat-title-char::before { animation: none; opacity: 0.5; }
+  .defeat-tagline { animation: none; }
+  .defeat-cta-primary { animation: none; }
+  .defeat-spark { animation: none; opacity: 0; }
+}
+
 /* Crafting entry point — shop card on the main menu */
 .mm-shop-btn {
   width: 100%;
