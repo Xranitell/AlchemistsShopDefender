@@ -5,6 +5,7 @@ import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 import { MUTATOR_BY_ID } from '../data/mutators';
 import { CONTRACT_BY_ID } from '../data/contracts';
+import { BLESSING_BY_ID, CURSE_BY_ID } from '../data/blessings';
 import {
   POTION_BY_ID,
   POTION_INVENTORY_SIZE,
@@ -43,6 +44,11 @@ export class Hud {
   /** Row of contract chips below the mutator row. Same churn-avoidance
    *  pattern: only rebuilt when the active id list actually changes. */
   private contractRow!: HTMLDivElement;
+  /** Row of blessing / curse chips below the contract row. Two visual
+   *  styles: gold gradient for the picked blessing, blood-red for the
+   *  Ancient curse. Same churn-avoidance pattern as the mutator/contract
+   *  rows. */
+  private blessingRow!: HTMLDivElement;
 
   // Top-right pause button (also drives the keyboard shortcut). Holds its
   // own paused/playing state so the icon and aria-label stay in sync with
@@ -97,6 +103,7 @@ export class Hud {
   private prevDifficultyHidden = -1;
   private prevMutatorKey = '';
   private prevContractKey = '';
+  private prevBlessingKey = '';
   private prevSkipVisible = -1;
   private prevSkipText = '';
   private prevOverloadDisabled: boolean | null = null;
@@ -159,6 +166,11 @@ export class Hud {
     this.contractRow.className = 'hud-contract-row';
     this.contractRow.style.display = 'none';
     waveStack.appendChild(this.contractRow);
+
+    this.blessingRow = document.createElement('div');
+    this.blessingRow.className = 'hud-blessing-row';
+    this.blessingRow.style.display = 'none';
+    waveStack.appendChild(this.blessingRow);
 
     // Wave / pause progress bar — shows time-left during a wave and a
     // count-down to the next wave during the preparing phase.
@@ -447,6 +459,56 @@ export class Hud {
           chip.appendChild(ico);
           chip.appendChild(lbl);
           this.mutatorRow.appendChild(chip);
+        }
+      }
+    }
+
+    // Blessing/curse row — built once per run from the player's pick.
+    const blessingKey = state.activeBlessingIds.join(',') + '|' + (state.activeCurseId ?? '');
+    if (blessingKey !== this.prevBlessingKey) {
+      this.prevBlessingKey = blessingKey;
+      this.blessingRow.innerHTML = '';
+      const hasAny = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
+      if (!hasAny) {
+        this.blessingRow.style.display = 'none';
+      } else {
+        this.blessingRow.style.display = '';
+        for (const id of state.activeBlessingIds) {
+          const def = BLESSING_BY_ID[id];
+          if (!def) continue;
+          const chip = document.createElement('div');
+          chip.className = 'hud-blessing-chip';
+          chip.style.color = def.color;
+          chip.style.borderColor = def.color;
+          chip.title = `${t('ui.blessing.label')}: ${t(def.i18nName)}\n${t(def.i18nEffect)}`;
+          const ico = document.createElement('span');
+          ico.className = 'hud-blessing-icon';
+          ico.textContent = def.icon;
+          const lbl = document.createElement('span');
+          lbl.className = 'hud-blessing-name';
+          lbl.textContent = t(def.i18nName);
+          chip.appendChild(ico);
+          chip.appendChild(lbl);
+          this.blessingRow.appendChild(chip);
+        }
+        if (state.activeCurseId) {
+          const def = CURSE_BY_ID[state.activeCurseId];
+          if (def) {
+            const chip = document.createElement('div');
+            chip.className = 'hud-blessing-chip curse';
+            chip.style.color = def.color;
+            chip.style.borderColor = def.color;
+            chip.title = `${t('ui.curse.label')}: ${t(def.i18nName)}\n${t(def.i18nEffect)}`;
+            const ico = document.createElement('span');
+            ico.className = 'hud-blessing-icon';
+            ico.textContent = def.icon;
+            const lbl = document.createElement('span');
+            lbl.className = 'hud-blessing-name';
+            lbl.textContent = t(def.i18nName);
+            chip.appendChild(ico);
+            chip.appendChild(lbl);
+            this.blessingRow.appendChild(chip);
+          }
         }
       }
     }

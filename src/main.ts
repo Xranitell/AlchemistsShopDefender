@@ -38,11 +38,20 @@ import { DifficultyOverlay } from './ui/difficultyOverlay';
 import { ModifierPreviewOverlay } from './ui/modifierPreviewOverlay';
 import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import { DailyEventOverlay } from './ui/dailyEventOverlay';
+import { BlessingOverlay } from './ui/blessingOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import { CONTRACT_BY_ID, type ContractId, type ContractDef } from './data/contracts';
+import {
+  BLESSINGS,
+  BLESSING_BY_ID,
+  CURSES,
+  CURSE_BY_ID,
+  blessingChoiceCount,
+  curseChoiceCount,
+} from './data/blessings';
 import type { GameState } from './game/state';
 import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
@@ -168,6 +177,7 @@ const difficultyOverlay = new DifficultyOverlay(overlayRoot);
 const modifierPreview = new ModifierPreviewOverlay(overlayRoot);
 const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const dailyEventOverlay = new DailyEventOverlay(overlayRoot);
+const blessingOverlay = new BlessingOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
 const craftingOverlay = new CraftingOverlay(overlayRoot);
 const pauseStats = new PauseStatsOverlay(document.body, {
@@ -1037,13 +1047,44 @@ function startRun(mode: DifficultyMode): void {
   } else {
     tutorial.stop();
   }
-  // Begin the run with a preparation window so the player can read the scene,
-  // buy a starter tower, and pick targets before the first wave hits. The
-  // main loop auto-promotes 'preparing' → wave 1 once the timer expires.
-  state.phase = 'preparing';
-  state.waveState.pauseDurationLeft = INITIAL_PREP_DURATION;
-  state.waveState.pauseTime = 0;
-  yandex.gameplayStart();
+  // Final transition is split out so the blessing/curse picker (Epic /
+  // Ancient only) can interrupt synchronous startup — gameplay stays on
+  // the `'menu'` phase until the player confirms their picks.
+  const finishStart = (): void => {
+    state.phase = 'preparing';
+    state.waveState.pauseDurationLeft = INITIAL_PREP_DURATION;
+    state.waveState.pauseTime = 0;
+    yandex.gameplayStart();
+  };
+  // Roll & show the "Дар алхимика" picker. Epic = 1 of 3 blessings;
+  // Ancient = 1 of 3 blessings + 1 of 3 curses (mandatory). Other modes
+  // skip straight to the prep window.
+  const blessingCount = blessingChoiceCount(mode);
+  if (blessingCount > 0) {
+    const blessingPool = state.rng.shuffle(BLESSINGS.slice()).slice(0, blessingCount);
+    const cursePoolSize = curseChoiceCount(mode);
+    const cursePool = cursePoolSize > 0
+      ? state.rng.shuffle(CURSES.slice()).slice(0, cursePoolSize)
+      : [];
+    blessingOverlay.show({
+      blessings: blessingPool,
+      curses: cursePool,
+      onComplete: ({ blessingId, curseId }) => {
+        const bdef = BLESSING_BY_ID[blessingId];
+        bdef.apply(state);
+        state.activeBlessingIds = [blessingId];
+        if (curseId) {
+          const cdef = CURSE_BY_ID[curseId];
+          cdef.apply(state);
+          state.activeCurseId = curseId;
+        }
+        blessingOverlay.hide();
+        finishStart();
+      },
+    });
+  } else {
+    finishStart();
+  }
 }
 
 function showLaboratory(): void {

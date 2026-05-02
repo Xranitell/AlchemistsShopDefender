@@ -9,6 +9,7 @@ import type { EliteModId } from '../data/eliteMods';
 import type { DailyEventId } from '../data/dailyEvents';
 import type { MutatorId } from '../data/mutators';
 import type { ContractId } from '../data/contracts';
+import type { BlessingId, CurseId } from '../data/blessings';
 
 export type Phase =
   | 'menu'
@@ -480,6 +481,12 @@ export interface GameState {
    *  the existing on-damage / on-death / on-tower-buy hooks; never read by
    *  combat code itself. Resets per run with a fresh `GameState`. */
   contractStats: ContractStats;
+  /** "Дар алхимика" — blessings the player picked at run start. Always
+   *  one entry in Epic/Ancient (the chosen blessing); empty otherwise. */
+  activeBlessingIds: BlessingId[];
+  /** Mandatory curse picked alongside the blessing in Ancient. `null` for
+   *  Epic and the easier modes. */
+  activeCurseId: CurseId | null;
   /** Multiplier applied to per-wave spawn count (Horde event). 1 = default. */
   spawnCountMult: number;
   /** Render-side darkness flag — drawn on top of the world (Night event). */

@@ -2,6 +2,7 @@ import type { GameState } from '../game/state';
 import { CARDS, cardName } from '../data/cards';
 import { MUTATOR_BY_ID } from '../data/mutators';
 import { CONTRACT_BY_ID } from '../data/contracts';
+import { BLESSING_BY_ID, CURSE_BY_ID } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
 
 /** Pause-menu stats overlay.
@@ -56,6 +57,35 @@ export class PauseStatsOverlay {
       tWithFallback('ui.pause.enemyTitle', 'Модификаторы врагов'),
       this.enemyStats(state),
     ));
+
+    // ── Blessings & curses ("Дар алхимика") ──────────────────────────────
+    if (state.activeBlessingIds.length > 0 || state.activeCurseId !== null) {
+      const lines: StatLine[] = [];
+      for (const id of state.activeBlessingIds) {
+        const def = BLESSING_BY_ID[id];
+        if (!def) continue;
+        lines.push({
+          label: `${def.icon} ${t(def.i18nName)}`,
+          value: t(def.i18nEffect),
+          kind: 'buff',
+        });
+      }
+      if (state.activeCurseId) {
+        const def = CURSE_BY_ID[state.activeCurseId];
+        if (def) {
+          lines.push({
+            label: `${def.icon} ${t(def.i18nName)}`,
+            value: t(def.i18nEffect),
+            kind: 'debuff',
+          });
+        }
+      }
+      inner.appendChild(this.buildSection(
+        t('ui.blessing.label'),
+        lines,
+        true,
+      ));
+    }
 
     // ── Run mutators ("dungeon laws") ─────────────────────────────────────
     if (state.activeMutatorIds.length > 0) {

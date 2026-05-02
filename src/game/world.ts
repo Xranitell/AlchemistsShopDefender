@@ -274,6 +274,8 @@ export function buildInitialState(
     activeMutatorIds: [],
     activeContractIds: [],
     contractStats: newContractStats(),
+    activeBlessingIds: [],
+    activeCurseId: null,
     spawnCountMult: 1,
     nightModeActive: false,
     endlessLoop: 0,

@@ -2854,6 +2854,41 @@ body {
   white-space: nowrap;
 }
 
+/* Blessing / curse chips below the contract row. Blessings inherit
+   their accent from the def colour; curses inherit theirs (red-ish). */
+.hud-blessing-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
+}
+.hud-blessing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: rgba(10, 5, 20, 0.85);
+  text-transform: uppercase;
+  text-shadow: 0 0 5px currentColor;
+}
+.hud-blessing-chip.curse {
+  background: rgba(20, 4, 4, 0.85);
+}
+.hud-blessing-icon {
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.hud-blessing-name {
+  white-space: nowrap;
+}
+
 /* Per-contract row in the chest reward panel. Done rows glow gold;
    incomplete rows fade out. */
 .chest-contracts {
@@ -2881,6 +2916,119 @@ body {
 .chest-contract-row.done {
   color: #ffd166;
   text-shadow: 0 0 6px rgba(255, 209, 102, 0.7);
+}
+
+/* ── Blessing / Curse pre-run picker ("Дар алхимика") ───────────────── */
+.blessing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 2100;
+}
+.blessing-panel {
+  background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
+  border: 2px solid #fde047;
+  border-radius: 12px;
+  padding: 22px;
+  width: min(95vw, 760px);
+  max-height: 92dvh;
+  overflow-y: auto;
+  box-shadow: 0 0 40px rgba(253, 224, 71, 0.25);
+}
+.blessing-panel.curse-step {
+  border-color: #ef4444;
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.25);
+}
+.blessing-head {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.blessing-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 16px;
+  color: #fde047;
+  letter-spacing: 1px;
+  margin: 0 0 6px 0;
+  text-shadow: 0 0 10px rgba(253, 224, 71, 0.4);
+}
+.blessing-title.curse {
+  color: #fb7185;
+  text-shadow: 0 0 10px rgba(251, 113, 133, 0.4);
+}
+.blessing-subtitle {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: #c0c0d0;
+  margin: 0;
+}
+.blessing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.blessing-card {
+  --accent: #fde047;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: rgba(10, 6, 18, 0.92);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  color: #f0f0f0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.blessing-card:hover {
+  transform: translateY(-2px);
+  background: rgba(20, 12, 30, 0.95);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.blessing-card.curse-card {
+  background: rgba(20, 6, 6, 0.92);
+}
+.blessing-card.curse-card:hover {
+  background: rgba(30, 10, 10, 0.95);
+}
+.blessing-icon {
+  font-size: 40px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+.blessing-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-transform: uppercase;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.blessing-flavor {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #b0b0c0;
+  font-style: italic;
+  min-height: 1em;
+}
+.blessing-effect {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: #ffffff;
+  margin-top: auto;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+@media (max-width: 600px) {
+  .blessing-grid { grid-template-columns: 1fr; }
+  .blessing-icon { font-size: 32px; }
+  .blessing-name { font-size: 10px; }
+  .blessing-flavor { font-size: 13px; }
+  .blessing-effect { font-size: 14px; }
 }
 
 .hud-timer-bar {
@@ -4112,6 +4260,9 @@ body {
   .hud-contract-chip { font-size: 8px; padding: 2px 5px; }
   .hud-contract-icon { font-size: 10px; }
   .hud-contract-row { max-width: 220px; }
+  .hud-blessing-chip { font-size: 8px; padding: 2px 5px; }
+  .hud-blessing-icon { font-size: 10px; }
+  .hud-blessing-row { max-width: 220px; }
 
   /* Card draft — keep 3 columns but slimmer. */
   .cards { gap: 8px; }
