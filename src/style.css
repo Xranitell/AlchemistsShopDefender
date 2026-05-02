@@ -2388,9 +2388,11 @@ body {
 .mm-currency.ancient-key strong { color: #ffd166; }
 
 /* ============ Difficulty select overlay ============ */
+/* Wider than the default `.panel` because the grid below carries five
+   cards in a single row (Normal / Epic / Ancient / Endless / Daily). */
 .difficulty-panel {
-  max-width: 860px;
-  width: min(96vw, 860px);
+  max-width: 1100px;
+  width: min(96vw, 1100px);
   padding: 20px 24px;
 }
 .difficulty-header {
@@ -2420,8 +2422,8 @@ body {
 }
 .difficulty-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 .difficulty-card {
   position: relative;
@@ -2430,8 +2432,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px;
-  min-height: 240px;
+  padding: 12px;
+  min-height: 220px;
+  /* Allow the card to shrink below the intrinsic min-content width of
+     its label so the 5-card row never overflows the panel. */
+  min-width: 0;
   border-radius: 8px;
   border: 2px solid var(--dif-color, var(--bg-frame-mid));
   background: linear-gradient(180deg, rgba(40, 22, 60, 0.7), rgba(10, 5, 20, 0.9));
@@ -2452,33 +2457,34 @@ body {
 }
 .difficulty-label {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 10px;
-  letter-spacing: 2px;
+  font-size: 9px;
+  letter-spacing: 1px;
   color: var(--dif-color);
-  padding: 3px 8px;
+  padding: 2px 6px;
   border: 1px solid var(--dif-color);
   border-radius: 3px;
-  margin-top: -22px;
+  margin-top: -20px;
   background: #0d0812;
+  white-space: nowrap;
 }
 .difficulty-icon {
-  font-size: 52px;
+  font-size: 44px;
   line-height: 1;
-  margin: 8px 0;
+  margin: 6px 0;
   color: var(--dif-color);
   text-shadow: 0 0 18px color-mix(in srgb, var(--dif-color) 50%, transparent);
 }
 .difficulty-name {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fg);
 }
 .difficulty-flavor {
   font-family: 'VT323', monospace;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--fg-dim);
   line-height: 1.25;
-  min-height: 38px;
+  min-height: 36px;
 }
 .difficulty-cost {
   margin-top: auto;
@@ -2486,12 +2492,12 @@ body {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: rgba(0, 0, 0, 0.35);
   border-radius: 4px;
   border: 1px solid color-mix(in srgb, var(--dif-color) 40%, transparent);
   font-family: 'VT323', monospace;
-  font-size: 15px;
+  font-size: 13px;
 }
 .difficulty-cost .key-count {
   color: var(--dif-color);
