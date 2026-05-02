@@ -32,8 +32,7 @@ export const RU: Record<string, string> = {
   'ui.menu.tooltip.ancientEssence': 'Древняя эссенция',
   'ui.menu.tooltip.epicKey': 'Эпический ключ',
   'ui.menu.tooltip.ancientKey': 'Древний ключ',
-  'ui.menu.dailyExperiment': 'ДНЕВНОЙ ЭКСПЕРИМЕНТ',
-  'ui.menu.bossChallenge': 'ИСПЫТАНИЕ БОССОВ',
+  'ui.menu.dailyExperiment': 'ДНЕВНОЕ СОБЫТИЕ',
   'ui.menu.leaderboards': 'ЛИДЕРБОРДЫ',
 
   // ── HUD ──────────────────────────────────────────────────────────────
@@ -91,6 +90,7 @@ export const RU: Record<string, string> = {
   'ui.defeat.doubledSubtitle': 'Итог: +{blue} СЭ.',
   'ui.common.toMenu': 'В меню',
   'ui.common.close': 'Закрыть',
+  'ui.common.cancel': 'Отмена',
   'ui.reward.kills': 'Убийств: {n}',
   'ui.reward.wave': 'Волна {wave}/{total}',
   'ui.reward.blueGain': '+{n} СЭ',
@@ -140,10 +140,7 @@ export const RU: Record<string, string> = {
   'ui.difficulty.endless.flavor': 'Без потолка волн. Сколько продержишься?',
   'ui.difficulty.daily.name': 'Дневной эксперимент',
   'ui.difficulty.daily.short': 'Дневной',
-  'ui.difficulty.daily.flavor': 'Фиксированное зерно — у всех одинаковый забег.',
-  'ui.difficulty.boss_challenge.name': 'Испытание боссов',
-  'ui.difficulty.boss_challenge.short': 'Боссы',
-  'ui.difficulty.boss_challenge.flavor': 'Только боссовые волны — покажи навык!',
+  'ui.difficulty.daily.flavor': 'Уникальное событие на каждый день недели.',
 
   // ── Modifier preview ─────────────────────────────────────────────────
   'ui.preview.subtitle': 'Враги получат следующие модификаторы:',
@@ -546,9 +543,9 @@ Object.assign(RU, {
 
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Лидерборды',
-  'ui.lb.tab.bestWave': 'Лучшая волна',
-  'ui.lb.tab.daily': 'Дневной',
-  'ui.lb.tab.bossChallenge': 'Боссы',
+  'ui.lb.tab.endlessWaves': 'Лучшая волна',
+  'ui.lb.tab.bestScore': 'Лучший счёт',
+  'ui.lb.tab.dailyWaves': 'Дневной',
   'ui.lb.loading': 'Загрузка…',
   'ui.lb.empty': 'Пока записей нет.',
 
@@ -606,4 +603,69 @@ Object.assign(RU, {
   'craft.potion.frostMist.desc': 'Все враги −50% скорости на 12 секунд.',
   'craft.potion.greed.name': 'Эликсир жадности',
   'craft.potion.greed.desc': '×2 золота с врагов, 30 секунд.',
+
+  // ── Weekdays ────────────────────────────────────────────────────────
+  'ui.weekday.mon': 'Понедельник',
+  'ui.weekday.tue': 'Вторник',
+  'ui.weekday.wed': 'Среда',
+  'ui.weekday.thu': 'Четверг',
+  'ui.weekday.fri': 'Пятница',
+  'ui.weekday.sat': 'Суббота',
+  'ui.weekday.sun': 'Воскресенье',
+
+  // ── Daily Event preview overlay ─────────────────────────────────────
+  'ui.dailyEvent.cycle': 'Расписание недели',
+  'ui.dailyEvent.start': 'Начать забег',
+
+  // Monday — Night
+  'ui.dailyEvent.night.name': 'Ночь',
+  'ui.dailyEvent.night.flavor': 'Свет потушен — арена в темноте.',
+  'ui.dailyEvent.night.desc': 'Видимость снижена до светового круга вокруг манекена. Враги подкрадываются из тьмы — играй на слух и реакцию.',
+  'ui.dailyEvent.night.line.vis': 'Тёмная виньетка вокруг арены',
+  'ui.dailyEvent.night.line.gold': '+40% к золоту с врагов',
+
+  // Tuesday — Boss day (former Boss Challenge)
+  'ui.dailyEvent.boss.name': 'День Боссов',
+  'ui.dailyEvent.boss.flavor': 'Только боссовые волны — покажи навык.',
+  'ui.dailyEvent.boss.desc': 'Стандартный набор волн заменён на список боссовых стычек. Каждая волна — серьёзная угроза.',
+  'ui.dailyEvent.boss.line.waves': 'Только волны 5, 10, 15 + финальный босс (циклически)',
+  'ui.dailyEvent.boss.line.stats': '+20% здоровья, +10% скорости, +10% урона',
+  'ui.dailyEvent.boss.line.gold': '+50% к золоту с врагов',
+
+  // Wednesday — Speedrun
+  'ui.dailyEvent.speedrun.name': 'Спидран',
+  'ui.dailyEvent.speedrun.flavor': 'Все на ускорителях.',
+  'ui.dailyEvent.speedrun.desc': 'Враги бегут быстрее обычного — реагировать нужно молниеносно.',
+  'ui.dailyEvent.speedrun.line.speed': '+50% к скорости врагов',
+  'ui.dailyEvent.speedrun.line.gold': '+30% к золоту',
+
+  // Thursday — Glass Cannon
+  'ui.dailyEvent.glass_cannon.name': 'Стеклянная пушка',
+  'ui.dailyEvent.glass_cannon.flavor': 'Бьёшь сильнее — но и сам хрупче.',
+  'ui.dailyEvent.glass_cannon.desc': 'Урон у всех ×2. Манекен и враги становятся вдвое хрупче. Один промах — и забег закончен.',
+  'ui.dailyEvent.glass_cannon.line.dmg': '×2 урон зелий и ×2 урон врагов',
+  'ui.dailyEvent.glass_cannon.line.hp': '−50% к ХП манекена и врагов',
+  'ui.dailyEvent.glass_cannon.line.gold': '+40% к золоту',
+
+  // Friday — Horde
+  'ui.dailyEvent.horde.name': 'Толпа',
+  'ui.dailyEvent.horde.flavor': 'Их слишком много.',
+  'ui.dailyEvent.horde.desc': 'Каждая волна спавнит +50% врагов сверху обычного. Враги слабее, но удержать линию сложнее.',
+  'ui.dailyEvent.horde.line.count': '+50% к количеству спавна',
+  'ui.dailyEvent.horde.line.hp': '−20% к ХП врагов',
+  'ui.dailyEvent.horde.line.gold': '+30% к золоту',
+
+  // Saturday — Abundance
+  'ui.dailyEvent.abundance.name': 'Изобилие',
+  'ui.dailyEvent.abundance.flavor': 'Карманы трещат от золота.',
+  'ui.dailyEvent.abundance.desc': 'Дополнительный слот катализатора и щедрые награды. Идеально для коллекционных билдов.',
+  'ui.dailyEvent.abundance.line.cats': '+1 слот катализатора',
+  'ui.dailyEvent.abundance.line.gold': '+50% к золоту',
+
+  // Sunday — Chaos
+  'ui.dailyEvent.chaos.name': 'Хаос',
+  'ui.dailyEvent.chaos.flavor': 'Никто не знает, что будет дальше.',
+  'ui.dailyEvent.chaos.desc': 'Случайный модификатор бесконечного режима активен с самого начала забега.',
+  'ui.dailyEvent.chaos.line.mod': 'Случайный модификатор активирован сразу',
+  'ui.dailyEvent.chaos.line.gold': '+60% к золоту',
 });

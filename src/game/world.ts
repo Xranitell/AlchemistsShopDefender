@@ -10,6 +10,8 @@ import {
 } from './state';
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { biomeFromSeed, BIOMES, type BiomeId } from '../data/biomes';
+import { getEventForWeekday, type DailyEventDef } from '../data/dailyEvents';
+import { ENDLESS_MODIFIER_POOL } from './state';
 
 const ARENA_W = 1280;
 const ARENA_H = 720;
@@ -265,6 +267,9 @@ export function buildInitialState(
     metaCritChance: 0,
     difficulty,
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
+    dailyEventId: null,
+    spawnCountMult: 1,
+    nightModeActive: false,
     endlessLoop: 0,
     biomeId,
     endlessModifiers: [],
@@ -293,19 +298,44 @@ export function buildInitialState(
   };
 }
 
-/** Deterministic seed from today's date (YYYYMMDD) so every player gets
- *  the same Daily Experiment run. */
-export function dailySeed(): number {
-  const d = new Date();
-  const n = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  return n >>> 0;
+/** Today's date in Europe/Moscow as `{ y, m, d, weekday }`. The daily
+ *  leaderboard and the rotating event roll over at 00:00 MSK so we always
+ *  evaluate "today" in Moscow time, regardless of the player's local zone. */
+export function moscowToday(): { y: number; m: number; d: number; weekday: number } {
+  // Intl with `Europe/Moscow` is the simplest reliable cross-runtime way to
+  // get a Moscow-time date without bringing in tz-data libs. `weekday` is
+  // 0=Sunday … 6=Saturday to match `Date.getUTCDay()` conventions.
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  });
+  const parts = fmt.formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0';
+  const y = Number(get('year'));
+  const m = Number(get('month'));
+  const d = Number(get('day'));
+  const wkMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const weekday = wkMap[get('weekday')] ?? 0;
+  return { y, m, d, weekday };
 }
 
-/** Board id for today's daily leaderboard: `daily_YYYYMMDD`. */
+/** Deterministic seed from today's MSK date (YYYYMMDD) so every player on
+ *  the same Moscow day gets the same Daily Experiment run. */
+export function dailySeed(): number {
+  const { y, m, d } = moscowToday();
+  return ((y * 10000 + m * 100 + d) >>> 0);
+}
+
+/** Board id for today's daily leaderboard: `dailyWaves_YYYYMMDD` where the
+ *  date is the current day in Europe/Moscow. The daily leaderboard rolls
+ *  over at 00:00 MSK because this id changes once per Moscow midnight. */
 export function dailyBoardId(): string {
-  const d = new Date();
+  const { y, m, d } = moscowToday();
   const pad = (v: number) => String(v).padStart(2, '0');
-  return `daily_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  return `dailyWaves_${y}${pad(m)}${pad(d)}`;
 }
 
 /** Apply passive biome modifiers to the state. Call once after
@@ -320,5 +350,84 @@ export function applyBiomeModifiers(state: GameState): void {
   if (bm.fireDamageMult !== 1) {
     state.modifiers.potionDamageMult *= bm.fireDamageMult;
     state.difficultyModifier.damageMult *= bm.fireDamageMult;
+  }
+}
+
+/** Resolve the daily event scheduled for today's MSK weekday. Used by
+ *  the menu preview AND `startRun('daily')` so both screens stay in sync. */
+export function getTodayDailyEvent(): DailyEventDef {
+  return getEventForWeekday(moscowToday().weekday);
+}
+
+/** Apply the rotating Daily Event modifiers + flags onto a fresh state.
+ *  Mutates `state.difficultyModifier`, `state.mannequin`, `state.modifiers`,
+ *  and the per-event flags consumed by render/wave systems.
+ *
+ *  Must run AFTER `applyMetaUpgrades` and `applyBiomeModifiers` so event
+ *  buffs stack on top of progression. The caller in main.ts only invokes
+ *  this when `state.difficulty === 'daily'`. */
+export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): void {
+  state.dailyEventId = ev.id;
+
+  // Stack enemy stat multipliers on top of whatever the difficulty mode
+  // already configured (Daily mode itself starts neutral, so this is a
+  // straight overwrite-by-multiplication).
+  const dm = state.difficultyModifier;
+  dm.hpMult *= ev.modifier.hpMult;
+  dm.speedMult *= ev.modifier.speedMult;
+  dm.damageMult *= ev.modifier.damageMult;
+  dm.goldMult *= ev.modifier.goldMult;
+  for (const ab of ev.modifier.abilities) {
+    if (!dm.abilities.includes(ab)) dm.abilities.push(ab);
+  }
+
+  // Per-event flags consumed by render / wave / catalyst systems.
+  state.spawnCountMult = ev.spawnCountMult ?? 1;
+  state.nightModeActive = !!ev.nightMode;
+  if (ev.bonusCatalystSlots) {
+    state.catalystSlots += ev.bonusCatalystSlots;
+  }
+
+  // Glass Cannon: shrink the player's HP pool, double potion damage.
+  if (ev.playerHpMult && ev.playerHpMult !== 1) {
+    state.mannequin.maxHp = Math.max(1, Math.round(state.mannequin.maxHp * ev.playerHpMult));
+    state.mannequin.hp = state.mannequin.maxHp;
+  }
+  if (ev.playerDamageMult && ev.playerDamageMult !== 1) {
+    state.modifiers.potionDamageMult *= ev.playerDamageMult;
+  }
+
+  // Chaos: roll a random endless modifier and apply it immediately so the
+  // run starts under its effect. We don't surface the selector overlay —
+  // the player already saw the day's preview on the menu.
+  if (ev.chaosModifier) {
+    const pool = ENDLESS_MODIFIER_POOL;
+    const idx = state.rng.int(0, pool.length);
+    const pick = pool[idx];
+    if (pick) {
+      state.endlessModifiers.push(pick);
+      switch (pick.id) {
+        case 'hp_x125':
+          state.difficultyModifier.hpMult += 0.25;
+          break;
+        case 'speed_x110':
+          state.difficultyModifier.speedMult += 0.10;
+          break;
+        case 'gold_minus10':
+          state.difficultyModifier.goldMult *= 0.90;
+          break;
+        case 'extra_enemies':
+          // Handled at spawn time via the endlessModifiers list.
+          break;
+        case 'elites_on_normal':
+          if (!state.difficultyModifier.abilities.includes('one_hit_shield')) {
+            state.difficultyModifier.abilities.push('one_hit_shield');
+          }
+          if (!state.difficultyModifier.abilities.includes('dash_back_on_hit')) {
+            state.difficultyModifier.abilities.push('dash_back_on_hit');
+          }
+          break;
+      }
+    }
   }
 }

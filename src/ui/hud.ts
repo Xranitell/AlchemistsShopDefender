@@ -398,7 +398,9 @@ export class Hud {
     const idx = ws.currentIndex;
     const total = totalWaves(state);
     let waveText: string;
-    if (state.difficulty === 'endless') {
+    if (state.difficulty === 'endless' || state.difficulty === 'daily') {
+      // Both Endless and Daily Events run infinitely — show the wave index
+      // and the current cycle ("loop") instead of an idx/total fraction.
       const loop = state.endlessLoop;
       waveText = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
     } else if (idx < 0) {

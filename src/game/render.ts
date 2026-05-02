@@ -96,11 +96,37 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Dynamic lighting from fire pools
   drawDynamicLighting(ctx, state);
 
+  // Daily-Event Night mode: overlay a heavy dark vignette so visibility
+  // shrinks to a light disc around the mannequin. Drawn inside the world
+  // transform so the disc tracks the mannequin in world coordinates.
+  if (state.nightModeActive) {
+    drawNightVignette(ctx, state);
+  }
+
   // Restore from isometric transform
   ctx.restore();
 
   // Post-process: ambient particles drawn in screen space
   drawAmbientParticles(ctx, state);
+}
+
+/** Heavy radial darkness centred on the mannequin. The interior is fully
+ *  transparent so the player can still see a disc of the floor; everything
+ *  beyond the visible radius fades to near-black. */
+function drawNightVignette(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const { width, height } = state.arena;
+  const cx = state.mannequin.pos.x;
+  const cy = state.mannequin.pos.y;
+  // Inner = visible disc, outer = full darkness. Tuned so a player sees a
+  // generous personal radius but the arena edges are invisible.
+  const inner = 180;
+  const outer = 480;
+  const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+  grad.addColorStop(0, 'rgba(2, 4, 10, 0)');
+  grad.addColorStop(0.6, 'rgba(2, 4, 10, 0.75)');
+  grad.addColorStop(1, 'rgba(2, 4, 10, 0.95)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
 }
 
 function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void {

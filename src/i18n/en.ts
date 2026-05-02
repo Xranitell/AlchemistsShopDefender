@@ -31,8 +31,7 @@ export const EN: Record<string, string> = {
   'ui.menu.tooltip.ancientEssence': 'Ancient essence',
   'ui.menu.tooltip.epicKey': 'Epic key',
   'ui.menu.tooltip.ancientKey': 'Ancient key',
-  'ui.menu.dailyExperiment': 'DAILY EXPERIMENT',
-  'ui.menu.bossChallenge': 'BOSS CHALLENGE',
+  'ui.menu.dailyExperiment': 'DAILY EVENT',
   'ui.menu.leaderboards': 'LEADERBOARDS',
 
   // ── HUD ──────────────────────────────────────────────────────────────
@@ -90,6 +89,7 @@ export const EN: Record<string, string> = {
   'ui.defeat.doubledSubtitle': 'Total: +{blue} BE.',
   'ui.common.toMenu': 'Main menu',
   'ui.common.close': 'Close',
+  'ui.common.cancel': 'Cancel',
   'ui.reward.kills': 'Kills: {n}',
   'ui.reward.wave': 'Wave {wave}/{total}',
   'ui.reward.blueGain': '+{n} BE',
@@ -137,12 +137,9 @@ export const EN: Record<string, string> = {
   'ui.difficulty.endless.name': 'Endless Mode',
   'ui.difficulty.endless.short': 'Endless',
   'ui.difficulty.endless.flavor': 'No wave ceiling. How far can you push?',
-  'ui.difficulty.daily.name': 'Daily Experiment',
+  'ui.difficulty.daily.name': 'Daily Event',
   'ui.difficulty.daily.short': 'Daily',
-  'ui.difficulty.daily.flavor': 'Fixed seed — everyone gets the same run today.',
-  'ui.difficulty.boss_challenge.name': 'Boss Challenge',
-  'ui.difficulty.boss_challenge.short': 'Bosses',
-  'ui.difficulty.boss_challenge.flavor': 'Boss waves only — prove your skill!',
+  'ui.difficulty.daily.flavor': 'A unique event for each weekday.',
 
   // ── Pause stats overlay ─────────────────────────────────────────────
   'ui.pause.playerTitle': 'Player Modifiers',
@@ -542,9 +539,9 @@ Object.assign(EN, {
 
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Leaderboards',
-  'ui.lb.tab.bestWave': 'Best Wave',
-  'ui.lb.tab.daily': 'Daily',
-  'ui.lb.tab.bossChallenge': 'Bosses',
+  'ui.lb.tab.endlessWaves': 'Best Wave',
+  'ui.lb.tab.bestScore': 'Best Score',
+  'ui.lb.tab.dailyWaves': 'Daily',
   'ui.lb.loading': 'Loading…',
   'ui.lb.empty': 'No entries yet.',
 
@@ -602,4 +599,69 @@ Object.assign(EN, {
   'craft.potion.frostMist.desc': 'All enemies move at −50% speed for 12s.',
   'craft.potion.greed.name': 'Greed elixir',
   'craft.potion.greed.desc': '×2 gold from enemies for 30s.',
+
+  // ── Weekdays ────────────────────────────────────────────────────────
+  'ui.weekday.mon': 'Monday',
+  'ui.weekday.tue': 'Tuesday',
+  'ui.weekday.wed': 'Wednesday',
+  'ui.weekday.thu': 'Thursday',
+  'ui.weekday.fri': 'Friday',
+  'ui.weekday.sat': 'Saturday',
+  'ui.weekday.sun': 'Sunday',
+
+  // ── Daily Event preview overlay ─────────────────────────────────────
+  'ui.dailyEvent.cycle': 'Weekly schedule',
+  'ui.dailyEvent.start': 'Start run',
+
+  // Monday — Night
+  'ui.dailyEvent.night.name': 'Night',
+  'ui.dailyEvent.night.flavor': 'The lights go out — the arena is in darkness.',
+  'ui.dailyEvent.night.desc': 'Visibility shrinks to a small light disc around the mannequin. Enemies emerge from the dark — play by sound and reflex.',
+  'ui.dailyEvent.night.line.vis': 'Heavy darkness vignette over the arena',
+  'ui.dailyEvent.night.line.gold': '+40% gold from enemies',
+
+  // Tuesday — Boss day (former Boss Challenge)
+  'ui.dailyEvent.boss.name': 'Boss Day',
+  'ui.dailyEvent.boss.flavor': 'Boss waves only — prove your skill.',
+  'ui.dailyEvent.boss.desc': 'The standard wave list is replaced by boss-only encounters. Every wave is a serious threat.',
+  'ui.dailyEvent.boss.line.waves': 'Only waves 5, 10, 15 + final boss (looping)',
+  'ui.dailyEvent.boss.line.stats': '+20% HP, +10% speed, +10% damage',
+  'ui.dailyEvent.boss.line.gold': '+50% gold from enemies',
+
+  // Wednesday — Speedrun
+  'ui.dailyEvent.speedrun.name': 'Speedrun',
+  'ui.dailyEvent.speedrun.flavor': 'Everyone is on stims.',
+  'ui.dailyEvent.speedrun.desc': 'Enemies move much faster than usual. Reactions need to be lightning-fast.',
+  'ui.dailyEvent.speedrun.line.speed': '+50% enemy speed',
+  'ui.dailyEvent.speedrun.line.gold': '+30% gold',
+
+  // Thursday — Glass Cannon
+  'ui.dailyEvent.glass_cannon.name': 'Glass Cannon',
+  'ui.dailyEvent.glass_cannon.flavor': 'Hit harder — and break easier.',
+  'ui.dailyEvent.glass_cannon.desc': 'Damage on both sides ×2. Mannequin and enemies become twice as fragile. One miss may end your run.',
+  'ui.dailyEvent.glass_cannon.line.dmg': '×2 potion and enemy damage',
+  'ui.dailyEvent.glass_cannon.line.hp': '−50% mannequin and enemy HP',
+  'ui.dailyEvent.glass_cannon.line.gold': '+40% gold',
+
+  // Friday — Horde
+  'ui.dailyEvent.horde.name': 'Horde',
+  'ui.dailyEvent.horde.flavor': 'Too many of them.',
+  'ui.dailyEvent.horde.desc': 'Every wave spawns +50% extra enemies on top of the base count. Enemies are weaker, but holding the line is harder.',
+  'ui.dailyEvent.horde.line.count': '+50% spawn count',
+  'ui.dailyEvent.horde.line.hp': '−20% enemy HP',
+  'ui.dailyEvent.horde.line.gold': '+30% gold',
+
+  // Saturday — Abundance
+  'ui.dailyEvent.abundance.name': 'Abundance',
+  'ui.dailyEvent.abundance.flavor': 'Pockets stuffed with gold.',
+  'ui.dailyEvent.abundance.desc': 'An extra catalyst slot and generous rewards. Perfect for stacking-build experiments.',
+  'ui.dailyEvent.abundance.line.cats': '+1 catalyst slot',
+  'ui.dailyEvent.abundance.line.gold': '+50% gold',
+
+  // Sunday — Chaos
+  'ui.dailyEvent.chaos.name': 'Chaos',
+  'ui.dailyEvent.chaos.flavor': 'No-one knows what comes next.',
+  'ui.dailyEvent.chaos.desc': 'A random endless-mode modifier is active from the start of the run.',
+  'ui.dailyEvent.chaos.line.mod': 'Random modifier active immediately',
+  'ui.dailyEvent.chaos.line.gold': '+60% gold',
 });
