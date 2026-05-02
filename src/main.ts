@@ -607,6 +607,14 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   meta.ancientKeys += reward.ancientKeys;
   meta.totalRuns += 1;
   if (wave > meta.bestWave) meta.bestWave = wave;
+  // Mastery: +1 on a full victory of Epic / Ancient. Mastery permanently
+  // multiplies blue-essence drops in *every* future run (see
+  // `masteryEssenceMult`), giving the player a long-term reason to keep
+  // climbing the difficulty ladder.
+  if (victory) {
+    if (state.difficulty === 'epic') meta.epicMastery = (meta.epicMastery ?? 0) + 1;
+    if (state.difficulty === 'ancient') meta.ancientMastery = (meta.ancientMastery ?? 0) + 1;
+  }
   // Battle pass XP
   const bpXp = wave * BP_XP_PER_WAVE + state.totalKills * BP_XP_PER_KILL + (victory ? BP_XP_VICTORY : 0);
   addBpXp(meta, bpXp);

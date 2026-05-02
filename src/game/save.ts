@@ -50,6 +50,13 @@ export interface MetaSave {
   tutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  /** Mode-mastery counters: number of full victories per difficulty. Each
+   *  Epic / Ancient victory grants +1 mastery, which scales blue-essence
+   *  drops in *every* future run by a small amount (capped). This is the
+   *  meta hook that makes higher modes worth replaying — see
+   *  `masteryEssenceMult` in game/meta.ts. */
+  epicMastery: number;
+  ancientMastery: number;
   // ─── Potion crafting (PR-«крафт») ───────────────────────────────────────
   /** Stockpile of crafting ingredients. Keys come from `IngredientId`; missing
    *  keys are treated as 0. Drops persist across runs. */
@@ -86,6 +93,8 @@ export function newMetaSave(): MetaSave {
     musicVolume: 0.4,
     tutorialDone: false,
     locale: defaultLocale(),
+    epicMastery: 0,
+    ancientMastery: 0,
     ingredients: {},
     inventory: emptyInventory(),
   };
@@ -183,6 +192,8 @@ export function loadMeta(): MetaSave {
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      epicMastery: typeof data.epicMastery === 'number' ? Math.max(0, Math.floor(data.epicMastery)) : 0,
+      ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
       inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
     };
