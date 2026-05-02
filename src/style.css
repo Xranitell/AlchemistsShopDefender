@@ -2790,6 +2790,37 @@ body {
   text-shadow: 0 0 6px currentColor;
 }
 
+/* Mutator chips ("dungeon laws") — sit just below the difficulty badge. */
+.hud-mutator-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
+}
+.hud-mutator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: rgba(10, 5, 20, 0.85);
+  text-transform: uppercase;
+  text-shadow: 0 0 5px currentColor;
+}
+.hud-mutator-icon {
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.hud-mutator-name {
+  white-space: nowrap;
+}
+
 .hud-timer-bar {
   position: relative;
   width: 280px;
@@ -4013,6 +4044,9 @@ body {
   .hud-timer-bar { width: 180px; height: 16px; }
   .hud-timer-label { font-size: 12px; }
   .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
+  .hud-mutator-chip { font-size: 8px; padding: 2px 5px; }
+  .hud-mutator-icon { font-size: 10px; }
+  .hud-mutator-row { max-width: 220px; }
 
   /* Card draft — keep 3 columns but slimmer. */
   .cards { gap: 8px; }

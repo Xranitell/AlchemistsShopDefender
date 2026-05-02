@@ -11,6 +11,7 @@ import {
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { biomeFromSeed, BIOMES, type BiomeId } from '../data/biomes';
 import { getEventForWeekday, type DailyEventDef } from '../data/dailyEvents';
+import { MUTATORS, MUTATOR_BY_ID, mutatorCountForDifficulty, type MutatorId } from '../data/mutators';
 import { ENDLESS_MODIFIER_POOL } from './state';
 
 const ARENA_W = 1280;
@@ -268,6 +269,7 @@ export function buildInitialState(
     difficulty,
     difficultyModifier: { ...mode.modifier, abilities: [...mode.modifier.abilities] },
     dailyEventId: null,
+    activeMutatorIds: [],
     spawnCountMult: 1,
     nightModeActive: false,
     endlessLoop: 0,
@@ -422,5 +424,26 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
           break;
       }
     }
+  }
+}
+
+/** Roll N distinct run mutators ("dungeon laws") for the given difficulty
+ *  and apply them onto `state`. Picks 1 mutator for Epic, 2 for Ancient;
+ *  no-op for other modes. Uses `state.rng` so the roll is reproducible
+ *  alongside other run RNG (biome, seed, etc.).
+ *
+ *  Must run AFTER `applyMetaUpgrades`, `applyBiomeModifiers` and any
+ *  daily-event modifiers so mutator multipliers stack on top of the
+ *  baseline difficulty bundle. */
+export function applyRunMutators(state: GameState): void {
+  const count = mutatorCountForDifficulty(state.difficulty);
+  if (count <= 0) return;
+  const pool = state.rng.shuffle(MUTATORS.map((m) => m.id));
+  const picked: MutatorId[] = pool.slice(0, count);
+  for (const id of picked) {
+    const def = MUTATOR_BY_ID[id];
+    if (!def) continue;
+    def.apply(state);
+    state.activeMutatorIds.push(id);
   }
 }

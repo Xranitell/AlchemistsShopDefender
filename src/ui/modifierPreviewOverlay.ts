@@ -1,4 +1,5 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { mutatorCountForDifficulty } from '../data/mutators';
 import { t, tWithFallback } from '../i18n';
 
 export class ModifierPreviewOverlay {
@@ -47,6 +48,16 @@ export class ModifierPreviewOverlay {
     for (let i = 0; i < def.previewLines.length; i++) {
       const li = document.createElement('li');
       li.textContent = tWithFallback(`ui.preview.${opts.mode}.line${i}`, def.previewLines[i]!);
+      list.appendChild(li);
+    }
+    // Mention the random "dungeon law" mutator(s) that will roll for this
+    // run — the actual roll happens at run start, so we only advertise the
+    // count here, not the picks.
+    const mutCount = mutatorCountForDifficulty(opts.mode);
+    if (mutCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(mutCount === 1 ? 'ui.mutator.previewEpic' : 'ui.mutator.previewAncient');
+      li.style.color = '#7df9ff';
       list.appendChild(li);
     }
     panel.appendChild(list);

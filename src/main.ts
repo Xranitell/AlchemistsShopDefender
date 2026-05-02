@@ -7,6 +7,7 @@ import {
   buildInitialState,
   applyBiomeModifiers,
   applyDailyEventModifiers,
+  applyRunMutators,
   getTodayDailyEvent,
   dailySeed,
   dailyBoardId,
@@ -943,6 +944,9 @@ function startRun(mode: DifficultyMode): void {
   if (mode === 'daily') {
     applyDailyEventModifiers(state, getTodayDailyEvent());
   }
+  // Roll the per-run "dungeon law" mutators (1 in Epic, 2 in Ancient).
+  // No-op for other modes. Stacks on top of biome / daily event.
+  applyRunMutators(state);
   attachRunInventory(state, meta);
   state.onIngredientDrop = (id, amount) => {
     const key = id as IngredientId;

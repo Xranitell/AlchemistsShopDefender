@@ -1,6 +1,7 @@
 import type { GameState } from '../game/state';
 import { CARDS, cardName } from '../data/cards';
-import { tWithFallback } from '../i18n';
+import { MUTATOR_BY_ID } from '../data/mutators';
+import { t, tWithFallback } from '../i18n';
 
 /** Pause-menu stats overlay.
  *  Shows all active player and enemy modifiers in a scrollable panel,
@@ -54,6 +55,23 @@ export class PauseStatsOverlay {
       tWithFallback('ui.pause.enemyTitle', 'Модификаторы врагов'),
       this.enemyStats(state),
     ));
+
+    // ── Run mutators ("dungeon laws") ─────────────────────────────────────
+    if (state.activeMutatorIds.length > 0) {
+      const mutLines: StatLine[] = state.activeMutatorIds
+        .map((id) => MUTATOR_BY_ID[id])
+        .filter((def): def is NonNullable<typeof def> => Boolean(def))
+        .map((def) => ({
+          label: `${def.icon} ${t(def.i18nName)}`,
+          value: def.i18nLines.map((k) => t(k)).join(' • '),
+          kind: 'debuff' as const,
+        }));
+      inner.appendChild(this.buildSection(
+        tWithFallback('ui.pause.mutatorsTitle', 'Закон подземелья'),
+        mutLines,
+        true,
+      ));
+    }
 
     // ── Endless modifiers ─────────────────────────────────────────────────
     if (state.endlessModifiers.length > 0) {

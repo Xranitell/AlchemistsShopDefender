@@ -3,6 +3,7 @@ import { totalWaves, currentWaveDuration, currentPauseDuration, isNextWaveBoss }
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
+import { MUTATOR_BY_ID } from '../data/mutators';
 import {
   POTION_BY_ID,
   POTION_INVENTORY_SIZE,
@@ -34,6 +35,10 @@ export class Hud {
   private waveValue!: HTMLSpanElement;
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
+  /** Row of mutator chips ("dungeon laws") active in this run. Built once
+   *  per mutator-id change to avoid the per-frame DOM churn the rest of
+   *  the HUD already optimises away. */
+  private mutatorRow!: HTMLDivElement;
 
   // Top-right pause button (also drives the keyboard shortcut). Holds its
   // own paused/playing state so the icon and aria-label stay in sync with
@@ -86,6 +91,7 @@ export class Hud {
   private prevWaveValue = '';
   private prevDifficulty = '';
   private prevDifficultyHidden = -1;
+  private prevMutatorKey = '';
   private prevSkipVisible = -1;
   private prevSkipText = '';
   private prevOverloadDisabled: boolean | null = null;
@@ -136,6 +142,13 @@ export class Hud {
     this.difficultyBadge = document.createElement('div');
     this.difficultyBadge.className = 'hud-difficulty-badge';
     waveStack.appendChild(this.difficultyBadge);
+
+    // Run-mutator ribbon — sits directly under the difficulty badge so the
+    // rolled "dungeon laws" are visible at a glance throughout the run.
+    this.mutatorRow = document.createElement('div');
+    this.mutatorRow.className = 'hud-mutator-row';
+    this.mutatorRow.style.display = 'none';
+    waveStack.appendChild(this.mutatorRow);
 
     // Wave / pause progress bar — shows time-left during a wave and a
     // count-down to the next wave during the preparing phase.
@@ -393,6 +406,39 @@ export class Hud {
     if (difHidden !== this.prevDifficultyHidden) {
       this.difficultyBadge.style.display = difHidden ? 'none' : '';
       this.prevDifficultyHidden = difHidden;
+    }
+
+    // Mutator row — rebuilt only when the active set actually changes (so
+    // it stays cheap on the per-frame `update` path).
+    const mutKey = state.activeMutatorIds.join(',');
+    if (mutKey !== this.prevMutatorKey) {
+      this.prevMutatorKey = mutKey;
+      this.mutatorRow.innerHTML = '';
+      if (state.activeMutatorIds.length === 0) {
+        this.mutatorRow.style.display = 'none';
+      } else {
+        this.mutatorRow.style.display = '';
+        for (const id of state.activeMutatorIds) {
+          const def = MUTATOR_BY_ID[id];
+          if (!def) continue;
+          const chip = document.createElement('div');
+          chip.className = 'hud-mutator-chip';
+          chip.style.color = def.color;
+          chip.style.borderColor = def.color;
+          const name = t(def.i18nName);
+          const lines = def.i18nLines.map((k) => t(k)).join(' • ');
+          chip.title = `${t('ui.mutator.label')}: ${name}\n${lines}`;
+          const ico = document.createElement('span');
+          ico.className = 'hud-mutator-icon';
+          ico.textContent = def.icon;
+          const lbl = document.createElement('span');
+          lbl.className = 'hud-mutator-name';
+          lbl.textContent = name;
+          chip.appendChild(ico);
+          chip.appendChild(lbl);
+          this.mutatorRow.appendChild(chip);
+        }
+      }
     }
 
     // Skip-wave button only active during preparing phase
