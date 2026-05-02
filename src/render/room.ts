@@ -145,11 +145,12 @@ function drawPlankFloor(
   // cover the canvas after the transform.
   const padY = Math.ceil(Math.abs(w * FLOOR_TILT)) + BOARD_H * 2;
   ctx.save();
-  // Flip the plank layer along the Y axis (vertical mirror). The user
-  // asked for the texture to be flipped along Y — we keep the underlying
-  // shear so the diagonal direction is preserved, just mirrored top↔
-  // bottom so the highlight / shadow / grain side of each plank reads
-  // the way the user expects.
+  // Mirror the plank layer on both axes — the user iterated through the
+  // four orientations and landed on the 180° one (Y flip + X flip on
+  // top), which keeps the diagonal pointing toward the bottom-right
+  // corner while mirroring the highlight/shadow side of each plank.
+  ctx.translate(w, 0);
+  ctx.scale(-1, 1);
   ctx.translate(0, h);
   ctx.scale(1, -1);
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
