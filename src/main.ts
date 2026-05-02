@@ -688,21 +688,6 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp, contractBlue, contractAncient, completedContracts };
 }
 
-/** Compose a reward-breakdown subtitle string for victory/defeat screens. */
-function rewardBreakdown(r: { blue: number; ancient: number; epicKeys: number; ancientKeys: number; bpXp: number }, kills: number, wave: number, victory: boolean): string {
-  const parts = [
-    t('ui.reward.wave', { wave, total: totalWaves(state) }),
-    t('ui.reward.kills', { n: kills }),
-    t('ui.reward.blueGain', { n: r.blue }),
-  ];
-  if (r.ancient > 0) parts.push(t('ui.reward.ancientGain', { n: r.ancient }));
-  if (r.epicKeys > 0) parts.push(t('ui.reward.epicKeyGain', { n: r.epicKeys }));
-  if (r.ancientKeys > 0) parts.push(t('ui.reward.ancientKeyGain', { n: r.ancientKeys }));
-  parts.push(t('ui.reward.bpGain', { n: r.bpXp }));
-  if (victory) parts.unshift(t('ui.reward.chestOpened'));
-  return parts.join(' • ');
-}
-
 /** Build the per-currency reward grid that replaces the old single-line
  *  text breakdown on the victory chest screen. Each non-zero currency
  *  becomes a tile with the canonical pixel-art icon + amount, matching
@@ -1075,28 +1060,182 @@ function showGameOver(): void {
     meta.tutorialDone = true;
   }
   const reward = awardRunEssence(false);
-  overlay.showSimple({
-    title: t('ui.defeat.title'),
-    subtitle: rewardBreakdown(reward, state.totalKills, wave, false) + t('ui.defeat.subtitleSuffix'),
-    buttons: [
-      {
-        label: t('ui.victory.doubleAd'),
-        primary: true,
-        onClick: () => {
-          void yandex.showRewarded().then((ok) => {
-            if (!ok) return;
-            doubleRewards(reward);
-            overlay.showSimple({
-              title: t('ui.defeat.doubledTitle'),
-              subtitle: t('ui.defeat.doubledSubtitle', { blue: reward.blue * 2 }),
-              buttons: [{ label: t('ui.common.toMenu'), primary: true, onClick: () => restart() }],
-            });
-          });
-        },
-      },
-      { label: t('ui.common.toMenu'), onClick: () => restart() },
-    ],
+  const sprites = getSprites();
+  const lastMode = state.difficulty;
+
+  // Build the dramatic "Mannequin has fallen" panel. Custom DOM (instead
+  // of overlay.showSimple) so we can compose: shattered red rays + sparks
+  // backdrop, the fallen mannequin sprite, glitched title, reward chips,
+  // a rotating tip line, and the dominant pulsing "Try again" CTA.
+  const root = overlay.getRootElement();
+  root.innerHTML = '';
+  root.classList.remove('cards-mode');
+
+  const panel = document.createElement('div');
+  panel.className = 'panel defeat-overlay';
+
+  // Backdrop: red rays that shimmer + a layer of upward-floating ember
+  // particles. Both purely cosmetic — the real CTA hierarchy below is
+  // what carries the "try again" emotion.
+  const stage = document.createElement('div');
+  stage.className = 'defeat-stage';
+  panel.appendChild(stage);
+
+  const rays = document.createElement('div');
+  rays.className = 'defeat-rays';
+  stage.appendChild(rays);
+
+  const sparkLayer = document.createElement('div');
+  sparkLayer.className = 'defeat-sparks';
+  for (let i = 0; i < 14; i++) {
+    const spark = document.createElement('span');
+    spark.className = 'defeat-spark';
+    spark.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    spark.style.setProperty('--delay', `${(Math.random() * 2.4).toFixed(2)}s`);
+    spark.style.setProperty('--dur', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
+    spark.style.setProperty('--scale', `${(0.6 + Math.random() * 0.9).toFixed(2)}`);
+    sparkLayer.appendChild(spark);
+  }
+  stage.appendChild(sparkLayer);
+
+  // Fallen mannequin: reuse the existing battle sprite, rotated + dimmed
+  // via CSS so it reads as "knocked over". A "crack" pseudo-element on
+  // the wrapper paints a chest-fracture line over the chest plate.
+  const mannequinWrap = document.createElement('div');
+  mannequinWrap.className = 'defeat-mannequin';
+  const fallen = spriteIcon(sprites.mannequin, { scale: 4, extraClass: 'defeat-mannequin-sprite' });
+  mannequinWrap.appendChild(fallen);
+  stage.appendChild(mannequinWrap);
+
+  // Glitched title — letters jitter independently to sell the "system
+  // failure" beat without us shipping an image. Each character gets a
+  // randomized animation delay so they desync slightly.
+  const titleText = t('ui.defeat.title');
+  const title = document.createElement('h2');
+  title.className = 'defeat-title';
+  for (const ch of Array.from(titleText)) {
+    if (ch === ' ') {
+      title.appendChild(document.createTextNode(' '));
+      continue;
+    }
+    const span = document.createElement('span');
+    span.className = 'defeat-title-char';
+    span.textContent = ch;
+    span.dataset.char = ch;
+    span.style.animationDelay = `${(Math.random() * 0.6).toFixed(2)}s`;
+    title.appendChild(span);
+  }
+  panel.appendChild(title);
+
+  const tagline = document.createElement('div');
+  tagline.className = 'defeat-tagline';
+  tagline.textContent = t('ui.defeat.tagline');
+  panel.appendChild(tagline);
+
+  // One-line summary — wave reached + kills, mirroring the victory chest.
+  const summary = document.createElement('div');
+  summary.className = 'defeat-summary';
+  summary.textContent = t('ui.defeat.summary', {
+    wave,
+    total: totalWaves(state),
+    kills: state.totalKills,
   });
+  panel.appendChild(summary);
+
+  // Reward chips: only the resources that actually accrued from the
+  // partial run. Each chip uses the same canonical pixel-art icon as the
+  // victory grid so the player sees concretely what they walked away
+  // with — a visible "you didn't lose nothing" nudge to retry.
+  const chipRow = document.createElement('div');
+  chipRow.className = 'defeat-chips';
+  const chips: { sprite: BakedSprite; amount: number; glow?: boolean }[] = [
+    { sprite: sprites.iconCoin, amount: state.totalKills },
+  ];
+  if (reward.blue > 0) chips.push({ sprite: sprites.iconBlueEssence, amount: reward.blue });
+  if (reward.ancient > 0) chips.push({ sprite: sprites.iconAncientEssence, amount: reward.ancient, glow: true });
+  if (reward.epicKeys > 0) chips.push({ sprite: sprites.iconEpicKey, amount: reward.epicKeys });
+  if (reward.ancientKeys > 0) chips.push({ sprite: sprites.iconAncientKey, amount: reward.ancientKeys, glow: true });
+  if (reward.bpXp > 0) chips.push({ sprite: sprites.iconRerolls, amount: reward.bpXp });
+  for (const c of chips) {
+    const chip = document.createElement('div');
+    chip.className = 'defeat-chip';
+    chip.appendChild(spriteIcon(c.sprite, { scale: 2, extraClass: c.glow ? 'glow-gold' : '' }));
+    const num = document.createElement('span');
+    num.textContent = `+${c.amount}`;
+    chip.appendChild(num);
+    chipRow.appendChild(chip);
+  }
+  panel.appendChild(chipRow);
+
+  // Random motivational tip — picks one of six Russian/English coaching
+  // lines so a defeat screen never feels identical twice in a row, and
+  // the player always leaves with a concrete "try this next time" hook.
+  const tipKey = `ui.defeat.tip.${Math.floor(Math.random() * 6)}` as const;
+  const tip = document.createElement('div');
+  tip.className = 'defeat-tip';
+  tip.textContent = t(tipKey);
+  panel.appendChild(tip);
+
+  // Footer — the primary CTA is "Try again" (gold, pulsing, oversized)
+  // because the brief is "make the player want to retry". Secondary
+  // actions (rewarded ad to double the partial-run reward, return to
+  // menu) are demoted to a smaller row below.
+  const ctaWrap = document.createElement('div');
+  ctaWrap.className = 'defeat-cta-wrap';
+
+  let doubled = false;
+  const tryBtn = document.createElement('button');
+  tryBtn.className = 'defeat-cta-primary';
+  tryBtn.textContent = t('ui.defeat.tryAgain');
+  tryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  tryBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.hide();
+    startRun(lastMode);
+  });
+  ctaWrap.appendChild(tryBtn);
+
+  const secondaryRow = document.createElement('div');
+  secondaryRow.className = 'defeat-secondary-row';
+
+  const adBtn = document.createElement('button');
+  adBtn.className = 'defeat-cta-secondary defeat-cta-double';
+  adBtn.textContent = t('ui.victory.doubleAd');
+  adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  adBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    if (doubled) return;
+    void yandex.showRewarded().then((ok) => {
+      if (!ok) return;
+      doubled = true;
+      doubleRewards(reward);
+      overlay.showSimple({
+        title: t('ui.defeat.doubledTitle'),
+        subtitle: t('ui.defeat.doubledSubtitle', { blue: reward.blue * 2 }),
+        buttons: [
+          { label: t('ui.defeat.tryAgain'), primary: true, onClick: () => { overlay.hide(); startRun(lastMode); } },
+          { label: t('ui.common.toMenu'), onClick: () => restart() },
+        ],
+      });
+    });
+  });
+  secondaryRow.appendChild(adBtn);
+
+  const menuBtn = document.createElement('button');
+  menuBtn.className = 'defeat-cta-secondary';
+  menuBtn.textContent = t('ui.common.toMenu');
+  menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  menuBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    restart();
+  });
+  secondaryRow.appendChild(menuBtn);
+
+  ctaWrap.appendChild(secondaryRow);
+  panel.appendChild(ctaWrap);
+
+  root.appendChild(panel);
+  root.classList.add('visible');
 }
 
 function showMainMenu(): void {
