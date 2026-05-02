@@ -180,7 +180,7 @@ export class MetaOverlay {
 
     const ancientChip = document.createElement('span');
     ancientChip.className = 'meta-currency ancient';
-    ancientChip.appendChild(spriteIcon(sprites.iconAncientEssence, { scale: 2 }));
+    ancientChip.appendChild(spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }));
     const ancientLabel = document.createElement('span');
     ancientLabel.textContent = t('ui.meta.ancient');
     ancientChip.appendChild(ancientLabel);

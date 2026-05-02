@@ -41,7 +41,7 @@ export class MainMenu {
     ));
     topBar.appendChild(buildCurrencyChip(
       'ancient-essence',
-      spriteIcon(sprites.iconAncientEssence, { scale: 2 }),
+      spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }),
       opts.meta.ancientEssence,
       t('ui.menu.tooltip.ancientEssence'),
     ));
@@ -53,7 +53,7 @@ export class MainMenu {
     ));
     topBar.appendChild(buildCurrencyChip(
       'ancient-key',
-      spriteIcon(sprites.iconAncientKey, { scale: 2 }),
+      spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }),
       opts.meta.ancientKeys,
       t('ui.menu.tooltip.ancientKey'),
     ));

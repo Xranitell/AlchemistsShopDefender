@@ -88,7 +88,10 @@ export class DifficultyOverlay {
         const count = isEpic ? opts.meta.epicKeys : opts.meta.ancientKeys;
         const wrap = document.createElement('span');
         wrap.className = 'difficulty-cost-label';
-        wrap.appendChild(spriteIcon(sprite, { scale: 2 }));
+        wrap.appendChild(spriteIcon(sprite, {
+          scale: 2,
+          extraClass: isEpic ? undefined : 'glow-gold',
+        }));
         const txt = document.createElement('span');
         txt.textContent = t(labelKey);
         wrap.appendChild(txt);

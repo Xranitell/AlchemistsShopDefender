@@ -185,6 +185,36 @@ body {
   display: inline-block;
   flex-shrink: 0;
 }
+/* Legendary "ancient" sprites (ancient essence vial, ancient key) get a
+ * warm gold halo + subtle pulse so they visibly glint as the rarest
+ * currencies in the game, without the artist having to bake the glow
+ * into the sprite itself. The two drop-shadows stack: an outer warm
+ * halo, then a sharp 1-pixel black backdrop so the sprite still reads
+ * crisply over light backgrounds. */
+.pixel-icon.glow-gold {
+  filter:
+    drop-shadow(0 0 5px rgba(255, 215, 102, 0.85))
+    drop-shadow(0 0 1px rgba(255, 245, 208, 0.95))
+    drop-shadow(1px 1px 0 #07080e);
+  animation: pixel-icon-glow 2.4s ease-in-out infinite;
+}
+@keyframes pixel-icon-glow {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 4px rgba(255, 215, 102, 0.65))
+      drop-shadow(0 0 1px rgba(255, 245, 208, 0.95))
+      drop-shadow(1px 1px 0 #07080e);
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 8px rgba(255, 225, 122, 1))
+      drop-shadow(0 0 2px rgba(255, 245, 208, 1))
+      drop-shadow(1px 1px 0 #07080e);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-icon.glow-gold { animation: none; }
+}
 
 /* WAVE widget */
 .hud-wave-badge { min-width: 130px; }

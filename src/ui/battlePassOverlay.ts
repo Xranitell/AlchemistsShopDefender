@@ -186,7 +186,9 @@ export class BattlePassOverlay {
 function buildBpRewardCell(reward: { type: 'gold' | 'blue_essence' | 'ancient_essence' | 'keys'; amount: number }): HTMLElement {
   const wrap = document.createElement('span');
   wrap.className = 'bp-reward';
-  wrap.appendChild(spriteIcon(rewardSprite(reward.type), { scale: 2 }));
+  // Ancient-essence rewards glow gold; the rest stay flat.
+  const extraClass = reward.type === 'ancient_essence' ? 'glow-gold' : undefined;
+  wrap.appendChild(spriteIcon(rewardSprite(reward.type), { scale: 2, extraClass }));
   const lab = document.createElement('span');
   lab.className = 'bp-reward-amt';
   lab.textContent = bpRewardLabel(reward);
