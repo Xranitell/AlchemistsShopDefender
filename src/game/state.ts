@@ -7,6 +7,7 @@ import type { DifficultyMode, DifficultyModifier, EnemyAbility } from '../data/d
 import type { BiomeId } from '../data/biomes';
 import type { EliteModId } from '../data/eliteMods';
 import type { DailyEventId } from '../data/dailyEvents';
+import type { MutatorId } from '../data/mutators';
 
 export type Phase =
   | 'menu'
@@ -415,6 +416,10 @@ export interface GameState {
   /** When `difficulty === 'daily'`, the rotating event id selected for
    *  today's MSK weekday. Drives event-specific gameplay & visual flags. */
   dailyEventId: DailyEventId | null;
+  /** Run-wide "dungeon law" mutators rolled at run start — 1 in Epic, 2 in
+   *  Ancient. Empty in Normal / Endless / Daily. The order in this array is
+   *  also the apply-order; later entries stack on top of earlier ones. */
+  activeMutatorIds: MutatorId[];
   /** Multiplier applied to per-wave spawn count (Horde event). 1 = default. */
   spawnCountMult: number;
   /** Render-side darkness flag — drawn on top of the world (Night event). */

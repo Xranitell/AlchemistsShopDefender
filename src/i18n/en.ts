@@ -149,6 +149,7 @@ export const EN: Record<string, string> = {
   'ui.pause.uniqueTitle': 'Unique Effects',
   'ui.pause.enemyTitle': 'Enemy Modifiers',
   'ui.pause.endlessTitle': 'Endless Mode',
+  'ui.pause.mutatorsTitle': 'Dungeon Law',
   'ui.pause.stat.potionDamage': 'Potion Damage',
   'ui.pause.stat.potionRadius': 'Potion Radius',
   'ui.pause.stat.potionCooldown': 'Potion Cooldown',
@@ -669,4 +670,49 @@ Object.assign(EN, {
   'ui.dailyEvent.chaos.desc': 'A random endless-mode modifier is active from the start of the run.',
   'ui.dailyEvent.chaos.line.mod': 'Random modifier active immediately',
   'ui.dailyEvent.chaos.line.gold': '+60% gold',
+
+  // ── Run Mutators ("Dungeon Law") ────────────────────────────────────
+  'ui.mutator.label': 'Law',
+  'ui.mutator.previewEpic': 'Dungeon law: 1 random law is active for the run.',
+  'ui.mutator.previewAncient': 'Dungeon law: 2 random laws are active for the run.',
+
+  'ui.mutator.fog.name': 'Fog',
+  'ui.mutator.fog.flavor': 'Tower vision is muffled.',
+  'ui.mutator.fog.line.range': '−25% tower range',
+  'ui.mutator.fog.line.gold': '+30% gold drops',
+
+  'ui.mutator.fragile_flasks.name': 'Fragile Flasks',
+  'ui.mutator.fragile_flasks.flavor': 'Hit harder, splash tighter.',
+  'ui.mutator.fragile_flasks.line.dmg': '+30% potion damage',
+  'ui.mutator.fragile_flasks.line.radius': '−25% potion blast radius',
+
+  'ui.mutator.steady_aim.name': 'Steady Aim',
+  'ui.mutator.steady_aim.flavor': 'Slower, heavier shots.',
+  'ui.mutator.steady_aim.line.dmg': '+40% tower damage',
+  'ui.mutator.steady_aim.line.rate': '−25% tower fire rate',
+
+  'ui.mutator.mana_rhythm.name': 'Rhythm of Mana',
+  'ui.mutator.mana_rhythm.flavor': 'Abilities recharge faster.',
+  'ui.mutator.mana_rhythm.line.overload': '+75% Overload charge rate',
+  'ui.mutator.mana_rhythm.line.hp': '+20% enemy HP',
+
+  'ui.mutator.arcane_storm.name': 'Arcane Storm',
+  'ui.mutator.arcane_storm.flavor': 'Reactions strike harder.',
+  'ui.mutator.arcane_storm.line.reactions': '+60% reaction damage',
+  'ui.mutator.arcane_storm.line.speed': '+15% enemy speed',
+
+  'ui.mutator.greedy_walls.name': 'Greedy Walls',
+  'ui.mutator.greedy_walls.flavor': 'The dungeon pays more — and bites harder.',
+  'ui.mutator.greedy_walls.line.gold': '+50% gold drops',
+  'ui.mutator.greedy_walls.line.hp': '+25% enemy HP',
+
+  'ui.mutator.iron_skin.name': 'Iron Skin',
+  'ui.mutator.iron_skin.flavor': 'Armoured but softer-hitting enemies.',
+  'ui.mutator.iron_skin.line.armor': '+20% enemy armour',
+  'ui.mutator.iron_skin.line.dmg': '−25% enemy damage',
+
+  'ui.mutator.swift_throws.name': 'Swift Hand',
+  'ui.mutator.swift_throws.flavor': 'Throw more, hit a touch softer.',
+  'ui.mutator.swift_throws.line.cd': '−25% potion cooldown',
+  'ui.mutator.swift_throws.line.dmg': '−20% potion damage',
 });

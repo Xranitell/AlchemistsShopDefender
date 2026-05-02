@@ -193,6 +193,7 @@ export const RU: Record<string, string> = {
   'ui.pause.uniqueTitle': 'Уникальные эффекты',
   'ui.pause.enemyTitle': 'Бонусы врагов',
   'ui.pause.endlessTitle': 'Бесконечный режим',
+  'ui.pause.mutatorsTitle': 'Закон подземелья',
   'ui.pause.stat.potionDamage': 'Урон склянок',
   'ui.pause.stat.potionRadius': 'Радиус склянок',
   'ui.pause.stat.potionCooldown': 'Откат склянок',
@@ -673,4 +674,54 @@ Object.assign(RU, {
   'ui.dailyEvent.chaos.desc': 'Случайный модификатор бесконечного режима активен с самого начала забега.',
   'ui.dailyEvent.chaos.line.mod': 'Случайный модификатор активирован сразу',
   'ui.dailyEvent.chaos.line.gold': '+60% к золоту',
+
+  // ── Run Mutators («Закон Подземелья») ───────────────────────────────
+  // Random run-wide modifiers rolled on Epic (1) and Ancient (2) starts.
+  // Each mutator pairs a buff with a drawback so the run forces a build
+  // adaptation rather than a flat numeric boost. The HUD shows tiny
+  // ribbons under the difficulty badge; the modifier-preview overlay
+  // mentions how many laws will roll for the chosen difficulty.
+  'ui.mutator.label': 'Закон',
+  'ui.mutator.previewEpic': 'Закон подземелья: 1 случайный закон активен в забеге.',
+  'ui.mutator.previewAncient': 'Закон подземелья: 2 случайных закона активны в забеге.',
+
+  'ui.mutator.fog.name': 'Туман',
+  'ui.mutator.fog.flavor': 'Видимость башен ограничена.',
+  'ui.mutator.fog.line.range': '−25% радиус башен',
+  'ui.mutator.fog.line.gold': '+30% золота с врагов',
+
+  'ui.mutator.fragile_flasks.name': 'Хрупкие колбы',
+  'ui.mutator.fragile_flasks.flavor': 'Сильнее бьют, но взрыв уже.',
+  'ui.mutator.fragile_flasks.line.dmg': '+30% урон зелий',
+  'ui.mutator.fragile_flasks.line.radius': '−25% радиус взрыва зелий',
+
+  'ui.mutator.steady_aim.name': 'Твёрдая рука',
+  'ui.mutator.steady_aim.flavor': 'Реже, но точнее.',
+  'ui.mutator.steady_aim.line.dmg': '+40% урон башен',
+  'ui.mutator.steady_aim.line.rate': '−25% скорострельность башен',
+
+  'ui.mutator.mana_rhythm.name': 'Ритм маны',
+  'ui.mutator.mana_rhythm.flavor': 'Способности заряжаются быстрее.',
+  'ui.mutator.mana_rhythm.line.overload': '+75% к скорости заряда Overload',
+  'ui.mutator.mana_rhythm.line.hp': '+20% ХП врагов',
+
+  'ui.mutator.arcane_storm.name': 'Шторм стихий',
+  'ui.mutator.arcane_storm.flavor': 'Реакции бьют сильнее.',
+  'ui.mutator.arcane_storm.line.reactions': '+60% урон стихийных реакций',
+  'ui.mutator.arcane_storm.line.speed': '+15% скорость врагов',
+
+  'ui.mutator.greedy_walls.name': 'Жадные стены',
+  'ui.mutator.greedy_walls.flavor': 'Подземелье щедрее — но и крепче.',
+  'ui.mutator.greedy_walls.line.gold': '+50% золота с врагов',
+  'ui.mutator.greedy_walls.line.hp': '+25% ХП врагов',
+
+  'ui.mutator.iron_skin.name': 'Железная кожа',
+  'ui.mutator.iron_skin.flavor': 'Враги бронированы, но удар их слабее.',
+  'ui.mutator.iron_skin.line.armor': '+20% брони у врагов',
+  'ui.mutator.iron_skin.line.dmg': '−25% урон врагов',
+
+  'ui.mutator.swift_throws.name': 'Лёгкая рука',
+  'ui.mutator.swift_throws.flavor': 'Бросаешь чаще, но слабее.',
+  'ui.mutator.swift_throws.line.cd': '−25% откат броска зелий',
+  'ui.mutator.swift_throws.line.dmg': '−20% урон зелий',
 });
