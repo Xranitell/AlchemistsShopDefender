@@ -57,13 +57,6 @@ export function rollCardOptions(state: GameState): CardDef[] {
   // Choose the appropriate base pool.
   let pool = (cursed ? cursedCardPool() : normalCardPool()).filter((c) => !taken.has(c.id));
 
-  // Catalyst slot cap (GDD §7.5): if the player has filled every catalyst
-  // slot, stop offering catalyst cards (cursed or otherwise). Crown of
-  // Elements grants its own bonus slot when picked.
-  if (state.equippedCatalysts.length >= state.catalystSlots) {
-    pool = pool.filter((c) => c.category !== 'catalyst');
-  }
-
   // Legendary cooldown window — drop legendaries if we offered one recently.
   // Cursed waves still respect the cooldown so the player isn't drowned in
   // legendary-cursed offers.
@@ -222,13 +215,6 @@ export function applyCard(state: GameState, card: CardDef): void {
   const mq = state.mannequin;
   const dm = state.difficultyModifier;
 
-  // Track equipped catalysts so the renderer can orbit icons around the
-  // Mannequin and so the draft pool can stop offering them once the slot
-  // cap is reached. Cursed catalyst cards count too.
-  if (card.category === 'catalyst' && !state.equippedCatalysts.includes(card.id)) {
-    state.equippedCatalysts.push(card.id);
-  }
-
   // ── Normal stat-only cards ────────────────────────────────────────────────
   switch (card.id) {
     // Potion damage
@@ -356,7 +342,7 @@ export function applyCard(state: GameState, card: CardDef): void {
       m.potionDamageMult *= 0.70;
       break;
 
-    // Catalysts
+    // Unique reagent effects (formerly «catalysts»)
     case 'curse_fire_ruby':
       m.fireRubyCounter = 5;
       m.potionDamageMult *= 1.13;
@@ -381,8 +367,7 @@ export function applyCard(state: GameState, card: CardDef): void {
     case 'curse_crown_of_elements':
       m.reactionDamageMult *= 1.25;
       m.reactionOverloadCharge = Math.max(m.reactionOverloadCharge, 10);
-      state.catalystSlots += 1;
-      m.potionDamageMult *= 1.13;
+      m.potionDamageMult *= 1.20;
       dm.hpMult *= 1.20;
       break;
 

@@ -344,12 +344,6 @@ function categoryGlyphSvg(cat: CardDef['category']): string {
         <line x1="12" y1="10" x2="12" y2="14" />
         <line x1="12" y1="17" x2="12" y2="17.4" />
       </svg>`;
-    case 'catalyst':
-      // Diamond / orbital catalyst = sparkle.
-      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3 L19 12 L12 21 L5 12 Z" />
-        <circle cx="12" cy="12" r="2" fill="currentColor" />
-      </svg>`;
   }
 }
 

@@ -282,10 +282,6 @@ export function buildInitialState(
     auraModuleId: 'ether_amp',
     transmuteTimer: 0,
     transmuteGoldMult: 1,
-    // Default catalyst capacity per GDD §7.5: 2 slots, expanded by meta and
-    // Crown of Elements legendary.
-    catalystSlots: 2,
-    equippedCatalysts: [],
     reviveUsed: false,
     revivePaused: false,
     // Crafted potions (loaded from MetaSave.inventory at run start)
@@ -381,14 +377,12 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
     if (!dm.abilities.includes(ab)) dm.abilities.push(ab);
   }
 
-  // Per-event flags consumed by render / wave / catalyst systems.
+  // Per-event flags consumed by render / wave systems.
   state.spawnCountMult = ev.spawnCountMult ?? 1;
   state.nightModeActive = !!ev.nightMode;
-  if (ev.bonusCatalystSlots) {
-    state.catalystSlots += ev.bonusCatalystSlots;
-  }
 
-  // Glass Cannon: shrink the player's HP pool, double potion damage.
+  // Glass Cannon / Abundance: scale the player's HP pool. <1 weakens (Glass
+  // Cannon), >1 buffs (Abundance). Potion damage mult is handled below.
   if (ev.playerHpMult && ev.playerHpMult !== 1) {
     state.mannequin.maxHp = Math.max(1, Math.round(state.mannequin.maxHp * ev.playerHpMult));
     state.mannequin.hp = state.mannequin.maxHp;

@@ -139,10 +139,9 @@ export function checkElementalReaction(
   }
 }
 
-/** Aether Engine catalyst card and Crown of Elements legendary both grant
- *  Overload charge on reactions; the legendary stacks additively on top.
- *  This helper centralises that so individual reactions don't need to know
- *  which sources are active. */
+/** Aether Engine and Crown of Elements both grant Overload charge on
+ *  reactions; the legendary stacks additively on top. This helper centralises
+ *  that so individual reactions don't need to know which sources are active. */
 function chargeOverloadOnReaction(state: GameState, baseAmount: number): void {
   let total = 0;
   if (state.modifiers.aetherEngineActive) total += baseAmount;

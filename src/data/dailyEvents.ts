@@ -46,10 +46,8 @@ export interface DailyEventDef {
   spawnCountMult?: number;
   /** Halve the player's mannequin HP at run start (Glass Cannon). */
   playerHpMult?: number;
-  /** Multiplier applied to thrown-potion damage (Glass Cannon). */
+  /** Multiplier applied to thrown-potion damage (Glass Cannon / Abundance). */
   playerDamageMult?: number;
-  /** Bonus catalyst slots granted at run start. */
-  bonusCatalystSlots?: number;
   /** Activate a "fog of war" / dark vignette in the renderer (Night Mode). */
   nightMode?: boolean;
   /** Trigger a random "rare" endless modifier roll at run start (Chaos). */
@@ -172,7 +170,8 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nFlavor: 'ui.dailyEvent.abundance.flavor',
     i18nDescription: 'ui.dailyEvent.abundance.desc',
     i18nLines: [
-      'ui.dailyEvent.abundance.line.cats',
+      'ui.dailyEvent.abundance.line.hp',
+      'ui.dailyEvent.abundance.line.dmg',
       'ui.dailyEvent.abundance.line.gold',
     ],
     icon: '✨',
@@ -184,7 +183,8 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       goldMult: 1.5,
       abilities: [],
     },
-    bonusCatalystSlots: 1,
+    playerHpMult: 1.5,
+    playerDamageMult: 1.25,
   },
   {
     id: 'chaos',

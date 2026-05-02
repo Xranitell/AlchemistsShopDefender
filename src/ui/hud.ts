@@ -48,8 +48,6 @@ export class Hud {
   // Top-right gold / essence
   private goldLabel!: HTMLSpanElement;
   private essenceLabel!: HTMLSpanElement;
-  private catalystBadge!: HTMLDivElement;
-  private catalystValue!: HTMLSpanElement;
 
   // (Magnet button removed — auto-magnet is always active)
 
@@ -86,8 +84,6 @@ export class Hud {
   private prevGold = -1;
   private prevEssence = -1;
   private prevWaveValue = '';
-  private prevCatalystVisible = -1; // -1 = unset, 0 = hidden, 1 = visible
-  private prevCatalystValue = '';
   private prevDifficulty = '';
   private prevDifficultyHidden = -1;
   private prevSkipVisible = -1;
@@ -217,19 +213,6 @@ export class Hud {
     essInner.appendChild(this.essenceLabel);
     essBadge.appendChild(essInner);
     rightStack.appendChild(essBadge);
-
-    // Catalyst slot counter: shows N/M (equipped/total). Hidden when no slots.
-    this.catalystBadge = document.createElement('div');
-    this.catalystBadge.className = 'hud-catalyst-badge';
-    const catLab = document.createElement('div');
-    catLab.className = 'hud-tag-label';
-    catLab.textContent = t('ui.hud.catalysts');
-    this.catalystValue = document.createElement('span');
-    this.catalystValue.className = 'hud-resource-value';
-    this.catalystValue.textContent = '0/0';
-    this.catalystBadge.appendChild(catLab);
-    this.catalystBadge.appendChild(this.catalystValue);
-    rightStack.appendChild(this.catalystBadge);
 
     // Pause button — sits in the top-right corner, above the resource stack.
     // Tapping it toggles the run pause state via the `onPause` handler so
@@ -376,22 +359,6 @@ export class Hud {
     if (state.essence !== this.prevEssence) {
       this.essenceLabel.textContent = `${state.essence}`;
       this.prevEssence = state.essence;
-    }
-
-    // Catalyst counter — show only when there's at least 1 slot.
-    if (state.catalystSlots > 0) {
-      if (this.prevCatalystVisible !== 1) {
-        this.catalystBadge.style.display = '';
-        this.prevCatalystVisible = 1;
-      }
-      const cv = `${state.equippedCatalysts.length}/${state.catalystSlots}`;
-      if (cv !== this.prevCatalystValue) {
-        this.catalystValue.textContent = cv;
-        this.prevCatalystValue = cv;
-      }
-    } else if (this.prevCatalystVisible !== 0) {
-      this.catalystBadge.style.display = 'none';
-      this.prevCatalystVisible = 0;
     }
 
     const ws = state.waveState;

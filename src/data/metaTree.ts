@@ -57,7 +57,6 @@ export type MetaEffect =
   | { kind: 'overloadMaxCharge'; value: number }
   | { kind: 'auraRadius'; value: number }
   | { kind: 'reactionDamage'; value: number }
-  | { kind: 'catalystSlot'; value: number }
   // Survival
   | { kind: 'maxHp'; value: number }
   | { kind: 'armor'; value: number }

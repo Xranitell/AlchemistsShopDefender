@@ -73,7 +73,7 @@ export type TowerBehavior =
    *  buffs other towers within `range`. */
   | 'aura';
 
-export type CardCategory = 'recipe' | 'engineering' | 'ritual' | 'catalyst';
+export type CardCategory = 'recipe' | 'engineering' | 'ritual';
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
 /** Whether an individual effect bullet on a card helps the player (`pos`)
