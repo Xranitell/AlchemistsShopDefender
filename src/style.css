@@ -2991,6 +2991,19 @@ body {
 .mm-leaderboards { border-color: #8ecae6; color: #8ecae6; }
 .mm-leaderboards:hover { background: rgba(142, 202, 230, 0.18); }
 
+/* Variant rendered directly under the title (between logo and "TO BATTLE")
+   instead of buried in the bottom mode-buttons row. Larger padding + font
+   so it reads as a primary navigation entry rather than a footnote. */
+.mm-leaderboards-top {
+  align-self: center;
+  font-size: 12px;
+  padding: 10px 22px 12px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  border-width: 2px;
+  letter-spacing: 2px;
+}
+
 /* ============ Leaderboard overlay ============ */
 .lb-overlay {
   position: fixed;

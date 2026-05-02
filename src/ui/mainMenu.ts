@@ -124,13 +124,22 @@ export class MainMenu {
     title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
     midCol.appendChild(title);
 
+    // Leaderboards button — placed directly under the logo so it's the first
+    // thing the player sees after the title (between logo and the TO BATTLE
+    // CTA), instead of being buried alongside the special-mode shortcuts.
+    const lbBtn = document.createElement('button');
+    lbBtn.className = 'mm-mode-btn mm-leaderboards mm-leaderboards-top';
+    lbBtn.textContent = t('ui.menu.leaderboards');
+    lbBtn.addEventListener('click', opts.onLeaderboards);
+    midCol.appendChild(lbBtn);
+
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
     battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
     midCol.appendChild(battleBtn);
 
-    // Special mode buttons
+    // Special mode buttons (daily experiment + boss challenge).
     const modeBtns = document.createElement('div');
     modeBtns.className = 'mm-mode-btns';
 
@@ -145,12 +154,6 @@ export class MainMenu {
     bossBtn.textContent = t('ui.menu.bossChallenge');
     bossBtn.addEventListener('click', opts.onBossChallenge);
     modeBtns.appendChild(bossBtn);
-
-    const lbBtn = document.createElement('button');
-    lbBtn.className = 'mm-mode-btn mm-leaderboards';
-    lbBtn.textContent = t('ui.menu.leaderboards');
-    lbBtn.addEventListener('click', opts.onLeaderboards);
-    modeBtns.appendChild(lbBtn);
 
     midCol.appendChild(modeBtns);
 
