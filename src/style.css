@@ -1763,6 +1763,36 @@ body {
 .mm-currency.ancient-essence strong { color: #ffd166; }
 .mm-currency.epic-key strong { color: #c084fc; }
 .mm-currency.ancient-key strong { color: #ffd166; }
+/* Mastery summary line below the top bar. Only rendered after the
+ * player has at least one Epic / Ancient victory. Layout mirrors
+ * .mm-top-bar so the chips visually pair with the currency strip. */
+.mm-mastery-line {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  padding: 0 6px 6px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+}
+.mm-mastery-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(8, 11, 22, 0.6);
+  border: 2px solid #1a1f30;
+  border-radius: 5px;
+  color: var(--fg-dim);
+}
+.mm-mastery-chip strong { color: #ffd166; font-weight: normal; }
+.mm-mastery-chip.mm-mastery-epic strong { color: #c084fc; }
+.mm-mastery-bonus {
+  color: #7df9ff;
+  font-size: 12px;
+  text-shadow: 2px 2px 0 #07080e;
+}
 .mm-currency .pixel-icon {
   display: inline-block;
   image-rendering: pixelated;

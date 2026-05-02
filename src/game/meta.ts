@@ -289,6 +289,41 @@ function isAllocationConnected(allocated: Set<string>): boolean {
 
 import type { DifficultyMode } from '../data/difficulty';
 
+/** Per-mode multipliers applied on top of the base reward formula. Higher
+ *  difficulties always pay out *more* of every currency, so the player
+ *  always has a concrete reason to climb the difficulty ladder rather than
+ *  farm Normal forever. */
+const DIFFICULTY_REWARD_MULT: Record<DifficultyMode, number> = {
+  normal: 1,
+  epic: 1.5,
+  ancient: 2.5,
+  endless: 1.2,
+  daily: 1,
+};
+
+/** Base ancient-essence drops per difficulty (added together with the
+ *  late-wave bonus). Ancient mode pours out the rare currency precisely
+ *  because that's the loop hook — meta-tree keystones cost ancient
+ *  essence, and you should be able to afford one keystone per ~2 Ancient
+ *  victories. */
+const ANCIENT_BASE_BY_DIFFICULTY: Record<DifficultyMode, number> = {
+  normal: 1,
+  epic: 2,
+  ancient: 4,
+  endless: 1,
+  daily: 1,
+};
+
+/** Soft cap on the mastery-bonus multiplier so a veteran player doesn't
+ *  outscale the meta tree. +2% blue essence per Epic mastery point and +3%
+ *  per Ancient mastery point, capped at +60% combined. */
+export function masteryEssenceMult(meta: MetaSave): number {
+  const epic = Math.max(0, meta.epicMastery ?? 0);
+  const ancient = Math.max(0, meta.ancientMastery ?? 0);
+  const raw = epic * 0.02 + ancient * 0.03;
+  return 1 + Math.min(0.6, raw);
+}
+
 export function calcRunEssence(
   meta: MetaSave,
   waveReached: number,
@@ -302,6 +337,10 @@ export function calcRunEssence(
     const u = META_BY_ID[id];
     if (u && u.effect.kind === 'essenceBonus') mult *= u.effect.value;
   }
+  // Mastery bonus stacks multiplicatively on top of meta-tree bonuses.
+  mult *= masteryEssenceMult(meta);
+  // Per-mode multiplier — Epic 1.5x, Ancient 2.5x, Endless 1.2x.
+  const diffMult = DIFFICULTY_REWARD_MULT[difficulty] ?? 1;
 
   // v3 reward curve: reduced further so the expanded talent tree takes
   // 25-40 runs to fully explore.
@@ -311,20 +350,24 @@ export function calcRunEssence(
   //   Wave 15 victory + 140 kills →  15*3 + 140*0.2 + 4 + 15 ≈ 92 blue
   let blue = Math.floor(waveReached * 3 + totalKills * 0.2 + 4);
   if (victory) blue += 15;
-  blue = Math.round(blue * mult);
+  blue = Math.round(blue * mult * diffMult);
 
-  // Ancient essence: scarcer in v2 — only on a full victory, +1 if you also
-  // cleared past wave 12 (so ancient keystones cost 2 and require multiple
-  // full runs to stack up).
+  // Ancient essence: difficulty-scaled base (Normal 1, Epic 2, Ancient 4)
+  // only on a full victory, +1 if you also cleared past wave 12. Ancient
+  // also gets +1 extra for clearing wave 12. That makes Ancient the
+  // dedicated farm for keystone unlocks.
   let ancient = 0;
-  if (victory) ancient = 1;
-  if (waveReached >= 12 && victory) ancient += 1;
+  if (victory) {
+    ancient = ANCIENT_BASE_BY_DIFFICULTY[difficulty] ?? 1;
+    if (waveReached >= 12) ancient += difficulty === 'ancient' ? 2 : 1;
+  }
 
   // Difficulty-based key drops:
   //   normal → epic keys (the ticket into Epic mode).
   //   epic   → ancient keys (the ticket into Ancient mode).
+  //   ancient → bonus ancient keys on victory (so a perfect Ancient run
+  //   funds the *next* Ancient run instead of grinding Epic in between).
   // Keys scale with progress: 1 every ~5 waves, +1 on full victory.
-  // Higher difficulties don't drop their own key tier — Ancient is the cap.
   let epicKeys = 0;
   let ancientKeys = 0;
   if (difficulty === 'normal') {
@@ -333,6 +376,10 @@ export function calcRunEssence(
   } else if (difficulty === 'epic') {
     ancientKeys = Math.max(0, Math.floor(waveReached / 5));
     if (victory) ancientKeys += 1;
+  } else if (difficulty === 'ancient' && victory) {
+    // Ancient sustains itself: 1 ancient key on full victory so a
+    // committed player can chain Ancient runs.
+    ancientKeys = 1;
   }
 
   return { blue, ancient, epicKeys, ancientKeys };

@@ -5,6 +5,7 @@ import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
 import { buildLeaderboardPanel } from './leaderboardOverlay';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
+import { masteryEssenceMult } from '../game/meta';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -60,6 +61,12 @@ export class MainMenu {
     // RU/EN switcher in the top-right corner of the main menu (PR-9 i18n).
     topBar.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
     wrap.appendChild(topBar);
+
+    // Mastery line — only visible once the player has at least one
+    // Epic / Ancient victory. Shows the cumulative bonus to blue-essence
+    // drops so the loop is legible.
+    const masteryLine = buildMasteryLine(opts.meta);
+    if (masteryLine) wrap.appendChild(masteryLine);
 
     // Center content
     const center = document.createElement('div');
@@ -230,6 +237,54 @@ function buildCurrencyChip(
   amt.textContent = `${amount}`;
   chip.appendChild(amt);
   return chip;
+}
+
+/** Builds the small mastery summary line shown right below the top bar.
+ *  Returns null while the player has 0 mastery in both modes — at that
+ *  point the line would just be visual noise. Once they have at least
+ *  one Epic / Ancient victory we surface the running tally and the
+ *  cumulative %-bonus so the meta loop is legible. */
+function buildMasteryLine(meta: MetaSave): HTMLElement | null {
+  const epic = meta.epicMastery ?? 0;
+  const ancient = meta.ancientMastery ?? 0;
+  if (epic === 0 && ancient === 0) return null;
+  const bonus = Math.round((masteryEssenceMult(meta) - 1) * 100);
+  const wrap = document.createElement('div');
+  wrap.className = 'mm-mastery-line';
+
+  const sprites = getSprites();
+  if (epic > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-epic';
+    chip.title = t('ui.menu.tooltip.epicMastery');
+    chip.appendChild(spriteIcon(sprites.iconEpicKey, { scale: 2 }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.epicMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${epic}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  if (ancient > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-ancient';
+    chip.title = t('ui.menu.tooltip.ancientMastery');
+    chip.appendChild(spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.ancientMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${ancient}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  const bonusEl = document.createElement('span');
+  bonusEl.className = 'mm-mastery-bonus';
+  bonusEl.textContent = t('ui.menu.masteryBonus', { n: bonus });
+  bonusEl.title = t('ui.menu.tooltip.masteryBonus');
+  wrap.appendChild(bonusEl);
+  return wrap;
 }
 
 /** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).
