@@ -141,31 +141,32 @@ export class PauseStatsOverlay {
           .map((def) => {
             const prog = def.progress(state);
             const desc = t(def.i18nDesc, { n: prog.target });
-            let reward = '';
+            let rewardLabel = '';
             switch (def.reward.kind) {
-              case 'blue': reward = t('ui.contract.rewardBlue', { n: def.reward.amount }); break;
-              case 'ancient': reward = t('ui.contract.rewardAncient', { n: def.reward.amount }); break;
-              case 'epicKey': reward = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
-              case 'blueMult': reward = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
-            }
-            // Render the contract as 3 separate lines (progress/status,
-            // reward, condition) so the panel never has to flex-shrink a
-            // long " • "-joined string off the right edge of the panel.
-            let progressLine: string;
-            if (prog.failed) {
-              progressLine = t('ui.contract.failed');
-            } else if (prog.done) {
-              progressLine = t('ui.contract.done');
-            } else {
-              progressLine = `${prog.current}/${prog.target}`;
+              case 'blue': rewardLabel = t('ui.contract.rewardBlue', { n: def.reward.amount }); break;
+              case 'ancient': rewardLabel = t('ui.contract.rewardAncient', { n: def.reward.amount }); break;
+              case 'epicKey': rewardLabel = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
+              case 'blueMult': rewardLabel = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
             }
             const kind: StatLine['kind'] =
               prog.failed ? 'debuff' : prog.done ? 'buff' : 'unique';
+            // Custom contract render: progress text + bar, highlighted
+            // reward chip, dimmed condition line. See `renderContract`
+            // in `buildSection` for the actual DOM layout.
             return {
               label: `${def.icon} ${t(def.i18nName)}`,
               value: '',
-              valueLines: [progressLine, reward, desc],
               kind,
+              contract: {
+                progress: {
+                  current: prog.current,
+                  target: prog.target,
+                  done: prog.done,
+                  failed: prog.failed,
+                },
+                reward: { kind: def.reward.kind, label: rewardLabel },
+                condition: desc,
+              },
             };
           });
         side.appendChild(this.buildSection(
@@ -386,11 +387,15 @@ export class PauseStatsOverlay {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      // Multi-line entries (mutators / contracts): render the icon + name
-      // as a header row, then stack each body line below. Avoids the
-      // single-row flex layout that was clipping long " • "-joined
-      // strings off the right edge of the panel.
-      if (line.valueLines && line.valueLines.length > 0) {
+      // Contract entries get a fully custom layout: pixel-gold header,
+      // a progress text + horizontal bar, a highlighted reward chip
+      // tinted by reward kind, and a dimmed condition line. This keeps
+      // each piece of contract info visually distinct (versus the
+      // generic stacked bullet list used for mutators).
+      if (line.contract) {
+        section.appendChild(this.buildContractBlock(line));
+      } else if (line.valueLines && line.valueLines.length > 0) {
+        // Mutators: icon + name header, then each i18n line as a bullet.
         const block = document.createElement('div');
         block.className = `ps-block ps-${line.kind}`;
 
@@ -437,6 +442,83 @@ export class PauseStatsOverlay {
     }
     return section;
   }
+
+  /** Render a single contract entry as: pixel-gold header → progress
+   *  text + horizontal bar (auto-fills + flips colour for done/failed)
+   *  → highlighted reward chip tinted by reward kind → dimmed
+   *  condition line. Each piece is its own DOM element so long Russian
+   *  copy wraps cleanly inside the panel. */
+  private buildContractBlock(line: StatLine): HTMLElement {
+    const c = line.contract!;
+    const block = document.createElement('div');
+    block.className = `ps-contract ps-contract-${line.kind}`;
+
+    const head = document.createElement('div');
+    head.className = `ps-contract-head ps-${line.kind}`;
+    head.textContent = line.label;
+    block.appendChild(head);
+
+    // Progress: text + bar. Done / failed contracts fill the bar in
+    // their state colour (green / red) so the status is readable at a
+    // glance even before reading the text label.
+    const progRow = document.createElement('div');
+    progRow.className = 'ps-contract-progress';
+
+    const progText = document.createElement('div');
+    progText.className = 'ps-contract-progress-text';
+    if (c.progress.failed) {
+      progText.textContent = t('ui.contract.failed');
+      progText.classList.add('failed');
+    } else if (c.progress.done) {
+      progText.textContent = t('ui.contract.done');
+      progText.classList.add('done');
+    } else {
+      progText.textContent = `${c.progress.current} / ${c.progress.target}`;
+    }
+    progRow.appendChild(progText);
+
+    const bar = document.createElement('div');
+    bar.className = 'ps-contract-bar';
+    const fill = document.createElement('div');
+    fill.className = 'ps-contract-bar-fill';
+    let pct = 0;
+    if (c.progress.failed) {
+      fill.classList.add('failed');
+      pct = 100;
+    } else if (c.progress.done) {
+      fill.classList.add('done');
+      pct = 100;
+    } else if (c.progress.target > 0) {
+      pct = Math.max(
+        0,
+        Math.min(100, (c.progress.current / c.progress.target) * 100),
+      );
+    }
+    fill.style.width = `${pct}%`;
+    bar.appendChild(fill);
+    progRow.appendChild(bar);
+
+    block.appendChild(progRow);
+
+    // Reward chip — tinted by reward kind so the player can scan the
+    // value of each contract at a glance. Failed contracts get a
+    // muted/strikethrough chip so the reward reads as "lost".
+    const reward = document.createElement('div');
+    reward.className =
+      `ps-contract-reward ps-contract-reward-${c.reward.kind}` +
+      (c.progress.failed ? ' failed' : '') +
+      (c.progress.done ? ' done' : '');
+    reward.textContent = c.reward.label;
+    block.appendChild(reward);
+
+    // Condition (dim, smaller).
+    const cond = document.createElement('div');
+    cond.className = 'ps-contract-condition';
+    cond.textContent = c.condition;
+    block.appendChild(cond);
+
+    return block;
+  }
 }
 
 interface StatLine {
@@ -446,10 +528,28 @@ interface StatLine {
   /** Optional description shown below the label for unique effects. */
   desc?: string;
   /** Optional list of body lines shown stacked under the label. Used for
-   *  multi-bullet entries (mutators, contracts) so each piece of info
-   *  (progress / reward / condition) wraps cleanly inside the panel
-   *  instead of overflowing as a single " • "-joined string. */
+   *  multi-bullet entries (mutators) so each piece of info wraps cleanly
+   *  inside the panel instead of overflowing as a single " • "-joined
+   *  string. */
   valueLines?: string[];
+  /** Optional structured contract data — drives a custom block layout
+   *  (progress text + bar, highlighted reward chip, dimmed condition
+   *  line) instead of the generic label/value row. */
+  contract?: ContractStat;
+}
+
+interface ContractStat {
+  progress: {
+    current: number;
+    target: number;
+    done: boolean;
+    failed: boolean;
+  };
+  reward: {
+    kind: 'blue' | 'ancient' | 'epicKey' | 'blueMult';
+    label: string;
+  };
+  condition: string;
 }
 
 function abilityLabel(ab: string): string {
