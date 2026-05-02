@@ -4086,23 +4086,51 @@ body {
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* Group wrapper: holds left (stats) + right (blessings/laws/contracts)
-   panels side-by-side and centers the pair on screen. */
+/* Group wrapper: vertical column holding the header row (title + close)
+   and the panel row (left stats + right blessings/laws/contracts). */
 .pause-stats-group {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 16px;
+  flex-direction: column;
+  align-items: stretch;
   max-width: 96vw;
   max-height: 92vh;
+}
+
+/* Header: "Пауза" title + close button on one line. */
+.pause-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 12px;
+}
+.pause-stats-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 20px;
+  color: #ffd166;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
+  margin: 0;
+}
+.pause-stats-header .overlay-close {
+  position: static;
+  flex-shrink: 0;
+}
+
+/* Row holding the two panels side-by-side with equal height. */
+.pause-stats-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 0;
 }
 
 .pause-stats-inner {
   position: relative;
   width: min(640px, 46vw);
-  max-height: 85vh;
+  max-height: 80vh;
   overflow-y: auto;
-  padding: 28px 24px 20px;
+  padding: 20px 24px;
   background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -4114,22 +4142,16 @@ body {
 /* Right side panel for blessings, laws, contracts. */
 .pause-stats-side {
   position: relative;
-  width: min(440px, 42vw);
-  max-height: 85vh;
+  width: min(480px, 46vw);
+  max-height: 80vh;
   overflow-y: auto;
-  padding: 28px 24px 20px;
+  padding: 20px 24px;
   background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.15) transparent;
-}
-
-.pause-stats-inner .overlay-close {
-  position: absolute;
-  top: 12px;
-  right: 16px;
 }
 
 .ps-section {
@@ -4443,10 +4465,12 @@ body {
 
   /* Pause-stats overlay — on small viewports stack panels vertically. */
   .pause-stats-group {
-    flex-direction: column;
-    align-items: center;
     max-height: 92dvh;
     overflow-y: auto;
+  }
+  .pause-stats-row {
+    flex-direction: column;
+    align-items: center;
   }
   .pause-stats-inner {
     width: min(560px, 94vw);
@@ -4458,6 +4482,7 @@ body {
     max-height: none;
     padding: 18px 16px 14px;
   }
+  .pause-stats-title { font-size: 16px; }
   .ps-section { margin-bottom: 12px; }
   .ps-section-title { font-size: 12px; margin-bottom: 6px; }
   .ps-row { font-size: 16px; gap: 10px; padding: 2px 0; }

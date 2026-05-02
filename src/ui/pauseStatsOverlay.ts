@@ -23,15 +23,17 @@ export class PauseStatsOverlay {
     const wrap = document.createElement('div');
     wrap.className = 'pause-stats-overlay';
 
-    // Group wrapper: holds two panels side-by-side, centered as a unit.
+    // Group wrapper: holds title + two panels side-by-side, centered as a unit.
     const group = document.createElement('div');
     group.className = 'pause-stats-group';
 
-    // ── Left panel: player / enemy stats ─────────────────────────────────
-    const inner = document.createElement('div');
-    inner.className = 'pause-stats-inner';
-
-    // Close button
+    // "Пауза" header + close button row
+    const header = document.createElement('div');
+    header.className = 'pause-stats-header';
+    const title = document.createElement('h2');
+    title.className = 'pause-stats-title';
+    title.textContent = tWithFallback('ui.pause.title', 'Пауза');
+    header.appendChild(title);
     const closeBtn = document.createElement('button');
     closeBtn.className = 'overlay-close';
     closeBtn.textContent = '✕';
@@ -39,7 +41,16 @@ export class PauseStatsOverlay {
       this.hide();
       if (this.onCloseCallback) this.onCloseCallback();
     });
-    inner.appendChild(closeBtn);
+    header.appendChild(closeBtn);
+    group.appendChild(header);
+
+    // Row wrapper for the two panels
+    const row = document.createElement('div');
+    row.className = 'pause-stats-row';
+
+    // ── Left panel: player / enemy stats ─────────────────────────────────
+    const inner = document.createElement('div');
+    inner.className = 'pause-stats-inner';
 
     // ── Player stats ──────────────────────────────────────────────────────
     inner.appendChild(this.buildSection(
@@ -63,7 +74,7 @@ export class PauseStatsOverlay {
       this.enemyStats(state),
     ));
 
-    group.appendChild(inner);
+    row.appendChild(inner);
 
     // ── Right panel: blessings, laws, contracts ──────────────────────────
     const hasBlessings = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
@@ -172,9 +183,10 @@ export class PauseStatsOverlay {
         ));
       }
 
-      group.appendChild(side);
+      row.appendChild(side);
     }
 
+    group.appendChild(row);
     wrap.appendChild(group);
     this.panel = wrap;
     this.root.appendChild(wrap);
