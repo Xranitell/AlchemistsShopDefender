@@ -682,8 +682,8 @@ Object.assign(RU, {
   // ribbons under the difficulty badge; the modifier-preview overlay
   // mentions how many laws will roll for the chosen difficulty.
   'ui.mutator.label': 'Закон',
-  'ui.mutator.previewEpic': 'Закон подземелья: 1 случайный закон активен в забеге.',
-  'ui.mutator.previewAncient': 'Закон подземелья: 2 случайных закона активны в забеге.',
+  'ui.mutator.previewEpic': 'Закон подземелья: каждую волну меняется 1 случайный закон.',
+  'ui.mutator.previewAncient': 'Закон подземелья: каждую волну меняются 2 случайных закона.',
 
   'ui.mutator.fog.name': 'Туман',
   'ui.mutator.fog.flavor': 'Видимость башен ограничена.',
