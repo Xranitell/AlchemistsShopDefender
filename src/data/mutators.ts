@@ -39,6 +39,11 @@ export interface MutatorDef {
   /** Applied once at run start, after meta upgrades, biome modifiers and
    *  daily-event modifiers (when applicable). Mutates `state` directly. */
   apply: (state: GameState) => void;
+  /** Inverse of `apply`. Called when the wave-rotating mutator is
+   *  swapped out at the start of a new wave. Must precisely undo the
+   *  multipliers/additions made by `apply` so card picks acquired
+   *  during the wave aren't clobbered. */
+  revert: (state: GameState) => void;
 }
 
 export const MUTATORS: MutatorDef[] = [
@@ -57,6 +62,10 @@ export const MUTATORS: MutatorDef[] = [
       state.modifiers.towerRangeMult *= 0.75;
       state.difficultyModifier.goldMult *= 1.30;
     },
+    revert: (state) => {
+      state.modifiers.towerRangeMult /= 0.75;
+      state.difficultyModifier.goldMult /= 1.30;
+    },
   },
   {
     id: 'fragile_flasks',
@@ -72,6 +81,10 @@ export const MUTATORS: MutatorDef[] = [
       // Big damage spikes, but tighter splash — punishes sloppy aim.
       state.modifiers.potionDamageMult *= 1.30;
       state.modifiers.potionRadiusMult *= 0.75;
+    },
+    revert: (state) => {
+      state.modifiers.potionDamageMult /= 1.30;
+      state.modifiers.potionRadiusMult /= 0.75;
     },
   },
   {
@@ -89,6 +102,10 @@ export const MUTATORS: MutatorDef[] = [
       state.modifiers.towerDamageMult *= 1.40;
       state.modifiers.towerFireRateMult *= 0.75;
     },
+    revert: (state) => {
+      state.modifiers.towerDamageMult /= 1.40;
+      state.modifiers.towerFireRateMult /= 0.75;
+    },
   },
   {
     id: 'mana_rhythm',
@@ -104,6 +121,10 @@ export const MUTATORS: MutatorDef[] = [
       // Overload comes back faster; in exchange, enemies are tankier.
       state.metaOverloadRateMult *= 1.75;
       state.difficultyModifier.hpMult *= 1.20;
+    },
+    revert: (state) => {
+      state.metaOverloadRateMult /= 1.75;
+      state.difficultyModifier.hpMult /= 1.20;
     },
   },
   {
@@ -121,6 +142,10 @@ export const MUTATORS: MutatorDef[] = [
       state.modifiers.reactionDamageMult *= 1.60;
       state.difficultyModifier.speedMult *= 1.15;
     },
+    revert: (state) => {
+      state.modifiers.reactionDamageMult /= 1.60;
+      state.difficultyModifier.speedMult /= 1.15;
+    },
   },
   {
     id: 'greedy_walls',
@@ -136,6 +161,10 @@ export const MUTATORS: MutatorDef[] = [
       // More gold per kill, but enemies have more HP — survivor's purse.
       state.difficultyModifier.goldMult *= 1.50;
       state.difficultyModifier.hpMult *= 1.25;
+    },
+    revert: (state) => {
+      state.difficultyModifier.goldMult /= 1.50;
+      state.difficultyModifier.hpMult /= 1.25;
     },
   },
   {
@@ -153,6 +182,10 @@ export const MUTATORS: MutatorDef[] = [
       state.modifiers.enemyArmorAdd += 0.20;
       state.difficultyModifier.damageMult *= 0.75;
     },
+    revert: (state) => {
+      state.modifiers.enemyArmorAdd -= 0.20;
+      state.difficultyModifier.damageMult /= 0.75;
+    },
   },
   {
     id: 'swift_throws',
@@ -168,6 +201,10 @@ export const MUTATORS: MutatorDef[] = [
       // Faster potions, weaker per-throw — rewards spammy, accurate play.
       state.modifiers.potionCooldownMult *= 0.75;
       state.modifiers.potionDamageMult *= 0.80;
+    },
+    revert: (state) => {
+      state.modifiers.potionCooldownMult /= 0.75;
+      state.modifiers.potionDamageMult /= 0.80;
     },
   },
 ];

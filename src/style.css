@@ -2790,68 +2790,110 @@ body {
   text-shadow: 0 0 6px currentColor;
 }
 
-/* Mutator chips ("dungeon laws") — sit just below the difficulty badge. */
-.hud-mutator-row {
+/* ── Run sidebar ──────────────────────────────────────────────────────
+   Vertical panel anchored to the LEFT edge of the screen, below the
+   wave/HP top row. Holds the wave-rotating laws and the run contracts
+   as expanded cards (icon + name + short description) so the player
+   can read the active rules at all times during a run. */
+.hud-run-sidebar {
+  position: absolute;
+  left: 12px;
+  top: 110px;
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-width: 280px;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 12;
+  max-width: 240px;
 }
-.hud-mutator-chip {
-  display: inline-flex;
-  align-items: center;
+.hud-run-section {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
+}
+.hud-run-section-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 9px;
   letter-spacing: 1px;
-  padding: 2px 6px;
-  border: 1px solid currentColor;
-  border-radius: 3px;
-  background: rgba(10, 5, 20, 0.85);
   text-transform: uppercase;
-  text-shadow: 0 0 5px currentColor;
-}
-.hud-mutator-icon {
-  font-size: 11px;
-  line-height: 1;
-  filter: drop-shadow(0 0 3px currentColor);
-}
-.hud-mutator-name {
-  white-space: nowrap;
-}
-
-/* Contract chips — same shape as mutators but with a warm "side-quest"
-   accent so the player can read them at a glance without confusion. */
-.hud-contract-row {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-width: 280px;
-}
-.hud-contract-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
-  padding: 2px 6px;
-  border: 1px solid #ffd166;
-  border-radius: 3px;
-  background: rgba(20, 12, 4, 0.85);
   color: #ffd166;
-  text-transform: uppercase;
+  margin-bottom: 2px;
   text-shadow: 0 0 5px currentColor;
+  padding-left: 2px;
 }
-.hud-contract-icon {
-  font-size: 11px;
+.hud-run-section-laws .hud-run-section-title {
+  color: #fb7185;
+}
+.hud-run-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid #ffd166;
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: rgba(10, 5, 20, 0.85);
+  font-family: 'VT323', monospace;
+  min-height: 32px;
+}
+.hud-run-card-law {
+  border-color: #fb7185;
+  border-left-color: #fb7185;
+  background: rgba(20, 6, 10, 0.85);
+}
+.hud-run-card.done {
+  background: rgba(8, 22, 10, 0.92);
+  border-color: #4ade80;
+  border-left-color: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+.hud-run-card.failed {
+  background: rgba(20, 5, 5, 0.92);
+  border-color: #ef4444;
+  border-left-color: #ef4444;
+  opacity: 0.65;
+}
+.hud-run-card-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
   line-height: 1;
   filter: drop-shadow(0 0 3px currentColor);
 }
-.hud-contract-name {
+.hud-run-card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.hud-run-card-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #ffd166;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 4px currentColor;
+}
+.hud-run-card-desc {
+  font-size: 13px;
+  line-height: 1.1;
+  color: #d8d8e0;
+  white-space: normal;
+  word-break: break-word;
+}
+.hud-run-card.done .hud-run-card-desc {
+  color: #86efac;
+}
+.hud-run-card.failed .hud-run-card-desc {
+  color: #fca5a5;
 }
 
 /* Per-contract row in the chest reward panel. Done rows glow gold;
@@ -4106,12 +4148,11 @@ body {
   .hud-timer-bar { width: 180px; height: 16px; }
   .hud-timer-label { font-size: 12px; }
   .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
-  .hud-mutator-chip { font-size: 8px; padding: 2px 5px; }
-  .hud-mutator-icon { font-size: 10px; }
-  .hud-mutator-row { max-width: 220px; }
-  .hud-contract-chip { font-size: 8px; padding: 2px 5px; }
-  .hud-contract-icon { font-size: 10px; }
-  .hud-contract-row { max-width: 220px; }
+  .hud-run-sidebar { left: 6px; top: 90px; max-width: 200px; }
+  .hud-run-card { padding: 3px 5px; min-height: 28px; }
+  .hud-run-card-name { font-size: 8px; }
+  .hud-run-card-desc { font-size: 11px; }
+  .hud-run-card-icon { width: 18px; font-size: 14px; }
 
   /* Card draft — keep 3 columns but slimmer. */
   .cards { gap: 8px; }

@@ -440,15 +440,42 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
  *  daily-event modifiers so mutator multipliers stack on top of the
  *  baseline difficulty bundle. */
 export function applyRunMutators(state: GameState): void {
+  // Initial roll for wave 1. Subsequent waves call `rerollWaveMutators`
+  // directly from the wave-end hook so the next law is visible during prep.
+  rerollWaveMutators(state);
+}
+
+/** Re-roll the wave-rotating "dungeon laws". Called once at run start (for
+ *  wave 1) and again from `startPause` after every wave end so the next
+ *  prep window shows the next wave's laws.
+ *
+ *  Each mutator def carries an explicit `revert` function — the inverse of
+ *  its `apply`. We undo the previously-active set first, then roll N new
+ *  ids and apply them. This preserves any mid-run multiplicative changes
+ *  the player picked up (cards, blessings, mannequin upgrades) since
+ *  revert ONLY undoes the multipliers/additions the mutator itself made,
+ *  and never touches anything else on `state`. */
+export function rerollWaveMutators(state: GameState): void {
   const count = mutatorCountForDifficulty(state.difficulty);
-  if (count <= 0) return;
+  // Revert the previously-active mutators, regardless of whether we are
+  // about to roll new ones. This way switching off Epic mid-run (not a
+  // real flow today, but defensive) still cleans up state.
+  for (const prevId of state.activeMutatorIds) {
+    const def = MUTATOR_BY_ID[prevId];
+    if (!def) continue;
+    def.revert(state);
+  }
+  if (count <= 0) {
+    state.activeMutatorIds = [];
+    return;
+  }
   const pool = state.rng.shuffle(MUTATORS.map((m) => m.id));
   const picked: MutatorId[] = pool.slice(0, count);
+  state.activeMutatorIds = picked;
   for (const id of picked) {
     const def = MUTATOR_BY_ID[id];
     if (!def) continue;
     def.apply(state);
-    state.activeMutatorIds.push(id);
   }
 }
 

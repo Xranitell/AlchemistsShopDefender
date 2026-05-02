@@ -673,8 +673,8 @@ Object.assign(EN, {
 
   // ── Run Mutators ("Dungeon Law") ────────────────────────────────────
   'ui.mutator.label': 'Law',
-  'ui.mutator.previewEpic': 'Dungeon law: 1 random law is active for the run.',
-  'ui.mutator.previewAncient': 'Dungeon law: 2 random laws are active for the run.',
+  'ui.mutator.previewEpic': 'Dungeon law: 1 random law rotates every wave.',
+  'ui.mutator.previewAncient': 'Dungeon law: 2 random laws rotate every wave.',
 
   'ui.mutator.fog.name': 'Fog',
   'ui.mutator.fog.flavor': 'Tower vision is muffled.',
