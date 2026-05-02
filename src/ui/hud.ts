@@ -5,6 +5,7 @@ import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 import { MUTATOR_BY_ID } from '../data/mutators';
 import { CONTRACT_BY_ID } from '../data/contracts';
+import { BLESSING_BY_ID, CURSE_BY_ID } from '../data/blessings';
 import {
   POTION_BY_ID,
   POTION_INVENTORY_SIZE,
@@ -36,10 +37,14 @@ export class Hud {
   private waveValue!: HTMLSpanElement;
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
-  /** Side panel container holding both the dungeon-law cards and the
-   *  contract cards. Lives on the left of the screen so the player can
-   *  read the active rules + goals at all times during a run. */
+  /** Side panel container holding the picked blessings/curses, the
+   *  wave-rotating dungeon laws, and the run contracts. Lives on the
+   *  left edge of the screen so the player can read the active rules,
+   *  effects, and goals at all times during a run. */
   private runSidebar!: HTMLDivElement;
+  /** Section inside the sidebar listing the picked blessings (and curse
+   *  in Ancient). Built once per run since the picks don't change. */
+  private blessingSection!: HTMLDivElement;
   /** Section inside the sidebar listing the active wave-rotating laws.
    *  Re-rendered each time the active mutator id list changes. */
   private mutatorSection!: HTMLDivElement;
@@ -100,6 +105,7 @@ export class Hud {
   private prevDifficultyHidden = -1;
   private prevMutatorKey = '';
   private prevContractKey = '';
+  private prevBlessingKey = '';
   private prevSkipVisible = -1;
   private prevSkipText = '';
   private prevOverloadDisabled: boolean | null = null;
@@ -173,10 +179,13 @@ export class Hud {
     this.runSidebar = document.createElement('div');
     this.runSidebar.className = 'hud-run-sidebar';
     this.runSidebar.style.display = 'none';
+    this.blessingSection = document.createElement('div');
+    this.blessingSection.className = 'hud-run-section hud-run-section-blessings';
     this.mutatorSection = document.createElement('div');
     this.mutatorSection.className = 'hud-run-section hud-run-section-laws';
     this.contractSection = document.createElement('div');
     this.contractSection.className = 'hud-run-section hud-run-section-contracts';
+    this.runSidebar.appendChild(this.blessingSection);
     this.runSidebar.appendChild(this.mutatorSection);
     this.runSidebar.appendChild(this.contractSection);
     this.root.appendChild(this.runSidebar);
@@ -428,7 +437,8 @@ export class Hud {
     // Sidebar visibility: only show when there is something to display.
     const hasMutators = state.activeMutatorIds.length > 0;
     const hasContracts = state.activeContractIds.length > 0;
-    this.runSidebar.style.display = (hasMutators || hasContracts) ? '' : 'none';
+    const hasBlessings = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
+    this.runSidebar.style.display = (hasMutators || hasContracts || hasBlessings) ? '' : 'none';
 
     // Mutator section — re-rendered only when the active mutator id list
     // changes (i.e. on every wave reroll). Each card shows the icon, name
@@ -466,6 +476,73 @@ export class Hud {
           body.appendChild(desc);
           card.appendChild(body);
           this.mutatorSection.appendChild(card);
+        }
+      }
+    }
+
+    // Blessing / curse section — rebuilt only when the picked set changes
+    // (i.e. once per run, since blessings/curses are picked at run start
+    // and stay for the whole run). Each card shows icon + name + the
+    // one-line effect description.
+    const blessingKey = state.activeBlessingIds.join(',') + '|' + (state.activeCurseId ?? '');
+    if (blessingKey !== this.prevBlessingKey) {
+      this.prevBlessingKey = blessingKey;
+      this.blessingSection.innerHTML = '';
+      if (hasBlessings) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.blessing.label');
+        this.blessingSection.appendChild(head);
+        for (const id of state.activeBlessingIds) {
+          const def = BLESSING_BY_ID[id];
+          if (!def) continue;
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-blessing';
+          card.style.borderColor = def.color;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.style.color = def.color;
+          ico.textContent = def.icon;
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.style.color = def.color;
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          desc.textContent = t(def.i18nEffect);
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.blessingSection.appendChild(card);
+        }
+        if (state.activeCurseId) {
+          const def = CURSE_BY_ID[state.activeCurseId];
+          if (def) {
+            const card = document.createElement('div');
+            card.className = 'hud-run-card hud-run-card-curse';
+            card.style.borderColor = def.color;
+            const ico = document.createElement('div');
+            ico.className = 'hud-run-card-icon';
+            ico.style.color = def.color;
+            ico.textContent = def.icon;
+            card.appendChild(ico);
+            const body = document.createElement('div');
+            body.className = 'hud-run-card-body';
+            const name = document.createElement('div');
+            name.className = 'hud-run-card-name';
+            name.style.color = def.color;
+            name.textContent = t(def.i18nName);
+            body.appendChild(name);
+            const desc = document.createElement('div');
+            desc.className = 'hud-run-card-desc';
+            desc.textContent = t(def.i18nEffect);
+            body.appendChild(desc);
+            card.appendChild(body);
+            this.blessingSection.appendChild(card);
+          }
         }
       }
     }

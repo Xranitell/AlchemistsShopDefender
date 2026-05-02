@@ -1,6 +1,7 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { mutatorCountForDifficulty } from '../data/mutators';
 import { contractCountForDifficulty } from '../data/contracts';
+import { blessingChoiceCount, curseChoiceCount } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
 
 export class ModifierPreviewOverlay {
@@ -67,6 +68,17 @@ export class ModifierPreviewOverlay {
       const li = document.createElement('li');
       li.textContent = t(contractCount === 2 ? 'ui.contract.previewEpic' : 'ui.contract.previewAncient');
       li.style.color = '#ffd166';
+      list.appendChild(li);
+    }
+    // Blessing pre-run picker (Epic: pick 1 of 3; Ancient: pick 1 of 3
+    // blessings + 1 of 3 curses).
+    const blessingCount = blessingChoiceCount(opts.mode);
+    if (blessingCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = curseChoiceCount(opts.mode) > 0
+        ? t('ui.blessing.previewAncient')
+        : t('ui.blessing.previewEpic');
+      li.style.color = '#fde047';
       list.appendChild(li);
     }
     panel.appendChild(list);
