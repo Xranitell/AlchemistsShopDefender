@@ -142,29 +142,37 @@ function drawPlankFloor(
   ctx.fillStyle = pal.tileCrack;
   ctx.fillRect(0, 0, w, h);
 
-  // After the iso shear plus 90° CW rotation + X mirror, the planks live
-  // on a parallelogram-shaped patch noticeably bigger than the canvas,
-  // so we pad the drawing range generously so coverage stays full.
+  // 1) Bake the plank texture onto an off-screen canvas at 1:1. Drawing
+  //    the per-pixel wear (grain, knots, fibres, nails) directly into
+  //    the sheared coordinate space stretched every 1-px feature into
+  //    an invisible slash, so the floor read as a flat gradient. We
+  //    bake first, then warp the whole baked image with the iso
+  //    transform so the chunky pixel-art look survives.
   const span = Math.max(w, h);
-  const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
-  ctx.save();
-  // Shear + 90° clockwise rotate around the canvas centre. The user
-  // asked for an extra X flip on top of the previous chain — two X
-  // flips cancel out, so the final chain is just rotate + shear.
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(Math.PI / 2);
-  ctx.translate(-w / 2, -h / 2);
-  ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
+  // The off-screen canvas has to cover the unrotated source rectangle
+  // that ends up filling the destination after rotate(90°) + shear.
+  // Generous padding keeps the corners covered even at extreme tilts.
+  const ow = Math.ceil(span * (2 + Math.abs(FLOOR_TILT)));
+  const oh = Math.ceil(span * (2 + Math.abs(FLOOR_TILT)));
+  const off = document.createElement('canvas');
+  off.width = ow;
+  off.height = oh;
+  const offCtx = off.getContext('2d')!;
+  offCtx.imageSmoothingEnabled = false;
+
+  // Baked-canvas base fill.
+  offCtx.fillStyle = pal.tileCrack;
+  offCtx.fillRect(0, 0, ow, oh);
 
   let row = 0;
-  for (let y = -padY; y < h + padY; y += BOARD_H) {
+  for (let y = 0; y < oh; y += BOARD_H) {
     // Alternate the starting offset of plank seams between rows so the
     // joints don't line up in a brick-pattern column.
     const seamOffset = (row & 1) === 0 ? 0 : Math.floor(PLANK_MAX * 0.45);
 
-    let x = -padY - seamOffset;
+    let x = -seamOffset;
     let plankIdx = 0;
-    while (x < w + padY) {
+    while (x < ow) {
       const seed = hash2((plankIdx + 1) * 191, row * 311 + 17);
       const widthSpan = PLANK_MAX - PLANK_MIN;
       const pw = PLANK_MIN + (seed % widthSpan);
@@ -174,21 +182,21 @@ function drawPlankFloor(
       const shadeBits = (seed >> 4) & 0b11;
       const body = shadeBits === 0 ? pal.tileC : shadeBits === 1 ? pal.tileA : pal.tileB;
 
-      ctx.fillStyle = body;
-      ctx.fillRect(x, y, pw, BOARD_H);
+      offCtx.fillStyle = body;
+      offCtx.fillRect(x, y, pw, BOARD_H);
       // Top highlight + bottom shadow sell board-on-board layering.
-      ctx.fillStyle = 'rgba(255, 220, 170, 0.12)';
-      ctx.fillRect(x, y, pw, 1);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
-      ctx.fillRect(x, y + BOARD_H - 1, pw, 1);
+      offCtx.fillStyle = 'rgba(255, 220, 170, 0.12)';
+      offCtx.fillRect(x, y, pw, 1);
+      offCtx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+      offCtx.fillRect(x, y + BOARD_H - 1, pw, 1);
 
       // Vertical seam — dark gap between this plank and the next.
-      ctx.fillStyle = pal.tileCrack;
-      ctx.fillRect(x + pw - 1, y, 2, BOARD_H);
+      offCtx.fillStyle = pal.tileCrack;
+      offCtx.fillRect(x + pw - 1, y, 2, BOARD_H);
 
       // Plank wear — pulled out into a helper so the visual logic isn't
       // tangled in the layout loop.
-      addPlankDetails(ctx, x, y, pw, BOARD_H, seed, pal);
+      addPlankDetails(offCtx, x, y, pw, BOARD_H, seed, pal);
 
       x += pw;
       plankIdx++;
@@ -196,11 +204,24 @@ function drawPlankFloor(
 
     // Horizontal gap between rows of boards — adds the "stacked
     // floorboard" look from the reference art.
-    ctx.fillStyle = pal.tileCrack;
-    ctx.fillRect(-padY, y + BOARD_H - 2, w + padY * 2, 2);
+    offCtx.fillStyle = pal.tileCrack;
+    offCtx.fillRect(0, y + BOARD_H - 2, ow, 2);
     row++;
   }
 
+  // 2) Warp the baked plank texture onto the destination canvas. The
+  //    transform chain is 90° CW rotate around the canvas centre,
+  //    followed by an iso 2:1 shear (slope 1/FLOOR_TILT after the
+  //    rotation lands the planks on the iso axis).
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.translate(-w / 2, -h / 2);
+  ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
+  // Centre the baked source so its midpoint lines up with the canvas
+  // centre after the rotate. We shift by the un-rotated dimensions
+  // so the rotation symmetry holds.
+  ctx.drawImage(off, (w - ow) / 2, (h - oh) / 2);
   ctx.restore();
 
   // Soft edge vignette pushing focus toward the centre. Drawn AFTER the
