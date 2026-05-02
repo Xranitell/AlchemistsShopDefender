@@ -3986,6 +3986,11 @@ body {
 }
 
 /* ============ Victory chest overlay ============ */
+/* Chest victory panel — paired with the defeat panel as the run-end
+ * surface family. Dark navy backdrop with a subtle warm glow up top, a
+ * pixel-art gold corner ornament in opposite corners and a faint warm
+ * rim shadow. Same visual language as `.defeat-overlay`, just keyed in
+ * gold/celebration tones (vs. defeat's smouldering red). */
 .chest-overlay {
   display: flex;
   flex-direction: column;
@@ -3993,10 +3998,15 @@ body {
   gap: 14px;
   padding: 28px 28px 24px;
   position: relative;
-  /* Pixel-art gold corner ornaments matching the card panels — anchored
-   * to the panel's outer rim so the chest screen reads as part of the
-   * same in-game UI family (run banners, card picker, etc). */
   isolation: isolate;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 209, 102, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+  border-color: #3a2a12;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 209, 102, 0.30),
+    0 0 0 1px #0a0608,
+    0 12px 40px rgba(170, 110, 30, 0.30);
 }
 .chest-overlay::before,
 .chest-overlay::after {
@@ -4183,12 +4193,12 @@ body {
   align-items: center;
   gap: 4px;
   padding: 12px 8px 10px;
-  background: linear-gradient(180deg, rgba(51, 60, 86, 0.98), rgba(20, 25, 40, 0.98));
-  border: 3px solid #0b0d15;
+  background: linear-gradient(180deg, rgba(60, 36, 30, 0.96), rgba(24, 12, 14, 0.96));
+  border: 3px solid #1a0608;
   border-radius: 6px;
   box-shadow:
-    0 0 0 2px var(--hud-frame-rim),
-    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 2px rgba(255, 140, 60, 0.35),
+    inset 0 2px 0 rgba(255, 209, 102, 0.18),
     inset 0 -3px 0 rgba(0, 0, 0, 0.45),
     0 4px 0 rgba(0, 0, 0, 0.55);
 }
@@ -4232,10 +4242,10 @@ body {
   line-height: 1.05;
 }
 
-/* Footer (ad / menu buttons) on the chest screen — same `menu-buttons`
- * row layout as elsewhere, just spaced after the reward grid. The
- * "double" CTA gets the gold accent treatment to mirror the rewarded-
- * ad CTA on Daily Rewards. */
+/* Footer (ad / menu buttons) on the chest screen — visually paired with
+ * the defeat-overlay secondary row so the run-end surfaces share button
+ * vocabulary. The "double" CTA gets the gold accent treatment to mirror
+ * the rewarded-ad CTA on Daily Rewards. */
 .chest-footer {
   display: flex;
   justify-content: center;
@@ -4243,15 +4253,39 @@ body {
   flex-wrap: wrap;
   margin-top: 4px;
 }
+.chest-footer button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 12px 18px;
+  color: var(--fg-dim);
+  background: linear-gradient(180deg, #2a1820 0%, #160a10 100%);
+  border: 2px solid #3a1818;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  flex: 0 1 auto;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.55);
+  transition: transform 90ms ease, color 120ms ease, border-color 120ms ease;
+}
+.chest-footer button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.chest-footer button:active { transform: translateY(1px); }
 .chest-cta-double {
   border-color: var(--accent) !important;
   color: var(--accent) !important;
   box-shadow:
-    0 0 0 2px var(--hud-frame-rim),
-    inset 0 2px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.45),
-    0 4px 0 rgba(0, 0, 0, 0.55),
-    0 0 14px rgba(255, 209, 102, 0.45);
+    inset 0 1px 0 rgba(255, 209, 102, 0.30),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(255, 209, 102, 0.45) !important;
 }
 
 /* Flying icon — copy of the reward sprite that arcs out of the chest
@@ -4718,7 +4752,12 @@ body {
   line-height: 1;
 }
 
-/* ============ Pause stats overlay ============ */
+/* ============ Pause stats overlay ============
+ *
+ * Visually mirrors the defeat / chest panels: dark navy backdrop with a
+ * subtle warm radial glow up top, a pixel-art gold corner ornament in
+ * opposite corners, and a faint warm rim in the box-shadow. Shared base
+ * styles keep the run-end and pause surfaces reading as one UI family. */
 .pause-stats-overlay {
   position: fixed;
   inset: 0;
@@ -4753,7 +4792,10 @@ body {
   font-size: 20px;
   color: #ffd166;
   letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(255, 209, 102, 0.5);
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608,
+    0 0 12px rgba(255, 209, 102, 0.5);
   margin: 0;
 }
 .pause-stats-header .overlay-close {
@@ -4770,43 +4812,76 @@ body {
   min-height: 0;
 }
 
-.pause-stats-inner {
-  position: relative;
-  width: min(640px, 46vw);
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 20px 24px;
-  background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
-}
-
-/* Right side panel for blessings, laws, contracts. */
+.pause-stats-inner,
 .pause-stats-side {
   position: relative;
-  width: min(480px, 46vw);
+  isolation: isolate;
   max-height: 80vh;
   overflow-y: auto;
-  padding: 20px 24px;
-  background: linear-gradient(180deg, rgba(22, 18, 36, 0.97), rgba(12, 8, 20, 0.97));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  padding: 22px 24px 18px;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 209, 102, 0.10) 0%, transparent 55%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+  border: 3px solid #0b0d15;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 2px rgba(210, 79, 28, 0.30),
+    0 0 0 1px #0a0608,
+    0 12px 40px rgba(0, 0, 0, 0.7);
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  scrollbar-color: rgba(255, 209, 102, 0.30) transparent;
 }
+.pause-stats-inner { width: min(640px, 46vw); }
+.pause-stats-side  { width: min(480px, 46vw); }
+
+/* Pixel-art gold corner ornaments (top-left + bottom-right) — matches
+ * the defeat / chest panels so the pause surface reads as part of the
+ * same in-game UI family. */
+.pause-stats-inner::before,
+.pause-stats-inner::after,
+.pause-stats-side::before,
+.pause-stats-side::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(135deg, #ff6a3d 50%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.pause-stats-inner::before,
+.pause-stats-side::before { top: 6px; left: 6px; }
+.pause-stats-inner::after,
+.pause-stats-side::after {
+  bottom: 6px;
+  right: 6px;
+  background: linear-gradient(-45deg, #ff6a3d 50%, transparent 50%);
+}
+
+/* Custom scrollbars (WebKit) so the warm-rim aesthetic carries into the
+ * scroll track instead of falling back to the OS default. */
+.pause-stats-inner::-webkit-scrollbar,
+.pause-stats-side::-webkit-scrollbar { width: 8px; }
+.pause-stats-inner::-webkit-scrollbar-thumb,
+.pause-stats-side::-webkit-scrollbar-thumb {
+  background: rgba(255, 209, 102, 0.28);
+  border-radius: 4px;
+}
+.pause-stats-inner::-webkit-scrollbar-track,
+.pause-stats-side::-webkit-scrollbar-track { background: transparent; }
 
 .ps-section {
   margin-bottom: 18px;
+  position: relative;
 }
 .ps-section.ps-unique {
-  background: rgba(192, 132, 252, 0.08);
-  border: 1px solid rgba(192, 132, 252, 0.25);
-  border-radius: 8px;
-  padding: 12px 14px 8px;
+  background: rgba(0, 0, 0, 0.32);
+  border-left: 3px solid var(--accent);
+  border-right: 3px solid var(--accent);
+  border-top: none;
+  border-bottom: none;
+  border-radius: 0;
+  padding: 10px 14px 8px;
 }
 
 .ps-section-title {
@@ -4815,7 +4890,10 @@ body {
   color: #ffd166;
   letter-spacing: 1px;
   margin: 0 0 10px;
-  text-shadow: 0 0 8px rgba(255, 209, 102, 0.4);
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608,
+    0 0 8px rgba(255, 209, 102, 0.4);
 }
 
 .ps-row {
@@ -4825,15 +4903,21 @@ body {
   padding: 3px 0;
   font-family: 'VT323', monospace;
   font-size: 20px;
+  min-width: 0;
 }
 .ps-value {
   min-width: 72px;
   text-align: right;
   font-weight: bold;
   flex-shrink: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .ps-label {
   color: #d8d2c0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .ps-empty {
   color: rgba(255,255,255,0.3);
@@ -4855,6 +4939,8 @@ body {
   font-size: 16px;
   padding: 2px 0 4px 78px;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Line separator between unique effects in the pause stats overlay */
@@ -4864,11 +4950,72 @@ body {
   background: linear-gradient(
     to right,
     transparent 0%,
-    rgba(192, 132, 252, 0.30) 20%,
-    rgba(192, 132, 252, 0.30) 80%,
+    rgba(255, 209, 102, 0.30) 20%,
+    rgba(255, 209, 102, 0.30) 80%,
     transparent 100%
   );
 }
+
+/* ── Multi-line entries (mutators, contracts) ─────────────────────────
+ *
+ * Replaces the single-row label/value flex layout for entries that have
+ * multiple distinct pieces of info (progress / reward / condition for a
+ * contract; buff line + drawback line for a dungeon-law mutator). Each
+ * piece is rendered on its own row so long Russian copy wraps cleanly
+ * inside the panel instead of overflowing off the right edge. */
+.ps-block {
+  padding: 6px 0 8px;
+  margin-bottom: 4px;
+  font-family: 'VT323', monospace;
+}
+.ps-block-head {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 13px;
+  color: #ffd166;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608,
+    0 0 6px rgba(255, 209, 102, 0.30);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ps-block-line {
+  font-size: 18px;
+  line-height: 1.25;
+  padding: 1px 0 1px 14px;
+  position: relative;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ps-block-line::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  font-size: 0.55em;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+/* Kind tints for body lines: buff = soft green, debuff = warm red,
+ * unique = lavender. Match the existing single-row palette. */
+.ps-block-line.ps-buff {
+  color: #7df9a8;
+  text-shadow: 0 0 4px rgba(125, 249, 168, 0.25);
+}
+.ps-block-line.ps-debuff {
+  color: #ff8a6a;
+  text-shadow: 0 0 4px rgba(255, 100, 60, 0.30);
+}
+.ps-block-line.ps-unique {
+  color: #c9a9ff;
+  text-shadow: 0 0 4px rgba(192, 132, 252, 0.35);
+}
+.ps-block-line.ps-buff::before   { color: #7df9a8; opacity: 0.9; }
+.ps-block-line.ps-debuff::before { color: #ff8a6a; opacity: 0.9; }
+.ps-block-line.ps-unique::before { color: #c9a9ff; opacity: 0.9; }
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Mobile-landscape adaptation

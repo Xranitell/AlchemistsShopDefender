@@ -122,7 +122,8 @@ export class PauseStatsOverlay {
           .filter((def): def is NonNullable<typeof def> => Boolean(def))
           .map((def) => ({
             label: `${def.icon} ${t(def.i18nName)}`,
-            value: def.i18nLines.map((k) => t(k)).join(' • '),
+            value: '',
+            valueLines: def.i18nLines.map((k) => t(k)),
             kind: 'debuff' as const,
           }));
         side.appendChild(this.buildSection(
@@ -147,19 +148,23 @@ export class PauseStatsOverlay {
               case 'epicKey': reward = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
               case 'blueMult': reward = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
             }
-            let valueLine: string;
+            // Render the contract as 3 separate lines (progress/status,
+            // reward, condition) so the panel never has to flex-shrink a
+            // long " • "-joined string off the right edge of the panel.
+            let progressLine: string;
             if (prog.failed) {
-              valueLine = `${t('ui.contract.failed')} • ${reward}`;
+              progressLine = t('ui.contract.failed');
             } else if (prog.done) {
-              valueLine = `${t('ui.contract.done')} • ${reward}`;
+              progressLine = t('ui.contract.done');
             } else {
-              valueLine = `${prog.current}/${prog.target} • ${reward} • ${desc}`;
+              progressLine = `${prog.current}/${prog.target}`;
             }
             const kind: StatLine['kind'] =
               prog.failed ? 'debuff' : prog.done ? 'buff' : 'unique';
             return {
               label: `${def.icon} ${t(def.i18nName)}`,
-              value: valueLine,
+              value: '',
+              valueLines: [progressLine, reward, desc],
               kind,
             };
           });
@@ -381,17 +386,41 @@ export class PauseStatsOverlay {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const row = document.createElement('div');
-      row.className = `ps-row ps-${line.kind}`;
-      const val = document.createElement('span');
-      val.className = 'ps-value';
-      val.textContent = line.value;
-      row.appendChild(val);
-      const lab = document.createElement('span');
-      lab.className = 'ps-label';
-      lab.textContent = line.label;
-      row.appendChild(lab);
-      section.appendChild(row);
+      // Multi-line entries (mutators / contracts): render the icon + name
+      // as a header row, then stack each body line below. Avoids the
+      // single-row flex layout that was clipping long " • "-joined
+      // strings off the right edge of the panel.
+      if (line.valueLines && line.valueLines.length > 0) {
+        const block = document.createElement('div');
+        block.className = `ps-block ps-${line.kind}`;
+
+        const head = document.createElement('div');
+        head.className = `ps-block-head ps-${line.kind}`;
+        head.textContent = line.label;
+        block.appendChild(head);
+
+        for (const v of line.valueLines) {
+          if (!v) continue;
+          const sub = document.createElement('div');
+          sub.className = `ps-block-line ps-${line.kind}`;
+          sub.textContent = v;
+          block.appendChild(sub);
+        }
+
+        section.appendChild(block);
+      } else {
+        const row = document.createElement('div');
+        row.className = `ps-row ps-${line.kind}`;
+        const val = document.createElement('span');
+        val.className = 'ps-value';
+        val.textContent = line.value;
+        row.appendChild(val);
+        const lab = document.createElement('span');
+        lab.className = 'ps-label';
+        lab.textContent = line.label;
+        row.appendChild(lab);
+        section.appendChild(row);
+      }
       // Render description below unique effect labels
       if (uniqueSection && line.desc) {
         const descRow = document.createElement('div');
@@ -416,6 +445,11 @@ interface StatLine {
   kind: 'buff' | 'debuff' | 'unique';
   /** Optional description shown below the label for unique effects. */
   desc?: string;
+  /** Optional list of body lines shown stacked under the label. Used for
+   *  multi-bullet entries (mutators, contracts) so each piece of info
+   *  (progress / reward / condition) wraps cleanly inside the panel
+   *  instead of overflowing as a single " • "-joined string. */
+  valueLines?: string[];
 }
 
 function abilityLabel(ab: string): string {
