@@ -118,12 +118,13 @@ export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: n
  * nails) at ~64x64 sample density so the texture reads as crafted
  * pixel-art rather than flat colour bands.
  */
-// Floor texture is sheared so the plank rows run along the iso 2:1 axis,
-// matching the rhombus tiles in the rest of the game. `FLOOR_TILT = 0.5`
-// gives a ~26.57° slope (tan⁻¹ 0.5), the classic iso angle — every
-// horizontal world line drops by `x / 2` pixels at column `x`, which is
-// exactly the slope of the rhombus tile's bottom-right edge.
-const FLOOR_TILT = 0.5;
+// `FLOOR_TILT` is the *pre-transform* shear; the plank floor is then
+// rotated 90° clockwise and X-mirrored, so the final visible slope is
+// `1 / FLOOR_TILT`. We want the planks to lie on the iso 2:1 axis going
+// up-right (slope ≈ -0.5, ~-26.57°) — matching the red parallelogram
+// reference the user drew on top of the rhombus tile floor — so the
+// pre-transform tilt has to be -2.0.
+const FLOOR_TILT = -2.0;
 
 function drawPlankFloor(
   ctx: CanvasRenderingContext2D,
@@ -141,11 +142,20 @@ function drawPlankFloor(
   ctx.fillStyle = pal.tileCrack;
   ctx.fillRect(0, 0, w, h);
 
-  // Each plank is a parallelogram in screen space — its top and bottom
-  // edges sit on the iso 2:1 axis, which is what makes the floor read
-  // as a continuation of the rhombus-tile floors used in other biomes.
-  const padY = Math.ceil(Math.abs(w * FLOOR_TILT)) + BOARD_H * 2;
+  // After the iso shear plus 90° CW rotation + X mirror, the planks live
+  // on a parallelogram-shaped patch noticeably bigger than the canvas,
+  // so we pad the drawing range generously so coverage stays full.
+  const span = Math.max(w, h);
+  const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
   ctx.save();
+  // Shear + 90° clockwise rotate + X mirror around the canvas centre.
+  // The combined effect is a parallelogram floor whose plank rows lie
+  // on the iso 2:1 axis going up-right — same axis as the rhombus
+  // tiles in the other biomes.
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.scale(-1, 1);
+  ctx.translate(-w / 2, -h / 2);
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
 
   let row = 0;
