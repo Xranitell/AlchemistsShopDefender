@@ -190,6 +190,7 @@ export function rerollForGold(state: GameState): boolean {
   // burn through the legendary cooldown.
   state.cardChoice.draftCount -= 1;
   state.cardChoice.options = rollCardOptions(state);
+  state.contractStats.rerollUsed = true;
   return true;
 }
 
@@ -199,6 +200,7 @@ export function rerollForAd(state: GameState): boolean {
   state.cardChoice.freeRerollUsed = true;
   state.cardChoice.draftCount -= 1;
   state.cardChoice.options = rollCardOptions(state);
+  state.contractStats.rerollUsed = true;
   return true;
 }
 

@@ -354,6 +354,9 @@ export function applyDamageToEnemy(
 
   e.hp -= dmg;
   e.hitFlash = 0.12;
+  // Stamp the element so on-death attribution (run contracts) can count
+  // this hit's element as the killing blow if hp reaches 0 below.
+  e.lastHitElement = element;
   audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
 
   // Dash-back: on a successful hit push the enemy away from the hero for

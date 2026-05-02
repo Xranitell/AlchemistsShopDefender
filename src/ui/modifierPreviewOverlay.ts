@@ -1,5 +1,6 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { mutatorCountForDifficulty } from '../data/mutators';
+import { contractCountForDifficulty } from '../data/contracts';
 import { t, tWithFallback } from '../i18n';
 
 export class ModifierPreviewOverlay {
@@ -58,6 +59,14 @@ export class ModifierPreviewOverlay {
       const li = document.createElement('li');
       li.textContent = t(mutCount === 1 ? 'ui.mutator.previewEpic' : 'ui.mutator.previewAncient');
       li.style.color = '#7df9ff';
+      list.appendChild(li);
+    }
+    // Mention the random side contracts (2 in Epic, 3 in Ancient).
+    const contractCount = contractCountForDifficulty(opts.mode);
+    if (contractCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(contractCount === 2 ? 'ui.contract.previewEpic' : 'ui.contract.previewAncient');
+      li.style.color = '#ffd166';
       list.appendChild(li);
     }
     panel.appendChild(list);

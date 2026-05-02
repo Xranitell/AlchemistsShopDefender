@@ -4,6 +4,7 @@ import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 import { MUTATOR_BY_ID } from '../data/mutators';
+import { CONTRACT_BY_ID } from '../data/contracts';
 import {
   POTION_BY_ID,
   POTION_INVENTORY_SIZE,
@@ -39,6 +40,9 @@ export class Hud {
    *  per mutator-id change to avoid the per-frame DOM churn the rest of
    *  the HUD already optimises away. */
   private mutatorRow!: HTMLDivElement;
+  /** Row of contract chips below the mutator row. Same churn-avoidance
+   *  pattern: only rebuilt when the active id list actually changes. */
+  private contractRow!: HTMLDivElement;
 
   // Top-right pause button (also drives the keyboard shortcut). Holds its
   // own paused/playing state so the icon and aria-label stay in sync with
@@ -92,6 +96,7 @@ export class Hud {
   private prevDifficulty = '';
   private prevDifficultyHidden = -1;
   private prevMutatorKey = '';
+  private prevContractKey = '';
   private prevSkipVisible = -1;
   private prevSkipText = '';
   private prevOverloadDisabled: boolean | null = null;
@@ -149,6 +154,11 @@ export class Hud {
     this.mutatorRow.className = 'hud-mutator-row';
     this.mutatorRow.style.display = 'none';
     waveStack.appendChild(this.mutatorRow);
+
+    this.contractRow = document.createElement('div');
+    this.contractRow.className = 'hud-contract-row';
+    this.contractRow.style.display = 'none';
+    waveStack.appendChild(this.contractRow);
 
     // Wave / pause progress bar — shows time-left during a wave and a
     // count-down to the next wave during the preparing phase.
@@ -437,6 +447,41 @@ export class Hud {
           chip.appendChild(ico);
           chip.appendChild(lbl);
           this.mutatorRow.appendChild(chip);
+        }
+      }
+    }
+
+    // Contract row — same churn-avoidance: rebuild only when the rolled
+    // contract list changes (i.e. once per run). Per-frame progress is
+    // shown only in the pause overlay; the chips themselves only display
+    // the contract name + icon to stay readable on a phone screen.
+    const contractKey = state.activeContractIds.join(',');
+    if (contractKey !== this.prevContractKey) {
+      this.prevContractKey = contractKey;
+      this.contractRow.innerHTML = '';
+      if (state.activeContractIds.length === 0) {
+        this.contractRow.style.display = 'none';
+      } else {
+        this.contractRow.style.display = '';
+        for (const id of state.activeContractIds) {
+          const def = CONTRACT_BY_ID[id];
+          if (!def) continue;
+          const chip = document.createElement('div');
+          chip.className = 'hud-contract-chip';
+          const name = t(def.i18nName);
+          // Tooltip carries the goal description with the target number
+          // already substituted in (read in the pause overlay anyway).
+          const target = def.progress(state).target;
+          chip.title = `${t('ui.contract.label')}: ${name}\n${t(def.i18nDesc, { n: target })}`;
+          const ico = document.createElement('span');
+          ico.className = 'hud-contract-icon';
+          ico.textContent = def.icon;
+          const lbl = document.createElement('span');
+          lbl.className = 'hud-contract-name';
+          lbl.textContent = name;
+          chip.appendChild(ico);
+          chip.appendChild(lbl);
+          this.contractRow.appendChild(chip);
         }
       }
     }

@@ -22,6 +22,9 @@ export function updateEnemies(state: GameState, dt: number): void {
       e.status.burnTime -= dt;
       e.hp -= e.status.burnDps * dt;
       e.hitFlash = Math.max(e.hitFlash, 0.04);
+      // Attribute the killing blow to fire if this DoT tick drops the
+      // enemy to 0 HP (run-contract bookkeeping only).
+      if (e.hp <= 0) e.lastHitElement = 'fire';
     } else {
       e.status.burnDps = 0;
     }
@@ -46,6 +49,7 @@ export function updateEnemies(state: GameState, dt: number): void {
       // Poison ignores armour — apply DoT directly.
       e.hp -= e.status.poisonDps * dt;
       e.hitFlash = Math.max(e.hitFlash, 0.03);
+      if (e.hp <= 0) e.lastHitElement = 'poison';
     } else {
       e.status.poisonDps = 0;
     }
@@ -188,6 +192,14 @@ export function updateEnemies(state: GameState, dt: number): void {
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
       spawnFloatingText(state, `-${Math.round(dmgReduced)}`, m.pos, '#ff6a3d');
+      // Run-contract bookkeeping: flag the current wave so the
+      // flawless-wave contracts know this run isn't perfect anymore.
+      // `damageInWave` is indexed 1-based to match the user-facing wave
+      // numbering (see `data/contracts.ts`).
+      if (dmgReduced > 0) {
+        const w = state.waveState.currentIndex + 1;
+        state.contractStats.damageInWave[w] = true;
+      }
       // Thorny shell: reflect damage on melee contact.
       if (state.modifiers.thornyShell) {
         e.hp -= 8;
@@ -256,6 +268,10 @@ function sapperDetonate(state: GameState, e: Enemy): void {
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+    if (dmg > 0) {
+      const w = state.waveState.currentIndex + 1;
+      state.contractStats.damageInWave[w] = true;
+    }
   }
   // Damage to nearby enemies.
   for (const other of state.enemies) {
@@ -342,6 +358,10 @@ function minibossSlimeSlam(state: GameState, e: Enemy): void {
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+    if (dmg > 0) {
+      const w = state.waveState.currentIndex + 1;
+      state.contractStats.damageInWave[w] = true;
+    }
   }
   spawnFloatingText(state, t('floating.slam'), e.pos, '#ffd166');
 }
@@ -425,6 +445,7 @@ export function updateFirePools(state: GameState, dt: number): void {
         const fireMult = e.elite === 'fire_resistant' ? 0.4 : 1;
         e.hp -= fp.dps * dt * fireMult;
         e.hitFlash = Math.max(e.hitFlash, 0.04);
+        if (e.hp <= 0) e.lastHitElement = 'fire';
         if (e.elite !== 'fire_resistant') {
           e.status.burnDps = Math.max(e.status.burnDps, fp.dps * 0.5);
           e.status.burnTime = Math.max(e.status.burnTime, 1);
@@ -473,6 +494,14 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   state.essence += e.kind.isBoss ? 3 : 1;
   addOverload(state, e.kind.isBoss ? 25 : 6);
 
+  // Run-contract bookkeeping: tally kills by enemy kind and last-hit
+  // element. Bosses also bump a separate counter so the boss-slayer
+  // contract doesn't have to enumerate boss-kind ids.
+  const cs = state.contractStats;
+  cs.killsByKind[e.kind.id] = (cs.killsByKind[e.kind.id] ?? 0) + 1;
+  cs.killsByElement[e.lastHitElement] = (cs.killsByElement[e.lastHitElement] ?? 0) + 1;
+  if (e.kind.isBoss) cs.bossKills += 1;
+
   // Split-on-death: spawn N smaller slimes (2 the first generation, 1 the
   // second) at the death position. Offspring inherit abilities but cannot
   // split themselves beyond generation 2.
@@ -508,6 +537,10 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
       state.mannequin.hp -= dmg;
       state.mannequin.damageFlash = 0.22;
       spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
+      if (dmg > 0) {
+        const w = state.waveState.currentIndex + 1;
+        state.contractStats.damageInWave[w] = true;
+      }
     }
   }
 

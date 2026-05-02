@@ -1,6 +1,7 @@
 import type { GameState } from '../game/state';
 import { CARDS, cardName } from '../data/cards';
 import { MUTATOR_BY_ID } from '../data/mutators';
+import { CONTRACT_BY_ID } from '../data/contracts';
 import { t, tWithFallback } from '../i18n';
 
 /** Pause-menu stats overlay.
@@ -69,6 +70,49 @@ export class PauseStatsOverlay {
       inner.appendChild(this.buildSection(
         tWithFallback('ui.pause.mutatorsTitle', 'Закон подземелья'),
         mutLines,
+        true,
+      ));
+    }
+
+    // ── Run contracts ────────────────────────────────────────────────────
+    if (state.activeContractIds.length > 0) {
+      const contractLines: StatLine[] = state.activeContractIds
+        .map((id) => CONTRACT_BY_ID[id])
+        .filter((def): def is NonNullable<typeof def> => Boolean(def))
+        .map((def) => {
+          const prog = def.progress(state);
+          // Pretty-print the goal description with the target number
+          // substituted in (descriptions read like "Kill {n} slimes…").
+          const desc = t(def.i18nDesc, { n: prog.target });
+          // Reward suffix mirrors the contract's payout type (flat
+          // currency vs multiplicative bump). Falls through to '' for
+          // unknown reward kinds defensively.
+          let reward = '';
+          switch (def.reward.kind) {
+            case 'blue': reward = t('ui.contract.rewardBlue', { n: def.reward.amount }); break;
+            case 'ancient': reward = t('ui.contract.rewardAncient', { n: def.reward.amount }); break;
+            case 'epicKey': reward = t('ui.contract.rewardEpicKey', { n: def.reward.amount }); break;
+            case 'blueMult': reward = t('ui.contract.rewardBlueMult', { n: Math.round(def.reward.amount * 100) }); break;
+          }
+          let valueLine: string;
+          if (prog.failed) {
+            valueLine = `${t('ui.contract.failed')} • ${reward}`;
+          } else if (prog.done) {
+            valueLine = `${t('ui.contract.done')} • ${reward}`;
+          } else {
+            valueLine = `${prog.current}/${prog.target} • ${reward} • ${desc}`;
+          }
+          const kind: StatLine['kind'] =
+            prog.failed ? 'debuff' : prog.done ? 'buff' : 'unique';
+          return {
+            label: `${def.icon} ${t(def.i18nName)}`,
+            value: valueLine,
+            kind,
+          };
+        });
+      inner.appendChild(this.buildSection(
+        t('ui.contract.label'),
+        contractLines,
         true,
       ));
     }

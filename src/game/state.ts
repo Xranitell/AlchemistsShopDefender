@@ -8,6 +8,7 @@ import type { BiomeId } from '../data/biomes';
 import type { EliteModId } from '../data/eliteMods';
 import type { DailyEventId } from '../data/dailyEvents';
 import type { MutatorId } from '../data/mutators';
+import type { ContractId } from '../data/contracts';
 
 export type Phase =
   | 'menu'
@@ -85,9 +86,59 @@ export interface Enemy {
   bossDodgeSpeed: number;
   /** Miniboss slime: seconds left on the slam wind-up animation. */
   bossSlamWindup: number;
+  /** Element of the last hit applied to this enemy. Recorded by all damage
+   *  paths (projectile, DoT tick, sapper explosion, reaction) so the run
+   *  contract counters can attribute the killing blow's element. */
+  lastHitElement: Element;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';
+
+/** Aggregate counters consumed by `data/contracts.ts` to score the run's
+ *  active contracts. Every field starts at 0/false in `newContractStats()`
+ *  and is mutated only by the existing damage / death / shop hooks (see
+ *  `enemy.ts`, `projectile.ts`, `tower.ts`, `cards.ts`). Contracts are
+ *  evaluated lazily — combat code never reads from this struct. */
+export interface ContractStats {
+  /** Number of enemies killed whose `lastHitElement` was each element. */
+  killsByElement: Record<Element, number>;
+  /** Number of enemies killed broken down by `EnemyKind.id`. */
+  killsByKind: Record<string, number>;
+  /** Bosses killed (any `kind.isBoss` enemy). */
+  bossKills: number;
+  /** Cumulative number of towers bought via `buyTower` this run. */
+  towersBuilt: number;
+  /** Highest `state.gold` value observed during the run. */
+  goldPeak: number;
+  /** Set the first time the player rerolls a card draft (paid or ad). */
+  rerollUsed: boolean;
+  /** Set the first time the player skips a card draft. */
+  cardSkipUsed: boolean;
+  /** `damageInWave[w] === true` iff the mannequin took damage during wave
+   *  index `w` (0-based). Used by flawless-wave contracts. */
+  damageInWave: boolean[];
+}
+
+export function newContractStats(): ContractStats {
+  return {
+    killsByElement: {
+      neutral: 0,
+      fire: 0,
+      mercury: 0,
+      acid: 0,
+      aether: 0,
+      frost: 0,
+      poison: 0,
+    },
+    killsByKind: {},
+    bossKills: 0,
+    towersBuilt: 0,
+    goldPeak: 0,
+    rerollUsed: false,
+    cardSkipUsed: false,
+    damageInWave: [],
+  };
+}
 
 export interface Tower {
   id: number;
@@ -420,6 +471,15 @@ export interface GameState {
    *  Ancient. Empty in Normal / Endless / Daily. The order in this array is
    *  also the apply-order; later entries stack on top of earlier ones. */
   activeMutatorIds: MutatorId[];
+  /** Run contracts ("заказы") rolled at run start — 2 in Epic, 3 in Ancient.
+   *  Empty in Normal / Endless / Daily. Each contract pays a bonus reward
+   *  (extra blue / ancient essence, or a multiplier bump) on run-end if the
+   *  goal in `data/contracts.ts` resolves to `done` for this state. */
+  activeContractIds: ContractId[];
+  /** Bag of incremental counters used by every contract goal. Mutated from
+   *  the existing on-damage / on-death / on-tower-buy hooks; never read by
+   *  combat code itself. Resets per run with a fresh `GameState`. */
+  contractStats: ContractStats;
   /** Multiplier applied to per-wave spawn count (Horde event). 1 = default. */
   spawnCountMult: number;
   /** Render-side darkness flag — drawn on top of the world (Night event). */

@@ -2821,6 +2821,68 @@ body {
   white-space: nowrap;
 }
 
+/* Contract chips — same shape as mutators but with a warm "side-quest"
+   accent so the player can read them at a glance without confusion. */
+.hud-contract-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
+}
+.hud-contract-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border: 1px solid #ffd166;
+  border-radius: 3px;
+  background: rgba(20, 12, 4, 0.85);
+  color: #ffd166;
+  text-transform: uppercase;
+  text-shadow: 0 0 5px currentColor;
+}
+.hud-contract-icon {
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.hud-contract-name {
+  white-space: nowrap;
+}
+
+/* Per-contract row in the chest reward panel. Done rows glow gold;
+   incomplete rows fade out. */
+.chest-contracts {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.chest-contracts-heading {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #ffd166;
+  text-transform: uppercase;
+  text-shadow: 0 0 5px currentColor;
+  margin-bottom: 2px;
+}
+.chest-contract-row {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: rgba(180, 180, 180, 0.6);
+}
+.chest-contract-row.done {
+  color: #ffd166;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.7);
+}
+
 .hud-timer-bar {
   position: relative;
   width: 280px;
@@ -4047,6 +4109,9 @@ body {
   .hud-mutator-chip { font-size: 8px; padding: 2px 5px; }
   .hud-mutator-icon { font-size: 10px; }
   .hud-mutator-row { max-width: 220px; }
+  .hud-contract-chip { font-size: 8px; padding: 2px 5px; }
+  .hud-contract-icon { font-size: 10px; }
+  .hud-contract-row { max-width: 220px; }
 
   /* Card draft — keep 3 columns but slimmer. */
   .cards { gap: 8px; }
