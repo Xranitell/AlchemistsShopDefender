@@ -118,11 +118,11 @@ export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: n
  * nails) at ~64x64 sample density so the texture reads as crafted
  * pixel-art rather than flat colour bands.
  */
-// Iso 2:1 lays a horizontal world line on screen with slope ±0.5. We
-// pick a softer shear so the planks stay readable as floorboards rather
-// than morphing into a perspective ramp, but still match the iso tilt
-// direction the user pointed to in the reference art.
-const FLOOR_TILT = -0.22;
+// Floor texture is sheared so the plank rows run diagonally toward the
+// bottom-right corner, matching the iso-direction the user pointed to.
+// `FLOOR_TILT = 1.0` gives a 45° slope (tan 45° = 1) — every horizontal
+// world line drops by `x` pixels at column `x`.
+const FLOOR_TILT = 1.0;
 
 function drawPlankFloor(
   ctx: CanvasRenderingContext2D,
