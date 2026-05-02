@@ -5017,6 +5017,215 @@ body {
 .ps-block-line.ps-debuff::before { color: #ff8a6a; opacity: 0.9; }
 .ps-block-line.ps-unique::before { color: #c9a9ff; opacity: 0.9; }
 
+/* ── Contract entries ─────────────────────────────────────────────────
+ *
+ * Per-contract block in the pause-stats overlay:
+ *   ┌───────────────────────────────────┐
+ *   │  🐀 Крысолов                       │  ← pixel-gold header
+ *   │  0 / 25  ▰▰▰▱▱▱▱▱▱▱▱              │  ← progress text + bar
+ *   │  [  +6 синей эссенции  ]          │  ← highlighted reward chip
+ *   │  Убей 25 крыс за забег.           │  ← dim condition line
+ *   └───────────────────────────────────┘
+ *
+ * Each piece is its own DOM element so long Russian copy wraps cleanly
+ * inside the side panel. Reward chip colour is keyed off the reward
+ * kind (blue essence = cyan, ancient = purple, epic key = orange, blue
+ * multiplier = cyan + accent). Done / failed contracts flip the bar +
+ * progress text + chip into their state colour. */
+.ps-contract {
+  padding: 6px 0 10px;
+  margin-bottom: 6px;
+  font-family: 'VT323', monospace;
+}
+.ps-contract-head {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 13px;
+  color: #ffd166;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608,
+    0 0 6px rgba(255, 209, 102, 0.30);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Progress row: numeric "X / N" or status text on the left, horizontal
+ * pixel-art bar filling the rest of the row. */
+.ps-contract-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+.ps-contract-progress-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #ffd166;
+  flex: 0 0 auto;
+  min-width: 56px;
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608;
+}
+.ps-contract-progress-text.done {
+  color: #7df9a8;
+  text-shadow:
+    -1px -1px 0 #06140c, 1px -1px 0 #06140c,
+    -1px 1px 0 #06140c, 1px 1px 0 #06140c,
+    0 0 8px rgba(125, 249, 168, 0.5);
+}
+.ps-contract-progress-text.failed {
+  color: #ff6a6a;
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608,
+    0 0 8px rgba(255, 106, 106, 0.5);
+}
+
+.ps-contract-bar {
+  flex: 1 1 auto;
+  position: relative;
+  height: 12px;
+  border: 2px solid #0b0d15;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #1a0a10, #0c0510);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(255, 209, 102, 0.18);
+  overflow: hidden;
+}
+.ps-contract-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(180deg, #ffe091 0%, #ffb84a 50%, #c97a1a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  transition: width 250ms ease-out;
+}
+.ps-contract-bar-fill.done {
+  background: linear-gradient(180deg, #b6f5c5 0%, #5fdc8a 50%, #1d8a47 100%);
+}
+.ps-contract-bar-fill.failed {
+  background: linear-gradient(180deg, #ffb0a8 0%, #ff5a4a 50%, #8a1d1d 100%);
+}
+
+/* Reward chip — main "value" of a contract, gets the most visual
+ * weight. Pixel-art outline, kind-tinted glow, done/failed state
+ * variants. */
+.ps-contract-reward {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 7px 10px 6px;
+  margin-bottom: 8px;
+  color: #fff2c2;
+  background: linear-gradient(180deg, rgba(60, 40, 24, 0.95), rgba(28, 18, 14, 0.95));
+  border: 2px solid #1a0608;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.30),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 209, 102, 0.30);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-shadow:
+    -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
+    -1px 1px 0 #1a0608, 1px 1px 0 #1a0608;
+}
+/* Reward kind variants — match the meta-currency icon colours used
+ * elsewhere (HUD top bar, daily rewards). */
+.ps-contract-reward-blue {
+  color: #cdfcff;
+  border-color: #134e58;
+  box-shadow:
+    inset 0 1px 0 rgba(125, 249, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(125, 249, 255, 0.35),
+    0 0 0 1px rgba(125, 249, 255, 0.45);
+  background: linear-gradient(180deg, rgba(20, 56, 70, 0.95), rgba(10, 22, 32, 0.95));
+}
+.ps-contract-reward-blueMult {
+  color: #fff2c2;
+  border-color: #4a3210;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.40),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(125, 249, 255, 0.30),
+    0 0 0 1px rgba(255, 209, 102, 0.45);
+  background: linear-gradient(180deg, rgba(60, 50, 24, 0.95), rgba(20, 30, 36, 0.95));
+}
+.ps-contract-reward-ancient {
+  color: #ecd6ff;
+  border-color: #3b1d52;
+  box-shadow:
+    inset 0 1px 0 rgba(192, 132, 252, 0.40),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(192, 132, 252, 0.40),
+    0 0 0 1px rgba(192, 132, 252, 0.50);
+  background: linear-gradient(180deg, rgba(56, 30, 70, 0.95), rgba(22, 10, 32, 0.95));
+}
+.ps-contract-reward-epicKey {
+  color: #ffd9b0;
+  border-color: #5e2200;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 184, 75, 0.40),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(255, 138, 60, 0.40),
+    0 0 0 1px rgba(255, 184, 75, 0.50);
+  background: linear-gradient(180deg, rgba(70, 36, 18, 0.95), rgba(28, 12, 6, 0.95));
+}
+
+/* Done — saturate the chip in green so it visually "pops" as earned. */
+.ps-contract-reward.done {
+  color: #d6ffe2;
+  border-color: #1d4d28;
+  box-shadow:
+    inset 0 1px 0 rgba(125, 249, 168, 0.40),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(125, 249, 168, 0.45),
+    0 0 0 1px rgba(125, 249, 168, 0.55);
+  background: linear-gradient(180deg, rgba(28, 70, 40, 0.95), rgba(8, 28, 16, 0.95));
+}
+/* Failed — desaturated + strikethrough so it reads as "lost". */
+.ps-contract-reward.failed {
+  color: rgba(255, 200, 200, 0.55);
+  border-color: #3a1818;
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 100, 100, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 106, 106, 0.20),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 106, 106, 0.30);
+  background: linear-gradient(180deg, rgba(40, 22, 28, 0.95), rgba(18, 8, 12, 0.95));
+  filter: saturate(0.6);
+}
+
+/* Condition (the "what to do") — dimmer + smaller so the eye lands on
+ * the reward first, condition second. */
+.ps-contract-condition {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  line-height: 1.25;
+  color: rgba(232, 220, 200, 0.70);
+  padding: 0 0 0 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
  * Mobile-landscape adaptation
  *
