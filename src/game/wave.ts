@@ -9,6 +9,7 @@ import type { EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
+import { rerollWaveMutators } from './world';
 
 /** Return the active wave list for the current difficulty mode. */
 function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
@@ -175,6 +176,9 @@ export function startPause(state: GameState): void {
   ws.pauseDurationLeft = def?.pauseAfterSec ?? 6;
   state.entrances.forEach((e) => { e.active = false; });
   state.phase = 'preparing';
+  // Re-roll the wave-rotating "dungeon laws" so the upcoming prep window
+  // surfaces the next wave's mutators. No-op outside Epic / Ancient.
+  rerollWaveMutators(state);
 }
 
 export function updateWave(state: GameState, dt: number): void {

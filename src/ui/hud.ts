@@ -37,18 +37,20 @@ export class Hud {
   private waveValue!: HTMLSpanElement;
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
-  /** Row of mutator chips ("dungeon laws") active in this run. Built once
-   *  per mutator-id change to avoid the per-frame DOM churn the rest of
-   *  the HUD already optimises away. */
-  private mutatorRow!: HTMLDivElement;
-  /** Row of contract chips below the mutator row. Same churn-avoidance
-   *  pattern: only rebuilt when the active id list actually changes. */
-  private contractRow!: HTMLDivElement;
-  /** Row of blessing / curse chips below the contract row. Two visual
-   *  styles: gold gradient for the picked blessing, blood-red for the
-   *  Ancient curse. Same churn-avoidance pattern as the mutator/contract
-   *  rows. */
-  private blessingRow!: HTMLDivElement;
+  /** Side panel container holding the picked blessings/curses, the
+   *  wave-rotating dungeon laws, and the run contracts. Lives on the
+   *  left edge of the screen so the player can read the active rules,
+   *  effects, and goals at all times during a run. */
+  private runSidebar!: HTMLDivElement;
+  /** Section inside the sidebar listing the picked blessings (and curse
+   *  in Ancient). Built once per run since the picks don't change. */
+  private blessingSection!: HTMLDivElement;
+  /** Section inside the sidebar listing the active wave-rotating laws.
+   *  Re-rendered each time the active mutator id list changes. */
+  private mutatorSection!: HTMLDivElement;
+  /** Section inside the sidebar listing the run contracts. Card text is
+   *  re-rendered every frame because it shows live progress (X/N). */
+  private contractSection!: HTMLDivElement;
 
   // Top-right pause button (also drives the keyboard shortcut). Holds its
   // own paused/playing state so the icon and aria-label stay in sync with
@@ -155,23 +157,6 @@ export class Hud {
     this.difficultyBadge.className = 'hud-difficulty-badge';
     waveStack.appendChild(this.difficultyBadge);
 
-    // Run-mutator ribbon — sits directly under the difficulty badge so the
-    // rolled "dungeon laws" are visible at a glance throughout the run.
-    this.mutatorRow = document.createElement('div');
-    this.mutatorRow.className = 'hud-mutator-row';
-    this.mutatorRow.style.display = 'none';
-    waveStack.appendChild(this.mutatorRow);
-
-    this.contractRow = document.createElement('div');
-    this.contractRow.className = 'hud-contract-row';
-    this.contractRow.style.display = 'none';
-    waveStack.appendChild(this.contractRow);
-
-    this.blessingRow = document.createElement('div');
-    this.blessingRow.className = 'hud-blessing-row';
-    this.blessingRow.style.display = 'none';
-    waveStack.appendChild(this.blessingRow);
-
     // Wave / pause progress bar — shows time-left during a wave and a
     // count-down to the next wave during the preparing phase.
     this.timerBar = document.createElement('div');
@@ -185,6 +170,25 @@ export class Hud {
     waveStack.appendChild(this.timerBar);
 
     top.appendChild(waveStack);
+
+    // Run sidebar — vertical panel anchored to the left edge of the
+    // screen, below the wave/HP row. Holds the wave-rotating "dungeon
+    // laws" and the run contracts as expanded cards (icon + name + short
+    // description) so the player doesn't need to open the pause overlay
+    // to read the current rules and goals.
+    this.runSidebar = document.createElement('div');
+    this.runSidebar.className = 'hud-run-sidebar';
+    this.runSidebar.style.display = 'none';
+    this.blessingSection = document.createElement('div');
+    this.blessingSection.className = 'hud-run-section hud-run-section-blessings';
+    this.mutatorSection = document.createElement('div');
+    this.mutatorSection.className = 'hud-run-section hud-run-section-laws';
+    this.contractSection = document.createElement('div');
+    this.contractSection.className = 'hud-run-section hud-run-section-contracts';
+    this.runSidebar.appendChild(this.blessingSection);
+    this.runSidebar.appendChild(this.mutatorSection);
+    this.runSidebar.appendChild(this.contractSection);
+    this.root.appendChild(this.runSidebar);
 
     // Boss wave warning indicator — appended to HUD root so it's centered on screen
     this.bossIndicator = document.createElement('div');
@@ -430,121 +434,182 @@ export class Hud {
       this.prevDifficultyHidden = difHidden;
     }
 
-    // Mutator row — rebuilt only when the active set actually changes (so
-    // it stays cheap on the per-frame `update` path).
+    // Sidebar visibility: only show when there is something to display.
+    const hasMutators = state.activeMutatorIds.length > 0;
+    const hasContracts = state.activeContractIds.length > 0;
+    const hasBlessings = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
+    this.runSidebar.style.display = (hasMutators || hasContracts || hasBlessings) ? '' : 'none';
+
+    // Mutator section — re-rendered only when the active mutator id list
+    // changes (i.e. on every wave reroll). Each card shows the icon, name
+    // and a one-liner combining the i18nLines effect strings.
     const mutKey = state.activeMutatorIds.join(',');
     if (mutKey !== this.prevMutatorKey) {
       this.prevMutatorKey = mutKey;
-      this.mutatorRow.innerHTML = '';
-      if (state.activeMutatorIds.length === 0) {
-        this.mutatorRow.style.display = 'none';
-      } else {
-        this.mutatorRow.style.display = '';
+      this.mutatorSection.innerHTML = '';
+      if (hasMutators) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.pause.mutatorsTitle');
+        this.mutatorSection.appendChild(head);
         for (const id of state.activeMutatorIds) {
           const def = MUTATOR_BY_ID[id];
           if (!def) continue;
-          const chip = document.createElement('div');
-          chip.className = 'hud-mutator-chip';
-          chip.style.color = def.color;
-          chip.style.borderColor = def.color;
-          const name = t(def.i18nName);
-          const lines = def.i18nLines.map((k) => t(k)).join(' • ');
-          chip.title = `${t('ui.mutator.label')}: ${name}\n${lines}`;
-          const ico = document.createElement('span');
-          ico.className = 'hud-mutator-icon';
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-law';
+          card.style.borderColor = def.color;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.style.color = def.color;
           ico.textContent = def.icon;
-          const lbl = document.createElement('span');
-          lbl.className = 'hud-mutator-name';
-          lbl.textContent = name;
-          chip.appendChild(ico);
-          chip.appendChild(lbl);
-          this.mutatorRow.appendChild(chip);
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.style.color = def.color;
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          desc.textContent = def.i18nLines.map((k) => t(k)).join(' • ');
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.mutatorSection.appendChild(card);
         }
       }
     }
 
-    // Blessing/curse row — built once per run from the player's pick.
+    // Blessing / curse section — rebuilt only when the picked set changes
+    // (i.e. once per run, since blessings/curses are picked at run start
+    // and stay for the whole run). Each card shows icon + name + the
+    // one-line effect description.
     const blessingKey = state.activeBlessingIds.join(',') + '|' + (state.activeCurseId ?? '');
     if (blessingKey !== this.prevBlessingKey) {
       this.prevBlessingKey = blessingKey;
-      this.blessingRow.innerHTML = '';
-      const hasAny = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
-      if (!hasAny) {
-        this.blessingRow.style.display = 'none';
-      } else {
-        this.blessingRow.style.display = '';
+      this.blessingSection.innerHTML = '';
+      if (hasBlessings) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.blessing.label');
+        this.blessingSection.appendChild(head);
         for (const id of state.activeBlessingIds) {
           const def = BLESSING_BY_ID[id];
           if (!def) continue;
-          const chip = document.createElement('div');
-          chip.className = 'hud-blessing-chip';
-          chip.style.color = def.color;
-          chip.style.borderColor = def.color;
-          chip.title = `${t('ui.blessing.label')}: ${t(def.i18nName)}\n${t(def.i18nEffect)}`;
-          const ico = document.createElement('span');
-          ico.className = 'hud-blessing-icon';
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-blessing';
+          card.style.borderColor = def.color;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.style.color = def.color;
           ico.textContent = def.icon;
-          const lbl = document.createElement('span');
-          lbl.className = 'hud-blessing-name';
-          lbl.textContent = t(def.i18nName);
-          chip.appendChild(ico);
-          chip.appendChild(lbl);
-          this.blessingRow.appendChild(chip);
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.style.color = def.color;
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          desc.textContent = t(def.i18nEffect);
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.blessingSection.appendChild(card);
         }
         if (state.activeCurseId) {
           const def = CURSE_BY_ID[state.activeCurseId];
           if (def) {
-            const chip = document.createElement('div');
-            chip.className = 'hud-blessing-chip curse';
-            chip.style.color = def.color;
-            chip.style.borderColor = def.color;
-            chip.title = `${t('ui.curse.label')}: ${t(def.i18nName)}\n${t(def.i18nEffect)}`;
-            const ico = document.createElement('span');
-            ico.className = 'hud-blessing-icon';
+            const card = document.createElement('div');
+            card.className = 'hud-run-card hud-run-card-curse';
+            card.style.borderColor = def.color;
+            const ico = document.createElement('div');
+            ico.className = 'hud-run-card-icon';
+            ico.style.color = def.color;
             ico.textContent = def.icon;
-            const lbl = document.createElement('span');
-            lbl.className = 'hud-blessing-name';
-            lbl.textContent = t(def.i18nName);
-            chip.appendChild(ico);
-            chip.appendChild(lbl);
-            this.blessingRow.appendChild(chip);
+            card.appendChild(ico);
+            const body = document.createElement('div');
+            body.className = 'hud-run-card-body';
+            const name = document.createElement('div');
+            name.className = 'hud-run-card-name';
+            name.style.color = def.color;
+            name.textContent = t(def.i18nName);
+            body.appendChild(name);
+            const desc = document.createElement('div');
+            desc.className = 'hud-run-card-desc';
+            desc.textContent = t(def.i18nEffect);
+            body.appendChild(desc);
+            card.appendChild(body);
+            this.blessingSection.appendChild(card);
           }
         }
       }
     }
 
-    // Contract row — same churn-avoidance: rebuild only when the rolled
-    // contract list changes (i.e. once per run). Per-frame progress is
-    // shown only in the pause overlay; the chips themselves only display
-    // the contract name + icon to stay readable on a phone screen.
-    const contractKey = state.activeContractIds.join(',');
-    if (contractKey !== this.prevContractKey) {
-      this.prevContractKey = contractKey;
-      this.contractRow.innerHTML = '';
-      if (state.activeContractIds.length === 0) {
-        this.contractRow.style.display = 'none';
-      } else {
-        this.contractRow.style.display = '';
+    // Contract section — card structure rebuilt only on id-list change,
+    // but the body line (progress + reward + done/failed flag) is
+    // refreshed every frame since the counters tick live.
+    const contractIdKey = state.activeContractIds.join(',');
+    if (contractIdKey !== this.prevContractKey) {
+      this.prevContractKey = contractIdKey;
+      this.contractSection.innerHTML = '';
+      if (hasContracts) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.contract.label');
+        this.contractSection.appendChild(head);
         for (const id of state.activeContractIds) {
           const def = CONTRACT_BY_ID[id];
           if (!def) continue;
-          const chip = document.createElement('div');
-          chip.className = 'hud-contract-chip';
-          const name = t(def.i18nName);
-          // Tooltip carries the goal description with the target number
-          // already substituted in (read in the pause overlay anyway).
-          const target = def.progress(state).target;
-          chip.title = `${t('ui.contract.label')}: ${name}\n${t(def.i18nDesc, { n: target })}`;
-          const ico = document.createElement('span');
-          ico.className = 'hud-contract-icon';
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-contract';
+          card.dataset.contractId = id;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
           ico.textContent = def.icon;
-          const lbl = document.createElement('span');
-          lbl.className = 'hud-contract-name';
-          lbl.textContent = name;
-          chip.appendChild(ico);
-          chip.appendChild(lbl);
-          this.contractRow.appendChild(chip);
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          // Body content set per-frame below by the live progress loop.
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.contractSection.appendChild(card);
         }
+      }
+    }
+    // Per-frame: refresh contract card body lines with live progress.
+    if (hasContracts) {
+      for (const id of state.activeContractIds) {
+        const def = CONTRACT_BY_ID[id];
+        if (!def) continue;
+        const card = this.contractSection.querySelector(
+          `[data-contract-id="${id}"]`,
+        );
+        if (!card) continue;
+        const desc = card.querySelector('.hud-run-card-desc') as HTMLDivElement | null;
+        if (!desc) continue;
+        const prog = def.progress(state);
+        let line: string;
+        if (prog.failed) {
+          card.classList.remove('done');
+          card.classList.add('failed');
+          line = t('ui.contract.failed');
+        } else if (prog.done) {
+          card.classList.add('done');
+          card.classList.remove('failed');
+          line = t('ui.contract.done');
+        } else {
+          card.classList.remove('done', 'failed');
+          line = `${prog.current}/${prog.target} · ${t(def.i18nDesc, { n: prog.target })}`;
+        }
+        if (desc.textContent !== line) desc.textContent = line;
       }
     }
 

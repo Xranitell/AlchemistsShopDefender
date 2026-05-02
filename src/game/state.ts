@@ -468,9 +468,11 @@ export interface GameState {
   /** When `difficulty === 'daily'`, the rotating event id selected for
    *  today's MSK weekday. Drives event-specific gameplay & visual flags. */
   dailyEventId: DailyEventId | null;
-  /** Run-wide "dungeon law" mutators rolled at run start — 1 in Epic, 2 in
-   *  Ancient. Empty in Normal / Endless / Daily. The order in this array is
-   *  also the apply-order; later entries stack on top of earlier ones. */
+  /** Wave-rotating "dungeon law" mutators — re-rolled before every wave in
+   *  Epic (1) and Ancient (2). Empty in Normal / Endless / Daily. The order
+   *  in this array is also the apply-order; later entries stack on top of
+   *  earlier ones. Reverted via each mutator's explicit `revert` function
+   *  when the next wave rolls a fresh set. */
   activeMutatorIds: MutatorId[];
   /** Run contracts ("заказы") rolled at run start — 2 in Epic, 3 in Ancient.
    *  Empty in Normal / Endless / Daily. Each contract pays a bonus reward
