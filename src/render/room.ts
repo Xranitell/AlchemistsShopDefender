@@ -118,11 +118,12 @@ export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: n
  * nails) at ~64x64 sample density so the texture reads as crafted
  * pixel-art rather than flat colour bands.
  */
-// Floor texture is sheared so the plank rows run diagonally toward the
-// bottom-right corner, matching the iso-direction the user pointed to.
-// `FLOOR_TILT = 1.0` gives a 45° slope (tan 45° = 1) — every horizontal
-// world line drops by `x` pixels at column `x`.
-const FLOOR_TILT = 1.0;
+// Floor texture is sheared so the plank rows run along the iso 2:1 axis,
+// matching the rhombus tiles in the rest of the game. `FLOOR_TILT = 0.5`
+// gives a ~26.57° slope (tan⁻¹ 0.5), the classic iso angle — every
+// horizontal world line drops by `x / 2` pixels at column `x`, which is
+// exactly the slope of the rhombus tile's bottom-right edge.
+const FLOOR_TILT = 0.5;
 
 function drawPlankFloor(
   ctx: CanvasRenderingContext2D,
@@ -140,22 +141,11 @@ function drawPlankFloor(
   ctx.fillStyle = pal.tileCrack;
   ctx.fillRect(0, 0, w, h);
 
-  // After the iso shear plus a 90° rotation + X mirror, the planks live
-  // on a parallelogram-shaped patch that's larger than the canvas, so we
-  // pad the drawing range generously in BOTH dimensions to keep the
-  // entire visible area covered.
-  const span = Math.max(w, h);
-  const padY = Math.ceil(span * (1 + Math.abs(FLOOR_TILT))) + BOARD_H * 2;
+  // Each plank is a parallelogram in screen space — its top and bottom
+  // edges sit on the iso 2:1 axis, which is what makes the floor read
+  // as a continuation of the rhombus-tile floors used in other biomes.
+  const padY = Math.ceil(Math.abs(w * FLOOR_TILT)) + BOARD_H * 2;
   ctx.save();
-  // Plank rows shear toward the bottom-right corner at 45°, matching
-  // the iso direction the user pinned down with a reference screenshot.
-  // Then we apply a 90° clockwise rotation and an X mirror around the
-  // canvas centre so the wood grain runs the way the user wants — these
-  // two extra ops were added in a follow-up tweak.
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(Math.PI / 2);
-  ctx.scale(-1, 1);
-  ctx.translate(-w / 2, -h / 2);
   ctx.transform(1, FLOOR_TILT, 0, 1, 0, 0);
 
   let row = 0;
