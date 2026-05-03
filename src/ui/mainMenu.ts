@@ -88,34 +88,9 @@ export class MainMenu {
     const body = document.createElement('div');
     body.className = 'mm-body';
 
-    // ─ Left column: Daily rewards calendar ─
+    // ─ Left column: Crafting (Shop) + Laboratory + Daily rewards calendar ─
     const leftCol = document.createElement('div');
     leftCol.className = 'mm-col mm-col-left';
-    leftCol.appendChild(this.buildInlineDailyCalendar(opts));
-    body.appendChild(leftCol);
-
-    // ─ Center column: Animated mannequin ─
-    const centerCol = document.createElement('div');
-    centerCol.className = 'mm-col mm-col-center';
-    const illu = document.createElement('div');
-    illu.className = 'mm-mannequin-display';
-    illu.innerHTML = mannequinIllustrationSVG();
-    centerCol.appendChild(illu);
-    body.appendChild(centerCol);
-
-    // ─ Right column: Leaderboard + Crafting (Shop) + Laboratory ─
-    const rightCol = document.createElement('div');
-    rightCol.className = 'mm-col mm-col-right';
-
-    // Inline leaderboard panel
-    const lbWrap = document.createElement('div');
-    lbWrap.className = 'mm-card mm-lb-card';
-    const lbTitle = document.createElement('div');
-    lbTitle.className = 'mm-card-title';
-    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
-    lbWrap.appendChild(lbTitle);
-    lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
-    rightCol.appendChild(lbWrap);
 
     // Crafting card
     const shopBtn = document.createElement('button');
@@ -146,7 +121,7 @@ export class MainMenu {
     craftLvl.textContent = t('ui.menu.craftingLevel', { level: opts.meta.craftingLevel });
     shopBtn.appendChild(craftLvl);
     shopBtn.addEventListener('click', opts.onCrafting);
-    rightCol.appendChild(shopBtn);
+    leftCol.appendChild(shopBtn);
 
     // Laboratory card
     const labBtn = document.createElement('button');
@@ -170,7 +145,35 @@ export class MainMenu {
     `;
     labBtn.appendChild(labDesc);
     labBtn.addEventListener('click', opts.onLaboratory);
-    rightCol.appendChild(labBtn);
+    leftCol.appendChild(labBtn);
+
+    // Inline daily rewards calendar (lives alongside shop / laboratory in
+    // the left column).
+    leftCol.appendChild(this.buildInlineDailyCalendar(opts));
+
+    body.appendChild(leftCol);
+
+    // ─ Center column: Animated mannequin ─
+    const centerCol = document.createElement('div');
+    centerCol.className = 'mm-col mm-col-center';
+    const illu = document.createElement('div');
+    illu.className = 'mm-mannequin-display';
+    illu.innerHTML = mannequinIllustrationSVG();
+    centerCol.appendChild(illu);
+    body.appendChild(centerCol);
+
+    // ─ Right column: Leaderboard ─
+    const rightCol = document.createElement('div');
+    rightCol.className = 'mm-col mm-col-right';
+
+    const lbWrap = document.createElement('div');
+    lbWrap.className = 'mm-card mm-lb-card';
+    const lbTitle = document.createElement('div');
+    lbTitle.className = 'mm-card-title';
+    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
+    lbWrap.appendChild(lbTitle);
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
+    rightCol.appendChild(lbWrap);
 
     body.appendChild(rightCol);
     wrap.appendChild(body);

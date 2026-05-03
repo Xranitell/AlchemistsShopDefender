@@ -1875,9 +1875,11 @@ body {
   overflow-x: hidden;
 }
 .mm-col-right {
-  flex: 0 0 clamp(250px, 26vw, 420px);
+  flex: 0 0 clamp(260px, 28vw, 460px);
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .mm-col-center {
   flex: 1;
@@ -2197,11 +2199,10 @@ body {
 
 /* ── Leaderboard card ────────────────────────────────────────── */
 .mm-lb-card {
-  /* Take up the top portion of the right column — enough to comfortably
-     show the top 5 rows of the leaderboard while leaving room for the
-     shop and laboratory cards stretched below. */
-  flex: 1 1 0;
-  min-height: 320px;
+  /* Lives alone in the right column — fill the full available height so
+     the leaderboard reads as a big focal panel instead of a small box. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2219,37 +2220,37 @@ body {
 }
 .mm-lb-icon { font-size: 18px; }
 
-/* ── Shop / Laboratory cards (right column) ──────────────────────
+/* ── Shop / Laboratory cards (left column, alongside daily rewards) ──
  * Stretched to fill the available width and grow vertically so they
- * read at the same visual scale as the daily rewards calendar on the
- * opposite side of the menu. */
-.mm-col-right .mm-shop-card,
-.mm-col-right .mm-lab-card {
+ * read at the same visual scale as the daily rewards calendar that
+ * sits below them in the same column. */
+.mm-col-left .mm-shop-card,
+.mm-col-left .mm-lab-card {
   flex: 1 1 0;
-  min-height: 180px;
+  min-height: 160px;
   display: flex;
   flex-direction: column;
 }
-.mm-col-right .mm-shop-card .mm-shop-slots {
+.mm-col-left .mm-shop-card .mm-shop-slots {
   gap: 8px;
   margin: 14px 0 12px;
 }
-.mm-col-right .mm-shop-card .mm-shop-slot {
+.mm-col-left .mm-shop-card .mm-shop-slot {
   height: 52px;
 }
-.mm-col-right .mm-shop-card .mm-craft-level {
+.mm-col-left .mm-shop-card .mm-craft-level {
   margin-top: auto;
   font-size: 11px;
 }
-.mm-col-right .mm-lab-card .mm-lab-desc {
+.mm-col-left .mm-lab-card .mm-lab-desc {
   min-height: 120px;
   flex: 1 1 auto;
 }
 /* The lab tree's branches and node offsets are tuned for a fixed
-   ~200px-wide compact card. When the card stretches to fill the right
-   column, keep the tree itself at its original width and centre it so
-   the connecting branches still land on the HP / DMG nodes. */
-.mm-col-right .mm-lab-card .mm-lab-tree {
+   ~200px-wide compact card. When the card stretches to fill the wider
+   left column, keep the tree itself at its original width and centre
+   it so the connecting branches still land on the HP / DMG nodes. */
+.mm-col-left .mm-lab-card .mm-lab-tree {
   width: 200px;
   height: 110px;
   margin: 0 auto;
