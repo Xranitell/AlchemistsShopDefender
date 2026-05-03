@@ -50,6 +50,12 @@ export interface MetaSave {
   tutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  /** True once the player has explicitly picked a locale via the in-game
+   *  language switcher. While false, we let the Yandex SDK's
+   *  `environment.i18n.lang` override the locale on session start so the
+   *  game follows the player's Yandex profile language without ever
+   *  ignoring an in-game choice. */
+  localeUserChoice: boolean;
   /** Mode-mastery counters: number of full victories per difficulty. Each
    *  Epic / Ancient victory grants +1 mastery, which scales blue-essence
    *  drops in *every* future run by a small amount (capped). This is the
@@ -93,6 +99,7 @@ export function newMetaSave(): MetaSave {
     musicVolume: 0.4,
     tutorialDone: false,
     locale: defaultLocale(),
+    localeUserChoice: false,
     epicMastery: 0,
     ancientMastery: 0,
     ingredients: {},
@@ -192,6 +199,11 @@ export function loadMeta(): MetaSave {
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      // Existing saves without the explicit-choice flag are treated as
+      // "explicit" so we don't flip the player's previously persisted
+      // language out from under them on the first session after the
+      // Yandex SDK integration ships.
+      localeUserChoice: typeof data.localeUserChoice === 'boolean' ? data.localeUserChoice : true,
       epicMastery: typeof data.epicMastery === 'number' ? Math.max(0, Math.floor(data.epicMastery)) : 0,
       ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),

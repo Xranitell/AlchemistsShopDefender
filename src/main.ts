@@ -68,7 +68,8 @@ import { CraftingOverlay } from './ui/craftingOverlay';
 import type { IngredientId } from './data/potions';
 import { audio } from './audio/audio';
 import { tutorial } from './ui/tutorial';
-import { setLocale, t, onLocaleChange } from './i18n';
+import { hideAppLoader } from './ui/appLoader';
+import { setLocale, t, onLocaleChange, normalizeToLocale } from './i18n';
 
 // ── Mobile viewport scaling ──────────────────────────────────────────
 // On small screens (phones / small tablets) we override the viewport
@@ -274,7 +275,21 @@ tutorial.attach(canvas, {
 
 void (async () => {
   await yandex.init();
+  // Yandex Games console flags any submission that doesn't read the
+  // player's preferred language through their SDK as "i18n не
+  // используется". Pull the lang now and forward it to our own engine
+  // — but only when the player has not already picked a locale via the
+  // in-game switcher, so a manual choice always wins over the SDK.
+  if (!meta.localeUserChoice) {
+    const sdkLocale = normalizeToLocale(yandex.getLang());
+    if (sdkLocale !== meta.locale) {
+      setLocale(sdkLocale);
+      meta.locale = sdkLocale;
+      saveMeta(meta);
+    }
+  }
   yandex.loadingReady();
+  hideAppLoader();
   showMainMenu();
   loop.start();
 })();
@@ -1047,11 +1062,31 @@ function spawnFlyOut(args: {
   }, { once: true });
 }
 
+/** Tracks whether the defeat overlay has already been shown for the current
+ *  run. Without this guard a stale `state.phase === 'gameover'` could trigger
+ *  `showGameOver` more than once (e.g. after the player closes the doubled-
+ *  reward sub-overlay), stacking a second copy of the panel on top of the
+ *  first — what the player perceives as "old version, then new version". */
+let gameOverShown = false;
+
 function showGameOver(): void {
+  if (gameOverShown) return;
+  gameOverShown = true;
   yandex.gameplayStop();
   audio.playSfx('runDefeat');
   audio.playMusic('menu');
   tutorial.stop();
+  // Defensive: tear down every sibling overlay so the defeat panel is the
+  // only thing visible. The blessing / revive / endless-modifier / pause
+  // overlays all share the same root, and any of them lingering would read
+  // as "the old popup is still on screen" behind the new defeat panel.
+  reviveOverlay.hide();
+  blessingOverlay.hide();
+  endlessModOverlay.hide();
+  modifierPreview.hide();
+  difficultyOverlay.hide();
+  dailyEventOverlay.hide();
+  pauseStats.hide();
   const wave = state.waveState.currentIndex + 1;
   // FTUE: clearing wave 5 satisfies the tutorial even if the player
   // dies on a later wave — otherwise the entire script would replay on
@@ -1190,6 +1225,15 @@ function showGameOver(): void {
   tryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   tryBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
+    // Epic / Ancient retries cost a key. Without this guard the player
+    // could farm dungeons indefinitely from the defeat screen, even with
+    // zero keys in inventory, since `consumeKey` was never called on
+    // retry. Bounce back to the difficulty picker if no key is available.
+    if (!consumeKey(lastMode)) {
+      overlay.hide();
+      restart();
+      return;
+    }
     overlay.hide();
     startRun(lastMode);
   });
@@ -1213,7 +1257,19 @@ function showGameOver(): void {
         title: t('ui.defeat.doubledTitle'),
         subtitle: t('ui.defeat.doubledSubtitle', { blue: reward.blue * 2 }),
         buttons: [
-          { label: t('ui.defeat.tryAgain'), primary: true, onClick: () => { overlay.hide(); startRun(lastMode); } },
+          {
+            label: t('ui.defeat.tryAgain'),
+            primary: true,
+            onClick: () => {
+              if (!consumeKey(lastMode)) {
+                overlay.hide();
+                restart();
+                return;
+              }
+              overlay.hide();
+              startRun(lastMode);
+            },
+          },
           { label: t('ui.common.toMenu'), onClick: () => restart() },
         ],
       });
@@ -1342,6 +1398,7 @@ function consumeKey(mode: DifficultyMode): boolean {
 function startRun(mode: DifficultyMode): void {
   const seed = mode === 'daily' ? dailySeed() : undefined;
   state = buildInitialState(seed, mode);
+  gameOverShown = false;
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
   // Daily Experiment runs an MSK-day-of-week event with its own modifier

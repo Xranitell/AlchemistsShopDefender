@@ -108,6 +108,9 @@ function buildLanguageSection(meta: MetaSave): HTMLElement {
       if (getLocale() === code) return;
       setLocale(code);
       meta.locale = code;
+      // Once the player picks a language manually we stop letting the
+      // Yandex SDK override it on subsequent sessions.
+      meta.localeUserChoice = true;
       saveMeta(meta);
     });
     row.appendChild(btn);

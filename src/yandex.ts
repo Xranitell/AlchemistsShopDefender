@@ -57,6 +57,17 @@ interface YGameSdk {
   };
   getPlayer?(opts?: { scopes?: boolean }): Promise<unknown>;
   getLeaderboards?(): Promise<YaLeaderboards>;
+  /** Player environment — the Yandex SDK exposes the user's preferred
+   *  interface language here. We forward this to our i18n engine so the
+   *  Yandex console stops flagging "i18n не используется" and players
+   *  who switch their Yandex profile language see the game follow. */
+  environment?: {
+    i18n?: {
+      lang?: string;
+    };
+    app?: { id?: string };
+    browser?: { lang?: string };
+  };
 }
 
 export interface LeaderboardEntry {
@@ -149,6 +160,22 @@ class YandexGames {
 
   isReal(): boolean {
     return this.sdk !== null;
+  }
+
+  /** Returns the user's preferred interface language as reported by the
+   *  Yandex Games SDK ("ru", "en", "tr", ...). When the SDK is not
+   *  available (local dev / non-Yandex hosts) we fall back to the browser
+   *  language. The Yandex publishing console uses this call to verify
+   *  that a game actually integrates with their localization API. */
+  getLang(): string | null {
+    const sdkLang = this.sdk?.environment?.i18n?.lang;
+    if (typeof sdkLang === 'string' && sdkLang.length > 0) return sdkLang;
+    const browserLang = this.sdk?.environment?.browser?.lang;
+    if (typeof browserLang === 'string' && browserLang.length > 0) return browserLang;
+    if (typeof navigator !== 'undefined' && typeof navigator.language === 'string') {
+      return navigator.language;
+    }
+    return null;
   }
 
   /** Submit a score to a leaderboard. Falls back to localStorage mock. */
