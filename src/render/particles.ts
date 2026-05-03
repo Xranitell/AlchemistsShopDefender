@@ -20,7 +20,22 @@ const MAX_PARTICLES = 500;
 
 export function spawnParticle(p: Omit<Particle, 'maxLife'>): void {
   if (particles.length >= MAX_PARTICLES) return;
-  particles.push({ ...p, maxLife: p.life });
+  // Avoid `{ ...p }` spread — that allocates a fresh object on every spawn,
+  // which is hot during reaction storms and overload bursts. Push an
+  // explicit literal instead so the JIT can inline the shape.
+  particles.push({
+    x: p.x,
+    y: p.y,
+    vx: p.vx,
+    vy: p.vy,
+    life: p.life,
+    maxLife: p.life,
+    size: p.size,
+    color: p.color,
+    gravity: p.gravity,
+    fadeOut: p.fadeOut,
+    shrink: p.shrink,
+  });
 }
 
 export function spawnBurst(
