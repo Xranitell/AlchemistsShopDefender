@@ -62,8 +62,6 @@ export const EN: Record<string, string> = {
   'ui.hud.module.frost_nova': 'Nova',
   'ui.hud.module.vortex': 'Vortex',
   'ui.hud.magnet': 'MAGNET',
-  'ui.hud.ability': 'ABILITY',
-  'ui.hud.abilityComingSoon': 'Coming soon',
   'ui.hud.overload': 'OVERLOAD',
   'ui.hud.bossIncoming': '⚠ BOSS WAVE ⚠',
 

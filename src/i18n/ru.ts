@@ -63,8 +63,6 @@ export const RU: Record<string, string> = {
   'ui.hud.module.frost_nova': 'Нова',
   'ui.hud.module.vortex': 'Вихрь',
   'ui.hud.magnet': 'МАГНИТ',
-  'ui.hud.ability': 'СПОСОБ.',
-  'ui.hud.abilityComingSoon': 'Скоро будет доступно',
   'ui.hud.overload': 'ПЕРЕГРУЗ',
   'ui.hud.bossIncoming': '⚠ БОСС ВОЛНА ⚠',
 
