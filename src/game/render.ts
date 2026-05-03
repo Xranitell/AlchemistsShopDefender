@@ -21,6 +21,7 @@ import { getShakeOffset } from '../engine/shake';
 import { drawShockwaves, updateShockwaves } from '../render/shockwaves';
 import { getScreenFlash } from '../render/screenFlash';
 import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
+import { applyBloom } from '../render/bloom';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -1213,6 +1214,13 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
   }
   ctx.restore();
+
+  // Bloom pass — soft additive halo around bright emissive pixels.
+  // Runs after the world layers but before the cinematic vignette so the
+  // vignette can still darken the corners on top of the bloom (otherwise
+  // the bloom would be partially shadowed by the vignette and look weak
+  // at the edges of the screen).
+  applyBloom(ctx, ctx.canvas, 0.32, 5, 130);
 
   // Vignette overlay for cinematic depth (cached canvas keyed by size).
   ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
