@@ -20,45 +20,72 @@ export class Input {
   private canvas: HTMLCanvasElement;
   private cssToGameX = 1;
   private cssToGameY = 1;
+  // Cached canvas-rect numbers. We only refresh on resize / scroll
+  // instead of per pointer event — `getBoundingClientRect` forces a
+  // synchronous layout each call, which on mobile can dominate the
+  // `mousemove` / `touchmove` cost during dragging. The cache is
+  // invalidated on every scroll / resize / orientation event.
+  private rectLeft = 0;
+  private rectTop = 0;
+  private rectRight = 0;
+  private rectBottom = 0;
+  private rectDirty = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.attach();
   }
 
-  private updateScale() {
-    const rect = this.canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      this.cssToGameX = this.canvas.width / rect.width;
-      this.cssToGameY = this.canvas.height / rect.height;
+  private invalidateRect = (): void => {
+    this.rectDirty = true;
+  };
+
+  private syncRect(): void {
+    if (!this.rectDirty) return;
+    const r = this.canvas.getBoundingClientRect();
+    this.rectLeft = r.left;
+    this.rectTop = r.top;
+    this.rectRight = r.right;
+    this.rectBottom = r.bottom;
+    if (r.width > 0 && r.height > 0) {
+      this.cssToGameX = this.canvas.width / r.width;
+      this.cssToGameY = this.canvas.height / r.height;
     }
+    this.rectDirty = false;
   }
 
   private toGame(clientX: number, clientY: number): Vec2 {
-    this.updateScale();
-    const rect = this.canvas.getBoundingClientRect();
+    this.syncRect();
     return {
-      x: (clientX - rect.left) * this.cssToGameX,
-      y: (clientY - rect.top) * this.cssToGameY,
+      x: (clientX - this.rectLeft) * this.cssToGameX,
+      y: (clientY - this.rectTop) * this.cssToGameY,
     };
   }
 
   private isInsideCanvas(clientX: number, clientY: number): boolean {
-    const rect = this.canvas.getBoundingClientRect();
+    this.syncRect();
     return (
-      clientX >= rect.left && clientX <= rect.right &&
-      clientY >= rect.top && clientY <= rect.bottom
+      clientX >= this.rectLeft && clientX <= this.rectRight &&
+      clientY >= this.rectTop && clientY <= this.rectBottom
     );
   }
 
   private attach() {
     const c = this.canvas;
+
+    // Refresh the cached canvas rect lazily on layout-changing events.
+    // We use {passive: true} so we don't accidentally block scrolling
+    // when the canvas covers a scrollable region.
+    window.addEventListener('resize', this.invalidateRect, { passive: true });
+    window.addEventListener('scroll', this.invalidateRect, { passive: true });
+    window.addEventListener('orientationchange', this.invalidateRect, { passive: true });
+
     // Listen on window so aim updates even when cursor is over HUD overlays.
     window.addEventListener('mousemove', (e) => {
       if (this.isInsideCanvas(e.clientX, e.clientY)) {
         this.state.mouse = this.toGame(e.clientX, e.clientY);
       }
-    });
+    }, { passive: true });
     c.addEventListener('mousedown', (e) => {
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
@@ -79,7 +106,7 @@ export class Input {
     });
     window.addEventListener('mouseup', () => {
       this.state.mouseDown = false;
-    });
+    }, { passive: true });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
 
     c.addEventListener('touchstart', (e) => {
@@ -116,7 +143,7 @@ export class Input {
 
     window.addEventListener('touchend', () => {
       this.state.mouseDown = false;
-    });
+    }, { passive: true });
 
     window.addEventListener('keydown', (e) => {
       if (!this.state.keys.has(e.code)) {

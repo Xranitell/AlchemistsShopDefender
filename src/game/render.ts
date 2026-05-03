@@ -15,6 +15,7 @@ import { COLORS } from '../render/palette';
 import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
+import { drawGlow, getRadialGlowSprite, getRadialGlowSpriteCustom } from '../render/glow';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -27,6 +28,88 @@ const SPRITE_SCALE = 2;
 const HERO_SCALE = 3;
 const TOWER_SCALE = 3;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
+
+// ────────────────────────────────────────────────────────────────────────
+// Pre-baked glow stops. These match the colours / shapes that the renderer
+// used to build via `ctx.createRadialGradient` every frame; we now bake
+// them once via render/glow.ts and `drawImage` the result. Each constant
+// is `as const` so the cache key is referentially stable and the JIT can
+// inline the literals.
+// ────────────────────────────────────────────────────────────────────────
+const TOWER_BASE_GLOW_STOPS = [
+  [0, 'rgba(125, 249, 255, 0.3)'],
+  [1, 'rgba(125, 249, 255, 0)'],
+] as const;
+const MANNEQUIN_CORE_GLOW_STOPS = [
+  [0, 'rgba(125, 249, 255, 0.4)'],
+  [1, 'rgba(125, 249, 255, 0)'],
+] as const;
+const SHIELD_BUBBLE_HALO_STOPS = [
+  [0, 'rgba(125, 200, 255, 0.0)'],
+  [0.7, 'rgba(125, 200, 255, 0.18)'],
+  [1, 'rgba(125, 200, 255, 0)'],
+] as const;
+const BOSS_GLOW_STOPS = [
+  [0, 'rgba(255, 50, 50, 0.6)'],
+  [0.5, 'rgba(180, 40, 120, 0.3)'],
+  [1, 'rgba(180, 40, 120, 0)'],
+] as const;
+const FIRE_STATUS_GLOW_STOPS = [
+  [0, 'rgba(255, 140, 58, 0.4)'],
+  [1, 'rgba(255, 140, 58, 0)'],
+] as const;
+const FROST_STATUS_GLOW_STOPS = [
+  [0, 'rgba(125, 249, 255, 0.3)'],
+  [1, 'rgba(125, 249, 255, 0)'],
+] as const;
+const MANNEQUIN_DYNAMIC_GLOW_STOPS = [
+  [0, 'rgba(125, 249, 255, 0.06)'],
+  [1, 'rgba(125, 249, 255, 0)'],
+] as const;
+const TOWER_DYNAMIC_GLOW_STOPS = [
+  [0, 'rgba(125, 249, 255, 0.03)'],
+  [1, 'rgba(125, 249, 255, 0)'],
+] as const;
+// Fire-pool dynamic light: base alpha 0.08 at the centre. The renderer
+// modulates per-pool fade via `globalAlpha` so we don't have to bake a
+// sprite per (radius, fade) pair.
+const FIRE_POOL_LIGHT_STOPS_BASE = [
+  [0, 'rgba(255, 140, 58, 0.08)'],
+  [1, 'rgba(255, 140, 58, 0)'],
+] as const;
+const LIGHTNING_POINT_STOPS = [
+  [0, 'rgba(189, 246, 255, 0.5)'],
+  [1, 'rgba(189, 246, 255, 0)'],
+] as const;
+
+// Vignette is keyed by canvas size — cache one canvas per (w, h) so we
+// don't pay the gradient cost every frame when the viewport is stable.
+let cachedVignette: HTMLCanvasElement | null = null;
+let cachedVignetteSize: { w: number; h: number } | null = null;
+function getVignette(width: number, height: number): HTMLCanvasElement {
+  if (cachedVignette && cachedVignetteSize
+    && cachedVignetteSize.w === width
+    && cachedVignetteSize.h === height) {
+    return cachedVignette;
+  }
+  const c = document.createElement('canvas');
+  c.width = width;
+  c.height = height;
+  const cx = c.getContext('2d');
+  if (cx) {
+    const grad = cx.createRadialGradient(
+      width / 2, height / 2, Math.min(width, height) * 0.25,
+      width / 2, height / 2, Math.max(width, height) * 0.7,
+    );
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, width, height);
+  }
+  cachedVignette = c;
+  cachedVignetteSize = { w: width, h: height };
+  return c;
+}
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
@@ -209,14 +292,10 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow under base.
     drawShadow(ctx, t.pos.x, t.pos.y + 22, 24, 7, 0.42);
 
-    // Base glow
+    // Base glow (cached radial-glow sprite).
     ctx.save();
     ctx.globalAlpha = 0.08;
-    const baseGlow = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 28);
-    baseGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-    baseGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = baseGlow;
-    ctx.fillRect(t.pos.x - 28, t.pos.y - 28, 56, 56);
+    drawGlow(ctx, t.pos.x, t.pos.y, 28, TOWER_BASE_GLOW_STOPS);
     ctx.restore();
 
     // Base sprite
@@ -306,15 +385,11 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Drop shadow
   drawShadow(ctx, m.pos.x, m.pos.y + 28, 32, 9, 0.52);
 
-  // Core glow pulse
+  // Core glow pulse (cached radial-glow sprite).
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
   ctx.save();
   ctx.globalAlpha = 0.12 + corePulse * 0.06;
-  const mannGlow = ctx.createRadialGradient(m.pos.x, m.pos.y - 4, 0, m.pos.x, m.pos.y - 4, 40);
-  mannGlow.addColorStop(0, 'rgba(125, 249, 255, 0.4)');
-  mannGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = mannGlow;
-  ctx.fillRect(m.pos.x - 40, m.pos.y - 44, 80, 80);
+  drawGlow(ctx, m.pos.x, m.pos.y - 4, 40, MANNEQUIN_CORE_GLOW_STOPS);
   ctx.restore();
 
   // Idle bob (slow breathing); throw window lunges forward one pixel toward
@@ -373,15 +448,12 @@ function drawMannequinShieldBubble(
   const oy = cy - 4; // centre on the mannequin's torso
 
   ctx.save();
-  // Outer glow halo.
-  const glow = ctx.createRadialGradient(ox, oy, radius * 0.55, ox, oy, radius * 1.15);
-  glow.addColorStop(0, 'rgba(125, 200, 255, 0.0)');
-  glow.addColorStop(0.7, 'rgba(125, 200, 255, 0.18)');
-  glow.addColorStop(1, 'rgba(125, 200, 255, 0)');
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(ox, oy, radius * 1.15, 0, Math.PI * 2);
-  ctx.fill();
+  // Outer glow halo (cached centred radial sprite).
+  const haloOuter = radius * 1.15;
+  const haloInner = radius * 0.55;
+  const haloSprite = getRadialGlowSpriteCustom(haloOuter, SHIELD_BUBBLE_HALO_STOPS, haloInner);
+  const haloR = Math.round(haloOuter);
+  ctx.drawImage(haloSprite, Math.round(ox - haloR), Math.round(oy - haloR));
   ctx.restore();
 
   ctx.save();
@@ -582,24 +654,16 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
 
     // Boss visual distinction: pulsing red/purple glow + crown marker
+    // (cached radial-glow sprite, keyed by enemy kind radius).
     if (e.kind.isBoss) {
       const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
       ctx.save();
       ctx.globalAlpha = 0.35 * bPulse;
-      const bossGlow = ctx.createRadialGradient(
-        e.pos.x, e.pos.y, e.kind.radius * 0.3,
-        e.pos.x, e.pos.y, e.kind.radius * 2.2,
-      );
-      bossGlow.addColorStop(0, 'rgba(255, 50, 50, 0.6)');
-      bossGlow.addColorStop(0.5, 'rgba(180, 40, 120, 0.3)');
-      bossGlow.addColorStop(1, 'rgba(180, 40, 120, 0)');
-      ctx.fillStyle = bossGlow;
-      ctx.fillRect(
-        e.pos.x - e.kind.radius * 2.2,
-        e.pos.y - e.kind.radius * 2.2,
-        e.kind.radius * 4.4,
-        e.kind.radius * 4.4,
-      );
+      const bossOuter = e.kind.radius * 2.2;
+      const bossInner = e.kind.radius * 0.3;
+      const bossSprite = getRadialGlowSpriteCustom(bossOuter, BOSS_GLOW_STOPS, bossInner);
+      const bossR = Math.round(bossOuter);
+      ctx.drawImage(bossSprite, Math.round(e.pos.x - bossR), Math.round(e.pos.y - bossR));
       ctx.restore();
 
       // Crown symbol above boss
@@ -648,14 +712,10 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (Math.random() < 0.4) {
         spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
       }
-      // Under-glow
+      // Under-glow (cached radial-glow sprite).
       ctx.save();
       ctx.globalAlpha = 0.15;
-      const fireGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 2);
-      fireGlow.addColorStop(0, 'rgba(255, 140, 58, 0.4)');
-      fireGlow.addColorStop(1, 'rgba(255, 140, 58, 0)');
-      ctx.fillStyle = fireGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
+      drawGlow(ctx, e.pos.x, e.pos.y, e.kind.radius * 2, FIRE_STATUS_GLOW_STOPS);
       ctx.restore();
     }
     if (e.status.slowTime > 0) {
@@ -664,14 +724,10 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
-      // Frost shimmer
+      // Frost shimmer (cached radial-glow sprite).
       ctx.save();
       ctx.globalAlpha = 0.1;
-      const frostGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 1.5);
-      frostGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-      frostGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-      ctx.fillStyle = frostGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
+      drawGlow(ctx, e.pos.x, e.pos.y, e.kind.radius * 1.5, FROST_STATUS_GLOW_STOPS);
       ctx.restore();
     }
     if (e.status.armorBreakTime > 0) {
@@ -757,18 +813,31 @@ function drawChainBolts(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
+// Module-scope colour lookups for `drawProjectiles`. Allocating these
+// inside the per-frame call used to allocate two records every frame —
+// hoisting them here turns the trail-colour lookup into a single map
+// access against a long-lived object.
+const PROJECTILE_TRAIL_COLOR_MAP: Record<string, string[]> = {
+  fire: FIRE_COLORS,
+  mercury: MERCURY_COLORS,
+  acid: ACID_COLORS,
+  aether: AETHER_COLORS,
+  frost: FROST_COLORS,
+  poison: POISON_COLORS,
+};
+const PROJECTILE_TRAIL_GLOW: Record<string, string> = {
+  fire: 'rgba(255, 140, 58, 0.35)',
+  mercury: 'rgba(201, 201, 216, 0.3)',
+  acid: 'rgba(210, 245, 90, 0.3)',
+  aether: 'rgba(167, 139, 250, 0.35)',
+  frost: 'rgba(125, 211, 252, 0.35)',
+  poison: 'rgba(155, 227, 107, 0.35)',
+};
+
 function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
-  const trailColorMap: Record<string, string[]> = {
-    fire: FIRE_COLORS,
-    mercury: MERCURY_COLORS,
-    acid: ACID_COLORS,
-    aether: AETHER_COLORS,
-    frost: FROST_COLORS,
-    poison: POISON_COLORS,
-  };
   for (const p of state.projectiles) {
-    const trailColors = trailColorMap[p.element] ?? AETHER_COLORS;
+    const trailColors = PROJECTILE_TRAIL_COLOR_MAP[p.element] ?? AETHER_COLORS;
 
     if (p.kind === 'potion') {
       // Arc height (z) is a visual-only offset so the potion appears airborne.
@@ -796,16 +865,8 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
 
       // Soft glow tail — also airborne, and slightly smaller so it reads as
       // "trailing vapour" rather than another shadow.
-      const trailGlow: Record<string, string> = {
-        fire: 'rgba(255, 140, 58, 0.35)',
-        mercury: 'rgba(201, 201, 216, 0.3)',
-        acid: 'rgba(210, 245, 90, 0.3)',
-        aether: 'rgba(167, 139, 250, 0.35)',
-        frost: 'rgba(125, 211, 252, 0.35)',
-        poison: 'rgba(155, 227, 107, 0.35)',
-      };
       ctx.save();
-      ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
+      ctx.fillStyle = PROJECTILE_TRAIL_GLOW[p.element] ?? 'rgba(125, 249, 255, 0.3)';
       const tx = p.arc ? (p.arc.target.x - p.arc.start.x) : p.vel.x;
       const ty = p.arc ? (p.arc.target.y - p.arc.start.y) : p.vel.y;
       ctx.fillRect(Math.round(drawX - 3 - tx * 0.006), Math.round(drawY - 3 - ty * 0.006), 6, 6);
@@ -939,32 +1000,27 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): v
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
 
-  // Mannequin core glow
+  // Mannequin core glow (cached).
   const m = state.mannequin;
-  const coreGlow = ctx.createRadialGradient(m.pos.x, m.pos.y, 0, m.pos.x, m.pos.y, 80);
-  coreGlow.addColorStop(0, 'rgba(125, 249, 255, 0.06)');
-  coreGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = coreGlow;
-  ctx.fillRect(m.pos.x - 80, m.pos.y - 80, 160, 160);
+  drawGlow(ctx, m.pos.x, m.pos.y, 80, MANNEQUIN_DYNAMIC_GLOW_STOPS);
 
-  // Fire pool lights
+  // Fire pool lights — keyed by fire-pool radius. We do still need to
+  // modulate the fade-out alpha; we use globalAlpha to avoid baking a
+  // separate sprite per (radius, alpha) pair.
   for (const fp of state.firePools) {
     const fadeOut = Math.max(0, Math.min(1, fp.time / 0.5));
+    if (fadeOut <= 0) continue;
     const r = fp.radius * 3;
-    const g = ctx.createRadialGradient(fp.pos.x, fp.pos.y, 0, fp.pos.x, fp.pos.y, r);
-    g.addColorStop(0, `rgba(255, 140, 58, ${0.08 * fadeOut})`);
-    g.addColorStop(1, 'rgba(255, 140, 58, 0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(fp.pos.x - r, fp.pos.y - r, r * 2, r * 2);
+    const sprite = getRadialGlowSprite(r, FIRE_POOL_LIGHT_STOPS_BASE);
+    const sr = Math.round(r);
+    ctx.globalAlpha = fadeOut;
+    ctx.drawImage(sprite, Math.round(fp.pos.x - sr), Math.round(fp.pos.y - sr));
   }
+  ctx.globalAlpha = 1;
 
-  // Tower range glow (subtle)
+  // Tower range glow (subtle, cached).
   for (const t of state.towers) {
-    const tg = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 30);
-    tg.addColorStop(0, 'rgba(125, 249, 255, 0.03)');
-    tg.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = tg;
-    ctx.fillRect(t.pos.x - 30, t.pos.y - 30, 60, 60);
+    drawGlow(ctx, t.pos.x, t.pos.y, 30, TOWER_DYNAMIC_GLOW_STOPS);
   }
 
   ctx.restore();
@@ -1000,13 +1056,9 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = COLORS.whiteSoft;
     ctx.fillRect(Math.round(p.x) - 3, Math.round(p.y) - 3, 6, 6);
-    // Point glow
+    // Point glow (cached).
     ctx.globalAlpha = alpha * 0.3;
-    const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
-    pg.addColorStop(0, 'rgba(189, 246, 255, 0.5)');
-    pg.addColorStop(1, 'rgba(189, 246, 255, 0)');
-    ctx.fillStyle = pg;
-    ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
+    drawGlow(ctx, p.x, p.y, 20, LIGHTNING_POINT_STOPS);
     ctx.restore();
     // Spawn spark particles
     if (alpha > 0.5 && Math.random() < 0.6) {
@@ -1076,15 +1128,8 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
     ctx.restore();
   }
 
-  // Vignette overlay for cinematic depth
-  const grad = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.25,
-    width / 2, height / 2, Math.max(width, height) * 0.7,
-  );
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+  // Vignette overlay for cinematic depth — pre-baked once per canvas size.
+  ctx.drawImage(getVignette(width, height), 0, 0);
 }
 
 // Export camera config for input system

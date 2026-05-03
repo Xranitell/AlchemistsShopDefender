@@ -20,7 +20,22 @@ const MAX_PARTICLES = 500;
 
 export function spawnParticle(p: Omit<Particle, 'maxLife'>): void {
   if (particles.length >= MAX_PARTICLES) return;
-  particles.push({ ...p, maxLife: p.life });
+  // Avoid `{ ...p }` spread — that allocates a fresh object on every spawn,
+  // which is hot during reaction storms and overload bursts. Push an
+  // explicit literal instead so the JIT can inline the shape.
+  particles.push({
+    x: p.x,
+    y: p.y,
+    vx: p.vx,
+    vy: p.vy,
+    life: p.life,
+    maxLife: p.life,
+    size: p.size,
+    color: p.color,
+    gravity: p.gravity,
+    fadeOut: p.fadeOut,
+    shrink: p.shrink,
+  });
 }
 
 export function spawnBurst(
@@ -88,14 +103,26 @@ export function updateParticles(dt: number): void {
 }
 
 export function drawParticles(ctx: CanvasRenderingContext2D): void {
-  for (const p of particles) {
+  // Single ctx.save / ctx.restore around the whole loop instead of per
+  // particle: with 500 particles in flight that previously cost ~1000
+  // state-stack pushes per frame. We only mutate `globalAlpha` and
+  // `fillStyle` inside the loop, so the surrounding state doesn't leak.
+  if (particles.length === 0) return;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
+  let curColor: string | null = null;
+
+  for (let pi = 0; pi < particles.length; pi++) {
+    const p = particles[pi]!;
     const t = p.life / p.maxLife;
     const alpha = p.fadeOut ? Math.min(1, t * 2) : 1;
     const size = p.shrink ? p.size * (0.3 + t * 0.7) : p.size;
 
-    ctx.save();
+    if (curColor !== p.color) {
+      ctx.fillStyle = p.color;
+      curColor = p.color;
+    }
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color;
     ctx.fillRect(
       Math.round(p.x - size / 2),
       Math.round(p.y - size / 2),
@@ -113,8 +140,10 @@ export function drawParticles(ctx: CanvasRenderingContext2D): void {
         Math.ceil(size * 2),
       );
     }
-    ctx.restore();
   }
+
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 // Impact burst colors by element
