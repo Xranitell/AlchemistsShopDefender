@@ -8630,3 +8630,279 @@ body {
   .mm-title-top { font-size: clamp(14px, 3vw, 24px); }
   .mm-title-bottom { font-size: clamp(16px, 3.2vw, 26px); margin-top: 2px; }
 }
+
+/* ============================================================
+ *  Main Menu — Visual Polish Layer
+ *  All additive: animations, glow effects, ember particles,
+ *  subtle hover lift. Does not redefine earlier `mm-*` rules.
+ * ============================================================ */
+
+/* --- Floating ember sparks (decorative, drift upward) ----- */
+.mm-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.mm-spark {
+  position: absolute;
+  left: var(--x, 50%);
+  bottom: -8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe091 0%, #ff8c3a 50%, transparent 100%);
+  filter: drop-shadow(0 0 6px rgba(255, 180, 80, 0.85));
+  transform: translateX(-50%) scale(var(--scale, 1));
+  animation: mm-spark-rise var(--dur, 7s) linear var(--delay, 0s) infinite;
+  opacity: 0;
+}
+@keyframes mm-spark-rise {
+  0%   { transform: translate(-50%, 0) scale(var(--scale, 1)); opacity: 0; }
+  10%  { opacity: 1; }
+  85%  { opacity: 0.9; }
+  100% { transform: translate(-50%, -90vh) scale(calc(var(--scale, 1) * 0.4)); opacity: 0; }
+}
+
+/* Make sure menu chrome layers above the spark backdrop. */
+.main-menu > *:not(.mm-sparks) { position: relative; z-index: 1; }
+
+/* --- Title — entrance fade + slow breathing glow ----------- */
+.main-menu .mm-title {
+  animation:
+    mm-title-fade 700ms ease-out 80ms backwards,
+    mm-title-breath 3.4s ease-in-out 800ms infinite;
+}
+@keyframes mm-title-fade {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes mm-title-breath {
+  0%, 100% { filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35)) drop-shadow(0 0 4px rgba(255,140,60,0.0)); }
+  50%      { filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35)) drop-shadow(0 0 18px rgba(255,170,80,0.55)); }
+}
+.main-menu .mm-title-top {
+  animation: mm-title-top-glow 3.4s ease-in-out infinite;
+}
+@keyframes mm-title-top-glow {
+  0%, 100% {
+    text-shadow:
+      -2px -2px 0 #5a2a15, 2px -2px 0 #5a2a15,
+      -2px 2px 0 #5a2a15, 3px 3px 0 #5a2a15,
+      0 0 12px rgba(255, 209, 102, 0.45);
+  }
+  50% {
+    text-shadow:
+      -2px -2px 0 #5a2a15, 2px -2px 0 #5a2a15,
+      -2px 2px 0 #5a2a15, 3px 3px 0 #5a2a15,
+      0 0 26px rgba(255, 220, 130, 0.95);
+  }
+}
+.main-menu .mm-title-bottom {
+  animation: mm-title-bottom-glow 3.4s ease-in-out 0.5s infinite;
+}
+@keyframes mm-title-bottom-glow {
+  0%, 100% {
+    text-shadow:
+      -2px -2px 0 #3a1212, 2px -2px 0 #3a1212,
+      -2px 2px 0 #3a1212, 3px 3px 0 #3a1212,
+      0 0 14px rgba(255, 106, 61, 0.55);
+  }
+  50% {
+    text-shadow:
+      -2px -2px 0 #3a1212, 2px -2px 0 #3a1212,
+      -2px 2px 0 #3a1212, 3px 3px 0 #3a1212,
+      0 0 30px rgba(255, 130, 80, 1);
+  }
+}
+
+/* --- Battle CTA — pulsing golden halo ---------------------- */
+.mm-battle-btn {
+  position: relative;
+  isolation: isolate;
+  animation: mm-battle-halo 2.4s ease-in-out infinite;
+}
+@keyframes mm-battle-halo {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px #f7cf70,
+      inset 0 3px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -6px 0 rgba(138, 79, 18, 0.55),
+      0 8px 0 #5f320e,
+      0 13px 24px rgba(0,0,0,0.55),
+      0 0 22px rgba(255, 184, 74, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px #ffe091,
+      inset 0 3px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -6px 0 rgba(138, 79, 18, 0.55),
+      0 8px 0 #5f320e,
+      0 13px 24px rgba(0,0,0,0.55),
+      0 0 42px rgba(255, 200, 90, 0.95);
+  }
+}
+.mm-battle-btn::before {
+  /* Diagonal shimmer sweep — purely additive, sits above gradient
+     fill but below the text via z-index sandwich + isolation. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.0) 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0.0) 65%,
+    transparent 100%
+  );
+  background-size: 280% 100%;
+  background-position: 200% 0;
+  pointer-events: none;
+  z-index: -1;
+  animation: mm-battle-shimmer 4.5s ease-in-out 1.2s infinite;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+@keyframes mm-battle-shimmer {
+  0%   { background-position: 200% 0; opacity: 0; }
+  15%  { opacity: 1; }
+  60%  { background-position: -100% 0; opacity: 0.8; }
+  100% { background-position: -100% 0; opacity: 0; }
+}
+
+/* --- Cards — animated halo + lift on hover ----------------- */
+.mm-card {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.mm-card:hover {
+  transform: translateY(-2px);
+  animation: mm-card-pulse 1.6s ease-in-out infinite;
+}
+@keyframes mm-card-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 209, 102, 0.55),
+      inset 0 2px 0 rgba(255, 209, 102, 0.20),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.55),
+      0 9px 0 rgba(0, 0, 0, 0.55),
+      0 0 18px rgba(255, 184, 74, 0.30);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 230, 150, 0.95),
+      inset 0 2px 0 rgba(255, 220, 130, 0.32),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.55),
+      0 9px 0 rgba(0, 0, 0, 0.55),
+      0 0 36px rgba(255, 200, 90, 0.7);
+  }
+}
+
+/* Currency chip icons get a soft glow on hover — colour-coded so
+   blue/gold/violet keys retain their identity. */
+.mm-currency .pixel-icon { transition: filter 200ms ease; }
+.mm-currency:hover .pixel-icon {
+  filter: drop-shadow(1px 1px 0 #07080e) drop-shadow(0 0 8px rgba(255, 209, 102, 0.85));
+}
+.mm-currency.blue-essence:hover .pixel-icon {
+  filter: drop-shadow(1px 1px 0 #07080e) drop-shadow(0 0 8px rgba(125, 249, 255, 0.85));
+}
+.mm-currency.epic-key:hover .pixel-icon {
+  filter: drop-shadow(1px 1px 0 #07080e) drop-shadow(0 0 8px rgba(192, 132, 252, 0.85));
+}
+
+/* --- Mannequin display: warm spotlight that breathes -------- */
+.mm-mannequin-display {
+  position: relative;
+  isolation: isolate;
+}
+.mm-mannequin-display::before {
+  content: '';
+  position: absolute;
+  inset: -10% -10% 0 -10%;
+  background: radial-gradient(ellipse at 50% 60%,
+    rgba(255, 184, 74, 0.30) 0%,
+    rgba(255, 140, 60, 0.12) 28%,
+    transparent 62%);
+  pointer-events: none;
+  animation: mm-spotlight-breath 4.2s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes mm-spotlight-breath {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.05); }
+}
+
+/* --- Mode buttons (Daily / Boss / LB): glowing rim on hover -- */
+.mm-mode-btn { transition: border-color 150ms, box-shadow 150ms, color 150ms; }
+.mm-mode-btn:hover {
+  color: #ffd166;
+  box-shadow: 0 0 0 1px rgba(255, 184, 74, 0.55), 0 0 16px rgba(255, 184, 74, 0.55);
+}
+
+/* --- Settings gear: warm hover halo ------------------------ */
+.mm-settings-gear { transition: border-color 150ms, box-shadow 150ms; }
+.mm-settings-gear:hover {
+  border-color: #ff8c3a;
+  box-shadow: 0 0 18px rgba(255, 140, 60, 0.65);
+}
+
+/* --- Loadout card slots: glow on hover --------------------- */
+.mm-loadout-slot { transition: border-color 150ms, box-shadow 150ms, transform 150ms; }
+.mm-loadout-slot:hover {
+  transform: translateX(2px);
+  box-shadow: 0 0 0 1px rgba(255, 184, 74, 0.50), 0 0 16px rgba(255, 184, 74, 0.50);
+}
+
+/* ============================================================
+ *  Overlay Panels — Unified Soft Gold Halo
+ *  Subtly tints the rim of every major widget panel so they
+ *  share visual language with the menu CTAs.
+ * ============================================================ */
+.daily-panel,
+.lb-panel,
+.meta-tree-panel,
+.craft-panel,
+.lo-panel,
+.blessing-panel {
+  position: relative;
+  animation: panel-rim-glow 5s ease-in-out infinite;
+}
+@keyframes panel-rim-glow {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(255, 184, 74, 0.16)); }
+  50%      { filter: drop-shadow(0 0 28px rgba(255, 200, 90, 0.36)); }
+}
+
+/* Close-button: warm hover halo ----------------------------- */
+.overlay-close { transition: box-shadow 150ms, color 150ms; }
+.overlay-close:hover {
+  box-shadow:
+    0 0 0 2px #c9c9d8,
+    inset 0 2px 0 rgba(255,255,255,0.25),
+    0 0 14px rgba(255, 100, 60, 0.7);
+}
+
+/* ============================================================
+ *  Reduced-motion safety — disable all decorative animations
+ *  for users who request reduced motion.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .mm-spark,
+  .main-menu .mm-title,
+  .main-menu .mm-title-top,
+  .main-menu .mm-title-bottom,
+  .mm-battle-btn,
+  .mm-battle-btn::before,
+  .mm-card,
+  .mm-mannequin-display::before,
+  .daily-panel,
+  .lb-panel,
+  .meta-tree-panel,
+  .craft-panel,
+  .lo-panel,
+  .blessing-panel {
+    animation: none !important;
+  }
+}
