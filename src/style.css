@@ -1865,9 +1865,14 @@ body {
   gap: clamp(6px, 0.8vw, 12px);
   min-width: 0;
 }
+/* Both side columns share the same width so the shop / laboratory cards
+   in the right column visually match the daily rewards calendar in the
+   left column (cf. user request: "stretch shop & lab to size of daily
+   rewards"). */
 .mm-col-left {
-  flex: 0 0 clamp(170px, 16vw, 250px);
+  flex: 0 0 clamp(250px, 26vw, 420px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .mm-col-right {
   flex: 0 0 clamp(250px, 26vw, 420px);
@@ -1979,7 +1984,16 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .mm-stats { font-size: 14px; color: var(--fg-dim); display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
-.mm-lab-desc { min-height: 88px; color: var(--fg-dim); }
+.mm-lab-desc {
+  min-height: 88px;
+  color: var(--fg-dim);
+  /* Allow the lab card to grow vertically when stretched alongside the
+     leaderboard / shop in the right column. */
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 /* (Old mm-lab-btn etc. removed — now using mm-card) */
 .mm-flask-icon,
 .mm-gear-icon,
@@ -2088,6 +2102,13 @@ body {
 
 /* ── Inline daily rewards calendar ──────────────────────────── */
 .mm-daily-calendar {
+  /* Lives alone in the left column so let it fill the full available
+     vertical space. */
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.mm-daily-calendar .mm-daily-grid {
   flex: 1 1 auto;
 }
 .mm-daily-week-badge {
@@ -2176,11 +2197,63 @@ body {
 
 /* ── Leaderboard card ────────────────────────────────────────── */
 .mm-lb-card {
-  flex: 0 0 auto;
-  max-height: 220px;
-  overflow-y: auto;
+  /* Take up the top portion of the right column — enough to comfortably
+     show the top 5 rows of the leaderboard while leaving room for the
+     shop and laboratory cards stretched below. */
+  flex: 1 1 0;
+  min-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.mm-lb-card .lb-panel-compact {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mm-lb-card .lb-panel-compact .lb-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 .mm-lb-icon { font-size: 18px; }
+
+/* ── Shop / Laboratory cards (right column) ──────────────────────
+ * Stretched to fill the available width and grow vertically so they
+ * read at the same visual scale as the daily rewards calendar on the
+ * opposite side of the menu. */
+.mm-col-right .mm-shop-card,
+.mm-col-right .mm-lab-card {
+  flex: 1 1 0;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+.mm-col-right .mm-shop-card .mm-shop-slots {
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.mm-col-right .mm-shop-card .mm-shop-slot {
+  height: 52px;
+}
+.mm-col-right .mm-shop-card .mm-craft-level {
+  margin-top: auto;
+  font-size: 11px;
+}
+.mm-col-right .mm-lab-card .mm-lab-desc {
+  min-height: 120px;
+  flex: 1 1 auto;
+}
+/* The lab tree's branches and node offsets are tuned for a fixed
+   ~200px-wide compact card. When the card stretches to fill the right
+   column, keep the tree itself at its original width and centre it so
+   the connecting branches still land on the HP / DMG nodes. */
+.mm-col-right .mm-lab-card .mm-lab-tree {
+  width: 200px;
+  height: 110px;
+  margin: 0 auto;
+}
 
 .mm-bp-sub { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-dim); }
 .mm-daily-badge {
