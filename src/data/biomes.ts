@@ -53,9 +53,11 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   workshop: {
     id: 'workshop',
     name: 'Мастерская',
-    // Warm cosy alchemist's lab palette — wooden plank floor, candle-glow
-    // ambient, amber spotlight. Crypt + foundry stay on cold/red palettes
-    // so the three biomes still read as visually distinct.
+    // Warm cosy alchemist's lab palette — amber-toned stone tile floor,
+    // candle-glow ambient, amber spotlight. Crypt + foundry stay on
+    // cold/red palettes so the three biomes still read as visually
+    // distinct. (The workshop used to draw a wooden plank floor here;
+    // it was retired in favour of the shared iso-tile floor.)
     palette: {
       bg: '#1a0f0a',
       tileA: '#5d3a22',

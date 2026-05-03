@@ -17,11 +17,11 @@ export const EN: Record<string, string> = {
   'ui.menu.title.top': "Alchemist's Shop",
   'ui.menu.title.bottom': 'Defender',
   'ui.menu.toBattle': 'TO BATTLE',
-  'ui.menu.shop': 'MY SHOP',
+  'ui.menu.shop': 'BREWERY',
   'ui.menu.craftingLevel': 'CRAFTING LEVEL {level}',
   'ui.menu.runs': 'RUNS {n}',
   'ui.menu.bestWave': 'BEST WAVE {n}',
-  'ui.menu.laboratory': 'LABORATORY',
+  'ui.menu.laboratory': 'TALENT LAB',
   'ui.menu.settings': 'SETTINGS',
   'ui.menu.battlePass': 'BATTLE PASS',
   'ui.menu.dailyRewards': 'DAILY\nREWARDS',
@@ -285,7 +285,7 @@ export const EN: Record<string, string> = {
   'ui.bp.claimAll': 'Claim all',
 
   // ── Meta tree (laboratory) ───────────────────────────────────────────
-  'ui.meta.title': 'Mannequin Skill Tree',
+  'ui.meta.title': 'Talent Laboratory',
   'ui.meta.blue': 'BE: ',
   'ui.meta.ancient': 'AE: ',
   'ui.meta.statsLine': 'Runs: {runs} · Best wave: {wave}',
@@ -575,8 +575,8 @@ Object.assign(EN, {
   'ui.revive.giveUp': 'Give up',
 
   // ── Crafting (PR «crafting») ───────────────────────────────────────
-  'ui.menu.craftingHint': 'Tap to open the alchemy table',
-  'ui.craft.title': 'Alchemy table',
+  'ui.menu.craftingHint': 'Tap to open the brewery',
+  'ui.craft.title': 'Brewery',
   'ui.craft.subtitle': 'Brew 10 potions from ingredients dropped by enemies',
   'ui.craft.inventoryTitle': 'Potion inventory (4)',
   'ui.craft.ingredientsTitle': 'Ingredients',

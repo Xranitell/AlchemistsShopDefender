@@ -18,11 +18,11 @@ export const RU: Record<string, string> = {
   'ui.menu.title.top': 'Лавка Алхимика',
   'ui.menu.title.bottom': 'Защитник',
   'ui.menu.toBattle': 'В БОЙ',
-  'ui.menu.shop': 'МАГАЗИН',
+  'ui.menu.shop': 'ЗЕЛЬЕВАРКА',
   'ui.menu.craftingLevel': 'УРОВЕНЬ КРАФТА {level}',
   'ui.menu.runs': 'ЗАБЕГИ {n}',
   'ui.menu.bestWave': 'РЕКОРД {n}',
-  'ui.menu.laboratory': 'ЛАБОРАТОРИЯ',
+  'ui.menu.laboratory': 'ЛАБОРАТОРИЯ ТАЛАНТОВ',
   'ui.menu.settings': 'НАСТРОЙКИ',
   'ui.menu.battlePass': 'БОЕВОЙ ПРОПУСК',
   'ui.menu.dailyRewards': 'ЕЖЕДНЕВНЫЕ\nНАГРАДЫ',
@@ -286,7 +286,7 @@ export const RU: Record<string, string> = {
   'ui.bp.claimAll': 'Забрать всё',
 
   // ── Meta tree (laboratory) ───────────────────────────────────────────
-  'ui.meta.title': 'Дерево Манекена',
+  'ui.meta.title': 'Лаборатория талантов',
   'ui.meta.blue': 'СЭ: ',
   'ui.meta.ancient': 'ДЭ: ',
   'ui.meta.statsLine': 'Забегов: {runs} · Лучшая волна: {wave}',
@@ -579,8 +579,8 @@ Object.assign(RU, {
   'ui.revive.giveUp': 'Сдаться',
 
   // ── Crafting (PR-«крафт») ──────────────────────────────────────────
-  'ui.menu.craftingHint': 'Нажми, чтобы открыть алхимический стол',
-  'ui.craft.title': 'Алхимический стол',
+  'ui.menu.craftingHint': 'Нажми, чтобы открыть зельеварку',
+  'ui.craft.title': 'Зельеварка',
   'ui.craft.subtitle': 'Свари 10 видов зелий из ингредиентов с врагов',
   'ui.craft.inventoryTitle': 'Инвентарь зелий (4)',
   'ui.craft.ingredientsTitle': 'Ингредиенты',
