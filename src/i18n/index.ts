@@ -40,7 +40,19 @@ const listeners = new Set<() => void>();
 
 function autodetect(): Locale {
   const lang = (typeof navigator !== 'undefined' && navigator.language) || 'ru';
-  return lang.toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  return normalizeToLocale(lang);
+}
+
+/**
+ * Normalize an arbitrary BCP-47 / Yandex SDK language tag (e.g. `"ru"`,
+ * `"ru-RU"`, `"en-US"`, `"tr"`) to a supported `Locale`. Russian-family
+ * tags map to `'ru'`; everything else falls back to `'en'`. Used both
+ * by the autodetect path and by the runtime Yandex SDK integration —
+ * keeping the rule centralised guarantees both sources agree.
+ */
+export function normalizeToLocale(lang: string | null | undefined): Locale {
+  if (!lang) return 'ru';
+  return String(lang).toLowerCase().startsWith('ru') ? 'ru' : 'en';
 }
 
 export function getLocale(): Locale {

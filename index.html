@@ -15,8 +15,181 @@
     <!-- Yandex Games SDK. The script is hosted on Yandex CDN and is no-op in
          non-Yandex environments. Our wrapper falls back to a stub. -->
     <script src="https://yandex.ru/games/sdk/v2"></script>
+    <!--
+      Inline boot-time loading screen styles.
+
+      Lives in <head> with critical rules so the loader renders in the very
+      first paint, before the external `style.css` (and the game's deferred
+      module bundle) finish loading. Without this, the player sees a brief
+      "stuttering" frame where some overlays flash in before others — the
+      bug we're addressing here. The matching DOM is the very first child
+      of <body>, so it covers everything until `hideAppLoader()` runs.
+    -->
+    <style>
+      :root {
+        --asd-loader-bg-deep: #160c10;
+        --asd-loader-bg-mid: #0c0712;
+        --asd-loader-bg-low: #14070a;
+        --asd-loader-rim: rgba(210, 79, 28, 0.5);
+        --asd-loader-gold: #ffd166;
+        --asd-loader-orange: #ff6a3d;
+        --asd-loader-text: #f0e3c8;
+      }
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background:
+          radial-gradient(ellipse at 50% 38%, rgba(210, 79, 28, 0.22) 0%, transparent 62%),
+          linear-gradient(180deg, var(--asd-loader-bg-deep) 0%, var(--asd-loader-bg-mid) 60%, var(--asd-loader-bg-low) 100%);
+        color: var(--asd-loader-text);
+        font-family: 'Press Start 2P', 'VT323', system-ui, monospace;
+        text-align: center;
+        padding: 24px;
+        opacity: 1;
+        transition: opacity 360ms ease, transform 360ms ease;
+      }
+      #app-loader.hidden {
+        opacity: 0;
+        transform: scale(1.04);
+        pointer-events: none;
+      }
+      #app-loader::before,
+      #app-loader::after {
+        content: '';
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        background: linear-gradient(135deg, var(--asd-loader-orange) 50%, transparent 50%);
+        pointer-events: none;
+      }
+      #app-loader::before { top: 14px; left: 14px; }
+      #app-loader::after {
+        bottom: 14px;
+        right: 14px;
+        background: linear-gradient(-45deg, var(--asd-loader-orange) 50%, transparent 50%);
+      }
+      .app-loader-title {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.45));
+      }
+      .app-loader-title-top {
+        font-size: clamp(14px, 2.2vw, 26px);
+        color: var(--asd-loader-gold);
+        text-shadow:
+          -2px -2px 0 #5a2a15, 2px -2px 0 #5a2a15,
+          -2px 2px 0 #5a2a15, 3px 3px 0 #5a2a15,
+          0 0 12px rgba(255, 209, 102, 0.4);
+      }
+      .app-loader-title-bottom {
+        font-size: clamp(18px, 3vw, 36px);
+        color: var(--asd-loader-orange);
+        letter-spacing: 3px;
+        text-shadow:
+          -2px -2px 0 #4a0e0e, 2px -2px 0 #4a0e0e,
+          -2px 2px 0 #4a0e0e, 3px 3px 0 #4a0e0e,
+          0 0 14px rgba(255, 106, 61, 0.55);
+      }
+      .app-loader-flask {
+        width: 96px;
+        height: 96px;
+        animation: asd-flask-spin 2.4s linear infinite;
+        filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 14px rgba(255, 140, 60, 0.45));
+      }
+      @keyframes asd-flask-spin {
+        to { transform: rotate(360deg); }
+      }
+      .app-loader-progress {
+        width: min(360px, 70vw);
+        height: 14px;
+        position: relative;
+        background: rgba(20, 7, 10, 0.85);
+        border: 2px solid #3a1212;
+        box-shadow:
+          inset 0 0 0 1px rgba(210, 79, 28, 0.35),
+          0 0 0 1px #0a0608;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .app-loader-progress-fill {
+        position: absolute;
+        inset: 0;
+        width: 0;
+        background:
+          linear-gradient(180deg, var(--asd-loader-gold) 0%, var(--asd-loader-orange) 100%);
+        box-shadow: 0 0 12px rgba(255, 140, 60, 0.55);
+        animation: asd-loader-fill 2s ease-out forwards;
+      }
+      @keyframes asd-loader-fill {
+        0%   { width: 0%; }
+        15%  { width: 20%; }
+        45%  { width: 55%; }
+        80%  { width: 88%; }
+        100% { width: 100%; }
+      }
+      .app-loader-hint {
+        font-family: 'VT323', 'Trebuchet MS', system-ui, monospace;
+        font-size: 18px;
+        color: rgba(240, 227, 200, 0.7);
+        letter-spacing: 1px;
+      }
+      /* Hide the rest of the app until the loader is dismissed so the
+         "stuttering" element pop-in is invisible to the player. */
+      body.app-booting #app { visibility: hidden; }
+      body.app-booting #portrait-warning { visibility: hidden; }
+    </style>
   </head>
-  <body>
+  <body class="app-booting">
+    <!-- Boot-time loading screen. Stays on top until `hideAppLoader()` in
+         main.ts fades it out, then the game's UI takes over. -->
+    <div id="app-loader" role="status" aria-live="polite">
+      <div class="app-loader-title">
+        <span class="app-loader-title-top">Alchemist's Shop</span>
+        <span class="app-loader-title-bottom">Defender</span>
+      </div>
+      <svg
+        class="app-loader-flask"
+        viewBox="0 0 64 64"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <!-- Stopper -->
+        <rect x="22" y="6" width="20" height="6" fill="#a3722e" stroke="#1d1209" stroke-width="2" />
+        <!-- Neck -->
+        <rect x="24" y="12" width="16" height="10" fill="#7df9ff" stroke="#1d4859" stroke-width="2" />
+        <!-- Flask body -->
+        <path
+          d="M18 22 L46 22 L54 50 Q54 56 48 56 L16 56 Q10 56 10 50 Z"
+          fill="#7df9ff"
+          stroke="#1d4859"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+        <!-- Glowing potion -->
+        <path
+          d="M14 40 Q22 36 32 40 Q42 44 50 40 L52 50 Q52 54 48 54 L16 54 Q12 54 12 50 Z"
+          fill="#ff6a3d"
+        />
+        <!-- Bubble -->
+        <circle cx="28" cy="46" r="3" fill="#ffd166" />
+        <circle cx="38" cy="42" r="2" fill="#ffd166" />
+      </svg>
+      <div class="app-loader-progress">
+        <div class="app-loader-progress-fill"></div>
+      </div>
+      <div class="app-loader-hint">Загрузка / Loading…</div>
+    </div>
+
     <!-- Portrait-orientation warning for mobile — hidden by default,
          revealed by CSS when the device is in portrait mode. -->
     <div id="portrait-warning">
