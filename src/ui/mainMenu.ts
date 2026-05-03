@@ -163,10 +163,6 @@ export class MainMenu {
     // both «meta state» cards live side-by-side in the left column.
     leftCol.appendChild(buildLoadoutCard(opts.meta, opts.onLoadout));
 
-    // Inline daily rewards calendar (lives alongside shop / laboratory in
-    // the left column).
-    leftCol.appendChild(this.buildInlineDailyCalendar(opts));
-
     body.appendChild(leftCol);
 
     // ─ Center column: Animated mannequin ─
@@ -178,7 +174,11 @@ export class MainMenu {
     centerCol.appendChild(illu);
     body.appendChild(centerCol);
 
-    // ─ Right column: Leaderboard ─
+    // ─ Right column: Leaderboard (full) + collapsible daily rewards.
+    //   Default state: leaderboard expanded, daily calendar collapsed to
+    //   just the header strip with a status indicator. Clicking the daily
+    //   header animates daily open and shrinks leaderboard; clicking the
+    //   leaderboard or the header again collapses daily back.
     const rightCol = document.createElement('div');
     rightCol.className = 'mm-col mm-col-right';
 
@@ -190,6 +190,19 @@ export class MainMenu {
     lbWrap.appendChild(lbTitle);
     lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
     rightCol.appendChild(lbWrap);
+
+    rightCol.appendChild(this.buildInlineDailyCalendar(opts, () => {
+      // After a successful daily claim the menu is fully re-rendered,
+      // which resets the right-column state. Nothing extra needed here.
+    }));
+
+    // Toggle handlers — clicking the leaderboard while daily is open
+    // collapses it back. Clicking the daily header toggles open / closed.
+    lbWrap.addEventListener('click', () => {
+      if (rightCol.classList.contains('daily-open')) {
+        rightCol.classList.remove('daily-open');
+      }
+    });
 
     body.appendChild(rightCol);
     wrap.appendChild(body);
@@ -219,17 +232,28 @@ export class MainMenu {
     this.root.innerHTML = '';
   }
 
-  /** Builds the 7-day inline daily rewards calendar widget. */
+  /** Builds the 7-day inline daily rewards calendar widget.
+   *
+   * The calendar lives in the right column under the leaderboard and
+   * starts collapsed — only the header strip with a `!`/`✓` status
+   * indicator is visible. Clicking the header toggles a `.daily-open`
+   * class on the parent `.mm-col-right` which CSS uses to animate the
+   * panel open and shrink the leaderboard above it. */
   private buildInlineDailyCalendar(opts: {
     meta: MetaSave;
     onDailyRewards: () => void;
-  }): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'mm-card mm-daily-calendar';
+  }, _onClaim: () => void): HTMLElement {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'mm-card mm-daily-calendar collapsed';
 
     const titleRow = document.createElement('div');
-    titleRow.className = 'mm-card-title';
-    titleRow.innerHTML = `<span>📅</span><span>${t('ui.daily.title')}</span>`;
+    titleRow.className = 'mm-card-title mm-daily-header';
+    const claimable = canClaimDaily(opts.meta);
+    const indicator = claimable
+      ? `<span class="mm-daily-indicator mm-daily-indicator-claimable" title="${t('ui.daily.indicator.unclaimed')}">!</span>`
+      : `<span class="mm-daily-indicator mm-daily-indicator-claimed" title="${t('ui.daily.indicator.claimed')}">✓</span>`;
+    titleRow.innerHTML = `<span>📅</span><span class="mm-daily-header-text">${t('ui.daily.title')}</span>${indicator}`;
 
     const currentDay = opts.meta.dailyDay ?? 0;
     const pageStart = Math.floor(currentDay / 9) * 9;
@@ -237,12 +261,23 @@ export class MainMenu {
     const badge = document.createElement('span');
     badge.className = 'mm-daily-week-badge';
     badge.textContent = t('ui.daily.week', { n: pageNum });
+    const chev = document.createElement('span');
+    chev.className = 'mm-daily-chev';
+    chev.textContent = '▾';
     titleRow.appendChild(badge);
+    titleRow.appendChild(chev);
     card.appendChild(titleRow);
+
+    // The collapsing body lives inside .mm-daily-content; CSS animates
+    // grid-template-rows from 0fr → 1fr to expand it smoothly.
+    const content = document.createElement('div');
+    content.className = 'mm-daily-content';
+    const contentInner = document.createElement('div');
+    contentInner.className = 'mm-daily-content-inner';
+    content.appendChild(contentInner);
 
     const grid = document.createElement('div');
     grid.className = 'mm-daily-grid';
-    const claimable = canClaimDaily(opts.meta);
 
     for (let i = 0; i < 9; i++) {
       const dayIdx = pageStart + i;
@@ -277,7 +312,7 @@ export class MainMenu {
 
       grid.appendChild(cell);
     }
-    card.appendChild(grid);
+    contentInner.appendChild(grid);
 
     const claimBtn = document.createElement('button');
     claimBtn.className = 'mm-daily-claim';
@@ -285,7 +320,8 @@ export class MainMenu {
     claimBtn.textContent = t('ui.daily.claim');
     claimBtn.disabled = !claimable;
     if (claimable) {
-      claimBtn.addEventListener('click', () => {
+      claimBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation(); // don't toggle collapse on claim
         const reward = DAILY_REWARDS[currentDay % DAILY_CYCLE];
         applyDailyReward(opts.meta, reward);
         opts.meta.dailyDay = currentDay + 1;
@@ -294,7 +330,18 @@ export class MainMenu {
         this.show(opts as Parameters<MainMenu['show']>[0]);
       });
     }
-    card.appendChild(claimBtn);
+    contentInner.appendChild(claimBtn);
+    card.appendChild(content);
+
+    // Toggle open / closed via the parent column's `.daily-open` class.
+    card.addEventListener('click', (ev) => {
+      // If the click landed on the claim button or its descendants, let
+      // the button handle it without toggling the panel.
+      const target = ev.target as HTMLElement | null;
+      if (target && target.closest('.mm-daily-claim')) return;
+      const col = card.closest('.mm-col-right');
+      if (col) col.classList.toggle('daily-open');
+    });
 
     return card;
   }

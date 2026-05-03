@@ -301,6 +301,8 @@ export const RU: Record<string, string> = {
   'ui.daily.today': 'Сегодня',
   'ui.daily.day': 'День {n}',
   'ui.daily.claim': 'Забрать',
+  'ui.daily.indicator.unclaimed': 'Награда ждёт — нажми, чтобы открыть календарь',
+  'ui.daily.indicator.claimed': 'Награда за сегодня уже получена',
   'ui.daily.claimed': 'Уже получено',
 
   // ── Battle pass ──────────────────────────────────────────────────────
