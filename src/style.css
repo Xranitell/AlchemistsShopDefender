@@ -8068,7 +8068,7 @@ body {
 
 /* ── Vertical tab column (3 schools) ────────────────────────────── */
 .meta-tree-tabs {
-  flex: 0 0 clamp(160px, 17vw, 220px);
+  flex: 0 0 clamp(140px, 14vw, 180px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -8204,6 +8204,12 @@ body {
   border-color: #2e1418;
   position: relative;
   isolation: isolate;
+}
+/* Side panel runs at the same flex weight family, but a touch narrower
+ * inside the dramatic redesign so the freshly tightened tree view-box
+ * gets more horizontal canvas to breathe in. */
+.meta-tree-panel.dramatic-meta .meta-tree-side {
+  flex: 0 0 clamp(220px, 18vw, 290px);
 }
 .meta-tree-svg.entering {
   animation: meta-tree-slide-in 320ms cubic-bezier(0.4, 0.0, 0.2, 1);

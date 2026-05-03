@@ -62,11 +62,13 @@ const BRANCH_GLYPH: Record<MetaBranch, string> = {
 
 const BRANCH_ORDER: MetaBranch[] = ['potions', 'engineering', 'survival'];
 
+// Node-circle radii in SVG-space. Bumped 1.5× from the original layout
+// to make the diamond read better against the tighter view-box.
 const NODE_RADIUS: Record<string, number> = {
-  root: 26,
-  notable: 20,
-  keystone: 22,
-  small: 14,
+  root: 39,
+  notable: 30,
+  keystone: 33,
+  small: 21,
 };
 
 /** Glyph for a node, derived from its effect kind. Unicode-only so we
@@ -125,12 +127,14 @@ function nodeGlyph(node: { id: string; effect: { kind: string } }): string {
 //   ty = SVG_VCENTER     + (pos.x - TREE_CENTERS[branch])
 //
 // View-box dimensions are tuned so every node — including the apex of
-// the widest rhombus tier (offsetX = ±160) — fits with a comfortable
-// margin on every side.
-const SVG_LEFT_MARGIN = 80;
-const SVG_VCENTER = 360;
-const TREE_VIEW_W = SVG_LEFT_MARGIN + (TREE_ROOT_Y - TREE_KEYSTONE_Y) + 80; // 80 + 660 + 80
-const TREE_VIEW_H = 720;
+// the widest rhombus tier (offsetX = ±160) — fits with a snug margin
+// on every side. The view-box was tightened (less empty padding) so the
+// SVG inside the canvas renders the diamond at roughly 1.5× its previous
+// visible size without changing any underlying node coordinates.
+const SVG_LEFT_MARGIN = 45;
+const SVG_VCENTER = 215;
+const TREE_VIEW_W = SVG_LEFT_MARGIN + (TREE_ROOT_Y - TREE_KEYSTONE_Y) + 45; // 45 + 660 + 45
+const TREE_VIEW_H = 430;
 
 function transformPos(node: { branch: MetaBranch; pos: { x: number; y: number } }): {
   x: number;
