@@ -38,6 +38,12 @@ export class MainMenu {
     const wrap = document.createElement('div');
     wrap.className = 'main-menu';
 
+    // Floating ember sparks behind the menu — pure decoration, mirrors
+    // the language used by the run-end / chest stages so the main menu
+    // reads as part of the same world. Each spark has a randomised x /
+    // delay / duration / scale so the layer never visibly loops.
+    wrap.appendChild(buildMenuSparks(18));
+
     // ─── Top row: currencies + logo + settings/lang ───────────────
     const topRow = document.createElement('div');
     topRow.className = 'mm-top-row';
@@ -672,6 +678,27 @@ function buildMasteryLine(meta: MetaSave): HTMLElement | null {
   bonusEl.title = t('ui.menu.tooltip.masteryBonus');
   wrap.appendChild(bonusEl);
   return wrap;
+}
+
+/** Builds a layer of N decorative ember sparks that drift upward across
+ *  the main menu background. Each spark gets randomised CSS variables so
+ *  they desync naturally — see the `mm-spark-rise` keyframes for the
+ *  actual motion. Mirrors the technique used by the defeat / chest
+ *  stages (`defeat-spark` etc.). */
+function buildMenuSparks(count: number): HTMLElement {
+  const layer = document.createElement('div');
+  layer.className = 'mm-sparks';
+  layer.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span');
+    s.className = 'mm-spark';
+    s.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    s.style.setProperty('--delay', `${(Math.random() * 6).toFixed(2)}s`);
+    s.style.setProperty('--dur', `${(6 + Math.random() * 4).toFixed(2)}s`);
+    s.style.setProperty('--scale', `${(0.6 + Math.random() * 1.2).toFixed(2)}`);
+    layer.appendChild(s);
+  }
+  return layer;
 }
 
 /** RU/EN locale switcher. */
