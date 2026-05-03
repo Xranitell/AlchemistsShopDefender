@@ -3332,6 +3332,51 @@ body {
   box-shadow: 0 0 36px color-mix(in srgb, var(--dif-color, var(--accent)) 35%, transparent);
   position: relative;
   isolation: isolate;
+  /* Scale the entire confirmation panel down on short viewports so the
+   * full content (stage, stats, bullets, warning, buttons) fits without
+   * any scrollbar. Uses `zoom` rather than `transform: scale` because
+   * zoom actually shrinks the layout box — and combined with disabling
+   * the parent `.panel` rule's `max-height: 95dvh` + internal overflow,
+   * this produces a panel that just *renders smaller* on short
+   * viewports instead of clipping or showing a scrollbar.
+   *
+   * Discrete breakpoints (see media queries below) tuned so that at
+   * the 700–820 px range — where the original bug reproduced on
+   * mid-size laptop windows — the panel scales down enough to fit
+   * without losing readability. We use media queries rather than
+   * calc(100dvh / 820px) because cross-browser support for that
+   * length-division-as-ratio pattern is patchy in 2025.
+   *
+   * Default (≥ 820 px tall): 1.0 zoom (no scaling). */
+  zoom: 1;
+  /* Override the generic `.panel { max-height: 95dvh; overflow: auto }`
+   * rule — once we apply zoom-based scaling we never want a panel-
+   * internal scrollbar (the panel either fits at this zoom, or it
+   * doesn't and the parent overlay still scrolls as a last-resort
+   * fallback). */
+  max-height: none;
+  overflow: visible;
+}
+@media (max-height: 819px) { .modifier-preview-panel { zoom: 0.92; } }
+@media (max-height: 749px) { .modifier-preview-panel { zoom: 0.84; } }
+@media (max-height: 679px) { .modifier-preview-panel { zoom: 0.76; } }
+@media (max-height: 619px) { .modifier-preview-panel { zoom: 0.68; } }
+@media (max-height: 559px) { .modifier-preview-panel { zoom: 0.6; } }
+@media (max-height: 499px) { .modifier-preview-panel { zoom: 0.54; } }
+
+/* Browsers without `zoom` support (older Firefox builds) get a
+ * transform-based fallback. transform doesn't shrink the layout box, so
+ * the overlay's overflow:auto may still kick in — but visually the
+ * panel is smaller, which is closer to the intended look than a clipped
+ * full-size panel. */
+@supports not (zoom: 0.5) {
+  .modifier-preview-panel { zoom: unset; transform-origin: center top; }
+  @media (max-height: 819px) { .modifier-preview-panel { transform: scale(0.92); } }
+  @media (max-height: 749px) { .modifier-preview-panel { transform: scale(0.84); } }
+  @media (max-height: 679px) { .modifier-preview-panel { transform: scale(0.76); } }
+  @media (max-height: 619px) { .modifier-preview-panel { transform: scale(0.68); } }
+  @media (max-height: 559px) { .modifier-preview-panel { transform: scale(0.6); } }
+  @media (max-height: 499px) { .modifier-preview-panel { transform: scale(0.54); } }
 }
 
 /* Mode-specific colourways — overrides the panel background, border, and
