@@ -1087,17 +1087,14 @@ function showVictory(): void {
           if (!ok) return;
           doubled = true;
           doubleRewards(reward);
-          overlay.showSimple({
+          showRewardDoubledOverlay({
             title: t('ui.victory.doubled'),
-            subtitle: t('ui.victory.doubledSubtitle', {
-              blue: reward.blue * 2,
-              ancient: reward.ancient > 0
-                ? t('ui.victory.doubledSubtitleAncient', { n: reward.ancient * 2 })
-                : '',
-            }),
-            buttons: [
-              { label: t('ui.common.toMenu'), primary: true, onClick: () => restart() },
-            ],
+            blueAmount: reward.blue * 2,
+            ancientAmount: reward.ancient * 2,
+            primary: {
+              label: t('ui.common.toMenu'),
+              onClick: () => restart(),
+            },
           });
         });
       });
@@ -1356,25 +1353,28 @@ function showGameOver(): void {
       if (!ok) return;
       doubled = true;
       doubleRewards(reward);
-      overlay.showSimple({
+      // `doubleRewards` only credits the meta, doesn't mutate `reward`,
+      // so we double the displayed amounts here.
+      showRewardDoubledOverlay({
         title: t('ui.defeat.doubledTitle'),
-        subtitle: t('ui.defeat.doubledSubtitle', { blue: reward.blue * 2 }),
-        buttons: [
-          {
-            label: t('ui.defeat.tryAgain'),
-            primary: true,
-            onClick: () => {
-              if (!consumeKey(lastMode)) {
-                overlay.hide();
-                restart();
-                return;
-              }
+        blueAmount: reward.blue * 2,
+        ancientAmount: reward.ancient * 2,
+        primary: {
+          label: t('ui.defeat.tryAgain'),
+          onClick: () => {
+            if (!consumeKey(lastMode)) {
               overlay.hide();
-              startRun(lastMode);
-            },
+              restart();
+              return;
+            }
+            overlay.hide();
+            startRun(lastMode);
           },
-          { label: t('ui.common.toMenu'), onClick: () => restart() },
-        ],
+        },
+        secondary: {
+          label: t('ui.common.toMenu'),
+          onClick: () => restart(),
+        },
       });
     });
   });
@@ -1391,6 +1391,145 @@ function showGameOver(): void {
   secondaryRow.appendChild(menuBtn);
 
   ctaWrap.appendChild(secondaryRow);
+  panel.appendChild(ctaWrap);
+
+  root.appendChild(panel);
+  root.classList.add('visible');
+}
+
+/** Sub-panel shown when the player accepts the rewarded ad to double the
+ *  partial-run reward. Mirrors the `.defeat-overlay` warm-amber visual
+ *  language (rays, sparks, glowing icon, oversized gold CTA) so the
+ *  whole run-end flow reads as one continuous celebration of "you came
+ *  back with something". Replaces the previous flat `overlay.showSimple`
+ *  panel that looked dim and out-of-style next to the defeat screen. */
+function showRewardDoubledOverlay(opts: {
+  title: string;
+  blueAmount: number;
+  ancientAmount: number;
+  primary: { label: string; onClick: () => void };
+  secondary?: { label: string; onClick: () => void };
+}): void {
+  const sprites = getSprites();
+  const root = overlay.getRootElement();
+  root.innerHTML = '';
+  root.classList.remove('cards-mode');
+
+  const panel = document.createElement('div');
+  panel.className = 'panel defeat-overlay defeat-doubled';
+
+  // Stage: rays + sparks behind a glowing essence icon. We deliberately
+  // reuse the defeat-overlay element classes so the embers and rays
+  // animation share keyframes — keeps a consistent "ember-lit" language
+  // between the partial-run defeat panel and this celebratory follow-up.
+  const stage = document.createElement('div');
+  stage.className = 'defeat-stage';
+  panel.appendChild(stage);
+
+  const rays = document.createElement('div');
+  rays.className = 'defeat-rays';
+  stage.appendChild(rays);
+
+  const sparkLayer = document.createElement('div');
+  sparkLayer.className = 'defeat-sparks';
+  for (let i = 0; i < 14; i++) {
+    const spark = document.createElement('span');
+    spark.className = 'defeat-spark';
+    spark.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    spark.style.setProperty('--delay', `${(Math.random() * 2.4).toFixed(2)}s`);
+    spark.style.setProperty('--dur', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
+    spark.style.setProperty('--scale', `${(0.6 + Math.random() * 0.9).toFixed(2)}`);
+    sparkLayer.appendChild(spark);
+  }
+  stage.appendChild(sparkLayer);
+
+  // Centrepiece: a glowing essence icon that bobs gently. This swaps in
+  // for the fallen-mannequin sprite used by the parent defeat panel, so
+  // the player visually sees "your reward, doubled" instead of "you fell".
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'defeat-doubled-icon';
+  const iconSprite = opts.ancientAmount > 0 ? sprites.iconAncientEssence : sprites.iconBlueEssence;
+  iconWrap.appendChild(spriteIcon(iconSprite, { scale: 4, extraClass: 'glow-gold' }));
+  stage.appendChild(iconWrap);
+
+  // Title — celebratory bounce-in instead of the parent panel's glitch
+  // chromatic-aberration. The DOM still uses .defeat-title-char so the
+  // char-by-char layout works for letter-spacing, but `.defeat-doubled`
+  // overrides the per-char animation in CSS.
+  const title = document.createElement('h2');
+  title.className = 'defeat-title';
+  let charDelay = 0;
+  for (const ch of Array.from(opts.title)) {
+    if (ch === ' ') {
+      title.appendChild(document.createTextNode(' '));
+      continue;
+    }
+    const span = document.createElement('span');
+    span.className = 'defeat-title-char';
+    span.textContent = ch;
+    span.dataset.char = ch;
+    span.style.animationDelay = `${charDelay.toFixed(2)}s`;
+    charDelay += 0.05;
+    title.appendChild(span);
+  }
+  panel.appendChild(title);
+
+  // Reward chips: each non-zero essence type gets its canonical pixel
+  // icon + amount. Mirrors `.defeat-chips` from the parent panel so
+  // chip dimensions/spacing match.
+  const chipRow = document.createElement('div');
+  chipRow.className = 'defeat-chips';
+  if (opts.blueAmount > 0) {
+    const chip = document.createElement('div');
+    chip.className = 'defeat-chip';
+    chip.appendChild(spriteIcon(sprites.iconBlueEssence, { scale: 2 }));
+    const num = document.createElement('span');
+    num.textContent = t('ui.reward.blueGain', { n: opts.blueAmount });
+    chip.appendChild(num);
+    chipRow.appendChild(chip);
+  }
+  if (opts.ancientAmount > 0) {
+    const chip = document.createElement('div');
+    chip.className = 'defeat-chip';
+    chip.appendChild(spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }));
+    const num = document.createElement('span');
+    num.textContent = t('ui.reward.ancientGain', { n: opts.ancientAmount });
+    chip.appendChild(num);
+    chipRow.appendChild(chip);
+  }
+  if (chipRow.childElementCount > 0) panel.appendChild(chipRow);
+
+  // CTA hierarchy: gold pulsing primary + subdued secondary, identical
+  // to the parent defeat panel so muscle memory carries over.
+  const ctaWrap = document.createElement('div');
+  ctaWrap.className = 'defeat-cta-wrap';
+
+  const primaryBtn = document.createElement('button');
+  primaryBtn.className = 'defeat-cta-primary';
+  primaryBtn.textContent = opts.primary.label;
+  primaryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  primaryBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    opts.primary.onClick();
+  });
+  ctaWrap.appendChild(primaryBtn);
+
+  if (opts.secondary) {
+    const secondaryRow = document.createElement('div');
+    secondaryRow.className = 'defeat-secondary-row';
+    const secondaryBtn = document.createElement('button');
+    secondaryBtn.className = 'defeat-cta-secondary';
+    secondaryBtn.textContent = opts.secondary.label;
+    const secondary = opts.secondary;
+    secondaryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+    secondaryBtn.addEventListener('click', () => {
+      audio.playSfx('uiClick');
+      secondary.onClick();
+    });
+    secondaryRow.appendChild(secondaryBtn);
+    ctaWrap.appendChild(secondaryRow);
+  }
+
   panel.appendChild(ctaWrap);
 
   root.appendChild(panel);

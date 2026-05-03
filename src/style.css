@@ -6874,6 +6874,79 @@ body {
   .defeat-spark { animation: none; opacity: 0; }
 }
 
+/* ---------- Reward-doubled celebratory variant ----------
+ * The rewarded-ad reward-doubled sub-panel reuses the defeat-overlay
+ * structure (rays, sparks, chips, gold CTA) but swaps the "smouldering
+ * defeat" beats for a celebratory glow:
+ *   - centred floating essence sprite instead of fallen-mannequin
+ *   - bouncy per-character title reveal instead of CRT glitch
+ *   - removed chromatic-aberration ghost (no "broken system" feel)
+ * Only the differences are scoped under `.defeat-doubled`; everything
+ * else (ember sparks, ray rotation, chip styling, primary CTA pulse)
+ * inherits unchanged so the two surfaces share identity. */
+.defeat-doubled .defeat-stage {
+  /* Slightly shorter than the parent stage because we don't have a
+   * full-height fallen mannequin to balance against. */
+  min-height: 132px;
+}
+.defeat-doubled .defeat-rays {
+  /* Brighter, faster spin — celebratory, not embers from a wreckage. */
+  opacity: 0.7;
+  animation-duration: 18s;
+  filter: blur(0.3px);
+}
+.defeat-doubled-icon {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 18px rgba(255, 209, 102, 0.85));
+  animation: defeat-doubled-icon-bob 2.6s ease-in-out infinite;
+}
+.defeat-doubled-icon canvas {
+  image-rendering: pixelated;
+}
+@keyframes defeat-doubled-icon-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-6px) scale(1.04); }
+}
+/* Hide the chromatic-aberration ghost — it reads as "broken" which is
+ * exactly the wrong vibe for a celebratory reward-doubled moment. */
+.defeat-doubled .defeat-title-char::before {
+  display: none;
+}
+/* Replace the per-char CRT-glitch jitter with a one-shot bouncy reveal
+ * that runs in sequence (each char gets its own animationDelay set
+ * inline by main.ts). */
+.defeat-doubled .defeat-title-char {
+  animation: defeat-doubled-char-pop 0.55s ease-out backwards;
+  /* The parent panel's looping glitch is overridden, so the heading
+   * settles into a steady warm glow once the entrance finishes. */
+}
+@keyframes defeat-doubled-char-pop {
+  0%   { transform: translateY(-14px) scale(0.6); opacity: 0; }
+  60%  { transform: translateY(2px)   scale(1.15); opacity: 1; }
+  100% { transform: translateY(0)     scale(1);    opacity: 1; }
+}
+/* Soft amber wash on the title once the entrance finishes — distinct
+ * from the parent's red-shifted text-shadow. */
+.defeat-doubled .defeat-title {
+  color: #ffe9a3;
+  text-shadow:
+    -2px -2px 0 #2a1404, 2px -2px 0 #2a1404,
+    -2px 2px 0 #2a1404, 2px 2px 0 #2a1404,
+    0 0 16px rgba(255, 209, 102, 0.6);
+  animation: defeat-doubled-title-glow 2.4s ease-in-out infinite;
+}
+@keyframes defeat-doubled-title-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.35)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(255, 209, 102, 0.7)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .defeat-doubled-icon { animation: none; }
+  .defeat-doubled .defeat-title-char { animation: none; opacity: 1; transform: none; }
+  .defeat-doubled .defeat-title { animation: none; }
+}
+
 /* Crafting entry point — shop card on the main menu */
 .mm-shop-btn {
   width: 100%;
