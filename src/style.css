@@ -2572,6 +2572,14 @@ body {
   opacity: 0.45;
 }
 .mm-daily-cell.locked { opacity: 0.55; }
+/* Inline calendar mirror of the panel rule: keep the today highlight on
+ * the cell we just claimed today instead of dimming it as a regular
+ * claimed cell. */
+.mm-daily-cell.today.claimed {
+  border-color: #d24f1c;
+  background: linear-gradient(180deg, #4a2020 0%, #2a1010 100%);
+  opacity: 1;
+}
 .mm-daily-day-label {
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 7px;
@@ -7907,6 +7915,19 @@ body {
 .daily-panel .daily-cell.claimed {
   border-color: #4a3220;
   opacity: 0.5;
+}
+/* When today's reward has already been claimed, the just-claimed cell is
+ * both .today (current-progress highlight) and .claimed (checkmark icon).
+ * Keep the today highlight visible instead of letting .claimed dim it. */
+.daily-panel .daily-cell.today.claimed {
+  border-color: #d24f1c;
+  background: linear-gradient(180deg, #4a2020 0%, #2a1010 100%);
+  box-shadow:
+    0 0 0 2px #ff6a3d,
+    0 0 18px rgba(255, 106, 61, 0.35),
+    inset 0 2px 0 rgba(255, 209, 102, 0.16),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.35);
+  opacity: 1;
 }
 .daily-panel .daily-claim-btn {
   background: linear-gradient(180deg, var(--cta-yellow-hi), var(--cta-yellow) 50%, #d98219);

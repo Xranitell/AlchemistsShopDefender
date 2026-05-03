@@ -298,21 +298,29 @@ export class MainMenu {
     const grid = document.createElement('div');
     grid.className = 'mm-daily-grid';
 
+    // When the player has already claimed today, `currentDay` points at
+    // *tomorrow's* reward — that cell isn't actually claimable until the
+    // date rolls over, so labelling it "Сегодня" is misleading. Shift the
+    // highlight back onto the day we just claimed (`currentDay - 1`) and
+    // drop the "Сегодня" label there.
+    const highlightIdx = claimable ? currentDay : currentDay - 1;
+
     for (let i = 0; i < 9; i++) {
       const dayIdx = pageStart + i;
       const reward = DAILY_REWARDS[dayIdx % DAILY_CYCLE];
       const cell = document.createElement('div');
       cell.className = 'mm-daily-cell';
 
-      const isToday = dayIdx === currentDay;
+      const isHighlighted = dayIdx === highlightIdx;
+      const isTodayLabel = isHighlighted && claimable;
       const isClaimed = dayIdx < currentDay;
-      if (isToday) cell.classList.add('today');
+      if (isHighlighted) cell.classList.add('today');
       if (isClaimed) cell.classList.add('claimed');
       if (dayIdx > currentDay) cell.classList.add('locked');
 
       const dayLabel = document.createElement('div');
       dayLabel.className = 'mm-daily-day-label';
-      dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
+      dayLabel.textContent = isTodayLabel ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
       cell.appendChild(dayLabel);
 
       const iconEl = document.createElement('div');
