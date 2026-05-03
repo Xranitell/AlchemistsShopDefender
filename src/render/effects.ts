@@ -170,7 +170,7 @@ export function drawReticle(
   ctx.restore();
 }
 
-// Floating combat text in pixel style (sharp edges, no AA). Bold red damage
+// Floating combat text in pixel style (sharp edges, no AA). Bold damage
 // numbers with 2px black outline matching reference. The outline is drawn
 // at the four cardinal offsets — for a 2px outline this is visually
 // indistinguishable from the 8-direction version (corners are filled by
@@ -182,6 +182,13 @@ const FLOATING_TEXT_OUTLINE_OFFSETS: ReadonlyArray<readonly [number, number]> = 
   [0, 2],
 ];
 
+export interface FloatingTextStyle {
+  /** 1.0 = normal size. The renderer scales up briefly on spawn (pop). */
+  scale?: number;
+  /** Visual variant — 'crit' adds a gold-glow halo and 4 sparkles. */
+  kind?: 'normal' | 'crit';
+}
+
 export function drawPixelFloatingText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -189,20 +196,54 @@ export function drawPixelFloatingText(
   y: number,
   color: string,
   alpha: number,
+  style: FloatingTextStyle = {},
 ): void {
+  const scale = style.scale ?? 1;
+  const isCrit = style.kind === 'crit';
+  const baseSize = isCrit ? 28 : 22;
+  const fontSize = Math.max(8, Math.round(baseSize * scale));
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.font = 'bold 22px "Press Start 2P", "VT323", "Courier New", monospace';
+  ctx.font = `bold ${fontSize}px "Press Start 2P", "VT323", "Courier New", monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  // Crit halo: a soft gold radial glow drawn behind the text. Single
+  // additive blit so it lights up dark backdrops without smudging the
+  // pixel-art outline.
+  if (isCrit) {
+    const haloR = fontSize * 1.3;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, haloR);
+    grad.addColorStop(0, 'rgba(255, 225, 122, 0.55)');
+    grad.addColorStop(1, 'rgba(255, 225, 122, 0)');
+    const prevOp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, haloR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = prevOp;
+  }
+  // Outline (pure black at high alpha so the number stays readable on
+  // any backdrop).
   ctx.fillStyle = 'rgba(0,0,0,0.9)';
+  const o = Math.max(1, Math.round(2 * scale));
   for (let i = 0; i < FLOATING_TEXT_OUTLINE_OFFSETS.length; i++) {
     const off = FLOATING_TEXT_OUTLINE_OFFSETS[i]!;
-    ctx.fillText(text, x + off[0], y + off[1]);
+    ctx.fillText(text, x + off[0] * (o / 2), y + off[1] * (o / 2));
   }
   // Inner fill
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
+  // Crit sparkles: four corner pixels at a fixed offset from the text.
+  // Pixel-art so they don't fight the outline.
+  if (isCrit) {
+    const off = Math.round(fontSize * 0.7);
+    ctx.fillStyle = '#fff5d0';
+    ctx.fillRect(Math.round(x - off) - 1, Math.round(y - off) - 1, 2, 2);
+    ctx.fillRect(Math.round(x + off) - 1, Math.round(y - off) - 1, 2, 2);
+    ctx.fillRect(Math.round(x - off) - 1, Math.round(y + off) - 1, 2, 2);
+    ctx.fillRect(Math.round(x + off) - 1, Math.round(y + off) - 1, 2, 2);
+  }
   ctx.restore();
 }
 

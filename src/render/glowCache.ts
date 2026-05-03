@@ -77,7 +77,20 @@ export function drawRadialGlow(
 const vignetteCache = new Map<string, HTMLCanvasElement>();
 
 export function getVignette(width: number, height: number, alphaOuter = 0.5): HTMLCanvasElement {
-  const k = `${width}x${height}|${alphaOuter}`;
+  return getColoredVignette(width, height, alphaOuter, '0,0,0');
+}
+
+/** Tinted radial fade-in from canvas edges. Used by the damage screen
+ *  flash (red), the wave-start stinger (cyan), and the standard cinematic
+ *  vignette (`getVignette`, black). Keyed by `width|height|alpha|rgb` so
+ *  multiple tints coexist without clobbering each other's caches. */
+export function getColoredVignette(
+  width: number,
+  height: number,
+  alphaOuter: number,
+  rgb: string,
+): HTMLCanvasElement {
+  const k = `${width}x${height}|${alphaOuter}|${rgb}`;
   const cached = vignetteCache.get(k);
   if (cached) return cached;
   const c = document.createElement('canvas');
@@ -89,14 +102,15 @@ export function getVignette(width: number, height: number, alphaOuter = 0.5): HT
     width / 2, height / 2, Math.min(width, height) * 0.25,
     width / 2, height / 2, Math.max(width, height) * 0.7,
   );
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, `rgba(0,0,0,${alphaOuter})`);
+  grad.addColorStop(0, `rgba(${rgb},0)`);
+  grad.addColorStop(1, `rgba(${rgb},${alphaOuter})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
   vignetteCache.set(k, c);
   // Light cap so we don't accumulate vignettes if the canvas is resized
-  // many times during a session.
-  if (vignetteCache.size > 8) {
+  // many times during a session. The cap is a bit higher now because the
+  // tinted variant doubles the keyspace.
+  if (vignetteCache.size > 16) {
     const firstKey = vignetteCache.keys().next().value;
     if (firstKey && firstKey !== k) vignetteCache.delete(firstKey);
   }

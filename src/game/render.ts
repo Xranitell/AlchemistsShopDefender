@@ -16,7 +16,11 @@ import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { getViewportSize } from './world';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
-import { drawRadialGlow, getVignette } from '../render/glowCache';
+import { drawRadialGlow, getVignette, getColoredVignette } from '../render/glowCache';
+import { getShakeOffset } from '../engine/shake';
+import { drawShockwaves, updateShockwaves } from '../render/shockwaves';
+import { getScreenFlash } from '../render/screenFlash';
+import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -54,6 +58,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // and the transform is a no-op (existing behaviour preserved).
   const camera: Camera = getRenderCamera(width, height);
   ctx.save();
+  // Camera shake is applied in viewport space (before the world transform)
+  // so a 4-pixel shake reads as 4 pixels regardless of the world→canvas
+  // scale used by the camera. Drawn against `Math.round` so the offset
+  // stays on the pixel-art grid and doesn't introduce sub-pixel blur.
+  const shake = getShakeOffset();
+  if (shake.x !== 0 || shake.y !== 0) {
+    ctx.translate(Math.round(shake.x), Math.round(shake.y));
+  }
   applyIsoTransform(ctx, camera);
 
   // Pre-baked floor + walls + decor.
@@ -71,6 +83,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   );
   drawDangerRim(ctx, state);
   drawRunePoints(ctx, state);
+  drawScorchDecals(ctx);
   drawFirePools(ctx, state);
   drawReactionPools(ctx, state);
   drawGoldPickups(ctx, state);
@@ -89,6 +102,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   lastRenderTime = state.worldTime;
   updateParticles(particleDt);
+  // Shockwaves drawn before particles so the bright rings don't bury the
+  // sparks — particles fly outward "through" the ring, which reads as the
+  // explosion shoving them outward.
+  updateShockwaves(particleDt);
+  updateScorchDecals(particleDt);
+  drawShockwaves(ctx);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
   drawAimReticle(ctx, state);
@@ -217,16 +236,33 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
 function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave') return;
   const { x, y } = state.mannequin.pos;
-  const pulse = 0.55 + 0.25 * Math.sin(state.worldTime * 4);
+  // Pulse + danger scaling: count enemies within a "near" zone of the
+  // mannequin and crossfade pulse depth + line thickness toward red as
+  // pressure mounts. Empty arena → almost invisible; surrounded → meaty
+  // throbbing rim. Distance threshold matches the inner ellipse's
+  // radius so the visual "matches" what the player feels close.
+  const NEAR_R2 = 380 * 380;
+  let nearCount = 0;
+  for (let i = 0; i < state.enemies.length; i++) {
+    const e = state.enemies[i]!;
+    const dx = e.pos.x - x;
+    const dy = e.pos.y - y;
+    if (dx * dx + dy * dy < NEAR_R2) nearCount++;
+  }
+  // Pressure ramps from 0 (no near enemies) to 1 (~10 enemies). Avoids
+  // dividing by max-enemies because some waves spawn small swarms that
+  // shouldn't max-saturate the rim.
+  const pressure = Math.min(1, nearCount / 10);
+  const pulse = 0.55 + 0.25 * Math.sin(state.worldTime * (4 + 4 * pressure));
   ctx.save();
   ctx.strokeStyle = RIM_RED;
-  ctx.lineWidth = 3;
-  ctx.globalAlpha = pulse;
+  ctx.lineWidth = 3 + pressure * 2;
+  ctx.globalAlpha = (0.4 + pressure * 0.55) * pulse;
   ctx.beginPath();
   ctx.ellipse(x, y + 4, 300, 158, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.globalAlpha = 0.14 * pulse;
-  ctx.lineWidth = 16;
+  ctx.globalAlpha = (0.10 + pressure * 0.18) * pulse;
+  ctx.lineWidth = 16 + pressure * 12;
   ctx.stroke();
   ctx.restore();
 }
@@ -979,7 +1015,65 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): v
 
 function drawAimReticle(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') return;
+  // Trajectory preview during prep + first ~6s of a wave so the player
+  // can read the throw arc without it lingering forever during long
+  // battles. Fades out so it doesn't dominate later. Skipped for the
+  // very first 0.3s of a wave so the wave-start beat isn't crowded.
+  const showPreview =
+    state.phase === 'preparing'
+    || (state.waveState.timeInWave > 0.3 && state.waveState.timeInWave < 6);
+  if (showPreview) {
+    const alpha =
+      state.phase === 'preparing'
+        ? 0.7
+        : 0.7 * Math.max(0, 1 - (state.waveState.timeInWave - 0.3) / 5.7);
+    drawTrajectoryPreview(ctx, state, alpha);
+  }
   drawReticle(ctx, state.aim.x, state.aim.y);
+}
+
+function drawTrajectoryPreview(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  alpha: number,
+): void {
+  // Mirror `throwPotion`'s arc parameters so the preview matches what the
+  // next throw will actually do. Distance-driven peak height keeps the
+  // shape consistent with the in-flight projectile.
+  const m = state.mannequin;
+  const start = m.pos;
+  const target = state.aim;
+  const dx = target.x - start.x;
+  const dy = target.y - start.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 8) return;
+  const peak = Math.min(140, 40 + d * 0.18);
+  const segments = 16;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#bdf6ff';
+  // Punctured line: tiny squares at every other segment so it reads as a
+  // dotted parabola without a per-segment lineDash setup. Squares scale
+  // down toward the landing point so the player's eye is led to the aim.
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = start.x + dx * t;
+    // sin-shaped arc, identical to throwPotion's `Math.sin(t * PI) * peakHeight`.
+    const arcDrop = Math.sin(t * Math.PI) * peak;
+    const y = start.y + dy * t - arcDrop;
+    if (i % 2 === 1) {
+      const sz = Math.max(2, Math.round(4 - (i / segments) * 2.5));
+      ctx.fillRect(Math.round(x) - sz / 2, Math.round(y) - sz / 2, sz, sz);
+    }
+  }
+  // Landing marker: a small flat ellipse at the aim point so the player's
+  // eye can attach to "where it'll land".
+  ctx.strokeStyle = '#bdf6ff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(target.x, target.y, 8, 8 * 0.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
@@ -1025,8 +1119,25 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
 
 function drawFloatingTexts(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const t of state.floatingTexts) {
-    const alpha = Math.max(0, t.life / 0.8);
-    drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha);
+    const ageNorm = Math.max(0, Math.min(1, 1 - t.life / t.maxLife));
+    const alpha = Math.max(0, t.life / t.maxLife);
+    // Scale-pop envelope: overshoot to 1.35× in the first 12% of life,
+    // settle back to 1.0 by 30%. Reads as "snap into existence" without
+    // the float losing its readable size for the rest of its lifetime.
+    let scale: number;
+    if (ageNorm < 0.12) {
+      const k = ageNorm / 0.12;
+      scale = 0.6 + k * 0.75; // 0.6 → 1.35
+    } else if (ageNorm < 0.30) {
+      const k = (ageNorm - 0.12) / 0.18;
+      scale = 1.35 - k * 0.35; // 1.35 → 1.0
+    } else {
+      scale = 1.0;
+    }
+    drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha, {
+      scale,
+      kind: t.kind,
+    });
   }
 }
 
@@ -1105,6 +1216,20 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
 
   // Vignette overlay for cinematic depth (cached canvas keyed by size).
   ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
+
+  // Mannequin damage screen-edge flash. Drawn after the cinematic vignette
+  // so the red tint sits clearly on top of the dark fall-off and reads as
+  // a separate "ow" effect rather than darkening the corners further.
+  // A single cached red vignette is reused — alpha is varied per-frame
+  // via globalAlpha so the cache size stays bounded.
+  const flash = getScreenFlash();
+  if (flash.alpha > 0.01) {
+    const { width: cw, height: ch } = getViewportSize();
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, flash.alpha);
+    ctx.drawImage(getColoredVignette(cw, ch, 0.85, flash.rgb), 0, 0);
+    ctx.restore();
+  }
 }
 
 // Export camera config for input system. Maps world coordinates onto canvas

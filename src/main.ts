@@ -23,6 +23,10 @@ import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier, INITIAL_PREP_DURATION } from './game/wave';
 import { applyCard, beginNewDraft, isCursedWave, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
+import { tickShake, resetShake } from './engine/shake';
+import { resetShockwaves } from './render/shockwaves';
+import { tickScreenFlash, resetScreenFlash } from './render/screenFlash';
+import { resetScorchDecals } from './render/scorchDecals';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld, worldToScreen } from './render/camera';
 import { getSprites } from './render/sprites';
@@ -389,7 +393,11 @@ function tick(dt: number): void {
   const tutorialFrozen = tutorial.isShowingStep()
     && (state.phase === 'wave' || state.phase === 'preparing');
 
-  if (!tutorialFrozen) state.worldTime += dt;
+  if (!tutorialFrozen) {
+    state.worldTime += dt;
+    tickShake(dt);
+    tickScreenFlash(dt);
+  }
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
@@ -1543,6 +1551,10 @@ function startRun(mode: DifficultyMode): void {
   const seed = mode === 'daily' ? dailySeed() : undefined;
   state = buildInitialState(seed, mode);
   gameOverShown = false;
+  resetShake();
+  resetShockwaves();
+  resetScreenFlash();
+  resetScorchDecals();
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
   // Daily Experiment runs an MSK-day-of-week event with its own modifier

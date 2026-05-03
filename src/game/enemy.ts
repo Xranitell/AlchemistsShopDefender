@@ -9,6 +9,19 @@ import { t } from '../i18n';
 import { INGREDIENT_DROP_TABLE, INGREDIENTS, type IngredientId } from '../data/potions';
 import { takenDamageMultiplier, goldMultiplier, absorbWithShield, enemySpeedMultiplier } from './potions';
 import { waveSpeedScale } from './wave';
+import { shakeCamera } from '../engine/shake';
+import { spawnShockwave } from '../render/shockwaves';
+import { flashScreen } from '../render/screenFlash';
+import { spawnScorchDecal } from '../render/scorchDecals';
+import {
+  spawnBurst,
+  FIRE_COLORS,
+  MERCURY_COLORS,
+  ACID_COLORS,
+  AETHER_COLORS,
+  FROST_COLORS,
+  POISON_COLORS,
+} from '../render/particles';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -191,6 +204,12 @@ export function updateEnemies(state: GameState, dt: number): void {
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
+      // Camera shake scales with the % of max HP this hit consumed so a
+      // chip-damage swarm doesn't shake as hard as a boss bite. Capped
+      // so consecutive heavy hits don't pin the screen at max amplitude.
+      shakeCamera(Math.min(6, 1.5 + (dmgReduced / Math.max(1, m.maxHp)) * 50), 0.18);
+      // Edge-flash intensity scales with the % of max HP this hit consumed.
+      flashScreen(Math.min(1, 0.25 + (dmgReduced / Math.max(1, m.maxHp)) * 4), 0.32);
       spawnFloatingText(state, `-${Math.round(dmgReduced)}`, m.pos, '#ff6a3d');
       // Run-contract bookkeeping: flag the current wave so the
       // flawless-wave contracts know this run isn't perfect anymore.
@@ -269,6 +288,9 @@ function sapperDetonate(state: GameState, e: Enemy): void {
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
+    // Sapper detonations are wide AoE — shake harder than a melee bite.
+    shakeCamera(6, 0.32);
+    flashScreen(Math.min(1, 0.4 + (dmg / Math.max(1, m.maxHp)) * 4), 0.4);
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
     if (dmg > 0) {
       const w = state.waveState.currentIndex + 1;
@@ -359,6 +381,10 @@ function minibossSlimeSlam(state: GameState, e: Enemy): void {
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
+    // Boss slam: heavy thump, slightly shorter than sapper to keep the
+    // distinct rhythm of "boss slam → recover → next attack".
+    shakeCamera(7, 0.28);
+    flashScreen(Math.min(1, 0.5 + (dmg / Math.max(1, m.maxHp)) * 4), 0.36);
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
     if (dmg > 0) {
       const w = state.waveState.currentIndex + 1;
@@ -437,7 +463,13 @@ export function updateFirePools(state: GameState, dt: number): void {
   for (let i = 0; i < state.firePools.length; i++) {
     const fp = state.firePools[i]!;
     fp.time -= dt;
-    if (fp.time <= 0) { remove.push(i); continue; }
+    if (fp.time <= 0) {
+      // Leave behind a fading scorch mark so the fire pool's footprint
+      // doesn't vanish instantly. Purely cosmetic.
+      spawnScorchDecal(fp.pos.x, fp.pos.y, fp.radius * 0.95, 1.5);
+      remove.push(i);
+      continue;
+    }
     for (const e of state.enemies) {
       if (e.elite === 'ethereal' && e.etherealActive) continue;
       const dx = fp.pos.x - e.pos.x;
@@ -463,7 +495,11 @@ export function updateFloatingTexts(state: GameState, dt: number): void {
   for (let i = 0; i < state.floatingTexts.length; i++) {
     const t = state.floatingTexts[i]!;
     t.life -= dt;
+    // Bounce easing: vy decelerates over the lifetime so the number floats
+    // up fast at first and gently settles. Replaces the previous linear
+    // rise. `vy` is reduced toward zero with a critically-damped feel.
     t.pos.y += t.vy * dt;
+    t.vy *= Math.exp(-2.6 * dt);
     if (t.life <= 0) remove.push(i);
   }
   for (let i = remove.length - 1; i >= 0; i--) state.floatingTexts.splice(remove[i]!, 1);
@@ -481,6 +517,57 @@ export function addOverload(state: GameState, amount: number): void {
  */
 function onEnemyDeath(state: GameState, e: Enemy): void {
   audio.playSfx('enemyDeath', { detune: e.kind.isBoss ? 0.5 : 1 });
+  // Boss death gets a meaty shake so the kill feels like a milestone;
+  // regular enemies get a tiny pop only for elites/larger kinds so we
+  // don't shake the camera 30 times during a slime wave.
+  if (e.kind.isBoss) {
+    shakeCamera(8, 0.4);
+  } else if (e.elite || e.kind.hp >= 60) {
+    shakeCamera(1.5, 0.12);
+  }
+  // Death VFX: shockwave ring + a meatier particle burst, both tinted by
+  // the element that delivered the killing blow so a fire-killed enemy
+  // sprays embers and a mercury-killed one drips silver. Bosses get an
+  // extra-wide secondary ring + a white core flash so the kill reads as a
+  // milestone moment, not a regular enemy.
+  const palette = deathPaletteFor(e.lastHitElement);
+  const ringColor = deathRingColor(e.lastHitElement);
+  const sizeFactor = e.kind.isBoss ? 3.2 : (e.elite ? 1.7 : 1);
+  const baseR = e.kind.radius;
+  spawnShockwave(
+    e.pos.x,
+    e.pos.y,
+    baseR * 0.6,
+    baseR * (3 + sizeFactor),
+    ringColor,
+    e.kind.isBoss ? 0.5 : 0.32,
+    e.kind.isBoss ? 6 : 3,
+  );
+  if (e.kind.isBoss) {
+    // Secondary larger ring + bright white core flash.
+    spawnShockwave(
+      e.pos.x,
+      e.pos.y,
+      baseR * 0.4,
+      baseR * 6.5,
+      'rgba(255, 245, 220, 1)',
+      0.45,
+      4,
+    );
+  }
+  // Particle burst — count and speed scale with enemy class.
+  const burstCount = e.kind.isBoss ? 36 : (e.elite ? 18 : 10);
+  const burstSpeed = e.kind.isBoss ? 220 : 140;
+  spawnBurst(
+    e.pos.x,
+    e.pos.y,
+    burstCount,
+    palette,
+    burstSpeed,
+    e.kind.isBoss ? 0.7 : 0.45,
+    e.kind.isBoss ? 3 : 2,
+    60,
+  );
   const goldMult = state.modifiers.goldDropMult
     * state.difficultyModifier.goldMult
     * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1)
@@ -538,6 +625,8 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
       const dmg = absorbWithShield(state, raw);
       state.mannequin.hp -= dmg;
       state.mannequin.damageFlash = 0.22;
+      shakeCamera(3, 0.16);
+      flashScreen(Math.min(1, 0.3 + (dmg / Math.max(1, state.mannequin.maxHp)) * 4), 0.28);
       spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
       if (dmg > 0) {
         const w = state.waveState.currentIndex + 1;
@@ -568,3 +657,31 @@ function rollIngredientDrop(state: GameState, e: Enemy): void {
 
 // Convenience used in projectile.ts via importVec2 reference.
 export type _Vec2 = Vec2;
+
+// Death-VFX colour helpers. Mapping the killing element to a particle
+// palette + ring stroke colour keeps the same look as the normal
+// elemental hit FX so a fire kill feels like fire all the way through.
+const NEUTRAL_DEATH_COLORS = ['#ffd166', '#e8c98c', '#f5e8ff', '#c9a96b'];
+function deathPaletteFor(element: Enemy['lastHitElement']): string[] {
+  switch (element) {
+    case 'fire': return FIRE_COLORS;
+    case 'mercury': return MERCURY_COLORS;
+    case 'acid': return ACID_COLORS;
+    case 'aether': return AETHER_COLORS;
+    case 'frost': return FROST_COLORS;
+    case 'poison': return POISON_COLORS;
+    default: return NEUTRAL_DEATH_COLORS;
+  }
+}
+
+function deathRingColor(element: Enemy['lastHitElement']): string {
+  switch (element) {
+    case 'fire': return 'rgba(255, 180, 90, 1)';
+    case 'mercury': return 'rgba(220, 230, 255, 1)';
+    case 'acid': return 'rgba(210, 245, 90, 1)';
+    case 'aether': return 'rgba(189, 246, 255, 1)';
+    case 'frost': return 'rgba(189, 246, 255, 1)';
+    case 'poison': return 'rgba(155, 227, 107, 1)';
+    default: return 'rgba(245, 232, 255, 1)';
+  }
+}
