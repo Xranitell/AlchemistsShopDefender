@@ -305,14 +305,38 @@ function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number
 }
 
 /** Animated mannequin illustration for the centre of the main menu.
- *  A more polished pixel-art alchemist character on a glowing dais. */
+ *  Wooden articulated artist's-mannequin: warm brown segments separated
+ *  by visible ball joints (shoulders, elbows, hips, knees), no facial
+ *  features, planted on the existing pixel-art dais. */
 function mannequinIllustrationSVG(): string {
+  // Palette — kept inline so the whole illustration reads as one block.
+  // Tuned to match the reference art: warm sienna mid-tone, lighter
+  // top-left highlight, deep brown shadow + near-black outline.
+  const OUTLINE = '#2a1208';
+  const SHADOW = '#7a4424';
+  const MID = '#b97a3f';
+  const HIGHLIGHT = '#d49157';
+
+  // Helpers that emit the three layers (outline / mid / highlight) for a
+  // segment or joint. Keeping these as template-literal helpers avoids
+  // a runtime dependency and keeps the SVG self-contained.
+  const segment = (x: number, y: number, w: number, h: number, r = 3) => `
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r + 1}" fill="${OUTLINE}"/>
+    <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${h - 2}" rx="${r}" fill="${MID}"/>
+    <rect x="${x + 1.5}" y="${y + 1.5}" width="${Math.max(2, w * 0.28)}" height="${h - 5}" fill="${HIGHLIGHT}" opacity="0.55"/>
+  `;
+  const joint = (cx: number, cy: number, r: number) => `
+    <ellipse cx="${cx}" cy="${cy}" rx="${r + 0.8}" ry="${r + 0.4}" fill="${OUTLINE}"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r - 0.4}" fill="${MID}"/>
+    <ellipse cx="${cx - r * 0.35}" cy="${cy - r * 0.35}" rx="${r * 0.45}" ry="${r * 0.4}" fill="${HIGHLIGHT}" opacity="0.7"/>
+  `;
+
   return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
     <defs>
-      <radialGradient id="mm-glow" cx="50%" cy="60%" r="45%">
-        <stop offset="0%" stop-color="#7df9ff" stop-opacity="0.35"/>
-        <stop offset="60%" stop-color="#7df9ff" stop-opacity="0.08"/>
-        <stop offset="100%" stop-color="#7df9ff" stop-opacity="0"/>
+      <radialGradient id="mm-glow" cx="50%" cy="55%" r="50%">
+        <stop offset="0%" stop-color="#ffb84a" stop-opacity="0.30"/>
+        <stop offset="60%" stop-color="#d27a2a" stop-opacity="0.10"/>
+        <stop offset="100%" stop-color="#d27a2a" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="mm-floor" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#454a60"/>
@@ -323,63 +347,96 @@ function mannequinIllustrationSVG(): string {
         <feGaussianBlur stdDeviation="2" />
       </filter>
     </defs>
-    <!-- Background glow -->
-    <ellipse cx="100" cy="155" rx="80" ry="60" fill="url(#mm-glow)" filter="url(#mm-soft)"/>
-    <!-- Floor / dais -->
+
+    <!-- Background warm glow -->
+    <ellipse cx="100" cy="125" rx="80" ry="80" fill="url(#mm-glow)" filter="url(#mm-soft)"/>
+
+    <!-- Floor / dais (unchanged from previous design — keeps the menu
+         silhouette and lighting consistent). -->
     <ellipse cx="100" cy="195" rx="55" ry="18" fill="url(#mm-floor)"/>
     <polygon points="60,185 100,170 140,185 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
     <polygon points="60,185 100,200 100,208 55,192" fill="#2a2c3a"/>
     <polygon points="140,185 100,200 100,208 145,192" fill="#1a1d28"/>
-    <!-- Shadow under mannequin -->
-    <ellipse cx="100" cy="183" rx="22" ry="6" fill="rgba(0,0,0,0.4)"/>
-    <!-- Mannequin body — warm wooden clockwork alchemist -->
-    <!-- Feet -->
-    <rect x="85" y="175" width="10" height="8" rx="2" fill="#c08a4a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="105" y="175" width="10" height="8" rx="2" fill="#c08a4a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Legs -->
-    <rect x="87" y="160" width="8" height="17" rx="2" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="107" y="160" width="8" height="17" rx="2" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Torso -->
-    <rect x="82" y="128" width="38" height="35" rx="4" fill="#9a5a2a" stroke="#2a1810" stroke-width="2"/>
-    <!-- Torso detail — brass bands -->
-    <rect x="84" y="136" width="34" height="3" rx="1" fill="#c9a96b"/>
-    <rect x="84" y="148" width="34" height="3" rx="1" fill="#c9a96b"/>
-    <!-- Core glow (cyan crystal heart) -->
-    <rect x="93" y="138" width="16" height="14" rx="3" fill="#3ab3c9" stroke="#1c5a72" stroke-width="1.5"/>
-    <rect x="96" y="141" width="10" height="8" rx="2" fill="#7df9ff"/>
-    <rect x="99" y="143" width="4" height="4" rx="1" fill="#bdf6ff" opacity="0.8">
-      <animate attributeName="opacity" values="0.8;0.4;0.8" dur="2s" repeatCount="indefinite"/>
-    </rect>
-    <!-- Shoulders -->
-    <rect x="72" y="128" width="14" height="12" rx="3" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="116" y="128" width="14" height="12" rx="3" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Arms -->
-    <rect x="72" y="138" width="10" height="22" rx="3" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="120" y="138" width="10" height="22" rx="3" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Hands (brass) -->
-    <circle cx="77" cy="163" r="5" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <circle cx="125" cy="163" r="5" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Potion in left hand -->
-    <rect x="121" y="155" width="8" height="12" rx="3" fill="#4fd36a" stroke="#1f6b2a" stroke-width="1"/>
-    <rect x="122" y="152" width="6" height="4" rx="1" fill="#8a5a30"/>
-    <!-- Head -->
-    <rect x="88" y="108" width="26" height="22" rx="5" fill="#9a5a2a" stroke="#2a1810" stroke-width="2"/>
-    <!-- Face plate (iron) -->
-    <rect x="91" y="112" width="20" height="14" rx="3" fill="#3a3a55"/>
-    <!-- Eyes (glowing cyan) -->
-    <rect x="94" y="116" width="5" height="4" rx="1" fill="#7df9ff">
-      <animate attributeName="fill" values="#7df9ff;#bdf6ff;#7df9ff" dur="3s" repeatCount="indefinite"/>
-    </rect>
-    <rect x="103" y="116" width="5" height="4" rx="1" fill="#7df9ff">
-      <animate attributeName="fill" values="#7df9ff;#bdf6ff;#7df9ff" dur="3s" repeatCount="indefinite"/>
-    </rect>
-    <!-- Antenna / horn -->
-    <rect x="98" y="100" width="6" height="10" rx="2" fill="#3a3a55" stroke="#2a1810" stroke-width="1"/>
-    <circle cx="101" cy="99" r="3" fill="#7df9ff" opacity="0.8">
-      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite"/>
-    </circle>
-    <!-- Gentle idle bob animation -->
-    <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite" />
+
+    <!-- Soft drop shadow directly under the figure -->
+    <ellipse cx="100" cy="180" rx="24" ry="5" fill="rgba(0,0,0,0.45)"/>
+
+    <g id="mm-figure">
+      <!-- Idle bob -->
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite"/>
+
+      <!-- ============ Feet ============ -->
+      ${segment(83, 172, 17, 9, 2)}
+      ${segment(100, 172, 17, 9, 2)}
+
+      <!-- ============ Calves ============ -->
+      ${segment(86, 158, 12, 16, 3)}
+      ${segment(102, 158, 12, 16, 3)}
+
+      <!-- ============ Knees ============ -->
+      ${joint(92, 156, 6)}
+      ${joint(108, 156, 6)}
+
+      <!-- ============ Thighs ============ -->
+      ${segment(85, 138, 14, 20, 4)}
+      ${segment(101, 138, 14, 20, 4)}
+
+      <!-- ============ Hip joints ============ -->
+      ${joint(92, 138, 7)}
+      ${joint(108, 138, 7)}
+
+      <!-- ============ Pelvis (wider waist disc) ============ -->
+      <rect x="85" y="123" width="30" height="15" rx="6" fill="${OUTLINE}"/>
+      <rect x="86" y="124" width="28" height="13" rx="5" fill="${MID}"/>
+      <rect x="87" y="124.5" width="22" height="2.5" fill="${HIGHLIGHT}" opacity="0.55"/>
+
+      <!-- ============ Abdomen (narrower segment) ============ -->
+      <rect x="92" y="116" width="16" height="9" rx="2" fill="${OUTLINE}"/>
+      <rect x="93" y="117" width="14" height="7" rx="2" fill="${SHADOW}"/>
+
+      <!-- ============ Chest ============ -->
+      <path d="M 84,93 Q 84,88 89,88 L 111,88 Q 116,88 116,93 L 116,116 Q 116,118 114,118 L 86,118 Q 84,118 84,116 Z"
+            fill="${OUTLINE}"/>
+      <path d="M 85.5,94 Q 85.5,89.5 90,89.5 L 110,89.5 Q 114.5,89.5 114.5,94 L 114.5,115 Q 114.5,116.5 113,116.5 L 87,116.5 Q 85.5,116.5 85.5,115 Z"
+            fill="${MID}"/>
+      <!-- chest highlight (upper-left) -->
+      <ellipse cx="93" cy="98" rx="5" ry="7" fill="${HIGHLIGHT}" opacity="0.55"/>
+      <!-- subtle vertical centreline like a torso seam -->
+      <line x1="100" y1="92" x2="100" y2="116" stroke="${SHADOW}" stroke-width="1" opacity="0.55"/>
+
+      <!-- ============ Arms ============ -->
+      <!-- Upper arms -->
+      ${segment(76, 100, 12, 20, 4)}
+      ${segment(112, 100, 12, 20, 4)}
+
+      <!-- Elbow joints -->
+      ${joint(82, 120, 6)}
+      ${joint(118, 120, 6)}
+
+      <!-- Forearms -->
+      ${segment(76, 122, 12, 20, 4)}
+      ${segment(112, 122, 12, 20, 4)}
+
+      <!-- Hand balls -->
+      ${joint(82, 143, 5.5)}
+      ${joint(118, 143, 5.5)}
+
+      <!-- ============ Shoulders (ball joints overlapping chest sides) ============ -->
+      ${joint(82, 100, 9)}
+      ${joint(118, 100, 9)}
+
+      <!-- ============ Neck ============ -->
+      <rect x="95" y="83" width="10" height="9" rx="2" fill="${OUTLINE}"/>
+      <rect x="96" y="84" width="8" height="7" rx="2" fill="${SHADOW}"/>
+
+      <!-- ============ Head (smooth wooden sphere, no face) ============ -->
+      <ellipse cx="100" cy="73" rx="14" ry="13" fill="${OUTLINE}"/>
+      <ellipse cx="100" cy="73" rx="12.5" ry="11.5" fill="${MID}"/>
+      <!-- Soft top-left highlight -->
+      <ellipse cx="95" cy="68" rx="5" ry="4" fill="${HIGHLIGHT}" opacity="0.65"/>
+      <!-- Subtle chin-shadow under the head, hides the seam onto the neck -->
+      <ellipse cx="100" cy="84" rx="6" ry="2" fill="${SHADOW}" opacity="0.5"/>
+    </g>
   </svg>`;
 }
 
