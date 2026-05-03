@@ -53,21 +53,26 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
   workshop: {
     id: 'workshop',
     name: 'Мастерская',
+    // Warm cosy alchemist's lab palette — amber-toned stone tile floor,
+    // candle-glow ambient, amber spotlight. Crypt + foundry stay on
+    // cold/red palettes so the three biomes still read as visually
+    // distinct. (The workshop used to draw a wooden plank floor here;
+    // it was retired in favour of the shared iso-tile floor.)
     palette: {
-      bg: '#0a0810',
-      tileA: '#1f2838',
-      tileB: '#252f42',
-      tileC: '#344057',
-      tileCrack: '#111722',
-      wallDark: '#090d14',
-      wallMid: '#5a4a55',
+      bg: '#1a0f0a',
+      tileA: '#5d3a22',
+      tileB: '#4a2d18',
+      tileC: '#7a4f30',
+      tileCrack: '#1f120a',
+      wallDark: '#2a180e',
+      wallMid: '#6a4530',
       ambientColors: [
-        'rgba(125, 249, 255, 0.3)',
-        'rgba(255, 209, 102, 0.25)',
-        'rgba(189, 246, 255, 0.2)',
+        'rgba(255, 178, 88, 0.30)',
+        'rgba(255, 138, 64, 0.22)',
+        'rgba(255, 220, 140, 0.20)',
       ],
-      spotlight: 'rgba(125, 249, 255, 0.04)',
-      vignetteAlpha: 0.55,
+      spotlight: 'rgba(255, 168, 80, 0.06)',
+      vignetteAlpha: 0.50,
     },
     modifier: { ...neutralModifier },
   },

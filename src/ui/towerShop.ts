@@ -1,6 +1,7 @@
 import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost, towerName } from '../data/towers';
 import type { GameState } from '../game/state';
 import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower, sellTower } from '../game/tower';
+import { placePopupNearAnchor } from './popupPlacement';
 import { t } from '../i18n';
 
 /**
@@ -30,6 +31,8 @@ export class TowerShop {
     this.state.activeRunePoint = runePointId;
     const el = document.createElement('div');
     el.className = 'tower-shop';
+    // Initial guess; final position is clamped to the viewport after the
+    // popup has been laid out (see end of `open`).
     el.style.left = `${screenPos.x + 24}px`;
     el.style.top = `${screenPos.y - 20}px`;
 
@@ -79,14 +82,14 @@ export class TowerShop {
         el.appendChild(btn);
       }
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.cancel');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     } else {
       // Upgrade menu.
       const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
+      info.className = 'tower-shop-info';
       info.textContent = t('ui.tower.info', {
         name: towerName(tower.kind),
         lvl: tower.level,
@@ -160,6 +163,7 @@ export class TowerShop {
       el.appendChild(sell);
 
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.close');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
@@ -167,6 +171,10 @@ export class TowerShop {
 
     this.root.appendChild(el);
     this.el = el;
+    // Reposition once the popup has been measured so it never escapes the
+    // viewport — important on landscape mobile where the rune may be
+    // close to the right or bottom edge.
+    placePopupNearAnchor(el, screenPos);
   }
 
   close(): void {

@@ -1,7 +1,22 @@
 import type { MetaSave } from '../game/save';
-import { canClaimDaily, saveMeta } from '../game/save';
+import { canClaimDaily, todayString, saveMeta } from '../game/save';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
+import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/dailyRewards';
+import { buildLeaderboardPanel } from './leaderboardOverlay';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
+import { masteryEssenceMult } from '../game/meta';
+import {
+  ACTIVE_MODULES,
+  AURA_MODULES,
+  isActiveModule,
+  isAuraModule,
+  moduleName,
+  type ActiveModuleId,
+  type AuraModuleId,
+} from '../data/modules';
+import { moduleGlyph } from './loadoutOverlay';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -14,188 +29,214 @@ export class MainMenu {
     meta: MetaSave;
     onBattle: () => void;
     onLaboratory: () => void;
-    onBattlePass: () => void;
     onDailyRewards: () => void;
     onSettings: () => void;
-    onDailyExperiment: () => void;
-    onBossChallenge: () => void;
-    onLeaderboards: () => void;
     onCrafting: () => void;
+    onLoadout: () => void;
   }): void {
     this.root.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'main-menu';
 
-    // Top bar — currencies
-    const topBar = document.createElement('div');
-    topBar.className = 'mm-top-bar';
-    topBar.innerHTML = `
-      <span class="mm-currency blue-essence" title="${t('ui.menu.tooltip.blueEssence')}"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency ancient-essence" title="${t('ui.menu.tooltip.ancientEssence')}"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="mm-currency epic-key" title="${t('ui.menu.tooltip.epicKey')}"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
-      <span class="mm-currency ancient-key" title="${t('ui.menu.tooltip.ancientKey')}"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
-    `;
-    // RU/EN switcher in the top-right corner of the main menu (PR-9 i18n).
-    topBar.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
-    wrap.appendChild(topBar);
+    // Floating ember sparks behind the menu — pure decoration, mirrors
+    // the language used by the run-end / chest stages so the main menu
+    // reads as part of the same world. Each spark has a randomised x /
+    // delay / duration / scale so the layer never visibly loops.
+    wrap.appendChild(buildMenuSparks(18));
 
-    // Center content
-    const center = document.createElement('div');
-    center.className = 'mm-center';
+    // ─── Top row: currencies + logo + settings/lang ───────────────
+    const topRow = document.createElement('div');
+    topRow.className = 'mm-top-row';
 
-    // Left column: My Shop + Laboratory + Settings
+    const topLeft = document.createElement('div');
+    topLeft.className = 'mm-top-left';
+    const sprites = getSprites();
+    topLeft.appendChild(buildCurrencyChip(
+      'blue-essence',
+      spriteIcon(sprites.iconBlueEssence, { scale: 2 }),
+      opts.meta.blueEssence,
+      t('ui.menu.tooltip.blueEssence'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'ancient-essence',
+      spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }),
+      opts.meta.ancientEssence,
+      t('ui.menu.tooltip.ancientEssence'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'epic-key',
+      spriteIcon(sprites.iconEpicKey, { scale: 2 }),
+      opts.meta.epicKeys,
+      t('ui.menu.tooltip.epicKey'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'ancient-key',
+      spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }),
+      opts.meta.ancientKeys,
+      t('ui.menu.tooltip.ancientKey'),
+    ));
+    topRow.appendChild(topLeft);
+
+    // Logo / title
+    const title = document.createElement('div');
+    title.className = 'mm-title';
+    title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
+    topRow.appendChild(title);
+
+    const topRight = document.createElement('div');
+    topRight.className = 'mm-top-right';
+    topRight.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
+    // Settings gear button
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'mm-settings-gear';
+    settingsBtn.type = 'button';
+    settingsBtn.innerHTML = '<span class="mm-gear-icon"></span>';
+    settingsBtn.addEventListener('click', opts.onSettings);
+    topRight.appendChild(settingsBtn);
+    topRow.appendChild(topRight);
+
+    wrap.appendChild(topRow);
+
+    // Mastery line (only visible once the player has Epic / Ancient victories)
+    const masteryLine = buildMasteryLine(opts.meta);
+    if (masteryLine) wrap.appendChild(masteryLine);
+
+    // ─── Body: 3-column grid ──────────────────────────────────────
+    const body = document.createElement('div');
+    body.className = 'mm-body';
+
+    // ─ Left column: Crafting (Shop) + Laboratory + Daily rewards calendar ─
     const leftCol = document.createElement('div');
-    leftCol.className = 'mm-left';
+    leftCol.className = 'mm-col mm-col-left';
 
-    // My Shop section — also doubles as the Alchemy crafting entry point.
-    // Clicking the section (slots, title, or hint) opens the crafting overlay.
-    const shopSection = document.createElement('button');
-    shopSection.className = 'mm-section mm-shop mm-shop-btn';
-    shopSection.type = 'button';
+    // Crafting card. Empty potion slots show a faded silhouette of an
+    // unidentified vial so it's immediately obvious what the section is
+    // for, even before the player has crafted anything. The decorative
+    // alchemy backdrop (steam, glow) is layered behind the slots via
+    // CSS pseudo-elements on `.mm-shop-card`. The previous "Уровень
+    // крафта" line was removed — that information still lives inside
+    // the crafting overlay itself.
+    const shopBtn = document.createElement('button');
+    shopBtn.className = 'mm-card mm-shop-card';
+    shopBtn.type = 'button';
+    shopBtn.dataset.tutorialTarget = 'menu-shop';
     const shopTitle = document.createElement('div');
-    shopTitle.className = 'mm-section-title mm-title-with-icon';
-    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span><span class="mm-info-dot">i</span>`;
-    shopSection.appendChild(shopTitle);
-    const slotRow = document.createElement('div');
-    slotRow.className = 'mm-shop-slots';
+    shopTitle.className = 'mm-card-title';
+    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span>`;
+    shopBtn.appendChild(shopTitle);
+    const shopBackdrop = document.createElement('div');
+    shopBackdrop.className = 'mm-shop-backdrop';
+    shopBackdrop.setAttribute('aria-hidden', 'true');
+    shopBackdrop.innerHTML = shopBackdropSVG();
+    shopBtn.appendChild(shopBackdrop);
+    const shopSlots = document.createElement('div');
+    shopSlots.className = 'mm-shop-slots';
     for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
       const slot = document.createElement('div');
-      const id = opts.meta.inventory[i];
-      const recipe = id ? POTION_BY_ID[id] : null;
-      slot.className = `mm-shop-slot${recipe ? ' filled' : ''}`;
-      if (recipe) {
-        slot.title = t(`${recipe.i18nKey}.name`);
-        slot.innerHTML = `<span class="mm-slot-potion" style="color:${recipe.color}">${recipe.glyph}</span>`;
+      slot.className = 'mm-shop-slot';
+      const pid = opts.meta.inventory[i];
+      if (pid) {
+        const p = POTION_BY_ID[pid];
+        if (p) {
+          slot.classList.add('filled');
+          slot.innerHTML = `<span class="mm-slot-potion" style="--potion-color:${p.color}">${p.glyph}</span>`;
+          slot.title = t(p.i18nKey + '.name');
+        }
+      } else {
+        // Empty slot: render a translucent vial silhouette so the player
+        // can read the slot as "a potion goes here" at a glance.
+        slot.classList.add('empty');
+        slot.innerHTML = `<span class="mm-slot-silhouette" aria-hidden="true"></span>`;
       }
-      slotRow.appendChild(slot);
+      shopSlots.appendChild(slot);
     }
-    shopSection.appendChild(slotRow);
-    const craftHint = document.createElement('div');
-    craftHint.className = 'mm-craft-level';
-    craftHint.innerHTML = `<span>${t('ui.menu.craftingHint')}</span>`;
-    shopSection.appendChild(craftHint);
-    const statsRow = document.createElement('div');
-    statsRow.className = 'mm-stats';
-    statsRow.innerHTML = `<span>${t('ui.menu.runs', { n: opts.meta.totalRuns })}</span><span>${t('ui.menu.bestWave', { n: opts.meta.bestWave })}</span>`;
-    shopSection.appendChild(statsRow);
-    shopSection.addEventListener('click', opts.onCrafting);
-    leftCol.appendChild(shopSection);
+    shopBtn.appendChild(shopSlots);
+    shopBtn.addEventListener('click', opts.onCrafting);
+    leftCol.appendChild(shopBtn);
 
-    // Laboratory button
+    // Laboratory card. The header used to carry a small green-flask
+    // pixel icon next to the title — removed per request, the title
+    // now reads cleanly. The card body shows a decorative skill-tree
+    // diorama (purely visual; the real talent tree opens in its own
+    // overlay on click).
     const labBtn = document.createElement('button');
-    labBtn.className = 'mm-section mm-lab-btn';
+    labBtn.className = 'mm-card mm-lab-card';
+    labBtn.type = 'button';
+    labBtn.dataset.tutorialTarget = 'menu-laboratory';
     const labTitle = document.createElement('div');
-    labTitle.className = 'mm-section-title';
-    labTitle.innerHTML = `<span class="mm-flask-icon"></span><span>${t('ui.menu.laboratory')}</span>`;
+    labTitle.className = 'mm-card-title';
+    labTitle.innerHTML = `<span>${t('ui.menu.laboratory')}</span>`;
     labBtn.appendChild(labTitle);
     const labDesc = document.createElement('div');
     labDesc.className = 'mm-lab-desc';
-    const hpNode = opts.meta.purchased.includes('hp_1') ? 10 : 0;
-    const damageNode = opts.meta.purchased.includes('potion_damage_1') ? 5 : 0;
-    labDesc.innerHTML = `
-      <span class="mm-lab-tree">
-        <span class="node core"></span>
-        <span class="branch left"></span><span class="branch right"></span>
-        <span class="node hp">HP<br>+${hpNode}%</span>
-        <span class="node dmg">DMG<br>+${damageNode}%</span>
-      </span>
-    `;
+    labDesc.innerHTML = labSkillTreeSVG();
     labBtn.appendChild(labDesc);
     labBtn.addEventListener('click', opts.onLaboratory);
     leftCol.appendChild(labBtn);
 
-    // Settings button
-    const settingsBtn = document.createElement('button');
-    settingsBtn.className = 'mm-section mm-settings-btn';
-    const settingsTitle = document.createElement('div');
-    settingsTitle.className = 'mm-section-title';
-    settingsTitle.innerHTML = `<span class="mm-gear-icon"></span><span>${t('ui.menu.settings')}</span>`;
-    settingsBtn.addEventListener('click', opts.onSettings);
-    settingsBtn.appendChild(settingsTitle);
-    leftCol.appendChild(settingsBtn);
+    // Loadout widget — «equipped» active module + aura. Click opens the
+    // dedicated loadout picker. Mirrors the laboratory card visually so
+    // both «meta state» cards live side-by-side in the left column.
+    leftCol.appendChild(buildLoadoutCard(opts.meta, opts.onLoadout));
 
-    center.appendChild(leftCol);
+    body.appendChild(leftCol);
 
-    // Middle: Title + illustration + TO BATTLE
-    const midCol = document.createElement('div');
-    midCol.className = 'mm-mid';
-    const title = document.createElement('div');
-    title.className = 'mm-title';
-    title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
-    midCol.appendChild(title);
-
-    // Central illustration — pixel-art style alchemist's shop with hero in front.
+    // ─ Center column: Animated mannequin ─
+    const centerCol = document.createElement('div');
+    centerCol.className = 'mm-col mm-col-center';
     const illu = document.createElement('div');
-    illu.className = 'mm-illustration';
-    illu.innerHTML = shopIllustrationSVG();
-    midCol.appendChild(illu);
+    illu.className = 'mm-mannequin-display';
+    illu.innerHTML = mannequinIllustrationSVG();
+    centerCol.appendChild(illu);
+    body.appendChild(centerCol);
+
+    // ─ Right column: Leaderboard (full) + collapsible daily rewards.
+    //   Default state: leaderboard expanded, daily calendar collapsed to
+    //   just the header strip with a status indicator. Clicking the daily
+    //   header animates daily open and shrinks leaderboard; clicking the
+    //   leaderboard or the header again collapses daily back.
+    const rightCol = document.createElement('div');
+    rightCol.className = 'mm-col mm-col-right';
+
+    const lbWrap = document.createElement('div');
+    lbWrap.className = 'mm-card mm-lb-card';
+    lbWrap.dataset.tutorialTarget = 'menu-leaderboard';
+    const lbTitle = document.createElement('div');
+    lbTitle.className = 'mm-card-title';
+    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
+    lbWrap.appendChild(lbTitle);
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
+    rightCol.appendChild(lbWrap);
+
+    rightCol.appendChild(this.buildInlineDailyCalendar(opts, () => {
+      // After a successful daily claim the menu is fully re-rendered,
+      // which resets the right-column state. Nothing extra needed here.
+    }));
+
+    // Toggle handlers — clicking the leaderboard while daily is open
+    // collapses it back. Clicking the daily header toggles open / closed.
+    lbWrap.addEventListener('click', () => {
+      if (rightCol.classList.contains('daily-open')) {
+        rightCol.classList.remove('daily-open');
+      }
+    });
+
+    body.appendChild(rightCol);
+    wrap.appendChild(body);
+
+    // ─── Bottom row: battle button ─────────────────────────────────
+    const bottomRow = document.createElement('div');
+    bottomRow.className = 'mm-bottom-row';
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
+    battleBtn.dataset.tutorialTarget = 'menu-battle';
     battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
-    midCol.appendChild(battleBtn);
+    bottomRow.appendChild(battleBtn);
 
-    // Special mode buttons
-    const modeBtns = document.createElement('div');
-    modeBtns.className = 'mm-mode-btns';
+    wrap.appendChild(bottomRow);
 
-    const dailyBtn2 = document.createElement('button');
-    dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
-    dailyBtn2.textContent = t('ui.menu.dailyExperiment');
-    dailyBtn2.addEventListener('click', opts.onDailyExperiment);
-    modeBtns.appendChild(dailyBtn2);
-
-    const bossBtn = document.createElement('button');
-    bossBtn.className = 'mm-mode-btn mm-boss-challenge';
-    bossBtn.textContent = t('ui.menu.bossChallenge');
-    bossBtn.addEventListener('click', opts.onBossChallenge);
-    modeBtns.appendChild(bossBtn);
-
-    const lbBtn = document.createElement('button');
-    lbBtn.className = 'mm-mode-btn mm-leaderboards';
-    lbBtn.textContent = t('ui.menu.leaderboards');
-    lbBtn.addEventListener('click', opts.onLeaderboards);
-    modeBtns.appendChild(lbBtn);
-
-    midCol.appendChild(modeBtns);
-
-    center.appendChild(midCol);
-
-    // Right column: Battle Pass + Daily Rewards
-    const rightCol = document.createElement('div');
-    rightCol.className = 'mm-right';
-
-    const bpBtn = document.createElement('button');
-    bpBtn.className = 'mm-section mm-bp-btn';
-    const bpTitle = document.createElement('div');
-    bpTitle.className = 'mm-section-title';
-    bpTitle.innerHTML = `<span>${t('ui.menu.battlePass')}</span><span class="mm-chest-icon"></span>`;
-    bpBtn.appendChild(bpTitle);
-    const bpSub = document.createElement('div');
-    bpSub.className = 'mm-bp-sub';
-    bpSub.innerHTML = `<span>${t('ui.menu.bpLevel', { level: opts.meta.bpLevel })}</span><span class="mm-mini-progress"><i style="width:${Math.min(100, (opts.meta.bpLevel / 50) * 100)}%"></i></span>`;
-    bpBtn.appendChild(bpSub);
-    bpBtn.addEventListener('click', opts.onBattlePass);
-    rightCol.appendChild(bpBtn);
-
-    const dailyBtn = document.createElement('button');
-    dailyBtn.className = 'mm-section mm-daily-btn';
-    const dailyTitle = document.createElement('div');
-    dailyTitle.className = 'mm-section-title';
-    dailyTitle.innerHTML = `<span>${t('ui.menu.dailyRewards').replace(/\n/g, '<br>')}</span><span class="mm-calendar-icon"></span>`;
-    dailyBtn.appendChild(dailyTitle);
-    if (canClaimDaily(opts.meta)) {
-      const badge = document.createElement('div');
-      badge.className = 'mm-daily-badge';
-      badge.textContent = t('ui.menu.dailyClaim');
-      dailyBtn.appendChild(badge);
-    }
-    dailyBtn.addEventListener('click', opts.onDailyRewards);
-    rightCol.appendChild(dailyBtn);
-
-    center.appendChild(rightCol);
-    wrap.appendChild(center);
     this.root.appendChild(wrap);
     this.root.classList.add('visible');
   }
@@ -208,57 +249,593 @@ export class MainMenu {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
+
+  /** Builds the 7-day inline daily rewards calendar widget.
+   *
+   * The calendar lives in the right column under the leaderboard and
+   * starts collapsed — only the header strip with a `!`/`✓` status
+   * indicator is visible. Clicking the header toggles a `.daily-open`
+   * class on the parent `.mm-col-right` which CSS uses to animate the
+   * panel open and shrink the leaderboard above it. */
+  private buildInlineDailyCalendar(opts: {
+    meta: MetaSave;
+    onDailyRewards: () => void;
+  }, _onClaim: () => void): HTMLElement {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'mm-card mm-daily-calendar collapsed';
+    card.dataset.tutorialTarget = 'menu-daily';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'mm-card-title mm-daily-header';
+    const claimable = canClaimDaily(opts.meta);
+    const indicator = claimable
+      ? `<span class="mm-daily-indicator mm-daily-indicator-claimable" title="${t('ui.daily.indicator.unclaimed')}">!</span>`
+      : `<span class="mm-daily-indicator mm-daily-indicator-claimed" title="${t('ui.daily.indicator.claimed')}">✓</span>`;
+    titleRow.innerHTML = `<span>📅</span><span class="mm-daily-header-text">${t('ui.daily.title')}</span>${indicator}`;
+
+    const currentDay = opts.meta.dailyDay ?? 0;
+    const pageStart = Math.floor(currentDay / 9) * 9;
+    const pageNum = Math.floor(currentDay / 9) + 1;
+    const badge = document.createElement('span');
+    badge.className = 'mm-daily-week-badge';
+    badge.textContent = t('ui.daily.week', { n: pageNum });
+    const chev = document.createElement('span');
+    chev.className = 'mm-daily-chev';
+    chev.textContent = '▾';
+    titleRow.appendChild(badge);
+    titleRow.appendChild(chev);
+    card.appendChild(titleRow);
+
+    // The collapsing body lives inside .mm-daily-content; CSS animates
+    // grid-template-rows from 0fr → 1fr to expand it smoothly.
+    const content = document.createElement('div');
+    content.className = 'mm-daily-content';
+    const contentInner = document.createElement('div');
+    contentInner.className = 'mm-daily-content-inner';
+    content.appendChild(contentInner);
+
+    const grid = document.createElement('div');
+    grid.className = 'mm-daily-grid';
+
+    // When the player has already claimed today, `currentDay` points at
+    // *tomorrow's* reward — that cell isn't actually claimable until the
+    // date rolls over, so labelling it "Сегодня" is misleading. Shift the
+    // highlight back onto the day we just claimed (`currentDay - 1`) and
+    // drop the "Сегодня" label there.
+    const highlightIdx = claimable ? currentDay : currentDay - 1;
+
+    for (let i = 0; i < 9; i++) {
+      const dayIdx = pageStart + i;
+      const reward = DAILY_REWARDS[dayIdx % DAILY_CYCLE];
+      const cell = document.createElement('div');
+      cell.className = 'mm-daily-cell';
+
+      const isHighlighted = dayIdx === highlightIdx;
+      const isTodayLabel = isHighlighted && claimable;
+      const isClaimed = dayIdx < currentDay;
+      if (isHighlighted) cell.classList.add('today');
+      if (isClaimed) cell.classList.add('claimed');
+      if (dayIdx > currentDay) cell.classList.add('locked');
+
+      const dayLabel = document.createElement('div');
+      dayLabel.className = 'mm-daily-day-label';
+      dayLabel.textContent = isTodayLabel ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
+      cell.appendChild(dayLabel);
+
+      const iconEl = document.createElement('div');
+      iconEl.className = 'mm-daily-icon';
+      if (isClaimed) {
+        iconEl.textContent = '✓';
+      } else {
+        iconEl.appendChild(spriteIcon(rewardSprite(reward.type), { scale: 2 }));
+      }
+      cell.appendChild(iconEl);
+
+      const label = document.createElement('div');
+      label.className = 'mm-daily-reward-label';
+      label.textContent = rewardLabel(reward);
+      cell.appendChild(label);
+
+      grid.appendChild(cell);
+    }
+    contentInner.appendChild(grid);
+
+    const claimBtn = document.createElement('button');
+    claimBtn.className = 'mm-daily-claim';
+    claimBtn.type = 'button';
+    claimBtn.textContent = t('ui.daily.claim');
+    claimBtn.disabled = !claimable;
+    if (claimable) {
+      claimBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation(); // don't toggle collapse on claim
+        const reward = DAILY_REWARDS[currentDay % DAILY_CYCLE];
+        applyDailyReward(opts.meta, reward);
+        opts.meta.dailyDay = currentDay + 1;
+        opts.meta.dailyLastClaim = todayString();
+        saveMeta(opts.meta);
+        this.show(opts as Parameters<MainMenu['show']>[0]);
+      });
+    }
+    contentInner.appendChild(claimBtn);
+    card.appendChild(content);
+
+    // Toggle open / closed via the parent column's `.daily-open` class.
+    card.addEventListener('click', (ev) => {
+      // If the click landed on the claim button or its descendants, let
+      // the button handle it without toggling the panel.
+      const target = ev.target as HTMLElement | null;
+      if (target && target.closest('.mm-daily-claim')) return;
+      const col = card.closest('.mm-col-right');
+      if (col) col.classList.toggle('daily-open');
+    });
+
+    return card;
+  }
 }
 
-// Pixel-art-ish storefront illustration drawn in SVG so it ships with zero
-// asset pipeline. Colours match the in-game palette (wood + copper + purple
-// potions + warm lantern glow).
-function shopIllustrationSVG(): string {
-  return `<svg viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number }): void {
+  switch (reward.type) {
+    case 'gold':
+      meta.blueEssence += reward.amount;
+      break;
+    case 'blue_essence':
+      meta.blueEssence += reward.amount;
+      break;
+    case 'ancient_essence':
+      meta.ancientEssence += reward.amount;
+      break;
+    case 'keys':
+      meta.keys += reward.amount;
+      break;
+    case 'rerolls':
+      meta.bonusRerolls += reward.amount;
+      break;
+  }
+}
+
+/** Decorative skill-tree diorama for the laboratory card.
+ *
+ *  Renders a 1-3-5 mini diamond of glowing nodes connected by warm
+ *  edges, mirroring the structure of the real Talent Laboratory tree
+ *  (which is much larger — see `metaTree.ts`). The visualisation is
+ *  purely cosmetic; clicking the card opens the actual tree overlay.
+ *
+ *  Node states are baked-in here (root + 3 owned + mix of available /
+ *  locked) so the widget always reads as "in-progress" — the player
+ *  sees a tree they could pour points into. The CSS animates the
+ *  edges and "owned" nodes so the diorama feels alive. */
+function labSkillTreeSVG(): string {
+  return `<svg class="mm-lab-tree-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     <defs>
-      <radialGradient id="sky" cx="50%" cy="48%" r="72%">
-        <stop offset="0%" stop-color="#27445b"/>
-        <stop offset="58%" stop-color="#121a2a"/>
-        <stop offset="100%" stop-color="#080b12"/>
+      <radialGradient id="mm-lab-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffe091" stop-opacity="0.35"/>
+        <stop offset="60%" stop-color="#ff8c3a" stop-opacity="0.10"/>
+        <stop offset="100%" stop-color="#ff8c3a" stop-opacity="0"/>
       </radialGradient>
-      <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#ffd27a" stop-opacity="0.8"/>
-        <stop offset="100%" stop-color="#ffd27a" stop-opacity="0"/>
-      </radialGradient>
+      <filter id="mm-lab-blur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2.4"/>
+      </filter>
     </defs>
-    <rect width="220" height="180" fill="url(#sky)"/>
-    <ellipse cx="110" cy="139" rx="76" ry="26" fill="#151c2c"/>
-    <polygon points="56,122 110,96 164,122 110,154" fill="#4d596f"/>
-    <polygon points="56,122 110,154 110,166 48,132" fill="#2c3448"/>
-    <polygon points="164,122 110,154 110,166 172,132" fill="#242b3d"/>
-    <polygon points="62,120 110,98 158,120 110,147" fill="#758096"/>
-    <polyline points="72,122 110,104 148,122" fill="none" stroke="#9ba6bb" stroke-width="2"/>
-    <polyline points="82,128 110,115 138,128" fill="none" stroke="#59657f" stroke-width="2"/>
-    <polygon points="74,92 110,64 146,92 110,112" fill="#9a5a2a" stroke="#2a1810" stroke-width="3"/>
-    <polygon points="82,92 110,70 138,92 110,107" fill="#c07a3e"/>
-    <polygon points="78,94 110,111 110,143 78,126" fill="#6b4026" stroke="#2a1810" stroke-width="2"/>
-    <polygon points="142,94 110,111 110,143 142,126" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
-    <polygon points="92,102 110,111 110,136 92,127" fill="#2a1810"/>
-    <polygon points="119,106 134,99 134,122 119,130" fill="#24445d" stroke="#182436" stroke-width="2"/>
-    <rect x="74" y="113" width="9" height="28" fill="#5a3622"/>
-    <rect x="137" y="112" width="8" height="27" fill="#5a3622"/>
-    <rect x="100" y="53" width="9" height="16" fill="#454a60" stroke="#1a1d28" stroke-width="2"/>
-    <ellipse cx="103" cy="49" rx="7" ry="3" fill="#9c8a90" opacity="0.6"/>
-    <circle cx="126" cy="112" r="12" fill="url(#glow)"/>
-    <rect x="124" y="111" width="4" height="7" fill="#ffd166"/>
-    <rect x="65" y="128" width="12" height="19" fill="#8a5a30" stroke="#2a1810" stroke-width="2"/>
-    <rect x="145" y="130" width="18" height="17" fill="#b78250" stroke="#2a1810" stroke-width="2"/>
-    <circle cx="89" cy="136" r="3" fill="#7df9ff"/>
-    <circle cx="133" cy="132" r="3" fill="#c084fc"/>
-    <circle cx="153" cy="139" r="3" fill="#4fd36a"/>
-    <rect x="44" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
-    <rect x="154" y="137" width="26" height="12" fill="#2a344c" opacity="0.65"/>
+    <!-- Soft warm halo behind the whole tree -->
+    <ellipse cx="100" cy="60" rx="92" ry="46" fill="url(#mm-lab-glow)"/>
+
+    <!-- Connecting edges: tier0→tier1, tier1→tier2 -->
+    <g class="mm-lab-edges">
+      <line class="edge owned" x1="100" y1="20" x2="60"  y2="50"/>
+      <line class="edge owned" x1="100" y1="20" x2="100" y2="50"/>
+      <line class="edge owned" x1="100" y1="20" x2="140" y2="50"/>
+      <line class="edge avail" x1="60"  y1="50" x2="30"  y2="86"/>
+      <line class="edge avail" x1="60"  y1="50" x2="60"  y2="86"/>
+      <line class="edge avail" x1="100" y1="50" x2="100" y2="86"/>
+      <line class="edge locked" x1="140" y1="50" x2="140" y2="86"/>
+      <line class="edge locked" x1="140" y1="50" x2="170" y2="86"/>
+    </g>
+
+    <!-- Nodes: root (gold) → tier1 (3 owned) → tier2 (5 mixed) -->
+    <g class="mm-lab-nodes">
+      <!-- Tier 0: root keystone (gold) -->
+      <circle class="node-halo" cx="100" cy="20" r="14"/>
+      <circle class="node root" cx="100" cy="20" r="9"/>
+
+      <!-- Tier 1: 3 owned, colour-coded -->
+      <circle class="node-halo" cx="60"  cy="50" r="11"/>
+      <circle class="node owned hp"      cx="60"  cy="50" r="7"/>
+      <circle class="node-halo" cx="100" cy="50" r="11"/>
+      <circle class="node owned utility" cx="100" cy="50" r="7"/>
+      <circle class="node-halo" cx="140" cy="50" r="11"/>
+      <circle class="node owned dmg"     cx="140" cy="50" r="7"/>
+
+      <!-- Tier 2: 5 nodes, mixed states -->
+      <circle class="node avail hp"        cx="30"  cy="86" r="6"/>
+      <circle class="node avail hp"        cx="60"  cy="86" r="6"/>
+      <circle class="node avail keystone"  cx="100" cy="86" r="9"/>
+      <circle class="node locked dmg"      cx="140" cy="86" r="6"/>
+      <circle class="node locked dmg"      cx="170" cy="86" r="6"/>
+    </g>
   </svg>`;
 }
 
-/** RU/EN locale switcher rendered in the top-right of the main menu (PR-9).
- *  Mirrors the slider in the Settings overlay so the player can flip the
- *  language without diving into a sub-menu. */
+/** Decorative alchemy-table backdrop for the crafting card.
+ *
+ *  Layered behind the potion slots so the section reads as an
+ *  apothecary's bench rather than a row of empty squares. Drawn in
+ *  pure SVG so the asset ships with the bundle and scales with the
+ *  card. The slots themselves are absolutely positioned over this. */
+function shopBackdropSVG(): string {
+  return `<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <radialGradient id="mm-shop-warm" cx="50%" cy="55%" r="65%">
+        <stop offset="0%"  stop-color="#ffd166" stop-opacity="0.30"/>
+        <stop offset="55%" stop-color="#ff8c3a" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#ff8c3a" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="mm-shop-shelf" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#3a1d10"/>
+        <stop offset="100%" stop-color="#1a0c08"/>
+      </linearGradient>
+      <linearGradient id="mm-shop-shelf-edge" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#7a3a14"/>
+        <stop offset="100%" stop-color="#3a1d10"/>
+      </linearGradient>
+    </defs>
+    <!-- Warm radial glow behind everything -->
+    <rect x="0" y="0" width="200" height="110" fill="url(#mm-shop-warm)"/>
+
+    <!-- Wooden shelf the slots will sit on -->
+    <rect x="0" y="74" width="200" height="22" fill="url(#mm-shop-shelf)"/>
+    <rect x="0" y="74" width="200" height="3"  fill="url(#mm-shop-shelf-edge)"/>
+
+    <!-- Drifting steam wisps (animated via CSS) -->
+    <g class="mm-shop-steam">
+      <ellipse cx="40"  cy="22" rx="18" ry="6" fill="rgba(255,210,140,0.18)"/>
+      <ellipse cx="100" cy="14" rx="22" ry="5" fill="rgba(255,210,140,0.22)"/>
+      <ellipse cx="160" cy="22" rx="18" ry="6" fill="rgba(255,210,140,0.18)"/>
+    </g>
+
+    <!-- Sparks: tiny warm dots scattered above the shelf -->
+    <g class="mm-shop-sparkles">
+      <circle cx="20"  cy="40" r="1.6" fill="#ffe091"/>
+      <circle cx="50"  cy="32" r="1.2" fill="#ffd166"/>
+      <circle cx="80"  cy="45" r="1.6" fill="#ffe091"/>
+      <circle cx="120" cy="36" r="1.2" fill="#ffd166"/>
+      <circle cx="150" cy="44" r="1.6" fill="#ffe091"/>
+      <circle cx="180" cy="32" r="1.2" fill="#ffd166"/>
+    </g>
+  </svg>`;
+}
+
+/** Pixel-art wooden artist's mannequin (centre of the main menu).
+ *
+ *  Chunky pixel-art wooden artist's mannequin — every shape is built
+ *  from rectangles snapped to a 2-unit pixel grid, joints are octagonal
+ *  (square with 1-pixel chamfered corners), and the SVG renders with
+ *  `shape-rendering="crispEdges"` so the silhouette has hard pixel
+ *  borders matching the rest of the game's pixel-art UI. */
+function mannequinIllustrationSVG(): string {
+  // Palette — wooden mannequin: near-black outline, mid sienna body,
+  // light tan highlight, mid-shadow used for seams.
+  const O = '#2a1208';
+  const S = '#7a4424';
+  const M = '#b97a3f';
+  const L = '#d49157';
+
+  // 3-layer pixel block: outline border (2px), mid fill, top-left
+  // 2-pixel highlight stripe. All coords assume a 2-svu pixel grid.
+  const block = (x: number, y: number, w: number, h: number) => `
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${O}"/>
+    <rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="${M}"/>
+    <rect x="${x + 2}" y="${y + 2}" width="2" height="${h - 4}" fill="${L}"/>
+  `;
+
+  // Octagonal "ball" joint: a square with the four 2x2 corners
+  // chamfered out so the silhouette reads as a chunky pixel circle.
+  // `size` must be an even number ≥ 8 and divisible by 2; cx/cy must
+  // be chosen so cx-size/2 and cy-size/2 are even.
+  const joint = (cx: number, cy: number, size: number) => {
+    const x = cx - size / 2;
+    const y = cy - size / 2;
+    return `
+      <!-- top / bottom outline edges (inset by 2 each side for chamfer) -->
+      <rect x="${x + 2}" y="${y}" width="${size - 4}" height="2" fill="${O}"/>
+      <rect x="${x + 2}" y="${y + size - 2}" width="${size - 4}" height="2" fill="${O}"/>
+      <!-- left / right outline edges (inset top/bottom by 2) -->
+      <rect x="${x}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
+      <rect x="${x + size - 2}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
+      <!-- corner chamfer outline pixels -->
+      <rect x="${x + 2}" y="${y + 2}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + size - 4}" y="${y + 2}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + 2}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + size - 4}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
+      <!-- mid fill (octagonal interior) -->
+      <rect x="${x + 4}" y="${y + 2}" width="${size - 8}" height="${size - 4}" fill="${M}"/>
+      <rect x="${x + 2}" y="${y + 4}" width="${size - 4}" height="${size - 8}" fill="${M}"/>
+      <!-- top-left highlight pixel -->
+      <rect x="${x + 4}" y="${y + 4}" width="2" height="2" fill="${L}"/>
+    `;
+  };
+
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges">
+    <defs>
+      <radialGradient id="mm-glow" cx="50%" cy="55%" r="55%">
+        <stop offset="0%" stop-color="#ffb84a" stop-opacity="0.30"/>
+        <stop offset="60%" stop-color="#d27a2a" stop-opacity="0.10"/>
+        <stop offset="100%" stop-color="#d27a2a" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="mm-floor" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#454a60"/>
+        <stop offset="80%" stop-color="#1a1d28"/>
+        <stop offset="100%" stop-color="transparent"/>
+      </radialGradient>
+    </defs>
+
+    <!-- Background warm glow (kept smooth — pure ambient light, behind
+         everything; pixel-art rules apply only to the figure itself). -->
+    <ellipse cx="100" cy="120" rx="80" ry="80" fill="url(#mm-glow)"/>
+
+    <!-- Floor / dais — kept faceted-pixel style; matches the menu art. -->
+    <ellipse cx="100" cy="195" rx="55" ry="18" fill="url(#mm-floor)"/>
+    <polygon points="60,184 100,170 140,184 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
+    <polygon points="60,184 100,200 100,208 56,192" fill="#2a2c3a"/>
+    <polygon points="140,184 100,200 100,208 144,192" fill="#1a1d28"/>
+
+    <!-- Pixelated drop shadow (3 hard rect bands instead of an ellipse) -->
+    <rect x="80" y="178" width="40" height="2" fill="#000" opacity="0.45"/>
+    <rect x="76" y="180" width="48" height="2" fill="#000" opacity="0.30"/>
+    <rect x="84" y="176" width="32" height="2" fill="#000" opacity="0.25"/>
+
+    <g id="mm-figure">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite"/>
+
+      <!-- ====== Feet ====== -->
+      ${block(80, 168, 18, 10)}
+      ${block(102, 168, 18, 10)}
+
+      <!-- ====== Calves ====== -->
+      ${block(86, 152, 12, 16)}
+      ${block(102, 152, 12, 16)}
+
+      <!-- ====== Knee joints ====== -->
+      ${joint(92, 152, 12)}
+      ${joint(108, 152, 12)}
+
+      <!-- ====== Thighs ====== -->
+      ${block(86, 134, 12, 18)}
+      ${block(102, 134, 12, 18)}
+
+      <!-- ====== Hip joints ====== -->
+      ${joint(92, 132, 12)}
+      ${joint(108, 132, 12)}
+
+      <!-- ====== Pelvis (wider waist) ====== -->
+      ${block(84, 122, 32, 8)}
+
+      <!-- ====== Abdomen (narrower) ====== -->
+      ${block(94, 114, 12, 8)}
+
+      <!-- ====== Chest (octagonal silhouette: chamfered corners) ====== -->
+      <!-- Outline ring -->
+      <rect x="88" y="86" width="24" height="2" fill="${O}"/>
+      <rect x="86" y="88" width="2" height="2" fill="${O}"/>
+      <rect x="112" y="88" width="2" height="2" fill="${O}"/>
+      <rect x="84" y="90" width="2" height="20" fill="${O}"/>
+      <rect x="114" y="90" width="2" height="20" fill="${O}"/>
+      <rect x="86" y="110" width="2" height="2" fill="${O}"/>
+      <rect x="112" y="110" width="2" height="2" fill="${O}"/>
+      <rect x="88" y="112" width="24" height="2" fill="${O}"/>
+      <!-- Mid fill -->
+      <rect x="88" y="88" width="24" height="2" fill="${M}"/>
+      <rect x="86" y="90" width="28" height="20" fill="${M}"/>
+      <rect x="88" y="110" width="24" height="2" fill="${M}"/>
+      <!-- Highlight (top-left corner block + thin vertical stripe) -->
+      <rect x="88" y="90" width="4" height="2" fill="${L}"/>
+      <rect x="86" y="92" width="2" height="14" fill="${L}"/>
+      <!-- Centre seam -->
+      <rect x="100" y="90" width="2" height="20" fill="${S}"/>
+
+      <!-- ====== Arms — upper ====== -->
+      ${block(74, 96, 12, 20)}
+      ${block(114, 96, 12, 20)}
+
+      <!-- ====== Elbow joints ====== -->
+      ${joint(80, 116, 12)}
+      ${joint(120, 116, 12)}
+
+      <!-- ====== Forearms ====== -->
+      ${block(74, 118, 12, 20)}
+      ${block(114, 118, 12, 20)}
+
+      <!-- ====== Hand joints ====== -->
+      ${joint(80, 140, 10)}
+      ${joint(120, 140, 10)}
+
+      <!-- ====== Shoulder joints (overlap chest top sides) ====== -->
+      ${joint(80, 94, 14)}
+      ${joint(120, 94, 14)}
+
+      <!-- ====== Neck ====== -->
+      ${block(96, 80, 8, 8)}
+
+      <!-- ====== Head (octagonal, 24x22 px) ====== -->
+      <!-- Outline ring -->
+      <rect x="92" y="56" width="16" height="2" fill="${O}"/>
+      <rect x="90" y="58" width="2" height="2" fill="${O}"/>
+      <rect x="106" y="58" width="2" height="2" fill="${O}"/>
+      <rect x="88" y="60" width="2" height="2" fill="${O}"/>
+      <rect x="110" y="60" width="2" height="2" fill="${O}"/>
+      <rect x="86" y="62" width="2" height="14" fill="${O}"/>
+      <rect x="112" y="62" width="2" height="14" fill="${O}"/>
+      <rect x="88" y="76" width="2" height="2" fill="${O}"/>
+      <rect x="110" y="76" width="2" height="2" fill="${O}"/>
+      <rect x="90" y="78" width="2" height="2" fill="${O}"/>
+      <rect x="106" y="78" width="2" height="2" fill="${O}"/>
+      <rect x="92" y="80" width="16" height="2" fill="${O}"/>
+      <!-- Mid fill -->
+      <rect x="92" y="58" width="16" height="2" fill="${M}"/>
+      <rect x="90" y="60" width="20" height="2" fill="${M}"/>
+      <rect x="88" y="62" width="24" height="14" fill="${M}"/>
+      <rect x="90" y="76" width="20" height="2" fill="${M}"/>
+      <rect x="92" y="78" width="16" height="2" fill="${M}"/>
+      <!-- Top-left highlight cluster -->
+      <rect x="92" y="60" width="4" height="2" fill="${L}"/>
+      <rect x="90" y="62" width="2" height="6" fill="${L}"/>
+      <rect x="92" y="62" width="2" height="2" fill="${L}"/>
+    </g>
+  </svg>`;
+}
+
+/** Builds the «Снаряжение Манекена» card on the main menu — a compact
+ *  read-only widget that shows the currently-equipped active module and
+ *  aura side-by-side. Click opens the dedicated loadout picker overlay. */
+function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'mm-card mm-loadout-card';
+  card.dataset.tutorialTarget = 'menu-loadout';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'mm-card-title';
+  titleRow.innerHTML = `<span class="mm-loadout-icon">⚒</span><span>${t('ui.menu.loadout')}</span>`;
+  card.appendChild(titleRow);
+
+  const slots = document.createElement('div');
+  slots.className = 'mm-loadout-slots';
+
+  const activeId = isActiveModule(meta.selectedActiveModule)
+    ? (meta.selectedActiveModule as ActiveModuleId)
+    : (Object.keys(ACTIVE_MODULES)[0] as ActiveModuleId);
+  const auraId = isAuraModule(meta.selectedAuraModule)
+    ? (meta.selectedAuraModule as AuraModuleId)
+    : (Object.keys(AURA_MODULES)[0] as AuraModuleId);
+
+  slots.appendChild(buildLoadoutSlot('active', activeId));
+  slots.appendChild(buildLoadoutSlot('aura', auraId));
+  card.appendChild(slots);
+
+  const hint = document.createElement('div');
+  hint.className = 'mm-loadout-hint';
+  hint.textContent = t('ui.menu.loadoutHint');
+  card.appendChild(hint);
+
+  card.addEventListener('click', onOpen);
+  return card;
+}
+
+/** One inline `[icon] [name]` slot inside the loadout widget, tagged
+ *  with the slot kind so CSS can colour the rim differently for active
+ *  vs aura. */
+function buildLoadoutSlot(slot: 'active' | 'aura', id: string): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = `mm-loadout-slot mm-loadout-slot-${slot}`;
+
+  const ico = document.createElement('span');
+  ico.className = 'mm-loadout-slot-icon';
+  ico.textContent = moduleGlyph(slot, id);
+  wrap.appendChild(ico);
+
+  const text = document.createElement('span');
+  text.className = 'mm-loadout-slot-text';
+  const tag = document.createElement('span');
+  tag.className = 'mm-loadout-slot-tag';
+  tag.textContent = slot === 'active'
+    ? t('ui.menu.loadoutActiveTag')
+    : t('ui.menu.loadoutAuraTag');
+  text.appendChild(tag);
+
+  const name = document.createElement('span');
+  name.className = 'mm-loadout-slot-name';
+  const def = slot === 'active' ? ACTIVE_MODULES[id as ActiveModuleId] : AURA_MODULES[id as AuraModuleId];
+  name.textContent = def ? moduleName(def) : '—';
+  text.appendChild(name);
+  wrap.appendChild(text);
+
+  return wrap;
+}
+
+/** Builds a single `[pixel-icon] [amount]` chip for the main-menu top bar. */
+function buildCurrencyChip(
+  modifier: string,
+  icon: HTMLElement,
+  amount: number,
+  tooltip: string,
+): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = `mm-currency ${modifier}`;
+  chip.title = tooltip;
+  chip.appendChild(icon);
+  const amt = document.createElement('strong');
+  amt.textContent = `${amount}`;
+  chip.appendChild(amt);
+  return chip;
+}
+
+/** Builds the small mastery summary line shown right below the top bar.
+ *  Returns null while the player has 0 mastery in both modes. */
+function buildMasteryLine(meta: MetaSave): HTMLElement | null {
+  const epic = meta.epicMastery ?? 0;
+  const ancient = meta.ancientMastery ?? 0;
+  if (epic === 0 && ancient === 0) return null;
+  const bonus = Math.round((masteryEssenceMult(meta) - 1) * 100);
+  const wrap = document.createElement('div');
+  wrap.className = 'mm-mastery-line';
+
+  const sprites = getSprites();
+  if (epic > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-epic';
+    chip.title = t('ui.menu.tooltip.epicMastery');
+    chip.appendChild(spriteIcon(sprites.iconEpicKey, { scale: 2 }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.epicMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${epic}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  if (ancient > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-ancient';
+    chip.title = t('ui.menu.tooltip.ancientMastery');
+    chip.appendChild(spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.ancientMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${ancient}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  const bonusEl = document.createElement('span');
+  bonusEl.className = 'mm-mastery-bonus';
+  bonusEl.textContent = t('ui.menu.masteryBonus', { n: bonus });
+  bonusEl.title = t('ui.menu.tooltip.masteryBonus');
+  wrap.appendChild(bonusEl);
+  return wrap;
+}
+
+/** Builds a layer of N decorative ember sparks that drift upward across
+ *  the main menu background. Each spark gets randomised CSS variables so
+ *  they desync naturally — see the `mm-spark-rise` keyframes for the
+ *  actual motion. Mirrors the technique used by the defeat / chest
+ *  stages (`defeat-spark` etc.). */
+function buildMenuSparks(count: number): HTMLElement {
+  const layer = document.createElement('div');
+  layer.className = 'mm-sparks';
+  layer.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span');
+    s.className = 'mm-spark';
+    s.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    s.style.setProperty('--delay', `${(Math.random() * 6).toFixed(2)}s`);
+    s.style.setProperty('--dur', `${(6 + Math.random() * 4).toFixed(2)}s`);
+    s.style.setProperty('--scale', `${(0.6 + Math.random() * 1.2).toFixed(2)}`);
+    layer.appendChild(s);
+  }
+  return layer;
+}
+
+/** RU/EN locale switcher. */
 function buildLangSwitcher(meta: MetaSave, _onSettings: () => void): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'mm-lang-switcher';
@@ -276,9 +853,10 @@ function buildLangSwitcher(meta: MetaSave, _onSettings: () => void): HTMLElement
       if (getLocale() === code) return;
       setLocale(code);
       meta.locale = code;
+      // Once the player picks a language manually we stop letting the
+      // Yandex SDK override it on subsequent sessions.
+      meta.localeUserChoice = true;
       saveMeta(meta);
-      // Re-render the menu by re-dispatching the existing onSettings hook —
-      // safer than holding a ref to the original render fn. Caller refreshes.
       window.dispatchEvent(new CustomEvent('asd-locale-changed'));
     });
     wrap.appendChild(b);

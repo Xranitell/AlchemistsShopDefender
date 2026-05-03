@@ -91,7 +91,10 @@ export function updateParticles(dt: number): void {
     const p = particles[i]!;
     p.life -= dt;
     if (p.life <= 0) {
-      particles.splice(i, 1);
+      // Swap-remove avoids the O(N) shift that splice() does for each
+      // dead particle. Order doesn't matter for visuals.
+      particles[i] = particles[particles.length - 1]!;
+      particles.pop();
       continue;
     }
     p.x += p.vx * dt;
@@ -103,36 +106,39 @@ export function updateParticles(dt: number): void {
 }
 
 export function drawParticles(ctx: CanvasRenderingContext2D): void {
-  // Single ctx.save / ctx.restore around the whole loop instead of per
-  // particle: with 500 particles in flight that previously cost ~1000
-  // state-stack pushes per frame. We only mutate `globalAlpha` and
-  // `fillStyle` inside the loop, so the surrounding state doesn't leak.
   if (particles.length === 0) return;
-  const prevAlpha = ctx.globalAlpha;
-  const prevFill = ctx.fillStyle;
-  let curColor: string | null = null;
-
-  for (let pi = 0; pi < particles.length; pi++) {
-    const p = particles[pi]!;
+  // Single save/restore around the whole batch — the previous version
+  // saved/restored per particle which was a measurable hotspot at high
+  // particle counts. Re-enter the saved state at the end.
+  ctx.save();
+  let lastAlpha = -1;
+  let lastColor = '';
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i]!;
     const t = p.life / p.maxLife;
     const alpha = p.fadeOut ? Math.min(1, t * 2) : 1;
     const size = p.shrink ? p.size * (0.3 + t * 0.7) : p.size;
-
-    if (curColor !== p.color) {
+    if (p.color !== lastColor) {
       ctx.fillStyle = p.color;
-      curColor = p.color;
+      lastColor = p.color;
     }
-    ctx.globalAlpha = alpha;
+    if (alpha !== lastAlpha) {
+      ctx.globalAlpha = alpha;
+      lastAlpha = alpha;
+    }
+    const halfSize = size * 0.5;
     ctx.fillRect(
-      Math.round(p.x - size / 2),
-      Math.round(p.y - size / 2),
+      Math.round(p.x - halfSize),
+      Math.round(p.y - halfSize),
       Math.ceil(size),
       Math.ceil(size),
     );
-
-    // Glow effect for larger particles
     if (size > 2) {
-      ctx.globalAlpha = alpha * 0.2;
+      const glowAlpha = alpha * 0.2;
+      if (glowAlpha !== lastAlpha) {
+        ctx.globalAlpha = glowAlpha;
+        lastAlpha = glowAlpha;
+      }
       ctx.fillRect(
         Math.round(p.x - size),
         Math.round(p.y - size),
@@ -141,9 +147,7 @@ export function drawParticles(ctx: CanvasRenderingContext2D): void {
       );
     }
   }
-
-  ctx.globalAlpha = prevAlpha;
-  ctx.fillStyle = prevFill;
+  ctx.restore();
 }
 
 // Impact burst colors by element

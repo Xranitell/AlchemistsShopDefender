@@ -171,7 +171,17 @@ export function drawReticle(
 }
 
 // Floating combat text in pixel style (sharp edges, no AA). Bold red damage
-// numbers with 2px black outline matching reference.
+// numbers with 2px black outline matching reference. The outline is drawn
+// at the four cardinal offsets — for a 2px outline this is visually
+// indistinguishable from the 8-direction version (corners are filled by
+// the cardinal neighbours), and halves the number of fillText calls.
+const FLOATING_TEXT_OUTLINE_OFFSETS: ReadonlyArray<readonly [number, number]> = [
+  [-2, 0],
+  [2, 0],
+  [0, -2],
+  [0, 2],
+];
+
 export function drawPixelFloatingText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -185,19 +195,10 @@ export function drawPixelFloatingText(
   ctx.font = 'bold 22px "Press Start 2P", "VT323", "Courier New", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // 2px chunky outline (offset shadow in 8 directions for pixel-style edge)
   ctx.fillStyle = 'rgba(0,0,0,0.9)';
-  for (const [ox, oy] of [
-    [-2, 0],
-    [2, 0],
-    [0, -2],
-    [0, 2],
-    [-2, -2],
-    [2, -2],
-    [-2, 2],
-    [2, 2],
-  ] as const) {
-    ctx.fillText(text, x + ox, y + oy);
+  for (let i = 0; i < FLOATING_TEXT_OUTLINE_OFFSETS.length; i++) {
+    const off = FLOATING_TEXT_OUTLINE_OFFSETS[i]!;
+    ctx.fillText(text, x + off[0], y + off[1]);
   }
   // Inner fill
   ctx.fillStyle = color;

@@ -1,7 +1,8 @@
-import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardIcon } from '../data/dailyRewards';
+import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/dailyRewards';
 import type { MetaSave } from '../game/save';
 import { canClaimDaily, todayString, saveMeta } from '../game/save';
 import { t } from '../i18n';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class DailyRewardsOverlay {
   private root: HTMLElement;
@@ -37,6 +38,12 @@ export class DailyRewardsOverlay {
 
     const startDay = Math.floor(opts.meta.dailyDay / 7) * 7;
     const claimable = canClaimDaily(opts.meta);
+    // When the player has already claimed today, `dailyDay` points at
+    // *tomorrow's* reward (the next-up cell). That cell isn't actually
+    // claimable until the date rolls over, so labelling it "Сегодня" is
+    // misleading. Shift the highlight back onto the cell we just claimed
+    // today (`dailyDay - 1`) and drop the "Сегодня" label entirely.
+    const highlightIdx = claimable ? opts.meta.dailyDay : opts.meta.dailyDay - 1;
 
     for (let i = 0; i < 7; i++) {
       const dayIdx = startDay + i;
@@ -45,21 +52,31 @@ export class DailyRewardsOverlay {
       cell.className = 'daily-cell';
 
       const claimed = dayIdx < opts.meta.dailyDay;
-      const isToday = dayIdx === opts.meta.dailyDay;
+      const isHighlighted = dayIdx === highlightIdx;
+      const isTodayLabel = isHighlighted && claimable;
       const locked = dayIdx > opts.meta.dailyDay;
 
       if (claimed) cell.classList.add('claimed');
-      if (isToday) cell.classList.add('today');
+      if (isHighlighted) cell.classList.add('today');
       if (locked) cell.classList.add('locked');
 
       const dayLabel = document.createElement('div');
       dayLabel.className = 'daily-day-label';
-      dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
+      dayLabel.textContent = isTodayLabel ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
       cell.appendChild(dayLabel);
 
+      // Reward icon. Once a day is claimed we drop in a checkmark instead of
+      // the icon so the cell still reads the same width.
       const icon = document.createElement('div');
       icon.className = 'daily-icon';
-      icon.textContent = claimed ? '✓' : rewardIcon(rewardDef.type);
+      if (claimed) {
+        icon.textContent = '✓';
+      } else {
+        // Ancient-tier rewards get a CSS gold glow so the player visibly
+        // sees them as the rarer prize on the calendar.
+        const extraClass = rewardDef.type === 'ancient_essence' ? 'glow-gold' : undefined;
+        icon.appendChild(spriteIcon(rewardSprite(rewardDef.type), { scale: 3, extraClass }));
+      }
       cell.appendChild(icon);
 
       const label = document.createElement('div');

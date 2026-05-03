@@ -1,6 +1,8 @@
 import type { MetaSave } from '../game/save';
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
 import { t, tWithFallback } from '../i18n';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class DifficultyOverlay {
   private root: HTMLElement;
@@ -17,6 +19,24 @@ export class DifficultyOverlay {
     this.root.innerHTML = '';
     const panel = document.createElement('div');
     panel.className = 'panel difficulty-panel';
+
+    // Decorative ember layer drifting up across the panel (mirrors the
+    // run-end / main-menu language so the dungeon-select screen feels
+    // like the same cinematic surface). Each spark gets randomised
+    // x/delay/duration/scale so the layer never visibly loops.
+    const sparks = document.createElement('div');
+    sparks.className = 'difficulty-sparks';
+    sparks.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 16; i++) {
+      const s = document.createElement('span');
+      s.className = 'difficulty-spark';
+      s.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+      s.style.setProperty('--delay', `${(Math.random() * 6).toFixed(2)}s`);
+      s.style.setProperty('--dur', `${(5 + Math.random() * 4).toFixed(2)}s`);
+      s.style.setProperty('--scale', `${(0.5 + Math.random() * 1.1).toFixed(2)}`);
+      sparks.appendChild(s);
+    }
+    panel.appendChild(sparks);
 
     const header = document.createElement('div');
     header.className = 'difficulty-header';
@@ -37,7 +57,11 @@ export class DifficultyOverlay {
     const grid = document.createElement('div');
     grid.className = 'difficulty-grid';
 
-    const modes: DifficultyMode[] = ['normal', 'epic', 'ancient', 'endless'];
+    // Daily slot was previously a separate main-menu button; now it lives
+    // alongside the regular difficulty modes so the player picks it from a
+    // single "where do I want to fight" surface. main.ts intercepts the
+    // selection and shows the event preview overlay before starting the run.
+    const modes: DifficultyMode[] = ['normal', 'epic', 'ancient', 'endless', 'daily'];
     for (const modeId of modes) {
       const def = DIFFICULTY_MODES[modeId];
       const card = document.createElement('button');
@@ -50,10 +74,27 @@ export class DifficultyOverlay {
       label.textContent = t(`ui.difficulty.${modeId}.short`).toUpperCase();
       card.appendChild(label);
 
-      // Icon / large sigil
+      // Icon / large sigil. The glyph itself sits in `.difficulty-glyph`
+      // so we can animate it (rotate / bob) independently of the halo
+      // and orbiting sparkle dots that decorate it. Sparkle markup lives
+      // here (rather than as ::before/::after) so we can have several
+      // dots at separate offsets / phases per mode.
       const iconWrap = document.createElement('div');
       iconWrap.className = 'difficulty-icon';
-      iconWrap.textContent = modeIcon(modeId);
+      const halo = document.createElement('span');
+      halo.className = 'difficulty-icon-halo';
+      iconWrap.appendChild(halo);
+      const glyph = document.createElement('span');
+      glyph.className = 'difficulty-glyph';
+      glyph.textContent = modeIcon(modeId);
+      iconWrap.appendChild(glyph);
+      // Three orbiting sparkle dots — picked up by per-mode CSS so each
+      // dungeon has its own feel (orbit speed, distance, colour).
+      for (let i = 0; i < 3; i++) {
+        const orb = document.createElement('span');
+        orb.className = `difficulty-orb difficulty-orb-${i + 1}`;
+        iconWrap.appendChild(orb);
+      }
       card.appendChild(iconWrap);
 
       // Name
@@ -68,15 +109,32 @@ export class DifficultyOverlay {
       flav.textContent = tWithFallback(`ui.difficulty.${modeId}.flavor`, def.flavor);
       card.appendChild(flav);
 
-      // Cost footer
+      // Cost footer. The key icons come from the same sprite atlas the
+      // main menu uses so all three places that show key costs (top bar,
+      // difficulty cards, daily-rewards calendar) are visually identical.
       const cost = document.createElement('div');
       cost.className = 'difficulty-cost';
       if (def.keyCost === 'none') {
         cost.textContent = t('ui.difficulty.noKey');
-      } else if (def.keyCost === 'epic') {
-        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.epicKey')}</span><span class="key-count">${opts.meta.epicKeys}</span>`;
       } else {
-        cost.innerHTML = `<span>🗝️ ${t('ui.difficulty.ancientKey')}</span><span class="key-count">${opts.meta.ancientKeys}</span>`;
+        const isEpic = def.keyCost === 'epic';
+        const sprite = isEpic ? getSprites().iconEpicKey : getSprites().iconAncientKey;
+        const labelKey = isEpic ? 'ui.difficulty.epicKey' : 'ui.difficulty.ancientKey';
+        const count = isEpic ? opts.meta.epicKeys : opts.meta.ancientKeys;
+        const wrap = document.createElement('span');
+        wrap.className = 'difficulty-cost-label';
+        wrap.appendChild(spriteIcon(sprite, {
+          scale: 2,
+          extraClass: isEpic ? undefined : 'glow-gold',
+        }));
+        const txt = document.createElement('span');
+        txt.textContent = t(labelKey);
+        wrap.appendChild(txt);
+        cost.appendChild(wrap);
+        const countEl = document.createElement('span');
+        countEl.className = 'key-count';
+        countEl.textContent = `${count}`;
+        cost.appendChild(countEl);
       }
       card.appendChild(cost);
 
@@ -117,6 +175,5 @@ function modeIcon(mode: DifficultyMode): string {
     case 'ancient': return '☀';
     case 'endless': return '∞';
     case 'daily': return '📅';
-    case 'boss_challenge': return '💀';
   }
 }

@@ -10,6 +10,7 @@ import {
   POTION_INVENTORY_SIZE,
   type IngredientId,
 } from '../data/potions';
+import { META_BY_ID } from '../data/metaTree';
 
 const SAVE_KEY = 'asd_meta_v2';
 
@@ -47,8 +48,28 @@ export interface MetaSave {
   /** First-time-user-experience flag (GDD §18). True once the player has
    *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
   tutorialDone: boolean;
+  /** Set once the player has seen the pause-panel walkthrough at least
+   *  once. Prevents the panel sequence from replaying every time the
+   *  player opens the pause overlay. */
+  pauseTutorialDone: boolean;
+  /** Set once the player has seen the main-menu walkthrough. Same idea
+   *  as `pauseTutorialDone` but for the between-runs main menu. */
+  menuTutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  /** True once the player has explicitly picked a locale via the in-game
+   *  language switcher. While false, we let the Yandex SDK's
+   *  `environment.i18n.lang` override the locale on session start so the
+   *  game follows the player's Yandex profile language without ever
+   *  ignoring an in-game choice. */
+  localeUserChoice: boolean;
+  /** Mode-mastery counters: number of full victories per difficulty. Each
+   *  Epic / Ancient victory grants +1 mastery, which scales blue-essence
+   *  drops in *every* future run by a small amount (capped). This is the
+   *  meta hook that makes higher modes worth replaying — see
+   *  `masteryEssenceMult` in game/meta.ts. */
+  epicMastery: number;
+  ancientMastery: number;
   // ─── Potion crafting (PR-«крафт») ───────────────────────────────────────
   /** Stockpile of crafting ingredients. Keys come from `IngredientId`; missing
    *  keys are treated as 0. Drops persist across runs. */
@@ -84,7 +105,12 @@ export function newMetaSave(): MetaSave {
     sfxVolume: 0.6,
     musicVolume: 0.4,
     tutorialDone: false,
+    pauseTutorialDone: false,
+    menuTutorialDone: false,
     locale: defaultLocale(),
+    localeUserChoice: false,
+    epicMastery: 0,
+    ancientMastery: 0,
     ingredients: {},
     inventory: emptyInventory(),
   };
@@ -104,6 +130,21 @@ function sanitizeIngredients(
     if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
       out[id] = Math.floor(v);
     }
+  }
+  return out;
+}
+
+/** Drop any allocated upgrade ids that are no longer present in the meta
+ *  tree. Old saves built against the previous tree layout would otherwise
+ *  carry ghost ids that confuse refund-connectivity checks. */
+function sanitizePurchased(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string') continue;
+    if (!META_BY_ID[id]) continue;
+    if (out.includes(id)) continue;
+    out.push(id);
   }
   return out;
 }
@@ -137,7 +178,7 @@ export function loadMeta(): MetaSave {
       keys: data.keys ?? 0,
       epicKeys: data.epicKeys ?? 1,
       ancientKeys: data.ancientKeys ?? 1,
-      purchased: Array.isArray(data.purchased) ? data.purchased : [],
+      purchased: sanitizePurchased(data.purchased),
       bestWave: data.bestWave ?? 0,
       totalRuns: data.totalRuns ?? 0,
       dailyDay: data.dailyDay ?? 0,
@@ -166,7 +207,24 @@ export function loadMeta(): MetaSave {
       tutorialDone: typeof data.tutorialDone === 'boolean'
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players with at least one finished run have
+      // already discovered the pause / main-menu UI on their own — don't
+      // pop the panel walkthrough at them retroactively. New saves get
+      // both flags set to false so the walkthroughs play exactly once.
+      pauseTutorialDone: typeof data.pauseTutorialDone === 'boolean'
+        ? data.pauseTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      menuTutorialDone: typeof data.menuTutorialDone === 'boolean'
+        ? data.menuTutorialDone
+        : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      // Existing saves without the explicit-choice flag are treated as
+      // "explicit" so we don't flip the player's previously persisted
+      // language out from under them on the first session after the
+      // Yandex SDK integration ships.
+      localeUserChoice: typeof data.localeUserChoice === 'boolean' ? data.localeUserChoice : true,
+      epicMastery: typeof data.epicMastery === 'number' ? Math.max(0, Math.floor(data.epicMastery)) : 0,
+      ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
       inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
     };

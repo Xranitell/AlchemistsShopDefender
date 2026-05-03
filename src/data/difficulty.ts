@@ -8,7 +8,7 @@ import { t } from '../i18n';
 // in data (not scattered through the code) so the preview popup, the
 // difficulty selector, and the wave logic all read from the same source.
 
-export type DifficultyMode = 'normal' | 'epic' | 'ancient' | 'endless' | 'daily' | 'boss_challenge';
+export type DifficultyMode = 'normal' | 'epic' | 'ancient' | 'endless' | 'daily';
 
 export type EnemyAbility =
   // Slimes split into a smaller version on death.
@@ -79,7 +79,8 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       '+15% скорости и урона',
       'Слизни распадаются на осколки',
       'Крысы отскакивают при попадании',
-      'Золота больше на 50%',
+      '×1.5 синей эссенции, ×2 древней',
+      'Победа: +1 эпич. мастерство (+2% эссенции навсегда)',
     ],
     color: '#c084fc',
   },
@@ -102,7 +103,8 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       'Големы с бронёй, блокирующей первое попадание',
       'Слизни распадаются, крысы отскакивают',
       'Колбы-враги взрываются при смерти',
-      'Золота в 2 раза больше',
+      '×2.5 синей эссенции, ×4 древней, +1 древн. ключ за победу',
+      'Победа: +1 древн. мастерство (+3% эссенции навсегда)',
     ],
     color: '#ffd166',
   },
@@ -121,7 +123,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     },
     previewLines: [
       'Волны повторяются по кругу',
-      'Каждый круг — +10% ХП и +5% скорости врагам',
+      'Сложность растёт линейно с каждой волной',
       'Не требует ключа',
     ],
     color: '#8ecae6',
@@ -140,32 +142,11 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       abilities: [],
     },
     previewLines: [
-      'Seed забега одинаковый для всех игроков',
-      'Детерминированные карты и волны',
-      'Свой лидерборд каждый день',
+      'Уникальное событие на каждый день недели',
+      'Бесконечные волны, общий лидерборд за день',
+      'Сбрасывается в 00:00 МСК',
     ],
     color: '#f9c74f',
-  },
-  boss_challenge: {
-    id: 'boss_challenge',
-    name: 'Испытание боссов',
-    shortName: 'Боссы',
-    flavor: 'Только боссовые волны — покажи свой навык!',
-    keyCost: 'none',
-    modifier: {
-      hpMult: 1.2,
-      speedMult: 1.1,
-      damageMult: 1.1,
-      goldMult: 1.5,
-      abilities: [],
-    },
-    previewLines: [
-      'Только волны 5, 10, 15 + финальный босс',
-      '+20% здоровья, +10% скорости врагов',
-      'Золота на 50% больше',
-      'Свой лидерборд',
-    ],
-    color: '#ef476f',
   },
 };
 

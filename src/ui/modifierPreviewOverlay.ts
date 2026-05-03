@@ -1,5 +1,9 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { mutatorCountForDifficulty } from '../data/mutators';
+import { contractCountForDifficulty } from '../data/contracts';
+import { blessingChoiceCount, curseChoiceCount } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
+import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
 export class ModifierPreviewOverlay {
   private root: HTMLElement;
@@ -15,16 +19,45 @@ export class ModifierPreviewOverlay {
   }): void {
     this.root.innerHTML = '';
     const panel = document.createElement('div');
-    panel.className = 'panel modifier-preview-panel';
+    // Mode-specific class lets the stylesheet pick a colourway: epic = a
+    // violet/crimson "danger" palette, ancient = an even more menacing
+    // gold/blood/onyx palette. Other modes fall back to the generic look.
+    panel.className = `panel modifier-preview-panel mp-mode-${opts.mode}`;
     panel.style.setProperty('--dif-color', DIFFICULTY_MODES[opts.mode].color);
 
     const def = DIFFICULTY_MODES[opts.mode];
+    const dramatic = opts.mode === 'epic' || opts.mode === 'ancient';
+
+    // ── Stage: ominous backdrop with rotating rays + drifting embers,
+    // mirroring the defeat screen's "smouldering" feel. Only rendered
+    // on dangerous modes — normal/endless/daily keep the plain header.
+    if (dramatic) {
+      panel.appendChild(buildDramaticStage({
+        density: opts.mode === 'ancient' ? 'dense' : 'standard',
+      }));
+    }
 
     const header = document.createElement('div');
     header.className = 'mp-header';
     const h = document.createElement('h2');
-    h.textContent = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
+    h.className = 'mp-title';
+    const titleText = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
+    if (dramatic) {
+      appendGlitchTitleChars(h, titleText);
+    } else {
+      h.textContent = titleText;
+    }
     header.appendChild(h);
+
+    if (dramatic) {
+      // Loud uppercase tagline directly under the title. Different copy
+      // per mode so Ancient feels like a step beyond Epic.
+      const tagline = document.createElement('div');
+      tagline.className = 'mp-tagline';
+      tagline.textContent = t(`ui.preview.${opts.mode}.tagline`);
+      header.appendChild(tagline);
+    }
+
     const sub = document.createElement('p');
     sub.className = 'mp-subtitle';
     sub.textContent = t('ui.preview.subtitle');
@@ -35,10 +68,10 @@ export class ModifierPreviewOverlay {
     const stats = document.createElement('div');
     stats.className = 'mp-stats';
     const mod = def.modifier;
-    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d'));
-    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6'));
-    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166'));
-    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc'));
+    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d', true));
+    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6', true));
+    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166', true));
+    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc', false));
     panel.appendChild(stats);
 
     // Bullet list — human-friendly description
@@ -49,14 +82,53 @@ export class ModifierPreviewOverlay {
       li.textContent = tWithFallback(`ui.preview.${opts.mode}.line${i}`, def.previewLines[i]!);
       list.appendChild(li);
     }
+    // Mention the random "dungeon law" mutator(s) that will roll for this
+    // run — the actual roll happens at run start, so we only advertise the
+    // count here, not the picks.
+    const mutCount = mutatorCountForDifficulty(opts.mode);
+    if (mutCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(mutCount === 1 ? 'ui.mutator.previewEpic' : 'ui.mutator.previewAncient');
+      li.style.color = '#7df9ff';
+      list.appendChild(li);
+    }
+    // Mention the random side contracts (2 in Epic, 3 in Ancient).
+    const contractCount = contractCountForDifficulty(opts.mode);
+    if (contractCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(contractCount === 2 ? 'ui.contract.previewEpic' : 'ui.contract.previewAncient');
+      li.style.color = '#ffd166';
+      list.appendChild(li);
+    }
+    // Blessing pre-run picker (Epic: pick 1 of 3; Ancient: pick 1 of 3
+    // blessings + 1 of 3 curses).
+    const blessingCount = blessingChoiceCount(opts.mode);
+    if (blessingCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = curseChoiceCount(opts.mode) > 0
+        ? t('ui.blessing.previewAncient')
+        : t('ui.blessing.previewEpic');
+      li.style.color = '#fde047';
+      list.appendChild(li);
+    }
     panel.appendChild(list);
 
     // Warning ribbon
     const warn = document.createElement('div');
     warn.className = 'mp-warn';
-    warn.textContent = def.keyCost === 'ancient'
+    if (dramatic) {
+      const icon = document.createElement('span');
+      icon.className = 'mp-warn-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '⚠';
+      warn.appendChild(icon);
+    }
+    const warnText = document.createElement('span');
+    warnText.className = 'mp-warn-text';
+    warnText.textContent = def.keyCost === 'ancient'
       ? t('ui.preview.consumeAncient')
       : t('ui.preview.consumeEpic');
+    warn.appendChild(warnText);
     panel.appendChild(warn);
 
     // Actions
@@ -84,20 +156,23 @@ export class ModifierPreviewOverlay {
   }
 }
 
-function statBar(icon: string, label: string, mult: number, color: string): HTMLElement {
+function statBar(icon: string, label: string, mult: number, color: string, enemyStat: boolean): HTMLElement {
   const row = document.createElement('div');
   row.className = 'mp-stat';
   const iconEl = document.createElement('span');
   iconEl.className = 'mp-stat-icon';
   iconEl.textContent = icon;
   row.appendChild(iconEl);
-  // Value FIRST, then the label — bonus labels follow the
-  // "value then name" convention (e.g. "+25% tower cost").
   const value = document.createElement('span');
   value.className = 'mp-stat-value';
   value.textContent = `×${mult.toFixed(2)}`;
-  if (mult > 1) value.classList.add('up');
-  else if (mult < 1) value.classList.add('down');
+  if (enemyStat) {
+    if (mult > 1) value.classList.add('debuff');
+    else if (mult < 1) value.classList.add('buff');
+  } else {
+    if (mult > 1) value.classList.add('buff');
+    else if (mult < 1) value.classList.add('debuff');
+  }
   row.appendChild(value);
   const labelEl = document.createElement('span');
   labelEl.className = 'mp-stat-label';

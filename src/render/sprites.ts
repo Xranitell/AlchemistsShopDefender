@@ -12,7 +12,9 @@ let _baked: Sprites | null = null;
 
 export interface Sprites {
   mannequin: BakedSprite;
-  mannequinThrow: BakedSprite;
+  mannequinIdleAlt: BakedSprite;
+  mannequinThrowWindup: BakedSprite;
+  mannequinThrowRelease: BakedSprite;
   slime: BakedSprite;
   slimeBoss: BakedSprite;
   rat: BakedSprite;
@@ -41,12 +43,27 @@ export interface Sprites {
   candle: BakedSprite;
   // HUD icons (not drawn on the world canvas; used by hud.ts)
   iconCoin: BakedSprite;
-  iconEssence: BakedSprite;
   iconMagnet: BakedSprite;
   iconLightning: BakedSprite;
   iconAbility: BakedSprite;
   iconWavePip: BakedSprite;
   iconHpHeart: BakedSprite;
+  // Meta-progression resource icons. Same flat pixel-art language as the
+  // HUD icons so the main menu / overlays read as part of the game instead
+  // of looking like CSS chrome.
+  iconBlueEssence: BakedSprite;
+  iconAncientEssence: BakedSprite;
+  iconEpicKey: BakedSprite;
+  iconAncientKey: BakedSprite;
+  iconKey: BakedSprite;
+  iconRerolls: BakedSprite;
+  iconCrystal: BakedSprite;
+  iconOrb: BakedSprite;
+  // Treasure chest used by the victory ("Сундук Алхимика") screen. Two
+  // frames: closed (player taps to open) → opened (lid lifted, glow + gold
+  // contents visible). Same canvas size so the swap is in-place.
+  iconChestClosed: BakedSprite;
+  iconChestOpen: BakedSprite;
   flyingFlask: BakedSprite;
   shaman: BakedSprite;
   ratKing: BakedSprite;
@@ -64,88 +81,163 @@ export function getSprites(): Sprites {
 
 function bakeAll(): Sprites {
   return {
-    // Wooden alchemist mannequin: a clockwork training dummy with brass
-    // coils, cyan core and chunky shoulders, matching the combat reference.
+    // Wooden articulated training mannequin matching the menu illustration:
+    // hexagonal head, octagonal shoulder/elbow/hip/knee joints, warm brown
+    // wood tones (no facial features, no glowing core). Idle frame 1 — the
+    // default standing pose with highlights on the upper-left interior.
     mannequin: bakeSprite(
       {
         rows: [
-          '........IIIII........',
-          '.......IHHHHHI.......',
-          '.......IHcCcHI.......',
-          '......DIHHHHHID......',
-          '.....DDBBBBBBBDD.....',
-          '....DDBBMMMMMBBBDD...',
-          '...DDBBMHMMMHMBBBDD..',
-          '..DDBBBMCCCCCMMBBBDD.',
-          '..DBbBMMCcCcCMMBbBBD.',
-          '.DDBbBMMCCCCCMMBbBBDD',
-          '.DDMMBBMMMMMMMBBMMDD.',
-          '..DMWWBBDDDDDBBWWMD..',
-          '.DMWHWWMMMMMMMWWHWMD.',
-          'DMWWHHWMBBBBBMWWHHWMD',
-          'DMMWWWMBBCCCBMMWWWMM.',
-          '.DMMMMMBBCCCBMMMMMD..',
-          '..DMMMBBBBBBBBMMMD...',
-          '...DMMBBDDDDBBMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DHHHD.....DHHHD....',
-          '..DHHHD.....DHHHD....',
-          '...DDD.......DDD.....',
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDMMMDMMMDDMD...',
+          '..DMMMDMMMMMMMDMMMD..',
+          '...DMDDDDDDDDDDDMD...',
+          '...DMD..DMMMD..DMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
         ],
         legend: {
           D: 'mechShadow',
           M: 'mechMid',
           W: 'mechLight',
           H: 'mechHi',
-          B: 'brass',
-          b: 'brassDark',
-          C: 'mechCore',
-          c: 'mechCoreHi',
-          I: 'mechIron',
         },
       },
       { x: 10.5, y: 22 },
     ),
 
-    // Throw frame: right arm extends forward like a mechanical launcher.
-    mannequinThrow: bakeSprite(
+    // Idle frame 2 — subtle "breathing" variant. Highlights drift one row
+    // down (head + chest) so swapping with the base frame at ~2 Hz reads as
+    // a soft inhale-exhale without changing the silhouette.
+    mannequinIdleAlt: bakeSprite(
       {
         rows: [
-          '........IIIII........',
-          '.......IHHHHHI.......',
-          '.......IHcCcHI.......',
-          '......DIHHHHHID......',
-          '.....DDBBBBBBBDD.....',
-          '....DDBBMMMMMBBBDD...',
-          '...DDBBMHMMMHMBBBDD..',
-          '..DDBBBMCCCCCMMBBBDD.',
-          '..DBbBMMCcCcCMMBbBBDD',
-          '.DDBbBMMCCCCCMMBbBBW.',
-          '.DDMMBBMMMMMMMBBMMWW.',
-          '..DMWWBBDDDDDBBWWMWH.',
-          '.DMWHWWMMMMMMMWWDWHH.',
-          'DMWWHHWMBBBBBMWDWHH..',
-          'DMMWWWMBBCCCBMMWWW...',
-          '.DMMMMMBBCCCBMMMMMD..',
-          '..DMMMBBBBBBBBMMMD...',
-          '...DMMBBDDDDBBMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DHHHD.....DHHHD....',
-          '..DHHHD.....DHHHD....',
-          '...DDD.......DDD.....',
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DMMMMMD.......',
+          '.......DHMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMDMMMDDMD...',
+          '..DMMMDMMMMMMMDMMMD..',
+          '...DMDDDDDDDDDDDMD...',
+          '...DMD..DMMMD..DMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
         ],
         legend: {
           D: 'mechShadow',
           M: 'mechMid',
           W: 'mechLight',
           H: 'mechHi',
-          B: 'brass',
-          b: 'brassDark',
-          C: 'mechCore',
-          c: 'mechCoreHi',
-          I: 'mechIron',
+        },
+      },
+      { x: 10.5, y: 22 },
+    ),
+
+    // Throw windup — right arm raised straight up above the shoulder, hand
+    // at head height. Body unchanged below the chest. Held briefly at the
+    // start of the throw window before swapping to the release frame.
+    mannequinThrowWindup: bakeSprite(
+      {
+        rows: [
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD..DDD...',
+          '.........DDD...DMD...',
+          '........DMMMD..DMD...',
+          '....D.DDDDDDDDDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDMMMDMMMD......',
+          '..DMMMDMMMMMMMD......',
+          '...DMDDDDDDDDDD......',
+          '...DMD..DMMMD........',
+          '...DMDDMMMMMMMD......',
+          '...DMDDHMMMMMMD......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
+        ],
+        legend: {
+          D: 'mechShadow',
+          M: 'mechMid',
+          W: 'mechLight',
+          H: 'mechHi',
+        },
+      },
+      { x: 10.5, y: 22 },
+    ),
+
+    // Throw release — right arm extends out to the side at chest height
+    // with hand at the tip. Combined with the world-space lunge offset in
+    // render.ts (translation toward the throw direction), this sells the
+    // throw motion regardless of which way the player is aiming.
+    mannequinThrowRelease: bakeSprite(
+      {
+        rows: [
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDHMMMMMMDDMDDDD',
+          '...DMDDMMMMMMMDDMDMMD',
+          '...DMDDMMMDMMMDDMDDDD',
+          '..DMMMDMMMMMMMD......',
+          '...DMDDDDDDDDDD......',
+          '...DMD..DMMMD........',
+          '...DMDDMMMMMMMD......',
+          '...DMDDHMMMMMMD......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
+        ],
+        legend: {
+          D: 'mechShadow',
+          M: 'mechMid',
+          W: 'mechLight',
+          H: 'mechHi',
         },
       },
       { x: 10.5, y: 22 },
@@ -971,34 +1063,9 @@ function bakeAll(): Sprites {
       { x: 6, y: 5.5 },
     ),
 
-    // Essence potion (purple, with cork)
-    iconEssence: bakeSprite(
-      {
-        rows: [
-          '..kkkk....',
-          '..ddDD....',
-          '...DD.....',
-          '..ddDDdd..',
-          '.dDPpppDD.',
-          'dDPppPpppD',
-          'dDpPpppppD',
-          'dDppppPpPD',
-          'dDPpppPpPD',
-          'dDpppppppD',
-          '.dDppPppDd',
-          '..ddpppdd.',
-          '...dddd...',
-        ],
-        legend: {
-          k: 'woodDark',
-          d: 'essenceD',
-          D: 'essenceC',
-          p: 'essenceB',
-          P: 'essenceA',
-        },
-      },
-      { x: 5, y: 6.5 },
-    ),
+    // (The old purple `iconEssence` was removed — both the HUD and every
+    // menu now use `iconBlueEssence` so the player sees one canonical
+    // essence vial across the entire game.)
 
     // Magnet U-shape (purple gem)
     iconMagnet: bakeSprite(
@@ -1105,6 +1172,296 @@ function bakeAll(): Sprites {
         },
       },
       { x: 3.5, y: 3.5 },
+    ),
+
+    // ──────────── Meta currencies ────────────
+    // Blue Essence — cyan crystal vial. Same silhouette as the in-run
+    // essence icon so the player intuitively reads them as the same family,
+    // just retinted to the cool blue palette used everywhere else for the
+    // "blue" currency.
+    iconBlueEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDPpppDD.',
+          'dDPppPpppD',
+          'dDpPpppppD',
+          'dDppppPpPD',
+          'dDPpppPpPD',
+          'dDpppppppD',
+          '.dDppPppDd',
+          '..ddpppdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'crystalD',
+          D: 'crystalC',
+          p: 'crystalB',
+          P: 'crystalA',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Ancient Essence — molten-gold crystal vial. Same silhouette as the
+    // blue-essence and in-run essence vials so the player parses it as
+    // "essence", but with a far richer 5-tone palette (deep gold edge →
+    // saturated gold body → bright core → near-white shimmer) plus a
+    // sparkle cluster on the liquid surface. Combined with the
+    // `glow-gold` CSS class on the rendered canvas, this reads as the
+    // game's most legendary currency.
+    iconAncientEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDpSSpDD.',
+          'dDpBpPpppD',
+          'dDpBPpPpPD',
+          'dDPBpPppPD',
+          'dDpBPpPppD',
+          'dDpPpBpPpD',
+          '.dDpPpPpDd',
+          '..ddpPpdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'brassDark',
+          D: 'goldB',
+          p: 'goldA',
+          P: 'brassGlow',
+          B: 'ancientCore',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Epic key — purple skeleton key. Bow on the left with a hole, three
+    // teeth carved into the shaft. Used in the main-menu top bar and the
+    // difficulty-select overlay (replaces the 🗝️ emoji that broke the
+    // pixel-art look).
+    iconEpicKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'essenceA',
+          D: 'essenceC',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Ancient key — legendary gold skeleton key. Shares the epic key's
+    // overall silhouette so the pair still reads as a set, but adds:
+    //  * a red ruby gem inlaid in the bow's hole (R),
+    //  * bright `brassGlow` highlights on the bow rim (B),
+    //  * `ancientShimmer` sparkle pixels on the corners + first tooth (S).
+    // The CSS `.glow-gold` class on the rendered canvas adds an outer
+    // gold drop-shadow halo so the icon visibly "glints" against any
+    // background.
+    iconAncientKey: bakeSprite(
+      {
+        rows: [
+          '.LSLL.........',
+          'LBDDBLLLLLLLL.',
+          'LDRRDLSL.L.L..',
+          'LBDDBLLLLLLLL.',
+          '.LLLS.........',
+        ],
+        legend: {
+          L: 'goldA',
+          B: 'brassGlow',
+          D: 'brassDark',
+          R: 'ancientGem',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Generic key — used for "+N keys" rewards (battle pass, daily) where
+    // the tier doesn't matter. Slightly muted gold so it doesn't look
+    // identical to the ancient key.
+    iconKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brassDark',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Rerolls — two stacked arrows / dice face. Replaces the 🔄 emoji used
+    // for the "free reroll" daily reward.
+    iconRerolls: bakeSprite(
+      {
+        rows: [
+          '..LLLLLL..',
+          '.LDDDDDDL.',
+          'LDD.LL.DDL',
+          'LDLLDDLLDL',
+          'LDLLDDLLDL',
+          'LDD.LL.DDL',
+          '.LDDDDDDL.',
+          '..LLLLLL..',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brass',
+        },
+      },
+      { x: 5, y: 4 },
+    ),
+
+    // Crystal gem — diamond shape used as a generic "essence shard" reward
+    // glyph (replaces 💎 emoji in the daily-rewards calendar).
+    iconCrystal: bakeSprite(
+      {
+        rows: [
+          '..LL..',
+          '.LDDL.',
+          'LDOODL',
+          'LDOODL',
+          '.LDDL.',
+          '..LL..',
+        ],
+        legend: {
+          L: 'crystalA',
+          D: 'crystalB',
+          O: 'crystalC',
+        },
+      },
+      { x: 3, y: 3 },
+    ),
+
+    // Mystic orb — spherical purple/cyan orb (replaces 🔮). Used as the
+    // ancient-essence reward glyph in the daily calendar.
+    iconOrb: bakeSprite(
+      {
+        rows: [
+          '..LLLL..',
+          '.LppppL.',
+          'LpPPpPpL',
+          'LpPpppdL',
+          'LppppddL',
+          'LpdpdddL',
+          '.LdddddL',
+          '..LLLL..',
+        ],
+        legend: {
+          L: 'essenceD',
+          P: 'essenceA',
+          p: 'essenceB',
+          d: 'essenceC',
+        },
+      },
+      { x: 4, y: 4 },
+    ),
+
+    // ──────────── Victory chest ────────────
+    // Wooden treasure chest with brass band + keyhole. Closed frame: lid
+    // sealed. Both sprites are 18×16 so the canvas position is identical
+    // and the open frame can replace the closed one in place. Legend:
+    //   K = woodDark        (outer outline)
+    //   M = woodMid         (dark wood side)
+    //   L = woodLight       (mid wood)
+    //   H = woodHi          (highlight wood, lid top)
+    //   w = woodMid         (body interior)
+    //   G = goldA           (gold band)
+    //   B = brassGlow       (gold band highlight / inside-glow)
+    //   g = brassDark       (gold band shadow ring around keyhole)
+    //   S = ancientShimmer  (white sparkle pixel)
+    iconChestClosed: bakeSprite(
+      {
+        rows: [
+          '..................',
+          '....KKKKKKKKKK....',
+          '..KKMHHHHHHHHMKK..',
+          '.KMHLLLLLLLLLLHMK.',
+          'KMHLLLLLLLLLLLLHMK',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGBGGgggKKgggGGBGK',
+          'KGGGGGggKKggGGGGGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          g: 'brassDark',
+        },
+      },
+      { x: 9, y: 8 },
+    ),
+
+    // Open chest: lid hinged back (small trapezoid above body), bright
+    // golden contents inside the body, sparkle pixels for the "treasure"
+    // shine. Drawn at the same 18×16 footprint as `iconChestClosed`.
+    iconChestOpen: bakeSprite(
+      {
+        rows: [
+          '.....KKKKKKKK.....',
+          '...KKMLLLLLLLLMKK.',
+          '..KMLLLLLLLLLLLMK.',
+          '.KKKKKKKKKKKKKKKK.',
+          '.SSS............S.',
+          '....BBBBBBBBBB....',
+          '.KKLLLLLLLLLLLLKK.',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGSBBSwBSBwBSBwBGK',
+          'KGwBSwBwBSwBSwSBGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 9, y: 8 },
     ),
   };
 }

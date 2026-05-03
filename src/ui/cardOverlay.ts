@@ -1,5 +1,5 @@
-import type { CardDef } from '../game/types';
-import { pickedSynergyNames, cardName, cardDesc } from '../data/cards';
+import type { CardDef, EffectPolarity } from '../game/types';
+import { cardBullets, cardName, pickedSynergyNames } from '../data/cards';
 import { audio } from '../audio/audio';
 import { t } from '../i18n';
 
@@ -111,7 +111,33 @@ export class CardOverlay {
 
     this.root.appendChild(stage);
     this.root.classList.add('visible');
+
+    // Lock all interactive elements for 2 seconds so a player who is mid-click
+    // when the draft pops up doesn't immediately auto-pick a card / reroll /
+    // skip. We add a CSS class that disables pointer events on the cards and
+    // action row, then remove it after the delay.
+    //
+    // While locked we also render an inline "Карты разблокируются…" hint
+    // with a depleting progress bar so the screen doesn't feel frozen
+    // (cards keep their shimmer + a subtle breathing pulse via CSS too).
+    // The hint is removed in `hide()` and when the timeout fires.
+    this.root.classList.add('cards-pre-lock');
+    const lockHint = buildLockHint();
+    stage.insertBefore(lockHint, cards);
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+    }
+    this.preLockTimeout = window.setTimeout(() => {
+      this.root.classList.remove('cards-pre-lock');
+      this.preLockTimeout = null;
+      // Fade the hint out instead of yanking it; CSS handles the
+      // opacity transition off the `.unlocked` class.
+      lockHint.classList.add('unlocked');
+      window.setTimeout(() => lockHint.remove(), 320);
+    }, 2000);
   }
+
+  private preLockTimeout: number | null = null;
 
   showSimple(opts: {
     title: string;
@@ -151,9 +177,14 @@ export class CardOverlay {
   }
 
   hide(): void {
+    if (this.preLockTimeout != null) {
+      window.clearTimeout(this.preLockTimeout);
+      this.preLockTimeout = null;
+    }
     this.root.classList.remove('visible');
     this.root.classList.remove('cards-mode');
     this.root.classList.remove('cursed-mode');
+    this.root.classList.remove('cards-pre-lock');
     this.root.innerHTML = '';
   }
 
@@ -219,15 +250,43 @@ function buildCardElement(
   div.className = 'card-rh-divider';
   frame.appendChild(div);
 
-  // Effects: split desc into bullets at sentence-like boundaries and wrap any
-  // numeric tokens with a bright value chip so the chrome reads at a glance.
+  // Effects: render bullets grouped by polarity (positive first, a thin
+  // separator, then drawbacks). Each value chip is tinted green/red based
+  // on whether the bullet helps or hurts the player. See `classifyBullet`
+  // in `data/cards.ts` for the heuristic.
+  // Unique-effect bullets get the `card-rh-unique` class for the special
+  // purple backing so they visually stand out from plain stat bonuses.
   const ul = document.createElement('ul');
   ul.className = 'card-rh-effects';
-  for (const line of splitDesc(cardDesc(card))) {
+  const bullets = cardBullets(card);
+  const uniques = bullets.filter((b) => b.isUnique);
+  const positives = bullets.filter((b) => b.polarity === 'pos' && !b.isUnique);
+  const negatives = bullets.filter((b) => b.polarity === 'neg');
+  const renderBullet = (text: string, polarity: EffectPolarity, unique?: boolean) => {
     const li = document.createElement('li');
-    li.innerHTML = formatEffectLine(line);
+    if (unique) {
+      li.className = 'card-rh-unique';
+    } else {
+      li.className = polarity === 'pos' ? 'card-rh-bullet-pos' : 'card-rh-bullet-neg';
+    }
+    li.innerHTML = formatEffectLine(text, polarity);
     ul.appendChild(li);
+  };
+  for (const b of uniques) renderBullet(b.text, 'pos', true);
+  if (uniques.length > 0 && (positives.length > 0 || negatives.length > 0)) {
+    const sep = document.createElement('li');
+    sep.className = 'card-rh-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    ul.appendChild(sep);
   }
+  for (const b of positives) renderBullet(b.text, 'pos');
+  if (positives.length > 0 && negatives.length > 0) {
+    const sep = document.createElement('li');
+    sep.className = 'card-rh-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    ul.appendChild(sep);
+  }
+  for (const b of negatives) renderBullet(b.text, 'neg');
   frame.appendChild(ul);
 
   // Synergy footer (GDD §15.2): "Синергирует с: ..." below the effects, kept
@@ -249,30 +308,24 @@ function buildCardElement(
   return c;
 }
 
-/** Split the card description into 1-3 short bullets at sentence-ish
- *  delimiters: ". ", "; ", " · ". Empty fragments are dropped. */
-function splitDesc(desc: string): string[] {
-  const parts = desc
-    .split(/(?:\.\s+|;\s+|\s\u00B7\s)/)
-    .map((p) => p.trim().replace(/\.$/, ''))
-    .filter((p) => p.length > 0);
-  return parts.length > 0 ? parts : [desc];
-}
-
-/** Wrap numeric tokens like "+30%", "×1.5", "5–8 врагов", "10 сек" with a
- *  highlighted value chip so the card chrome echoes the reference design. */
-function formatEffectLine(line: string): string {
+/** Wrap numeric tokens with a highlighted value chip. The chip class
+ *  encodes polarity so positive bullets get the green tint and drawbacks
+ *  get the red tint (see `card-rh-val-pos` / `-neg` in style.css). */
+function formatEffectLine(line: string, polarity: EffectPolarity): string {
   // Escape HTML first.
   const escaped = line
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+  const cls = polarity === 'pos'
+    ? 'card-rh-val card-rh-val-pos'
+    : 'card-rh-val card-rh-val-neg';
   // Numeric tokens: leading +/- optional, integers / decimals, optional %.
   // We avoid matching plain "10 сек" as a value chip — only flag explicit
   // multipliers / percentages / signed numbers.
   return escaped.replace(
-    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|\+\s?\d+(?:[.,]\d+)?)/g,
-    '<span class="card-rh-val">$1</span>',
+    /([+\-−]?\s?\d+(?:[.,]\d+)?\s?%|×\s?\d+(?:[.,]\d+)?|[+\-−]\s?\d+(?:[.,]\d+)?)/g,
+    `<span class="${cls}">$1</span>`,
   );
 }
 
@@ -301,12 +354,6 @@ function categoryGlyphSvg(cat: CardDef['category']): string {
         <path d="M12 3 L22 20 H2 Z" />
         <line x1="12" y1="10" x2="12" y2="14" />
         <line x1="12" y1="17" x2="12" y2="17.4" />
-      </svg>`;
-    case 'catalyst':
-      // Diamond / orbital catalyst = sparkle.
-      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 3 L19 12 L12 21 L5 12 Z" />
-        <circle cx="12" cy="12" r="2" fill="currentColor" />
       </svg>`;
   }
 }
@@ -346,4 +393,34 @@ function buildActionPill(opts: {
     opts.onClick();
   });
   return b;
+}
+
+/**
+ * Build the "Карты разблокируются…" countdown hint shown while the draft
+ * is in its 2-second pre-lock window. The hint sits between the subtitle
+ * and the cards row so it's the most prominent moving element on screen
+ * — it carries the message that the lock is temporary while the cards
+ * themselves are visibly dimmed and non-interactive. The progress bar
+ * animation is driven entirely by CSS (`@keyframes asd-cards-lock-fill`)
+ * so its duration stays in sync with the JS timeout via shared
+ * `--asd-cards-lock-duration` CSS var.
+ */
+function buildLockHint(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'cards-lock-hint';
+  wrap.setAttribute('aria-live', 'polite');
+
+  const label = document.createElement('span');
+  label.className = 'cards-lock-hint-label';
+  label.textContent = t('ui.cards.lockHint');
+  wrap.appendChild(label);
+
+  const bar = document.createElement('div');
+  bar.className = 'cards-lock-hint-bar';
+  const fill = document.createElement('div');
+  fill.className = 'cards-lock-hint-bar-fill';
+  bar.appendChild(fill);
+  wrap.appendChild(bar);
+
+  return wrap;
 }
