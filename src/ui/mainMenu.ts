@@ -305,81 +305,180 @@ function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number
 }
 
 /** Animated mannequin illustration for the centre of the main menu.
- *  A more polished pixel-art alchemist character on a glowing dais. */
+ *  Chunky pixel-art wooden artist's mannequin — every shape is built
+ *  from rectangles snapped to a 2-unit pixel grid, joints are octagonal
+ *  (square with 1-pixel chamfered corners), and the SVG renders with
+ *  `shape-rendering="crispEdges"` so the silhouette has hard pixel
+ *  borders matching the rest of the game's pixel-art UI. */
 function mannequinIllustrationSVG(): string {
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  // Palette — wooden mannequin: near-black outline, mid sienna body,
+  // light tan highlight, mid-shadow used for seams.
+  const O = '#2a1208';
+  const S = '#7a4424';
+  const M = '#b97a3f';
+  const L = '#d49157';
+
+  // 3-layer pixel block: outline border (2px), mid fill, top-left
+  // 2-pixel highlight stripe. All coords assume a 2-svu pixel grid.
+  const block = (x: number, y: number, w: number, h: number) => `
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${O}"/>
+    <rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="${M}"/>
+    <rect x="${x + 2}" y="${y + 2}" width="2" height="${h - 4}" fill="${L}"/>
+  `;
+
+  // Octagonal "ball" joint: a square with the four 2x2 corners
+  // chamfered out so the silhouette reads as a chunky pixel circle.
+  // `size` must be an even number ≥ 8 and divisible by 2; cx/cy must
+  // be chosen so cx-size/2 and cy-size/2 are even.
+  const joint = (cx: number, cy: number, size: number) => {
+    const x = cx - size / 2;
+    const y = cy - size / 2;
+    return `
+      <!-- top / bottom outline edges (inset by 2 each side for chamfer) -->
+      <rect x="${x + 2}" y="${y}" width="${size - 4}" height="2" fill="${O}"/>
+      <rect x="${x + 2}" y="${y + size - 2}" width="${size - 4}" height="2" fill="${O}"/>
+      <!-- left / right outline edges (inset top/bottom by 2) -->
+      <rect x="${x}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
+      <rect x="${x + size - 2}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
+      <!-- corner chamfer outline pixels -->
+      <rect x="${x + 2}" y="${y + 2}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + size - 4}" y="${y + 2}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + 2}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
+      <rect x="${x + size - 4}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
+      <!-- mid fill (octagonal interior) -->
+      <rect x="${x + 4}" y="${y + 2}" width="${size - 8}" height="${size - 4}" fill="${M}"/>
+      <rect x="${x + 2}" y="${y + 4}" width="${size - 4}" height="${size - 8}" fill="${M}"/>
+      <!-- top-left highlight pixel -->
+      <rect x="${x + 4}" y="${y + 4}" width="2" height="2" fill="${L}"/>
+    `;
+  };
+
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges">
     <defs>
-      <radialGradient id="mm-glow" cx="50%" cy="60%" r="45%">
-        <stop offset="0%" stop-color="#7df9ff" stop-opacity="0.35"/>
-        <stop offset="60%" stop-color="#7df9ff" stop-opacity="0.08"/>
-        <stop offset="100%" stop-color="#7df9ff" stop-opacity="0"/>
+      <radialGradient id="mm-glow" cx="50%" cy="55%" r="55%">
+        <stop offset="0%" stop-color="#ffb84a" stop-opacity="0.30"/>
+        <stop offset="60%" stop-color="#d27a2a" stop-opacity="0.10"/>
+        <stop offset="100%" stop-color="#d27a2a" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="mm-floor" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#454a60"/>
         <stop offset="80%" stop-color="#1a1d28"/>
         <stop offset="100%" stop-color="transparent"/>
       </radialGradient>
-      <filter id="mm-soft" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="2" />
-      </filter>
     </defs>
-    <!-- Background glow -->
-    <ellipse cx="100" cy="155" rx="80" ry="60" fill="url(#mm-glow)" filter="url(#mm-soft)"/>
-    <!-- Floor / dais -->
+
+    <!-- Background warm glow (kept smooth — pure ambient light, behind
+         everything; pixel-art rules apply only to the figure itself). -->
+    <ellipse cx="100" cy="120" rx="80" ry="80" fill="url(#mm-glow)"/>
+
+    <!-- Floor / dais — kept faceted-pixel style; matches the menu art. -->
     <ellipse cx="100" cy="195" rx="55" ry="18" fill="url(#mm-floor)"/>
-    <polygon points="60,185 100,170 140,185 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
-    <polygon points="60,185 100,200 100,208 55,192" fill="#2a2c3a"/>
-    <polygon points="140,185 100,200 100,208 145,192" fill="#1a1d28"/>
-    <!-- Shadow under mannequin -->
-    <ellipse cx="100" cy="183" rx="22" ry="6" fill="rgba(0,0,0,0.4)"/>
-    <!-- Mannequin body — warm wooden clockwork alchemist -->
-    <!-- Feet -->
-    <rect x="85" y="175" width="10" height="8" rx="2" fill="#c08a4a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="105" y="175" width="10" height="8" rx="2" fill="#c08a4a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Legs -->
-    <rect x="87" y="160" width="8" height="17" rx="2" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="107" y="160" width="8" height="17" rx="2" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Torso -->
-    <rect x="82" y="128" width="38" height="35" rx="4" fill="#9a5a2a" stroke="#2a1810" stroke-width="2"/>
-    <!-- Torso detail — brass bands -->
-    <rect x="84" y="136" width="34" height="3" rx="1" fill="#c9a96b"/>
-    <rect x="84" y="148" width="34" height="3" rx="1" fill="#c9a96b"/>
-    <!-- Core glow (cyan crystal heart) -->
-    <rect x="93" y="138" width="16" height="14" rx="3" fill="#3ab3c9" stroke="#1c5a72" stroke-width="1.5"/>
-    <rect x="96" y="141" width="10" height="8" rx="2" fill="#7df9ff"/>
-    <rect x="99" y="143" width="4" height="4" rx="1" fill="#bdf6ff" opacity="0.8">
-      <animate attributeName="opacity" values="0.8;0.4;0.8" dur="2s" repeatCount="indefinite"/>
-    </rect>
-    <!-- Shoulders -->
-    <rect x="72" y="128" width="14" height="12" rx="3" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="116" y="128" width="14" height="12" rx="3" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Arms -->
-    <rect x="72" y="138" width="10" height="22" rx="3" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <rect x="120" y="138" width="10" height="22" rx="3" fill="#6a3a1a" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Hands (brass) -->
-    <circle cx="77" cy="163" r="5" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <circle cx="125" cy="163" r="5" fill="#c9a96b" stroke="#2a1810" stroke-width="1.5"/>
-    <!-- Potion in left hand -->
-    <rect x="121" y="155" width="8" height="12" rx="3" fill="#4fd36a" stroke="#1f6b2a" stroke-width="1"/>
-    <rect x="122" y="152" width="6" height="4" rx="1" fill="#8a5a30"/>
-    <!-- Head -->
-    <rect x="88" y="108" width="26" height="22" rx="5" fill="#9a5a2a" stroke="#2a1810" stroke-width="2"/>
-    <!-- Face plate (iron) -->
-    <rect x="91" y="112" width="20" height="14" rx="3" fill="#3a3a55"/>
-    <!-- Eyes (glowing cyan) -->
-    <rect x="94" y="116" width="5" height="4" rx="1" fill="#7df9ff">
-      <animate attributeName="fill" values="#7df9ff;#bdf6ff;#7df9ff" dur="3s" repeatCount="indefinite"/>
-    </rect>
-    <rect x="103" y="116" width="5" height="4" rx="1" fill="#7df9ff">
-      <animate attributeName="fill" values="#7df9ff;#bdf6ff;#7df9ff" dur="3s" repeatCount="indefinite"/>
-    </rect>
-    <!-- Antenna / horn -->
-    <rect x="98" y="100" width="6" height="10" rx="2" fill="#3a3a55" stroke="#2a1810" stroke-width="1"/>
-    <circle cx="101" cy="99" r="3" fill="#7df9ff" opacity="0.8">
-      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.8s" repeatCount="indefinite"/>
-    </circle>
-    <!-- Gentle idle bob animation -->
-    <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite" />
+    <polygon points="60,184 100,170 140,184 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
+    <polygon points="60,184 100,200 100,208 56,192" fill="#2a2c3a"/>
+    <polygon points="140,184 100,200 100,208 144,192" fill="#1a1d28"/>
+
+    <!-- Pixelated drop shadow (3 hard rect bands instead of an ellipse) -->
+    <rect x="80" y="178" width="40" height="2" fill="#000" opacity="0.45"/>
+    <rect x="76" y="180" width="48" height="2" fill="#000" opacity="0.30"/>
+    <rect x="84" y="176" width="32" height="2" fill="#000" opacity="0.25"/>
+
+    <g id="mm-figure">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite"/>
+
+      <!-- ====== Feet ====== -->
+      ${block(80, 168, 18, 10)}
+      ${block(102, 168, 18, 10)}
+
+      <!-- ====== Calves ====== -->
+      ${block(86, 152, 12, 16)}
+      ${block(102, 152, 12, 16)}
+
+      <!-- ====== Knee joints ====== -->
+      ${joint(92, 152, 12)}
+      ${joint(108, 152, 12)}
+
+      <!-- ====== Thighs ====== -->
+      ${block(86, 134, 12, 18)}
+      ${block(102, 134, 12, 18)}
+
+      <!-- ====== Hip joints ====== -->
+      ${joint(92, 132, 12)}
+      ${joint(108, 132, 12)}
+
+      <!-- ====== Pelvis (wider waist) ====== -->
+      ${block(84, 122, 32, 8)}
+
+      <!-- ====== Abdomen (narrower) ====== -->
+      ${block(94, 114, 12, 8)}
+
+      <!-- ====== Chest (octagonal silhouette: chamfered corners) ====== -->
+      <!-- Outline ring -->
+      <rect x="88" y="86" width="24" height="2" fill="${O}"/>
+      <rect x="86" y="88" width="2" height="2" fill="${O}"/>
+      <rect x="112" y="88" width="2" height="2" fill="${O}"/>
+      <rect x="84" y="90" width="2" height="20" fill="${O}"/>
+      <rect x="114" y="90" width="2" height="20" fill="${O}"/>
+      <rect x="86" y="110" width="2" height="2" fill="${O}"/>
+      <rect x="112" y="110" width="2" height="2" fill="${O}"/>
+      <rect x="88" y="112" width="24" height="2" fill="${O}"/>
+      <!-- Mid fill -->
+      <rect x="88" y="88" width="24" height="2" fill="${M}"/>
+      <rect x="86" y="90" width="28" height="20" fill="${M}"/>
+      <rect x="88" y="110" width="24" height="2" fill="${M}"/>
+      <!-- Highlight (top-left corner block + thin vertical stripe) -->
+      <rect x="88" y="90" width="4" height="2" fill="${L}"/>
+      <rect x="86" y="92" width="2" height="14" fill="${L}"/>
+      <!-- Centre seam -->
+      <rect x="100" y="90" width="2" height="20" fill="${S}"/>
+
+      <!-- ====== Arms — upper ====== -->
+      ${block(74, 96, 12, 20)}
+      ${block(114, 96, 12, 20)}
+
+      <!-- ====== Elbow joints ====== -->
+      ${joint(80, 116, 12)}
+      ${joint(120, 116, 12)}
+
+      <!-- ====== Forearms ====== -->
+      ${block(74, 118, 12, 20)}
+      ${block(114, 118, 12, 20)}
+
+      <!-- ====== Hand joints ====== -->
+      ${joint(80, 140, 10)}
+      ${joint(120, 140, 10)}
+
+      <!-- ====== Shoulder joints (overlap chest top sides) ====== -->
+      ${joint(80, 94, 14)}
+      ${joint(120, 94, 14)}
+
+      <!-- ====== Neck ====== -->
+      ${block(96, 80, 8, 8)}
+
+      <!-- ====== Head (octagonal, 24x22 px) ====== -->
+      <!-- Outline ring -->
+      <rect x="92" y="56" width="16" height="2" fill="${O}"/>
+      <rect x="90" y="58" width="2" height="2" fill="${O}"/>
+      <rect x="106" y="58" width="2" height="2" fill="${O}"/>
+      <rect x="88" y="60" width="2" height="2" fill="${O}"/>
+      <rect x="110" y="60" width="2" height="2" fill="${O}"/>
+      <rect x="86" y="62" width="2" height="14" fill="${O}"/>
+      <rect x="112" y="62" width="2" height="14" fill="${O}"/>
+      <rect x="88" y="76" width="2" height="2" fill="${O}"/>
+      <rect x="110" y="76" width="2" height="2" fill="${O}"/>
+      <rect x="90" y="78" width="2" height="2" fill="${O}"/>
+      <rect x="106" y="78" width="2" height="2" fill="${O}"/>
+      <rect x="92" y="80" width="16" height="2" fill="${O}"/>
+      <!-- Mid fill -->
+      <rect x="92" y="58" width="16" height="2" fill="${M}"/>
+      <rect x="90" y="60" width="20" height="2" fill="${M}"/>
+      <rect x="88" y="62" width="24" height="14" fill="${M}"/>
+      <rect x="90" y="76" width="20" height="2" fill="${M}"/>
+      <rect x="92" y="78" width="16" height="2" fill="${M}"/>
+      <!-- Top-left highlight cluster -->
+      <rect x="92" y="60" width="4" height="2" fill="${L}"/>
+      <rect x="90" y="62" width="2" height="6" fill="${L}"/>
+      <rect x="92" y="62" width="2" height="2" fill="${L}"/>
+    </g>
   </svg>`;
 }
 
