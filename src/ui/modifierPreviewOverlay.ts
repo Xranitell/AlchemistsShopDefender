@@ -3,6 +3,7 @@ import { mutatorCountForDifficulty } from '../data/mutators';
 import { contractCountForDifficulty } from '../data/contracts';
 import { blessingChoiceCount, curseChoiceCount } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
+import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
 export class ModifierPreviewOverlay {
   private root: HTMLElement;
@@ -31,35 +32,9 @@ export class ModifierPreviewOverlay {
     // mirroring the defeat screen's "smouldering" feel. Only rendered
     // on dangerous modes — normal/endless/daily keep the plain header.
     if (dramatic) {
-      const stage = document.createElement('div');
-      stage.className = 'mp-stage';
-      const rays = document.createElement('div');
-      rays.className = 'mp-rays';
-      stage.appendChild(rays);
-      const sparkLayer = document.createElement('div');
-      sparkLayer.className = 'mp-sparks';
-      // Ancient gets noticeably more particles so it reads as a stronger,
-      // more chaotic threat than Epic.
-      const sparkCount = opts.mode === 'ancient' ? 18 : 12;
-      for (let i = 0; i < sparkCount; i++) {
-        const spark = document.createElement('span');
-        spark.className = 'mp-spark';
-        spark.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
-        spark.style.setProperty('--delay', `${(Math.random() * 2.4).toFixed(2)}s`);
-        spark.style.setProperty('--dur', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
-        spark.style.setProperty('--scale', `${(0.6 + Math.random() * 0.9).toFixed(2)}`);
-        sparkLayer.appendChild(spark);
-      }
-      stage.appendChild(sparkLayer);
-
-      // Pixel "alarm" sigil: hollow octagon framing a triangular danger
-      // glyph. Pure CSS so we don't ship another sprite.
-      const sigil = document.createElement('div');
-      sigil.className = 'mp-sigil';
-      sigil.setAttribute('aria-hidden', 'true');
-      stage.appendChild(sigil);
-
-      panel.appendChild(stage);
+      panel.appendChild(buildDramaticStage({
+        density: opts.mode === 'ancient' ? 'dense' : 'standard',
+      }));
     }
 
     const header = document.createElement('div');
@@ -68,21 +43,7 @@ export class ModifierPreviewOverlay {
     h.className = 'mp-title';
     const titleText = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
     if (dramatic) {
-      // Per-character glitch wrapper — same trick as the defeat title so
-      // each letter can jitter independently and carry a chromatic
-      // aberration ghost via ::before.
-      for (const ch of Array.from(titleText)) {
-        if (ch === ' ') {
-          h.appendChild(document.createTextNode(' '));
-          continue;
-        }
-        const span = document.createElement('span');
-        span.className = 'mp-title-char';
-        span.textContent = ch;
-        span.dataset.char = ch;
-        span.style.animationDelay = `${(Math.random() * 0.6).toFixed(2)}s`;
-        h.appendChild(span);
-      }
+      appendGlitchTitleChars(h, titleText);
     } else {
       h.textContent = titleText;
     }

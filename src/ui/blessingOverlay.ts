@@ -10,10 +10,18 @@
 // The two-step picker is implemented as two sequential views inside the
 // same overlay element (no animation), so the player sees the same panel
 // shape with a different headline / accent for the curse step.
+//
+// Visual treatment mirrors the defeat / dungeon-entry overlays: each
+// step gets a "dramatic stage" backdrop (rotating rays + drifting embers
+// + a pulsing pixel sigil), a glitched per-character title, and an
+// uppercase pulsing tagline. The blessing step uses a warm gold/amber
+// palette (positive payoff); the curse step swaps in a crimson/blood
+// palette so the cost reads as ominous.
 
 import { audio } from '../audio/audio';
 import { t } from '../i18n';
 import type { BlessingDef, CurseDef } from '../data/blessings';
+import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
 export type BlessingPickResult = {
   blessingId: BlessingDef['id'];
@@ -58,13 +66,18 @@ export class BlessingOverlay {
 
     const panel = document.createElement('div');
     panel.className = 'blessing-panel blessing-step';
+    panel.appendChild(buildDramaticStage());
 
     const head = document.createElement('div');
     head.className = 'blessing-head';
     const title = document.createElement('h2');
     title.className = 'blessing-title';
-    title.textContent = t('ui.blessing.pickTitle');
+    appendGlitchTitleChars(title, t('ui.blessing.pickTitle'));
     head.appendChild(title);
+    const tagline = document.createElement('div');
+    tagline.className = 'blessing-tagline';
+    tagline.textContent = t('ui.blessing.tagline');
+    head.appendChild(tagline);
     const sub = document.createElement('p');
     sub.className = 'blessing-subtitle';
     sub.textContent = t('ui.blessing.pickSubtitle');
@@ -94,13 +107,18 @@ export class BlessingOverlay {
 
     const panel = document.createElement('div');
     panel.className = 'blessing-panel blessing-step curse-step';
+    panel.appendChild(buildDramaticStage({ density: 'dense', variant: 'curse' }));
 
     const head = document.createElement('div');
     head.className = 'blessing-head';
     const title = document.createElement('h2');
     title.className = 'blessing-title curse';
-    title.textContent = t('ui.curse.pickTitle');
+    appendGlitchTitleChars(title, t('ui.curse.pickTitle'));
     head.appendChild(title);
+    const tagline = document.createElement('div');
+    tagline.className = 'blessing-tagline curse';
+    tagline.textContent = t('ui.curse.tagline');
+    head.appendChild(tagline);
     const sub = document.createElement('p');
     sub.className = 'blessing-subtitle';
     sub.textContent = t('ui.curse.pickSubtitle', { name: t(blessing.i18nName) });
@@ -126,6 +144,14 @@ export class BlessingOverlay {
     card.type = 'button';
     card.className = isCurse ? 'blessing-card curse-card' : 'blessing-card';
     card.style.setProperty('--accent', def.color);
+
+    // Decorative shimmer layer that the CSS `card-shimmer` keyframes
+    // animate into a sweeping highlight on hover. Pure visual, ignored
+    // for screen readers.
+    const shimmer = document.createElement('div');
+    shimmer.className = 'blessing-card-shimmer';
+    shimmer.setAttribute('aria-hidden', 'true');
+    card.appendChild(shimmer);
 
     const ico = document.createElement('div');
     ico.className = 'blessing-icon';

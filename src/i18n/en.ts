@@ -792,11 +792,13 @@ Object.assign(EN, {
   'ui.blessing.label': "Alchemist's Gift",
   'ui.blessing.pickTitle': 'Choose a Blessing',
   'ui.blessing.pickSubtitle': 'A run-wide boon for the journey ahead.',
+  'ui.blessing.tagline': "ALCHEMIST'S BOON",
   'ui.blessing.previewEpic': "Pick 1 of 3 random blessings before the run.",
   'ui.blessing.previewAncient': "Pick 1 of 3 blessings AND a mandatory curse (1 of 3).",
   'ui.curse.label': 'Curse',
   'ui.curse.pickTitle': 'Bear a Curse',
   'ui.curse.pickSubtitle': "The cost of {name}. Choose your burden.",
+  'ui.curse.tagline': 'PRICE OF THE BOON',
 
   'ui.blessing.alchemy_grip.name': "Alchemist's Grip",
   'ui.blessing.alchemy_grip.flavor': 'Heavier flasks, deadlier strikes.',

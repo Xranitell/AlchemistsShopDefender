@@ -801,11 +801,13 @@ Object.assign(RU, {
   'ui.blessing.label': 'Дар алхимика',
   'ui.blessing.pickTitle': 'Выбери благословение',
   'ui.blessing.pickSubtitle': 'Дар, который будет сопровождать тебя весь забег.',
+  'ui.blessing.tagline': 'ДАР АЛХИМИКА',
   'ui.blessing.previewEpic': 'Выбор 1 из 3 случайных благословений перед стартом.',
   'ui.blessing.previewAncient': 'Выбор 1 из 3 благословений И обязательное проклятие (1 из 3).',
   'ui.curse.label': 'Проклятие',
   'ui.curse.pickTitle': 'Прими проклятие',
   'ui.curse.pickSubtitle': 'Цена дара «{name}». Выбери свою ношу.',
+  'ui.curse.tagline': 'ЦЕНА ДАРА',
 
   'ui.blessing.alchemy_grip.name': 'Хватка алхимика',
   'ui.blessing.alchemy_grip.flavor': 'Тяжелее колба — крепче удар.',

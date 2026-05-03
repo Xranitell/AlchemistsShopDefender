@@ -3760,7 +3760,22 @@ body {
   text-shadow: 0 0 6px rgba(255, 209, 102, 0.7);
 }
 
-/* ── Blessing / Curse pre-run picker ("Дар алхимика") ───────────────── */
+/* ── Blessing / Curse pre-run picker ("Дар алхимика") ─────────────────
+ *
+ * Visual treatment matches the defeat / dungeon-entry overlays so all
+ * three "high-stakes" surfaces read as one family. Each step gets the
+ * shared dramatic stage (rays + embers + danger sigil) plus a glitched
+ * per-character title and a pulsing uppercase tagline.
+ *
+ * Two palettes, applied via the same CSS variables that drive the
+ * dungeon-entry overlay:
+ *
+ *   • Blessing step  →  gold / amber  (positive payoff, "boon")
+ *   • Curse step     →  crimson / blood  (mandatory cost, "doom")
+ *
+ * The cards keep their per-blessing accent colour (`--accent`) for the
+ * border / icon glow, and gain a sweeping shimmer highlight on hover so
+ * the picker feels rewarding to mouse over. */
 .blessing-overlay {
   position: fixed;
   inset: 0;
@@ -3771,106 +3786,303 @@ body {
   z-index: 2100;
 }
 .blessing-panel {
-  background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
-  border: 2px solid #fde047;
+  /* Default palette = warm gold/amber for the blessing step. The curse
+   * step overrides these via `.curse-step` further down. */
+  --mp-edge: #ffd166;
+  --mp-glow: #ffae3a;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 3px solid #ffd166;
   border-radius: 12px;
   padding: 22px;
   width: min(95vw, 760px);
   max-height: 92dvh;
-  overflow-y: auto;
-  box-shadow: 0 0 40px rgba(253, 224, 71, 0.25);
+  background:
+    radial-gradient(ellipse at top, rgba(255, 174, 58, 0.22) 0%, transparent 58%),
+    linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 209, 102, 0.5),
+    inset 0 0 60px rgba(0, 0, 0, 0.55),
+    0 0 0 1px #06030a,
+    0 14px 50px rgba(255, 174, 58, 0.4),
+    0 0 32px rgba(255, 209, 102, 0.4);
 }
 .blessing-panel.curse-step {
+  --mp-edge: #ef4444;
+  --mp-glow: #ff1a4a;
   border-color: #ef4444;
-  box-shadow: 0 0 40px rgba(239, 68, 68, 0.25);
+  background:
+    radial-gradient(ellipse at top, rgba(255, 26, 74, 0.28) 0%, transparent 55%),
+    linear-gradient(180deg, #170509 0%, #0a0205 55%, #1c0509 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(239, 68, 68, 0.55),
+    inset 0 0 80px rgba(120, 12, 16, 0.6),
+    0 0 0 1px #06030a,
+    0 14px 56px rgba(255, 26, 74, 0.5),
+    0 0 36px rgba(239, 68, 68, 0.5);
 }
+
+/* Pixel corner ornaments — same trick as the defeat / dungeon-entry
+ * panels. Two diagonal slivers in opposite corners give the panel a
+ * "framed talisman" feel without taking real estate from the cards. */
+.blessing-panel::before,
+.blessing-panel::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 3;
+}
+.blessing-panel::before {
+  top: 6px; left: 6px;
+  background: linear-gradient(135deg, var(--mp-edge) 50%, transparent 50%);
+}
+.blessing-panel::after {
+  bottom: 6px; right: 6px;
+  background: linear-gradient(-45deg, var(--mp-edge) 50%, transparent 50%);
+}
+
+/* Curse step pushes the rays / glow toward a deeper, faster red palette
+ * so it feels like the panel is "reacting" to the burden being chosen. */
+.mp-stage-curse .mp-rays { animation-duration: 22s; opacity: 0.8; }
+.mp-stage-curse .mp-sigil { animation-duration: 1s; }
+
 .blessing-head {
+  position: relative;
+  z-index: 2;
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 .blessing-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 16px;
-  color: #fde047;
-  letter-spacing: 1px;
-  margin: 0 0 6px 0;
-  text-shadow: 0 0 10px rgba(253, 224, 71, 0.4);
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--mp-edge);
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  text-shadow:
+    -2px -2px 0 #1a0608, 2px -2px 0 #1a0608,
+    -2px 2px 0 #1a0608, 2px 2px 0 #1a0608,
+    0 0 14px color-mix(in srgb, var(--mp-glow) 65%, transparent);
 }
 .blessing-title.curse {
-  color: #fb7185;
-  text-shadow: 0 0 10px rgba(251, 113, 133, 0.4);
+  font-size: 24px;
+  text-shadow:
+    -2px -2px 0 #050203, 2px -2px 0 #050203,
+    -2px 2px 0 #050203, 2px 2px 0 #050203,
+    0 0 18px rgba(255, 80, 80, 0.7),
+    0 0 26px rgba(239, 68, 68, 0.5);
+}
+.blessing-tagline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mp-glow);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--mp-glow) 55%, transparent);
+  margin: 4px 0 8px;
+  animation: mp-tagline-pulse 1.8s ease-in-out infinite;
+}
+.blessing-tagline.curse {
+  color: #ff8e8e;
+  letter-spacing: 3px;
+  text-shadow:
+    0 0 8px rgba(255, 70, 70, 0.85),
+    0 0 14px rgba(239, 68, 68, 0.5);
+  animation-duration: 1.2s;
 }
 .blessing-subtitle {
   font-family: 'VT323', monospace;
   font-size: 16px;
-  color: #c0c0d0;
-  margin: 0;
+  color: #d8d8e8;
+  margin: 8px 0 0;
 }
+
 .blessing-grid {
+  position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
+
+/* ── Cards: dramatic version ─────────────────────────────────────────
+ *
+ * The card keeps its per-blessing accent colour for border / icon glow,
+ * but gains a few extra layers:
+ *   • inset gradient + outer glow that intensifies on hover
+ *   • a sweeping shimmer highlight (`.blessing-card-shimmer`) that
+ *     diagonally crosses the card on :hover/:focus
+ *   • subtle "press-down" on :active so it feels mechanical, not flat
+ * Curse cards swap the warm tints for crimson so the cost reads ominous
+ * even at a glance. */
 .blessing-card {
   --accent: #fde047;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 16px 12px;
-  background: rgba(10, 6, 18, 0.92);
+  padding: 18px 12px 14px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 10%, #1a0d24) 0%,
+      #0a0612 100%);
   border: 2px solid var(--accent);
   border-radius: 10px;
-  color: #f0f0f0;
+  color: #f4f4f4;
   cursor: pointer;
   font-family: inherit;
   text-align: center;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 50%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 4px 0 rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 12px color-mix(in srgb, var(--accent) 25%, transparent);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    filter 0.18s ease;
 }
-.blessing-card:hover {
-  transform: translateY(-2px);
-  background: rgba(20, 12, 30, 0.95);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 50%, transparent);
+.blessing-card:hover,
+.blessing-card:focus-visible {
+  transform: translateY(-3px) scale(1.015);
+  outline: none;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 22%, #1d1030) 0%,
+      #120820 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 70%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 6px 0 rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 32px color-mix(in srgb, var(--accent) 65%, transparent);
+  filter: brightness(1.06);
+}
+.blessing-card:active {
+  transform: translateY(1px) scale(0.99);
+  filter: brightness(0.95);
 }
 .blessing-card.curse-card {
-  background: rgba(20, 6, 6, 0.92);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 14%, #1a060c) 0%,
+      #0a0204 100%);
 }
-.blessing-card.curse-card:hover {
-  background: rgba(30, 10, 10, 0.95);
+.blessing-card.curse-card:hover,
+.blessing-card.curse-card:focus-visible {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 28%, #1f060c) 0%,
+      #100408 100%);
+}
+
+/* Sweeping highlight — sits diagonally off-card, slides across on hover.
+ * Pure decoration; pointer-events disabled so the card still receives
+ * clicks. The accent colour drives the gradient so it always matches
+ * the blessing/curse theme. */
+.blessing-card-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(115deg,
+    transparent 30%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 50%,
+    transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 600ms ease;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+.blessing-card:hover .blessing-card-shimmer,
+.blessing-card:focus-visible .blessing-card-shimmer {
+  transform: translateX(120%);
+  opacity: 0.9;
+}
+
+/* Card content sits above the shimmer layer. */
+.blessing-icon,
+.blessing-name,
+.blessing-flavor,
+.blessing-effect {
+  position: relative;
+  z-index: 2;
 }
 .blessing-icon {
-  font-size: 40px;
+  font-size: 44px;
   line-height: 1;
-  filter: drop-shadow(0 0 6px var(--accent));
+  filter:
+    drop-shadow(0 0 6px var(--accent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 55%, transparent));
+  animation: blessing-icon-float 3.2s ease-in-out infinite;
 }
+.blessing-card.curse-card .blessing-icon {
+  /* Same float, slightly desaturated so curses feel "drained". */
+  animation-duration: 4s;
+  filter:
+    drop-shadow(0 0 6px var(--accent))
+    drop-shadow(0 0 14px rgba(239, 68, 68, 0.55));
+}
+@keyframes blessing-icon-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.04); }
+}
+
 .blessing-name {
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 11px;
   letter-spacing: 1px;
   color: var(--accent);
   text-transform: uppercase;
-  text-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008,
+    0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .blessing-flavor {
   font-family: 'VT323', monospace;
   font-size: 14px;
-  color: #b0b0c0;
+  color: #c4c4d4;
   font-style: italic;
   min-height: 1em;
 }
 .blessing-effect {
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 17px;
   color: #ffffff;
   margin-top: auto;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 4px;
+  text-shadow:
+    -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000,
+    0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .blessing-icon,
+  .blessing-tagline,
+  .blessing-card-shimmer { animation: none; transition: none; }
+  .blessing-card-shimmer { display: none; }
+}
+
 @media (max-width: 600px) {
   .blessing-grid { grid-template-columns: 1fr; }
-  .blessing-icon { font-size: 32px; }
+  .blessing-icon { font-size: 36px; }
   .blessing-name { font-size: 10px; }
   .blessing-flavor { font-size: 13px; }
-  .blessing-effect { font-size: 14px; }
+  .blessing-effect { font-size: 15px; }
+  .blessing-title { font-size: 18px; }
+  .blessing-title.curse { font-size: 19px; }
 }
 
 .hud-timer-bar {
