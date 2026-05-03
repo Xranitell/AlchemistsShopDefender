@@ -719,12 +719,103 @@ body {
 /* For the first 2 seconds after the card draft appears we lock all clickable
  * surfaces inside the overlay so an in-progress click on the game canvas
  * doesn't accidentally pick a card / reroll / skip. The cards visibly fade
- * and lose their hover affordance during that window. */
+ * and lose their hover affordance during that window — but they keep
+ * their rotating-sweep highlight and a subtle "breathing" pulse so the
+ * draft never reads as a frozen screenshot. The matching countdown hint
+ * (`cards-lock-hint`) renders above the row and carries the explicit
+ * "разблокируются…" messaging. */
 #overlay.cards-mode.cards-pre-lock .card-rh,
 #overlay.cards-mode.cards-pre-lock .cards-action-row {
   pointer-events: none;
   filter: brightness(0.78) saturate(0.85);
   transition: filter 250ms ease;
+}
+#overlay.cards-mode.cards-pre-lock .card-rh {
+  /* Breathing pulse: very subtle scale + brightness sway so the cards
+   * keep visible motion during the lock without flashing distractingly.
+   * Each card desyncs via `--rh-breath-delay` (set via :nth-child below). */
+  animation: asd-cards-locked-breath 1.6s ease-in-out infinite;
+  animation-delay: var(--rh-breath-delay, 0s);
+}
+.cards-rh > .card-rh:nth-child(2) { --rh-breath-delay: -0.4s; }
+.cards-rh > .card-rh:nth-child(3) { --rh-breath-delay: -0.8s; }
+.cards-rh > .card-rh:nth-child(4) { --rh-breath-delay: -1.2s; }
+@keyframes asd-cards-locked-breath {
+  0%, 100% { transform: scale(1); filter: brightness(0.78) saturate(0.85); }
+  50%      { transform: scale(1.012); filter: brightness(0.92) saturate(0.95); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #overlay.cards-mode.cards-pre-lock .card-rh { animation: none; }
+}
+
+/* Countdown hint — text + linear progress bar that depletes over the
+ * lock duration. The bar's keyframe duration matches the 2 s timeout in
+ * `CardOverlay.show()`. */
+.cards-lock-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(560px, 80vw);
+  padding: 10px 18px 12px;
+  border: 1px solid rgba(125, 249, 255, 0.32);
+  background: linear-gradient(180deg, rgba(20, 24, 38, 0.78), rgba(8, 10, 18, 0.78));
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(125, 249, 255, 0.18);
+  opacity: 1;
+  transition: opacity 280ms ease, transform 280ms ease;
+  pointer-events: none;
+}
+.cards-lock-hint.unlocked {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.cards-lock-hint-label {
+  font-family: 'VT323', 'Trebuchet MS', monospace;
+  font-size: 22px;
+  letter-spacing: 1.2px;
+  color: var(--accent-cool, #7df9ff);
+  text-shadow: 0 0 8px rgba(125, 249, 255, 0.45);
+  /* Soft pulse on the label so the eye keeps catching it during the wait. */
+  animation: asd-cards-lock-label-pulse 1.4s ease-in-out infinite;
+}
+@keyframes asd-cards-lock-label-pulse {
+  0%, 100% { opacity: 0.78; }
+  50%      { opacity: 1; }
+}
+.cards-lock-hint-bar {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(125, 249, 255, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cards-lock-hint-bar-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent-cool, #7df9ff), var(--accent, #ffd166));
+  box-shadow: 0 0 10px rgba(125, 249, 255, 0.55);
+  /* Deplete from 100% → 0% over the same 2 s as the JS lock timeout.
+   * `transform-origin: right` means the bar shrinks toward the right side
+   * (so it reads as "running out" rather than "filling up"). */
+  transform-origin: right center;
+  animation: asd-cards-lock-fill 2s linear forwards;
+}
+@keyframes asd-cards-lock-fill {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cards-lock-hint-label { animation: none; }
+  .cards-lock-hint-bar-fill {
+    /* Skip the depleting animation for reduced-motion users; the
+     * countdown is still implicit via the JS timeout. */
+    transform: scaleX(0);
+    animation: none;
+  }
 }
 
 .cards-stage {
@@ -893,12 +984,10 @@ body {
 .cards-rh > .card-rh:nth-child(3)::after { animation-delay: -2.2s; }
 .cards-rh > .card-rh:nth-child(4)::before,
 .cards-rh > .card-rh:nth-child(4)::after { animation-delay: -0.6s; }
-/* Pause the sweep while the draft is still locked, so the visual cue
- * matches the dimmed/non-interactive state. */
-#overlay.cards-mode.cards-pre-lock .card-rh::before,
-#overlay.cards-mode.cards-pre-lock .card-rh::after {
-  animation-play-state: paused;
-}
+/* The rotating sweep keeps running during the pre-lock window — pausing
+ * it caused the draft to read as a frozen screenshot. The cards remain
+ * non-interactive (see the `cards-pre-lock` rule above) and the
+ * countdown hint communicates the wait. */
 /* Honour reduced-motion preferences — drop the rotation entirely. */
 @media (prefers-reduced-motion: reduce) {
   .card-rh::before,

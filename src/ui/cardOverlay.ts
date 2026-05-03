@@ -116,13 +116,24 @@ export class CardOverlay {
     // when the draft pops up doesn't immediately auto-pick a card / reroll /
     // skip. We add a CSS class that disables pointer events on the cards and
     // action row, then remove it after the delay.
+    //
+    // While locked we also render an inline "Карты разблокируются…" hint
+    // with a depleting progress bar so the screen doesn't feel frozen
+    // (cards keep their shimmer + a subtle breathing pulse via CSS too).
+    // The hint is removed in `hide()` and when the timeout fires.
     this.root.classList.add('cards-pre-lock');
+    const lockHint = buildLockHint();
+    stage.insertBefore(lockHint, cards);
     if (this.preLockTimeout != null) {
       window.clearTimeout(this.preLockTimeout);
     }
     this.preLockTimeout = window.setTimeout(() => {
       this.root.classList.remove('cards-pre-lock');
       this.preLockTimeout = null;
+      // Fade the hint out instead of yanking it; CSS handles the
+      // opacity transition off the `.unlocked` class.
+      lockHint.classList.add('unlocked');
+      window.setTimeout(() => lockHint.remove(), 320);
     }, 2000);
   }
 
@@ -382,4 +393,34 @@ function buildActionPill(opts: {
     opts.onClick();
   });
   return b;
+}
+
+/**
+ * Build the "Карты разблокируются…" countdown hint shown while the draft
+ * is in its 2-second pre-lock window. The hint sits between the subtitle
+ * and the cards row so it's the most prominent moving element on screen
+ * — it carries the message that the lock is temporary while the cards
+ * themselves are visibly dimmed and non-interactive. The progress bar
+ * animation is driven entirely by CSS (`@keyframes asd-cards-lock-fill`)
+ * so its duration stays in sync with the JS timeout via shared
+ * `--asd-cards-lock-duration` CSS var.
+ */
+function buildLockHint(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'cards-lock-hint';
+  wrap.setAttribute('aria-live', 'polite');
+
+  const label = document.createElement('span');
+  label.className = 'cards-lock-hint-label';
+  label.textContent = t('ui.cards.lockHint');
+  wrap.appendChild(label);
+
+  const bar = document.createElement('div');
+  bar.className = 'cards-lock-hint-bar';
+  const fill = document.createElement('div');
+  fill.className = 'cards-lock-hint-bar-fill';
+  bar.appendChild(fill);
+  wrap.appendChild(bar);
+
+  return wrap;
 }
