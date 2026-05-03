@@ -119,6 +119,7 @@ export class MainMenu {
     const shopBtn = document.createElement('button');
     shopBtn.className = 'mm-card mm-shop-card';
     shopBtn.type = 'button';
+    shopBtn.dataset.tutorialTarget = 'menu-shop';
     const shopTitle = document.createElement('div');
     shopTitle.className = 'mm-card-title';
     shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span>`;
@@ -161,6 +162,7 @@ export class MainMenu {
     const labBtn = document.createElement('button');
     labBtn.className = 'mm-card mm-lab-card';
     labBtn.type = 'button';
+    labBtn.dataset.tutorialTarget = 'menu-laboratory';
     const labTitle = document.createElement('div');
     labTitle.className = 'mm-card-title';
     labTitle.innerHTML = `<span>${t('ui.menu.laboratory')}</span>`;
@@ -198,6 +200,7 @@ export class MainMenu {
 
     const lbWrap = document.createElement('div');
     lbWrap.className = 'mm-card mm-lb-card';
+    lbWrap.dataset.tutorialTarget = 'menu-leaderboard';
     const lbTitle = document.createElement('div');
     lbTitle.className = 'mm-card-title';
     lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
@@ -227,6 +230,7 @@ export class MainMenu {
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
+    battleBtn.dataset.tutorialTarget = 'menu-battle';
     battleBtn.textContent = t('ui.menu.toBattle');
     battleBtn.addEventListener('click', opts.onBattle);
     bottomRow.appendChild(battleBtn);
@@ -260,6 +264,7 @@ export class MainMenu {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'mm-card mm-daily-calendar collapsed';
+    card.dataset.tutorialTarget = 'menu-daily';
 
     const titleRow = document.createElement('div');
     titleRow.className = 'mm-card-title mm-daily-header';
@@ -678,6 +683,7 @@ function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
   const card = document.createElement('button');
   card.type = 'button';
   card.className = 'mm-card mm-loadout-card';
+  card.dataset.tutorialTarget = 'menu-loadout';
 
   const titleRow = document.createElement('div');
   titleRow.className = 'mm-card-title';

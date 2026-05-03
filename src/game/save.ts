@@ -48,6 +48,13 @@ export interface MetaSave {
   /** First-time-user-experience flag (GDD §18). True once the player has
    *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
   tutorialDone: boolean;
+  /** Set once the player has seen the pause-panel walkthrough at least
+   *  once. Prevents the panel sequence from replaying every time the
+   *  player opens the pause overlay. */
+  pauseTutorialDone: boolean;
+  /** Set once the player has seen the main-menu walkthrough. Same idea
+   *  as `pauseTutorialDone` but for the between-runs main menu. */
+  menuTutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
   /** True once the player has explicitly picked a locale via the in-game
@@ -98,6 +105,8 @@ export function newMetaSave(): MetaSave {
     sfxVolume: 0.6,
     musicVolume: 0.4,
     tutorialDone: false,
+    pauseTutorialDone: false,
+    menuTutorialDone: false,
     locale: defaultLocale(),
     localeUserChoice: false,
     epicMastery: 0,
@@ -197,6 +206,16 @@ export function loadMeta(): MetaSave {
       // tutorial — we don't want to nag veterans with the wave-1 hint.
       tutorialDone: typeof data.tutorialDone === 'boolean'
         ? data.tutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players with at least one finished run have
+      // already discovered the pause / main-menu UI on their own — don't
+      // pop the panel walkthrough at them retroactively. New saves get
+      // both flags set to false so the walkthroughs play exactly once.
+      pauseTutorialDone: typeof data.pauseTutorialDone === 'boolean'
+        ? data.pauseTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      menuTutorialDone: typeof data.menuTutorialDone === 'boolean'
+        ? data.menuTutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
       // Existing saves without the explicit-choice flag are treated as

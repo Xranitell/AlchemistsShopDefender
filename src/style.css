@@ -4927,6 +4927,12 @@ body {
   z-index: 1500; /* above HUD (1000) and tower-shop (1100), below modal overlays */
   pointer-events: none;
 }
+/* When a panel-bound sequence (pause / main menu) is running, lift the
+ * tutorial root above the modal panels themselves (pause stats z=2000,
+ * blessing z=2100). This keeps the dimmer cutout visually correct over
+ * the highlighted card and prevents the tooltip from being clipped by
+ * the modal background. */
+.tutorial-root.over-modal { z-index: 2200; }
 .tutorial-root.hidden { display: none; }
 .tutorial-dimmer {
   position: absolute;

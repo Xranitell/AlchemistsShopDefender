@@ -37,6 +37,7 @@ export class PauseStatsOverlay {
     header.className = 'pause-stats-header';
     const title = document.createElement('h2');
     title.className = 'pause-stats-title';
+    title.dataset.tutorialTarget = 'pause-title';
     title.textContent = tWithFallback('ui.pause.title', 'Пауза');
     header.appendChild(title);
     const closeBtn = document.createElement('button');
@@ -58,26 +59,32 @@ export class PauseStatsOverlay {
     inner.className = 'pause-stats-inner';
 
     // ── Player stats ──────────────────────────────────────────────────────
-    inner.appendChild(this.buildSection(
+    const playerSection = this.buildSection(
       tWithFallback('ui.pause.playerTitle', 'Модификаторы игрока'),
       this.playerStats(state),
-    ));
+    );
+    playerSection.dataset.tutorialTarget = 'pause-player-stats';
+    inner.appendChild(playerSection);
 
     // ── Unique effects from cards ─────────────────────────────────────────
     const uniques = this.uniqueEffects(state);
     if (uniques.length > 0) {
-      inner.appendChild(this.buildSection(
+      const uniqueSection = this.buildSection(
         tWithFallback('ui.pause.uniqueTitle', 'Уникальные эффекты'),
         uniques,
         true,
-      ));
+      );
+      uniqueSection.dataset.tutorialTarget = 'pause-unique';
+      inner.appendChild(uniqueSection);
     }
 
     // ── Enemy modifiers ───────────────────────────────────────────────────
-    inner.appendChild(this.buildSection(
+    const enemySection = this.buildSection(
       tWithFallback('ui.pause.enemyTitle', 'Модификаторы врагов'),
       this.enemyStats(state),
-    ));
+    );
+    enemySection.dataset.tutorialTarget = 'pause-enemy-stats';
+    inner.appendChild(enemySection);
 
     row.appendChild(inner);
 
@@ -113,11 +120,13 @@ export class PauseStatsOverlay {
             });
           }
         }
-        side.appendChild(this.buildSection(
+        const blessingSection = this.buildSection(
           t('ui.blessing.label'),
           lines,
           true,
-        ));
+        );
+        blessingSection.dataset.tutorialTarget = 'pause-blessings';
+        side.appendChild(blessingSection);
       }
 
       // ── Run mutators ("dungeon laws") ──────────────────────────────────
@@ -131,11 +140,13 @@ export class PauseStatsOverlay {
             valueLines: def.i18nLines.map((k) => t(k)),
             kind: 'debuff' as const,
           }));
-        side.appendChild(this.buildSection(
+        const mutatorSection = this.buildSection(
           tWithFallback('ui.pause.mutatorsTitle', 'Закон подземелья'),
           mutLines,
           true,
-        ));
+        );
+        mutatorSection.dataset.tutorialTarget = 'pause-mutators';
+        side.appendChild(mutatorSection);
       }
 
       // ── Run contracts ──────────────────────────────────────────────────
@@ -174,11 +185,13 @@ export class PauseStatsOverlay {
               },
             };
           });
-        side.appendChild(this.buildSection(
+        const contractSection = this.buildSection(
           t('ui.contract.label'),
           contractLines,
           true,
-        ));
+        );
+        contractSection.dataset.tutorialTarget = 'pause-contracts';
+        side.appendChild(contractSection);
       }
 
       // ── Endless modifiers ──────────────────────────────────────────────
@@ -188,10 +201,12 @@ export class PauseStatsOverlay {
           value: em.desc,
           kind: 'debuff',
         }));
-        side.appendChild(this.buildSection(
+        const endlessSection = this.buildSection(
           tWithFallback('ui.pause.endlessTitle', 'Бесконечный режим'),
           endlessList,
-        ));
+        );
+        endlessSection.dataset.tutorialTarget = 'pause-endless';
+        side.appendChild(endlessSection);
       }
 
       row.appendChild(side);
@@ -209,6 +224,7 @@ export class PauseStatsOverlay {
       const exitBtn = document.createElement('button');
       exitBtn.type = 'button';
       exitBtn.className = 'pause-stats-exit-btn';
+      exitBtn.dataset.tutorialTarget = 'pause-exit';
       exitBtn.textContent = tWithFallback('ui.pause.exitToMenu', 'Exit to menu');
       exitBtn.addEventListener('click', () => {
         this.openExitConfirm(state, wrap);

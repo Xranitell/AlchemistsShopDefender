@@ -1,4 +1,4 @@
-import { TUTORIAL_STEPS, type TutorialDismiss, type TutorialStep, type TutorialTarget } from '../data/tutorial';
+import { TUTORIAL_STEPS, type TutorialDismiss, type TutorialStep, type TutorialTarget, type TutorialTrigger } from '../data/tutorial';
 import type { GameState } from '../game/state';
 import { worldToScreen } from '../render/camera';
 import { getRenderCamera } from '../game/render';
@@ -17,12 +17,26 @@ export type TutorialEventKind =
   | 'towerUpgraded'
   | 'overloadActivated';
 
+/** Trigger kinds that map to panel-bound walkthroughs (non-wave). */
+type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen';
+
 interface ResolvedTarget {
   /** Centre of the spotlight, in viewport pixels. */
   cx: number;
   cy: number;
   /** Spotlight radius, in viewport pixels. */
   radius: number;
+}
+
+interface SequenceCallbacks {
+  /** Fired when the player clicks the panel-step "Skip" button. The
+   *  caller is expected to flip the meta-save flag so the sequence
+   *  doesn't replay on the next session. */
+  onSkip?: () => void;
+  /** Fired exactly once when every step in the sequence has been
+   *  dismissed cleanly via the OK button (i.e. the player walked through
+   *  the whole thing). The caller flips the meta-save flag. */
+  onComplete?: () => void;
 }
 
 /**
@@ -36,6 +50,16 @@ interface ResolvedTarget {
  * the player can keep interacting with the game while a hint is shown — the
  * GDD explicitly calls out that the tutorial must not block input during
  * critical moments.
+ *
+ * In addition to the wave-based FTUE flow, the controller also drives
+ * panel-bound *sequences* — walkthroughs that fire the first time the
+ * player opens a particular UI surface (pause panel, main menu). Each
+ * sequence is a flat list of steps drawn from `TUTORIAL_STEPS`, played
+ * in declaration order, advanced by the player clicking "Далее"/"Next".
+ * Sequences are independent of the wave-based `active` flag — they can
+ * run between runs (main menu) or during a run (pause), and they expose
+ * `onComplete` / `onSkip` callbacks so the caller can persist a "done"
+ * flag in the meta-save.
  */
 class TutorialController {
   private root: HTMLDivElement | null = null;
@@ -46,7 +70,8 @@ class TutorialController {
   private arrowEl: HTMLDivElement | null = null;
 
   private canvas: HTMLCanvasElement | null = null;
-  /** Active steps tied to `firstX` events that haven't fired yet. */
+  /** Wave-based tutorial active flag — set by `start()`, cleared by
+   *  `stop()`. Independent from the panel-sequence active flag below. */
   private active = false;
   private currentStep: TutorialStep | null = null;
   private currentDismissTimer: number | null = null;
@@ -55,7 +80,12 @@ class TutorialController {
   /** Snapshot of the latest game state, refreshed every frame via update(). */
   private lastState: GameState | null = null;
 
+  /** Skip callback for the wave-based FTUE — flips `meta.tutorialDone`. */
   private skipCallback: (() => void) | null = null;
+
+  /** Active panel sequence (pauseOpen / mainMenuOpen) trigger, if any. */
+  private sequenceTrigger: SequenceTriggerKind | null = null;
+  private sequenceCallbacks: SequenceCallbacks | null = null;
 
   /** Initialise the controller and attach to the DOM. Idempotent. */
   attach(canvas: HTMLCanvasElement, opts: { onSkip?: () => void } = {}): void {
@@ -65,33 +95,35 @@ class TutorialController {
     this.buildDom();
   }
 
-  /** Begin the tutorial. Should only be called when the player hasn't
-   *  finished it before (i.e. `meta.tutorialDone === false`). */
+  /** Begin the wave-based tutorial. Should only be called when the
+   *  player hasn't finished it before (i.e. `meta.tutorialDone === false`). */
   start(): void {
     this.active = true;
     this.completed.clear();
     this.lastWaveIndex = -1;
-    if (this.root) this.root.classList.remove('hidden');
+    this.refreshRootVisibility();
   }
 
-  /** Stop the tutorial entirely (skip button or completion). */
+  /** Stop the wave-based tutorial entirely (skip button or completion). */
   stop(): void {
     this.active = false;
-    this.hideStep();
-    if (this.root) this.root.classList.add('hidden');
+    if (this.currentStep && !this.isSequenceStep(this.currentStep)) {
+      this.hideStep();
+    }
+    this.refreshRootVisibility();
   }
 
   /** Drive the wave-based triggers and re-position the spotlight on the
    *  current frame. Must be called every game tick. */
   update(state: GameState): void {
     this.lastState = state;
-    if (!this.active) return;
-
-    // Detect wave transitions to fire `waveStart` triggers.
-    const wave = state.waveState.currentIndex + 1;
-    if (wave !== this.lastWaveIndex && state.phase === 'wave') {
-      this.lastWaveIndex = wave;
-      this.tryFireWaveStart(wave);
+    if (this.active) {
+      // Detect wave transitions to fire `waveStart` triggers.
+      const wave = state.waveState.currentIndex + 1;
+      if (wave !== this.lastWaveIndex && state.phase === 'wave') {
+        this.lastWaveIndex = wave;
+        this.tryFireWaveStart(wave);
+      }
     }
 
     if (this.currentStep) {
@@ -130,6 +162,122 @@ class TutorialController {
   /** True when a tutorial tooltip is currently on-screen. Used by main.ts
    *  to freeze the simulation while the player reads the hint. */
   isShowingStep(): boolean { return this.currentStep !== null; }
+
+  /** True when a panel-bound sequence is currently running (or queued to
+   *  resume after a 350ms pause between steps). */
+  isSequenceActive(): boolean { return this.sequenceTrigger !== null; }
+
+  // -- Panel sequences -----------------------------------------------------
+
+  /** Kick off a panel-bound walkthrough. All steps in `TUTORIAL_STEPS`
+   *  with `trigger.kind === triggerKind` are queued in declaration
+   *  order; the first one whose target resolves is shown immediately,
+   *  and subsequent steps fire as the player advances via the OK
+   *  button. Steps whose target element isn't in the DOM (e.g. the
+   *  contracts section on a Normal run) are silently skipped.
+   *
+   *  If a sequence with the same trigger is already active, this is a
+   *  no-op so opening / re-opening the panel doesn't restart the walk-
+   *  through halfway through. Calling with a different trigger cancels
+   *  the in-flight sequence first.
+   */
+  startSequence(triggerKind: SequenceTriggerKind, callbacks?: SequenceCallbacks): void {
+    if (this.sequenceTrigger === triggerKind) return;
+    // Don't trample on an in-flight wave-tutorial step — the player is
+    // still mid-FTUE and the wave hint is more important than the panel
+    // walkthrough. The sequence will start naturally the next time the
+    // player opens the panel (typically after the wave hint resolves).
+    if (this.currentStep !== null && !this.isSequenceStep(this.currentStep)) return;
+    if (this.sequenceTrigger !== null) this.cancelSequence(this.sequenceTrigger);
+
+    const steps = TUTORIAL_STEPS.filter((s) => s.trigger.kind === triggerKind);
+    if (steps.length === 0) return;
+
+    this.sequenceTrigger = triggerKind;
+    this.sequenceCallbacks = callbacks ?? null;
+    this.pendingSteps = steps.slice();
+    this.refreshRootVisibility();
+    // Pull the first step that has a resolvable target. `advanceSequence`
+    // takes care of skipping any leading steps whose target isn't in the
+    // DOM yet (e.g. when the panel hasn't fully populated by the time
+    // we're called) — for those we still want the walkthrough to start
+    // somewhere useful.
+    this.advanceSequence();
+  }
+
+  /** Tear down an active panel sequence — used when the matching panel
+   *  closes. Doesn't fire `onComplete`, but the caller is expected to
+   *  flip the meta-save "done" flag itself so the sequence doesn't
+   *  replay; we keep this controller agnostic of persistence. */
+  cancelSequence(triggerKind: SequenceTriggerKind): void {
+    if (this.sequenceTrigger !== triggerKind) return;
+    this.sequenceTrigger = null;
+    this.sequenceCallbacks = null;
+    this.pendingSteps = [];
+    if (this.currentStep && this.isSequenceStep(this.currentStep)) {
+      this.hideStep();
+    }
+    this.refreshRootVisibility();
+  }
+
+  private isSequenceStep(step: TutorialStep): boolean {
+    return step.trigger.kind === 'pauseOpen' || step.trigger.kind === 'mainMenuOpen';
+  }
+
+  /** Pop steps off the queue until we find one whose target resolves,
+   *  show it, and pass through any whose target isn't in the DOM. If
+   *  the queue is exhausted, the sequence completes cleanly. */
+  private advanceSequence(): void {
+    if (this.sequenceTrigger === null) return;
+    while (this.pendingSteps.length > 0) {
+      const next = this.pendingSteps.shift();
+      if (!next) break;
+      if (this.canResolveTarget(next.target)) {
+        this.showStep(next);
+        return;
+      }
+      // Mark the unresolved step as completed so re-entering this
+      // sequence in the same session doesn't re-queue it.
+      this.completed.add(next.id);
+    }
+    // Nothing left — sequence is done.
+    this.finishSequence();
+  }
+
+  private finishSequence(): void {
+    const cb = this.sequenceCallbacks?.onComplete;
+    this.sequenceTrigger = null;
+    this.sequenceCallbacks = null;
+    this.pendingSteps = [];
+    this.hideStep();
+    this.refreshRootVisibility();
+    if (cb) cb();
+  }
+
+  /** Quick check for whether a step's target is currently visible in
+   *  the DOM. Used to skip optional pause-panel sections (contracts,
+   *  blessings) on runs that don't have them. */
+  private canResolveTarget(target: TutorialTarget): boolean {
+    if (target.kind === 'centered') return true;
+    if (target.kind === 'hud') {
+      const el = document.querySelector(target.selector) as HTMLElement | null;
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      // A zero-sized rect means the element is in the DOM but hidden
+      // (display:none ancestors collapse to 0×0). Treat as unresolvable.
+      return rect.width > 0 && rect.height > 0;
+    }
+    if (target.kind === 'mannequin') {
+      return Boolean(this.lastState?.mannequin);
+    }
+    if (target.kind === 'rune') {
+      return Boolean(this.lastState?.runePoints.some((r) => r.active));
+    }
+    if (target.kind === 'firstTower') {
+      return Boolean(this.lastState && this.lastState.towers.length > 0);
+    }
+    return false;
+  }
 
   // -- DOM ----------------------------------------------------------------
 
@@ -215,13 +363,23 @@ class TutorialController {
   // Spotlight ring is captured separately so we can update r/cx/cy on it.
   private dimmerRing: SVGCircleElement | null = null;
 
+  /** Toggle root visibility and z-index based on whether anything is
+   *  active. Sequences raise the layer above the modal panels (pause
+   *  overlay z=2000) so the dimmer / tooltip render on top. */
+  private refreshRootVisibility(): void {
+    if (!this.root) return;
+    const visible = this.active || this.sequenceTrigger !== null;
+    this.root.classList.toggle('hidden', !visible);
+    this.root.classList.toggle('over-modal', this.sequenceTrigger !== null);
+  }
+
   // -- Step lifecycle ------------------------------------------------------
 
   private tryFireWaveStart(wave: number): void {
     for (const step of TUTORIAL_STEPS) {
-      if (this.completed.has(step.id)) continue;
       if (step.trigger.kind !== 'waveStart') continue;
       if (step.trigger.wave !== wave) continue;
+      if (this.completed.has(step.id)) continue;
       this.showStep(step);
       // Stop after the first match — multiple steps with the same wave
       // (e.g. the W3 rune + upgrade tips) are queued via `pendingSteps`.
@@ -266,10 +424,20 @@ class TutorialController {
     this.tooltipActions.innerHTML = '';
     // Close button — always present so the player can dismiss any tutorial
     // step at will (critical for steps like tower-upgrade where the player
-    // may not have the gold to proceed).
+    // may not have the gold to proceed). For sequence steps the button
+    // reads "Далее" / "Next" so the player understands clicking it
+    // advances the walkthrough rather than ending it.
     const closeBtn = document.createElement('button');
     closeBtn.className = 'tutorial-ok-btn';
-    closeBtn.textContent = t('ui.tutorial.ok');
+    const isSeqStep = this.isSequenceStep(step);
+    const isLast = isSeqStep && this.pendingSteps.length === 0;
+    if (isSeqStep && !isLast) {
+      closeBtn.textContent = t('ui.tutorial.next');
+    } else if (isSeqStep && isLast) {
+      closeBtn.textContent = t('ui.tutorial.done');
+    } else {
+      closeBtn.textContent = t('ui.tutorial.ok');
+    }
     closeBtn.addEventListener('click', () => this.completeStep());
     this.tooltipActions.appendChild(closeBtn);
 
@@ -318,13 +486,23 @@ class TutorialController {
 
   private completeStep(): void {
     if (!this.currentStep) return;
-    this.completed.add(this.currentStep.id);
+    const step = this.currentStep;
+    this.completed.add(step.id);
     this.hideStep();
-    // Pop the next queued step (used for multiple W3 tips in sequence).
+    if (this.isSequenceStep(step)) {
+      // Walk forward through the sequence — `advanceSequence` will pop
+      // the next valid step (or finish cleanly when the queue empties).
+      // Slight delay so the previous tooltip visibly fades out before
+      // the next one materialises.
+      window.setTimeout(() => {
+        if (this.sequenceTrigger !== null) this.advanceSequence();
+      }, 200);
+      return;
+    }
+    // Wave-based: pop the next queued same-wave step (used for multiple
+    // W3 tips in sequence).
     const next = this.pendingSteps.shift();
     if (next) {
-      // Slight delay so the player can see the previous tooltip vanish
-      // before the next one materialises.
       window.setTimeout(() => {
         if (this.active) this.showStep(next);
       }, 350);
@@ -332,6 +510,19 @@ class TutorialController {
   }
 
   private skipAll(): void {
+    if (this.currentStep && this.isSequenceStep(this.currentStep)) {
+      // Sequence skip — only abort this sequence, leave the wave-based
+      // tutorial running if it happens to be active too.
+      const cb = this.sequenceCallbacks?.onSkip;
+      this.sequenceTrigger = null;
+      this.sequenceCallbacks = null;
+      this.pendingSteps = [];
+      this.hideStep();
+      this.refreshRootVisibility();
+      if (cb) cb();
+      return;
+    }
+    // Wave-based skip — full FTUE bail-out, mark every step as seen.
     this.completed = new Set(TUTORIAL_STEPS.map((s) => s.id));
     this.pendingSteps = [];
     this.hideStep();
@@ -355,16 +546,34 @@ class TutorialController {
     this.dimmerRing.setAttribute('r', String(radius));
 
     // Position the tooltip so it doesn't cover the spotlight. Default:
-    // place it below; if that runs off-screen, place it above.
+    // place it below; if that runs off-screen, place it above. For very
+    // large targets (e.g. a tall main-menu card) the spotlight radius
+    // can exceed the viewport, in which case both candidates may be
+    // off-screen — clamp the result so the tooltip stays visible no
+    // matter how big the spotlight is.
     const rect = this.tooltipEl.getBoundingClientRect();
     const spaceBelow = window.innerHeight - (cy + radius);
+    const spaceAbove = cy - radius;
     let tipY: number;
     let arrowAbove = false;
-    if (spaceBelow > rect.height + 60 || target.kind === 'centered') {
+    if (target.kind === 'centered') {
       tipY = cy + radius + 24;
-    } else {
+    } else if (spaceBelow >= rect.height + 32) {
+      tipY = cy + radius + 24;
+    } else if (spaceAbove >= rect.height + 32) {
       tipY = cy - radius - rect.height - 24;
       arrowAbove = true;
+    } else {
+      // Neither side fits — pin to the viewport edge with the larger
+      // gap and let the tooltip overlap the spotlight border instead of
+      // disappearing. The arrow is hidden in this case so it doesn't
+      // float in the middle of the dimmer.
+      if (spaceBelow >= spaceAbove) {
+        tipY = window.innerHeight - rect.height - 16;
+      } else {
+        tipY = 16;
+        arrowAbove = true;
+      }
     }
     let tipX = cx - rect.width / 2;
     tipX = Math.max(16, Math.min(window.innerWidth - rect.width - 16, tipX));
@@ -372,6 +581,12 @@ class TutorialController {
       tipX = window.innerWidth / 2 - rect.width / 2;
       tipY = window.innerHeight / 2 - rect.height / 2;
     }
+    // Final clamp: even with the above logic, a viewport smaller than
+    // the tooltip itself (rare, but possible on phones in landscape)
+    // would still produce off-screen coordinates. Pin to (16, 16) at
+    // worst — the tooltip text wraps and the player can scroll if the
+    // panel below it is itself scrollable.
+    tipY = Math.max(16, Math.min(window.innerHeight - rect.height - 16, tipY));
     this.tooltipEl.style.left = `${tipX}px`;
     this.tooltipEl.style.top = `${tipY}px`;
 
@@ -391,10 +606,24 @@ class TutorialController {
       const el = document.querySelector(target.selector) as HTMLElement | null;
       if (!el) return null;
       const rect = el.getBoundingClientRect();
+      // Spotlight radius = the circle that exactly encompasses the
+      // target rectangle (all four corners on the ring). This keeps
+      // the highlight tight around wide-and-short panel sections like
+      // "Бонусы игрока" instead of producing a giant circle dictated
+      // by the longer edge alone. We pad by 12px so the ring doesn't
+      // visually clip the rect's stroke.
+      const half = Math.sqrt(
+        (rect.width / 2) * (rect.width / 2) +
+          (rect.height / 2) * (rect.height / 2),
+      );
+      // Cap the radius at ~40% of the viewport's shorter side so the
+      // tooltip below/above the spotlight has room to breathe even for
+      // very tall or wide cards (e.g. the leaderboard column).
+      const cap = Math.min(window.innerWidth, window.innerHeight) * 0.4;
       return {
         cx: rect.left + rect.width / 2,
         cy: rect.top + rect.height / 2,
-        radius: Math.max(rect.width, rect.height) * 0.65 + 6,
+        radius: Math.min(half + 12, cap),
       };
     }
     if (target.kind === 'centered') {
@@ -448,5 +677,5 @@ function arrowGlyph(d: 'down' | 'up' | 'left' | 'right'): string {
 /** Singleton — imported wherever gameplay code emits tutorial events. */
 export const tutorial = new TutorialController();
 
-// Type-only re-export so consumers don't need to import from data/.
-export type { TutorialDismiss };
+// Type-only re-exports so consumers don't need to import from data/.
+export type { TutorialDismiss, TutorialTrigger };

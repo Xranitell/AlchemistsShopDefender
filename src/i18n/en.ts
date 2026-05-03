@@ -382,12 +382,32 @@ export const EN: Record<string, string> = {
   // ── Tutorial overlay ─────────────────────────────────────────────────
   'ui.tutorial.skip': 'Skip training',
   'ui.tutorial.ok': 'Got it',
+  'ui.tutorial.next': 'Next',
+  'ui.tutorial.done': 'Done',
   'tutorial.w1-throw': 'Aim at an enemy — the mannequin will hurl a potion.',
   'tutorial.w1-aim-bonus': 'A precise manual hit deals +20% damage. Aim — don\u2019t spam.',
   'tutorial.w2-cards': 'Nice! Every 3 waves you pick an upgrade card. They stack into synergies.',
   'tutorial.w3-rune': 'Choose a rune next to the mannequin to place an automated tower there.',
   'tutorial.w3-upgrade': 'Open your tower to upgrade it — much cheaper than buying another.',
   'tutorial.w5-boss': 'Boss! Fill the Overload bar with reactions and throws, then trigger the overload.',
+  // Pause-panel walkthrough
+  'tutorial.pause-intro': 'This is the pause panel. It shows all run stats, active effects, dungeon laws, contracts and run goals.',
+  'tutorial.pause-player-stats': 'On the left — player modifiers: damage, fire rate, economy. Cards you pick stack into these lines.',
+  'tutorial.pause-unique': 'Unique effects — elemental affinities and rare synergies from cards. This is what your potions and towers actually hit with.',
+  'tutorial.pause-enemy-stats': 'Enemy modifiers from your chosen difficulty: HP, speed, damage. Special mode abilities show up here too.',
+  'tutorial.pause-blessings': 'Alchemist\u2019s Gift — the blessing and curse you picked at the start of an Epic or Ancient run.',
+  'tutorial.pause-mutators': 'The dungeon law rotates every few waves on Epic / Ancient — it buffs the enemies.',
+  'tutorial.pause-contracts': 'Contracts are the run goals. Progress and rewards live here; failing one doesn\u2019t end the run but you lose the prize.',
+  'tutorial.pause-endless': 'In Endless mode, modifiers stack on after wave 15 — all active ones are listed here.',
+  'tutorial.pause-exit': 'The "Exit to menu" button ends the run early. Any Epic / Ancient key spent at run start does NOT come back.',
+  // Main-menu walkthrough
+  'tutorial.menu-intro': 'This is the main menu — where you prep for a run and collect rewards between them.',
+  'tutorial.menu-shop': 'Brewer. Turn ingredients you find in runs into potions and bring up to 4 of them into your next run. Click the card to open.',
+  'tutorial.menu-laboratory': 'Talent laboratory — permanent upgrades bought with blue and ancient essence. Bonuses apply to every future run.',
+  'tutorial.menu-loadout': 'Mannequin loadout. Pick one active module (Overload) and one passive aura — one of each.',
+  'tutorial.menu-leaderboard': 'Leaderboards. See how far other players got in your mode and in the daily challenge.',
+  'tutorial.menu-daily': 'Daily rewards. Come back each day — gold, keys and essence for completed days. The "Claim!" button is live while the "!" badge is showing.',
+  'tutorial.menu-battle': 'Ready? Hit "TO BATTLE" to pick a difficulty and start a run. Good luck!',
 
   // ── Floating text & misc ─────────────────────────────────────────────
   'floating.overload': 'OVERLOAD!',
