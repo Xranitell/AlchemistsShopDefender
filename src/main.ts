@@ -44,6 +44,8 @@ import { DailyEventOverlay } from './ui/dailyEventOverlay';
 import { BlessingOverlay } from './ui/blessingOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
+import { LawAnnounceOverlay } from './ui/lawAnnounceOverlay';
+import { MUTATOR_BY_ID } from './data/mutators';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import { CONTRACT_BY_ID, type ContractId, type ContractDef } from './data/contracts';
@@ -189,7 +191,25 @@ const pauseStats = new PauseStatsOverlay(document.body, {
     userPaused = false;
     hud.setPaused(false);
   },
+  onExitToMenu: () => {
+    // Player chose to abandon the run from the pause menu after the
+    // confirm dialog. The pause overlay closes itself; reset the HUD
+    // pause indicator and recycle the run via `restart()`, which builds
+    // a fresh state and shows the main menu. The Epic / Ancient key
+    // already spent at run start does NOT come back — the warning text
+    // in the confirm dialog made that contract explicit.
+    userPaused = false;
+    hud.setPaused(false);
+    restart();
+  },
 });
+
+// Toast that surfaces a freshly-rolled "dungeon law" right after the
+// player closes the card draft. Only the wave-rotating mutators trigger
+// it; modes without mutators (Normal / Endless / Daily) never see this
+// toast. Lives in `document.body` so it sits above HUD + canvas without
+// interfering with the in-game overlay stack.
+const lawAnnounce = new LawAnnounceOverlay(document.body);
 const towerShop = new TowerShop(hudRoot);
 towerShop.attach(state);
 const mannequinShop = new MannequinShop(hudRoot);
@@ -571,12 +591,29 @@ function showCardOverlay(): void {
       buttons: [
         { label: t('ui.cards.next'), primary: true, onClick: () => {
           overlay.hide();
+          const prevMutators = [...state.activeMutatorIds];
           startPause(state);
+          announceNewDungeonLawIfChanged(prevMutators);
           yandex.gameplayStart();
         }},
       ],
     });
   }
+}
+
+/** Fire the "dungeon law has changed" toast when `startPause` rolled new
+ *  mutators on top of `prev`. No-op for modes without mutators (the active
+ *  list stays empty there) and when the new roll happens to repeat the
+ *  previous IDs in the same order — there's nothing new to surface. */
+function announceNewDungeonLawIfChanged(prev: readonly string[]): void {
+  const next = state.activeMutatorIds;
+  if (next.length === 0) return;
+  if (next.length === prev.length && next.every((id, i) => id === prev[i])) return;
+  const defs = next
+    .map((id) => MUTATOR_BY_ID[id])
+    .filter((d): d is NonNullable<typeof d> => Boolean(d));
+  if (defs.length === 0) return;
+  lawAnnounce.show(defs);
 }
 
 /** Re-render the card overlay from the current `state.cardChoice`. Called
@@ -601,7 +638,9 @@ function renderCardOverlay(): void {
       applyCard(state, card);
       tutorial.notify('cardPicked');
       overlay.hide();
+      const prevMutators = [...state.activeMutatorIds];
       startPause(state);
+      announceNewDungeonLawIfChanged(prevMutators);
       yandex.gameplayStart();
     },
     // Skip: dismiss the draft entirely without applying a card. We still
@@ -610,7 +649,9 @@ function renderCardOverlay(): void {
       tutorial.notify('cardPicked');
       state.contractStats.cardSkipUsed = true;
       overlay.hide();
+      const prevMutators = [...state.activeMutatorIds];
       startPause(state);
+      announceNewDungeonLawIfChanged(prevMutators);
       yandex.gameplayStart();
     } : undefined,
     rerollGold: options.length > 0 ? {
@@ -1095,6 +1136,7 @@ function showGameOver(): void {
   difficultyOverlay.hide();
   dailyEventOverlay.hide();
   pauseStats.hide();
+  lawAnnounce.hide();
   const wave = state.waveState.currentIndex + 1;
   // FTUE: clearing wave 5 satisfies the tutorial even if the player
   // dies on a later wave — otherwise the entire script would replay on
@@ -1542,6 +1584,9 @@ function showSettings(): void {
 
 function restart(): void {
   overlay.hide();
+  // Force-dismiss any in-flight UI toasts so they don't bleed onto the
+  // main menu on restart / exit-to-menu.
+  lawAnnounce.hide();
   state = buildInitialState();
   towerShop.attach(state);
   mannequinShop.attach(state);

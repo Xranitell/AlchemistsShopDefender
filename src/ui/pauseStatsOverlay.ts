@@ -12,10 +12,15 @@ export class PauseStatsOverlay {
   private root: HTMLElement;
   private panel: HTMLElement | null = null;
   private onCloseCallback: (() => void) | null = null;
+  private onExitCallback: (() => void) | null = null;
 
-  constructor(root: HTMLElement, opts?: { onClose?: () => void }) {
+  constructor(
+    root: HTMLElement,
+    opts?: { onClose?: () => void; onExitToMenu?: () => void },
+  ) {
     this.root = root;
     this.onCloseCallback = opts?.onClose ?? null;
+    this.onExitCallback = opts?.onExitToMenu ?? null;
   }
 
   show(state: GameState): void {
@@ -193,9 +198,102 @@ export class PauseStatsOverlay {
     }
 
     group.appendChild(row);
+
+    // ── Footer: "Exit to menu" button (always present) ────────────────
+    // Sits below the stats panels. Tapping it spawns an inline confirm
+    // dialog that *covers* the stats so the player can't accidentally
+    // dismiss the run.
+    if (this.onExitCallback) {
+      const footer = document.createElement('div');
+      footer.className = 'pause-stats-footer';
+      const exitBtn = document.createElement('button');
+      exitBtn.type = 'button';
+      exitBtn.className = 'pause-stats-exit-btn';
+      exitBtn.textContent = tWithFallback('ui.pause.exitToMenu', 'Exit to menu');
+      exitBtn.addEventListener('click', () => {
+        this.openExitConfirm(state, wrap);
+      });
+      footer.appendChild(exitBtn);
+      group.appendChild(footer);
+    }
+
     wrap.appendChild(group);
     this.panel = wrap;
     this.root.appendChild(wrap);
+  }
+
+  /** Inline confirm dialog rendered inside the pause overlay. Pauses the
+   *  rest of the surface (CSS dims the stats group) so the player has to
+   *  resolve the question before anything else can happen. */
+  private openExitConfirm(state: GameState, wrap: HTMLElement): void {
+    // Don't stack — guard against double-clicks.
+    if (wrap.querySelector('.pause-exit-confirm') !== null) return;
+
+    const confirm = document.createElement('div');
+    confirm.className = 'pause-exit-confirm';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'pause-exit-dialog';
+
+    const title = document.createElement('div');
+    title.className = 'pause-exit-title';
+    title.textContent = t('ui.exitConfirm.title');
+    dialog.appendChild(title);
+
+    const body = document.createElement('div');
+    body.className = 'pause-exit-body';
+    body.textContent = t('ui.exitConfirm.body');
+    dialog.appendChild(body);
+
+    // Epic / Ancient runs spent a key when the run started — surface a
+    // second, more emphatic line so the player knows they won't get it
+    // back if they exit now.
+    const keyWarning = state.difficulty === 'epic'
+      ? t('ui.exitConfirm.bodyKeyEpic')
+      : state.difficulty === 'ancient'
+        ? t('ui.exitConfirm.bodyKeyAncient')
+        : '';
+    if (keyWarning) {
+      const warn = document.createElement('div');
+      warn.className = 'pause-exit-warning';
+      warn.textContent = keyWarning;
+      dialog.appendChild(warn);
+    }
+
+    const buttons = document.createElement('div');
+    buttons.className = 'pause-exit-buttons';
+
+    const stayBtn = document.createElement('button');
+    stayBtn.type = 'button';
+    stayBtn.className = 'pause-exit-btn pause-exit-stay';
+    stayBtn.textContent = t('ui.exitConfirm.stay');
+    stayBtn.addEventListener('click', () => {
+      confirm.remove();
+      wrap.classList.remove('confirming-exit');
+    });
+    buttons.appendChild(stayBtn);
+
+    const exitBtn = document.createElement('button');
+    exitBtn.type = 'button';
+    exitBtn.className = 'pause-exit-btn pause-exit-confirm-btn';
+    exitBtn.textContent = t('ui.exitConfirm.exit');
+    exitBtn.addEventListener('click', () => {
+      // Hand off to the caller; main.ts handles the actual reset +
+      // showMainMenu so we don't have to know about run state here.
+      const cb = this.onExitCallback;
+      this.hide();
+      if (cb) cb();
+    });
+    buttons.appendChild(exitBtn);
+
+    dialog.appendChild(buttons);
+    confirm.appendChild(dialog);
+    wrap.appendChild(confirm);
+    wrap.classList.add('confirming-exit');
+
+    // Focus the safer "stay" option so a stray Enter keypress doesn't
+    // burn a key.
+    requestAnimationFrame(() => stayBtn.focus());
   }
 
   hide(): void {

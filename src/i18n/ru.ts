@@ -206,6 +206,19 @@ export const RU: Record<string, string> = {
   'ui.ability.explode_on_death': 'Взрыв при смерти',
   'ui.ability.aura_heal': 'Аура лечения',
 
+  // ── Exit-to-menu confirm (from the pause overlay) ───────────────────
+  'ui.exitConfirm.title': 'Выйти в меню?',
+  'ui.exitConfirm.body': 'Прогресс забега будет утерян.',
+  'ui.exitConfirm.bodyKeyEpic': 'Эпический ключ уже потрачен на этот забег и не вернётся при выходе.',
+  'ui.exitConfirm.bodyKeyAncient': 'Древний ключ уже потрачен на этот забег и не вернётся при выходе.',
+  'ui.exitConfirm.exit': 'Выйти',
+  'ui.exitConfirm.stay': 'Остаться',
+  'ui.pause.exitToMenu': 'Выйти в меню',
+
+  // ── Dungeon-law announcement toast ──────────────────────────────────
+  'ui.lawAnnounce.title': 'Закон подземелья изменился',
+  'ui.lawAnnounce.subtitle': 'С этой волны действуют новые правила.',
+
   // ── Pause stats overlay ─────────────────────────────────────────────
   'ui.pause.playerTitle': 'Бонусы игрока',
   'ui.pause.uniqueTitle': 'Уникальные эффекты',
