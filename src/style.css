@@ -1866,8 +1866,9 @@ body {
   min-width: 0;
 }
 .mm-col-left {
-  flex: 0 0 clamp(170px, 16vw, 250px);
+  flex: 0 0 clamp(250px, 26vw, 420px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .mm-col-right {
   flex: 0 0 clamp(250px, 26vw, 420px);
@@ -1929,15 +1930,25 @@ body {
   border: 3px solid #090b13;
   box-shadow: inset 0 4px 0 #e45f4a, 9px 0 0 -4px #c9a96b;
 }
+/* Crafting (shop) card stretches to fill remaining column height
+   alongside the laboratory card so together they mirror the daily
+   rewards calendar's footprint on the opposite column. */
+.mm-shop-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
 .mm-shop-slots {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 10px 0 9px;
+  gap: 8px;
+  margin: 12px 0 12px;
+  flex: 1 1 auto;
 }
 .mm-shop-slot {
   position: relative;
-  height: 38px;
+  min-height: 56px;
   border: 3px solid #1a0608;
   border-radius: 6px;
   background: linear-gradient(180deg, #2a1820, #160a10);
@@ -1979,7 +1990,23 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .mm-stats { font-size: 14px; color: var(--fg-dim); display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
-.mm-lab-desc { min-height: 88px; color: var(--fg-dim); }
+/* Laboratory card stretches to fill remaining column height so the
+   leaderboard + crafting + laboratory stack matches the height of the
+   daily rewards calendar on the left column. */
+.mm-lab-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.mm-lab-desc {
+  min-height: 130px;
+  color: var(--fg-dim);
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 /* (Old mm-lab-btn etc. removed — now using mm-card) */
 .mm-flask-icon,
 .mm-gear-icon,
@@ -2033,7 +2060,10 @@ body {
 .mm-lab-tree {
   position: relative;
   display: block;
+  width: 200px;
+  max-width: 100%;
   height: 86px;
+  flex-shrink: 0;
 }
 .mm-lab-tree .node {
   position: absolute;
@@ -2089,6 +2119,9 @@ body {
 /* ── Inline daily rewards calendar ──────────────────────────── */
 .mm-daily-calendar {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .mm-daily-week-badge {
   margin-left: auto;
@@ -2102,21 +2135,25 @@ body {
 .mm-daily-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  grid-auto-rows: 1fr;
+  gap: 6px;
   margin: 6px 0 8px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .mm-daily-cell {
   background: linear-gradient(180deg, #2a1820 0%, #140c12 100%);
   border: 2px solid #1a0608;
   border-radius: 5px;
-  padding: 4px 2px;
+  padding: 6px 4px;
   text-align: center;
   font-family: 'VT323', monospace;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-height: 56px;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
   box-shadow:
     inset 0 0 0 1px rgba(210, 79, 28, 0.12),
     inset 0 1px 0 rgba(255, 209, 102, 0.04),
@@ -2137,12 +2174,12 @@ body {
 .mm-daily-cell.locked { opacity: 0.55; }
 .mm-daily-day-label {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 7px;
+  font-size: 8px;
   color: var(--fg-dim);
 }
 .mm-daily-cell.today .mm-daily-day-label { color: #ff8c3a; }
-.mm-daily-icon { font-size: 18px; }
-.mm-daily-reward-label { font-size: 11px; color: var(--fg-dim); }
+.mm-daily-icon { font-size: 22px; }
+.mm-daily-reward-label { font-size: 13px; color: var(--fg-dim); }
 .mm-daily-claim {
   all: unset;
   display: block;
@@ -2177,10 +2214,13 @@ body {
 /* ── Leaderboard card ────────────────────────────────────────── */
 .mm-lb-card {
   flex: 0 0 auto;
-  max-height: 220px;
+  max-height: 360px;
   overflow-y: auto;
 }
-.mm-lb-icon { font-size: 18px; }
+.mm-lb-card .mm-card-title {
+  font-size: 14px;
+}
+.mm-lb-icon { font-size: 22px; }
 
 .mm-bp-sub { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-dim); }
 .mm-daily-badge {
@@ -3570,47 +3610,47 @@ body {
     0 0 18px rgba(170, 110, 30, 0.30);
 }
 .lb-panel-compact .lb-title {
-  font-size: 11px;
-  margin-bottom: 8px;
+  font-size: 13px;
+  margin-bottom: 10px;
 }
 .lb-panel-compact .lb-tabs {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .lb-panel-compact .lb-tab {
-  font-size: 13px;
-  padding: 4px 2px;
+  font-size: 15px;
+  padding: 6px 4px;
 }
-/* Body is ~3× the original 110px so the player sees a useful slice of the
-   table directly in the main menu. The list itself scrolls if the topN
-   ever overflows so layout never grows unbounded. */
+/* Bigger leaderboard body — shows ~6 rows directly in the main menu;
+   the list itself scrolls if the topN ever overflows so layout never
+   grows unbounded. */
 .lb-panel-compact .lb-body {
-  min-height: 330px;
-  max-height: 330px;
+  min-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
 }
 .lb-panel-compact .lb-loading,
 .lb-panel-compact .lb-empty {
-  font-size: 13px;
+  font-size: 14px;
   padding: 80px 0;
 }
 .lb-panel-compact .lb-row {
-  padding: 3px 6px;
+  padding: 5px 8px;
 }
 .lb-panel-compact .lb-name {
-  font-size: 14px;
+  font-size: 16px;
 }
 .lb-panel-compact .lb-rank {
-  font-size: 9px;
-  width: 28px;
+  font-size: 11px;
+  width: 32px;
 }
 .lb-panel-compact .lb-score {
-  font-size: 10px;
+  font-size: 12px;
 }
 .lb-panel-compact .lb-avatar {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
 }
-.lb-panel-compact .lb-avatar img { width: 22px; height: 22px; }
+.lb-panel-compact .lb-avatar img { width: 28px; height: 28px; }
 .lb-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 14px;
