@@ -82,6 +82,7 @@ export const EN: Record<string, string> = {
   'ui.cards.subtitle.cursed': 'Every 3rd wave the shop is haunted. These cards offer powerful effects — but at the cost of weakening the hero or strengthening enemies. You may decline.',
   'ui.cards.subtitle.empty': 'All MVP cards already collected.',
   'ui.cards.subtitle.none': 'No upgrade cards left. Brace for the next wave.',
+  'ui.cards.lockHint': 'Cards unlocking…',
 
   // ── Victory / defeat / chest ─────────────────────────────────────────
   'ui.victory.title': 'Victory! Alchemist\'s chest',
