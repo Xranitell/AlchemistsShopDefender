@@ -603,6 +603,7 @@ Object.assign(EN, {
   // ── Crafting (PR «crafting») ───────────────────────────────────────
   'ui.menu.craftingHint': 'Tap to open the brewery',
   'ui.craft.title': 'Brewery',
+  'ui.craft.tagline': 'ALCHEMIST\u2019S TABLE',
   'ui.craft.subtitle': 'Brew 10 potions from ingredients dropped by enemies',
   'ui.craft.inventoryTitle': 'Potion inventory (4)',
   'ui.craft.ingredientsTitle': 'Ingredients',

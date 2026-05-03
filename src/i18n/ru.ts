@@ -607,6 +607,7 @@ Object.assign(RU, {
   // ── Crafting (PR-«крафт») ──────────────────────────────────────────
   'ui.menu.craftingHint': 'Нажми, чтобы открыть зельеварку',
   'ui.craft.title': 'Зельеварка',
+  'ui.craft.tagline': 'АЛХИМИЧЕСКИЙ СТОЛ',
   'ui.craft.subtitle': 'Свари 10 видов зелий из ингредиентов с врагов',
   'ui.craft.inventoryTitle': 'Инвентарь зелий (4)',
   'ui.craft.ingredientsTitle': 'Ингредиенты',
