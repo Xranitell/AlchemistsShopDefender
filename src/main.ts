@@ -192,6 +192,15 @@ const pauseStats = new PauseStatsOverlay(document.body, {
   onClose: () => {
     userPaused = false;
     hud.setPaused(false);
+    // Pause walkthrough is bound to the lifetime of the panel — tear it
+    // down here too (the X button bypasses togglePause). Mark the
+    // walkthrough as done if a sequence was actually running.
+    const wasSequenceRunning = tutorial.isSequenceActive();
+    tutorial.cancelSequence('pauseOpen');
+    if (wasSequenceRunning && !meta.pauseTutorialDone) {
+      meta.pauseTutorialDone = true;
+      saveMeta(meta);
+    }
   },
   onExitToMenu: () => {
     // Player chose to abandon the run from the pause menu after the
@@ -202,6 +211,12 @@ const pauseStats = new PauseStatsOverlay(document.body, {
     // in the confirm dialog made that contract explicit.
     userPaused = false;
     hud.setPaused(false);
+    const wasSequenceRunning = tutorial.isSequenceActive();
+    tutorial.cancelSequence('pauseOpen');
+    if (wasSequenceRunning && !meta.pauseTutorialDone) {
+      meta.pauseTutorialDone = true;
+      saveMeta(meta);
+    }
     restart();
   },
 });
@@ -237,8 +252,33 @@ function togglePause(): void {
   hud.setPaused(userPaused);
   if (userPaused) {
     pauseStats.show(state);
+    // First-time pause walkthrough — fires once per save. Steps whose
+    // section isn't on-screen for this difficulty (e.g. contracts on a
+    // standard run) are skipped automatically by the tutorial controller.
+    if (!meta.pauseTutorialDone) {
+      tutorial.startSequence('pauseOpen', {
+        onComplete: () => {
+          meta.pauseTutorialDone = true;
+          saveMeta(meta);
+        },
+        onSkip: () => {
+          meta.pauseTutorialDone = true;
+          saveMeta(meta);
+        },
+      });
+    }
   } else {
     pauseStats.hide();
+    // The player closing the pause panel mid-walkthrough still counts
+    // as "they've seen it" — flip the flag so re-opening pause doesn't
+    // restart the same sequence from step one. We only flip when the
+    // sequence was actually running (not deferred due to a wave hint).
+    const wasSequenceRunning = tutorial.isSequenceActive();
+    tutorial.cancelSequence('pauseOpen');
+    if (wasSequenceRunning && !meta.pauseTutorialDone) {
+      meta.pauseTutorialDone = true;
+      saveMeta(meta);
+    }
   }
 }
 
@@ -1350,33 +1390,67 @@ function showMainMenu(): void {
   meta = loadMeta();
   audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
   audio.playMusic('menu');
+  // Closing one of the menu cards always tears down the walkthrough
+  // (the targeted card disappears with the menu, so the spotlight
+  // would no longer make sense). Only flip the meta-save flag when
+  // the sequence was actually running — if it was deferred (e.g. a
+  // wave-tutorial step is somehow still active), let it replay later.
+  const dismissMenuTutorial = (): void => {
+    const wasSequenceRunning = tutorial.isSequenceActive();
+    tutorial.cancelSequence('mainMenuOpen');
+    if (wasSequenceRunning && !meta.menuTutorialDone) {
+      meta.menuTutorialDone = true;
+      saveMeta(meta);
+    }
+  };
   mainMenu.show({
     meta,
     onBattle: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showDifficultySelect();
     },
     onLaboratory: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showLaboratory();
     },
     onDailyRewards: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showDailyRewards();
     },
     onSettings: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showSettings();
     },
     onCrafting: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showCrafting();
     },
     onLoadout: () => {
+      dismissMenuTutorial();
       mainMenu.hide();
       showLoadout();
     },
   });
+  // First-time main-menu walkthrough — fires once per save. Steps
+  // whose target card isn't on-screen for some reason are skipped
+  // automatically by the controller.
+  if (!meta.menuTutorialDone) {
+    tutorial.startSequence('mainMenuOpen', {
+      onComplete: () => {
+        meta.menuTutorialDone = true;
+        saveMeta(meta);
+      },
+      onSkip: () => {
+        meta.menuTutorialDone = true;
+        saveMeta(meta);
+      },
+    });
+  }
 }
 
 function showLoadout(): void {
