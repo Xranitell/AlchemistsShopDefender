@@ -236,10 +236,12 @@ export function updateEnemies(state: GameState, dt: number): void {
       state.tempShieldReduction = 0.8;
       m.damageFlash = 0.4;
       spawnFloatingText(state, t('floating.golemHeart'), m.pos, '#ffb86b');
-    } else if (!state.reviveUsed) {
-      m.hp = 0;
-      state.revivePaused = true;
     } else {
+      // Mannequin death goes straight to the new "Манекен пал" defeat
+      // panel. The previous flow first opened the revive overlay
+      // ("Манекен разрушен!") with a rewarded-ad / surrender choice;
+      // players reported it reading as a stale "old popup" that flashed
+      // before the new defeat panel, so we skip it entirely now.
       m.hp = 0;
       state.phase = 'gameover';
     }

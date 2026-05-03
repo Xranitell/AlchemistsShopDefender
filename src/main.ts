@@ -457,8 +457,16 @@ function tick(dt: number): void {
     if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
       showEndlessModifierOverlay();
     }
-    if (state.revivePaused && !reviveOverlay.isVisible()) {
-      showReviveOverlay();
+    // The revive overlay ("Манекен разрушен!") was the old defeat popup
+    // that flashed before the new "Манекен пал" panel. Players read this
+    // as a duplicate, so the gating happens now in enemy.ts (it never
+    // sets `revivePaused = true` anymore). We also defensively clear
+    // any stale `revivePaused` carried over from older saves so the
+    // overlay can never be re-opened.
+    if (state.revivePaused) {
+      state.revivePaused = false;
+      state.reviveUsed = true;
+      reviveOverlay.hide();
     }
     if (state.phase === 'victory' && !overlay.isVisible()) {
       showVictory();
@@ -1522,37 +1530,15 @@ function showSettings(): void {
   });
 }
 
-function showReviveOverlay(): void {
-  yandex.gameplayStop();
-  reviveOverlay.show({
-    onRevive: () => {
-      void yandex.showRewarded().then((ok) => {
-        reviveOverlay.hide();
-        // Guard: if user already clicked Give Up while ad was loading, bail.
-        if (!state.revivePaused) return;
-        if (!ok) {
-          // Ad failed or was skipped — game over.
-          state.revivePaused = false;
-          state.reviveUsed = true;
-          state.phase = 'gameover';
-          return;
-        }
-        state.reviveUsed = true;
-        state.revivePaused = false;
-        state.mannequin.hp = Math.round(state.mannequin.maxHp * 0.5);
-        state.tempShieldTime = 4;
-        state.tempShieldReduction = 0.8;
-        yandex.gameplayStart();
-      });
-    },
-    onGiveUp: () => {
-      reviveOverlay.hide();
-      state.revivePaused = false;
-      state.reviveUsed = true;
-      state.phase = 'gameover';
-    },
-  });
-}
+// `showReviveOverlay()` previously rendered the "Манекен разрушен!"
+// rewarded-ad / surrender prompt that fired before the new "Манекен пал"
+// defeat panel. Players reported it as a duplicate "old popup", so the
+// flow was retired — death now goes straight to the new defeat panel
+// (see `game/enemy.ts`). The function and overlay class itself are
+// retained intentionally: the revive overlay is still imported and
+// .hide()-ed defensively in `showGameOver()` to clear any stale state
+// from older save files, and we don't want to drop the dependency in
+// case a future build wants to re-introduce a revive moment elsewhere.
 
 function restart(): void {
   overlay.hide();
