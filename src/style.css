@@ -4259,6 +4259,414 @@ body {
   .blessing-title.curse { font-size: 19px; }
 }
 
+/* ── Mannequin loadout picker (own overlay) ──────────────────────────
+ *
+ * Visually a sibling of the blessing/curse picker — same dramatic
+ * stage backdrop (rays, sparks, sigil), same gold/amber palette, same
+ * pixel corner ornaments. Two stacked sections (Active / Aura) each
+ * with a 3-column grid of selectable module cards. The "active" slot
+ * uses gold/amber, the "aura" slot subtly pivots to cyan/violet so the
+ * player can tell at a glance which slot they're picking for. */
+.lo-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 2100;
+  padding: 16px;
+}
+.lo-panel {
+  --mp-edge: #ffd166;
+  --mp-glow: #ffae3a;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: min(96vw, 920px);
+  max-height: 94dvh;
+  display: flex;
+  flex-direction: column;
+  border: 3px solid #ffd166;
+  border-radius: 12px;
+  padding: 22px 22px 18px;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 174, 58, 0.22) 0%, transparent 58%),
+    linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 209, 102, 0.5),
+    inset 0 0 60px rgba(0, 0, 0, 0.55),
+    0 0 0 1px #06030a,
+    0 14px 50px rgba(255, 174, 58, 0.4),
+    0 0 32px rgba(255, 209, 102, 0.4);
+}
+.lo-panel::before,
+.lo-panel::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 3;
+}
+.lo-panel::before {
+  top: 6px; left: 6px;
+  background: linear-gradient(135deg, var(--mp-edge) 50%, transparent 50%);
+}
+.lo-panel::after {
+  bottom: 6px; right: 6px;
+  background: linear-gradient(-45deg, var(--mp-edge) 50%, transparent 50%);
+}
+
+.lo-head {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.lo-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--mp-edge);
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  text-shadow:
+    -2px -2px 0 #1a0608, 2px -2px 0 #1a0608,
+    -2px 2px 0 #1a0608, 2px 2px 0 #1a0608,
+    0 0 14px color-mix(in srgb, var(--mp-glow) 65%, transparent);
+}
+.lo-tagline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mp-glow);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--mp-glow) 55%, transparent);
+  margin: 4px 0 6px;
+  animation: mp-tagline-pulse 1.8s ease-in-out infinite;
+}
+.lo-subtitle {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: #d8d8e8;
+  margin: 6px auto 0;
+  max-width: 620px;
+}
+
+.lo-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.lo-section {
+  --section-edge: #ffd166;
+  --section-glow: #ffae3a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lo-section-aura {
+  --section-edge: #7df9ff;
+  --section-glow: #5ccfff;
+}
+.lo-section-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--section-edge);
+  text-align: center;
+  padding: 6px 10px;
+  border: 2px solid color-mix(in srgb, var(--section-edge) 65%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--section-edge) 12%, transparent) 0%,
+    color-mix(in srgb, var(--section-edge) 4%, transparent) 100%);
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008,
+    0 0 8px color-mix(in srgb, var(--section-glow) 55%, transparent);
+}
+.lo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ── Module cards ────────────────────────────────────────────────────
+ * Same anatomy as `.blessing-card` but slightly more compact (smaller
+ * icon, room for the "EQUIPPED" badge). Selected cards get a thicker
+ * rim, brighter glow, and a corner badge so it's obvious which one is
+ * currently active. Aura cards inherit the cyan section accent. */
+.lo-card {
+  --accent: #fde047;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px 12px;
+  font-family: inherit;
+  text-align: center;
+  color: #f4f4f4;
+  cursor: pointer;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 10%, #1a0d24) 0%,
+    #0a0612 100%);
+  border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 45%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 4px 0 rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 10px color-mix(in srgb, var(--accent) 22%, transparent);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    filter 0.18s ease;
+}
+.lo-card-aura { --accent: #7df9ff; }
+.lo-card:hover,
+.lo-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 60%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 6px 0 rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 22px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.lo-card:active { transform: translateY(1px); }
+.lo-card.selected {
+  border-color: var(--accent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 22%, #1a0d24) 0%,
+    #0a0612 100%);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 60%, transparent),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 6px 0 rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 24px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.lo-card-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(115deg,
+    transparent 30%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 50%,
+    transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 600ms ease;
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+.lo-card:hover .lo-card-shimmer,
+.lo-card:focus-visible .lo-card-shimmer {
+  transform: translateX(120%);
+  opacity: 1;
+}
+
+.lo-card-icon {
+  font-size: 32px;
+  line-height: 1;
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 30%, transparent));
+}
+.lo-card-name {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #fff2c2;
+  text-transform: uppercase;
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008,
+    0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.lo-card-desc {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  line-height: 1.2;
+  color: #cdd0da;
+}
+.lo-card-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  padding: 2px 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #1a0608;
+  background: linear-gradient(180deg, #ffe27a 0%, #ffd166 100%);
+  border: 1px solid #6a3a06;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    0 0 8px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.lo-cta {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  margin-top: 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 14px 30px;
+  color: #1a0608;
+  background: linear-gradient(180deg, #ffe27a 0%, #ffd166 50%, #c9941a 100%);
+  border: 3px solid #6a3a06;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(255, 209, 102, 0.7);
+  animation: defeat-cta-pulse 1.6s ease-in-out infinite;
+  transition: transform 90ms ease, filter 120ms ease;
+}
+.lo-cta:hover { transform: translateY(-1px) scale(1.02); filter: brightness(1.08); }
+.lo-cta:active { transform: translateY(2px) scale(0.99); }
+.lo-cta:focus-visible { outline: 3px solid #fff2c2; outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lo-tagline,
+  .lo-card-shimmer,
+  .lo-cta { animation: none; transition: none; }
+  .lo-card-shimmer { display: none; }
+}
+
+@media (max-width: 600px) {
+  .lo-grid { grid-template-columns: repeat(2, 1fr); }
+  .lo-card-icon { font-size: 26px; }
+  .lo-card-name { font-size: 10px; }
+  .lo-card-desc { font-size: 13px; }
+  .lo-title { font-size: 16px; }
+  .lo-cta { font-size: 11px; padding: 11px 22px; }
+}
+
+/* ── Main-menu loadout widget ────────────────────────────────────────
+ * Compact «equipped active + aura» card that lives in the left column
+ * alongside the laboratory / brewery cards. Inherits the warm
+ * `.mm-card` body but adds two slot rows showing the current pick. */
+.mm-loadout-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.mm-loadout-icon {
+  display: inline-block;
+  width: 22px;
+  text-align: center;
+  font-size: 16px;
+  color: #ffd166;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.5);
+}
+.mm-loadout-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.mm-loadout-slot {
+  --slot-edge: #ffd166;
+  --slot-glow: #ffae3a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 2px solid color-mix(in srgb, var(--slot-edge) 65%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--slot-edge) 14%, #1a0608) 0%,
+    rgba(10, 5, 20, 0.8) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--slot-edge) 30%, transparent),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px color-mix(in srgb, var(--slot-glow) 25%, transparent);
+}
+.mm-loadout-slot-aura {
+  --slot-edge: #7df9ff;
+  --slot-glow: #5ccfff;
+}
+.mm-loadout-slot-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 2px solid color-mix(in srgb, var(--slot-edge) 70%, transparent);
+  border-radius: 4px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--slot-edge) 18%, #0a0612) 0%,
+    #0a0612 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--slot-edge) 40%, transparent),
+    0 0 8px color-mix(in srgb, var(--slot-glow) 35%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--slot-glow) 55%, transparent);
+}
+.mm-loadout-slot-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mm-loadout-slot-tag {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--slot-edge);
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008,
+    0 0 6px color-mix(in srgb, var(--slot-glow) 55%, transparent);
+}
+.mm-loadout-slot-name {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: #fff2c2;
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mm-loadout-hint {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: var(--fg-dim);
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
 .hud-timer-bar {
   position: relative;
   width: 280px;

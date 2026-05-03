@@ -7,6 +7,16 @@ import { buildLeaderboardPanel } from './leaderboardOverlay';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
 import { masteryEssenceMult } from '../game/meta';
+import {
+  ACTIVE_MODULES,
+  AURA_MODULES,
+  isActiveModule,
+  isAuraModule,
+  moduleName,
+  type ActiveModuleId,
+  type AuraModuleId,
+} from '../data/modules';
+import { moduleGlyph } from './loadoutOverlay';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -22,6 +32,7 @@ export class MainMenu {
     onDailyRewards: () => void;
     onSettings: () => void;
     onCrafting: () => void;
+    onLoadout: () => void;
   }): void {
     this.root.innerHTML = '';
     const wrap = document.createElement('div');
@@ -146,6 +157,11 @@ export class MainMenu {
     labBtn.appendChild(labDesc);
     labBtn.addEventListener('click', opts.onLaboratory);
     leftCol.appendChild(labBtn);
+
+    // Loadout widget — «equipped» active module + aura. Click opens the
+    // dedicated loadout picker. Mirrors the laboratory card visually so
+    // both «meta state» cards live side-by-side in the left column.
+    leftCol.appendChild(buildLoadoutCard(opts.meta, opts.onLoadout));
 
     // Inline daily rewards calendar (lives alongside shop / laboratory in
     // the left column).
@@ -480,6 +496,73 @@ function mannequinIllustrationSVG(): string {
       <rect x="92" y="62" width="2" height="2" fill="${L}"/>
     </g>
   </svg>`;
+}
+
+/** Builds the «Снаряжение Манекена» card on the main menu — a compact
+ *  read-only widget that shows the currently-equipped active module and
+ *  aura side-by-side. Click opens the dedicated loadout picker overlay. */
+function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'mm-card mm-loadout-card';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'mm-card-title';
+  titleRow.innerHTML = `<span class="mm-loadout-icon">⚒</span><span>${t('ui.menu.loadout')}</span>`;
+  card.appendChild(titleRow);
+
+  const slots = document.createElement('div');
+  slots.className = 'mm-loadout-slots';
+
+  const activeId = isActiveModule(meta.selectedActiveModule)
+    ? (meta.selectedActiveModule as ActiveModuleId)
+    : (Object.keys(ACTIVE_MODULES)[0] as ActiveModuleId);
+  const auraId = isAuraModule(meta.selectedAuraModule)
+    ? (meta.selectedAuraModule as AuraModuleId)
+    : (Object.keys(AURA_MODULES)[0] as AuraModuleId);
+
+  slots.appendChild(buildLoadoutSlot('active', activeId));
+  slots.appendChild(buildLoadoutSlot('aura', auraId));
+  card.appendChild(slots);
+
+  const hint = document.createElement('div');
+  hint.className = 'mm-loadout-hint';
+  hint.textContent = t('ui.menu.loadoutHint');
+  card.appendChild(hint);
+
+  card.addEventListener('click', onOpen);
+  return card;
+}
+
+/** One inline `[icon] [name]` slot inside the loadout widget, tagged
+ *  with the slot kind so CSS can colour the rim differently for active
+ *  vs aura. */
+function buildLoadoutSlot(slot: 'active' | 'aura', id: string): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = `mm-loadout-slot mm-loadout-slot-${slot}`;
+
+  const ico = document.createElement('span');
+  ico.className = 'mm-loadout-slot-icon';
+  ico.textContent = moduleGlyph(slot, id);
+  wrap.appendChild(ico);
+
+  const text = document.createElement('span');
+  text.className = 'mm-loadout-slot-text';
+  const tag = document.createElement('span');
+  tag.className = 'mm-loadout-slot-tag';
+  tag.textContent = slot === 'active'
+    ? t('ui.menu.loadoutActiveTag')
+    : t('ui.menu.loadoutAuraTag');
+  text.appendChild(tag);
+
+  const name = document.createElement('span');
+  name.className = 'mm-loadout-slot-name';
+  const def = slot === 'active' ? ACTIVE_MODULES[id as ActiveModuleId] : AURA_MODULES[id as AuraModuleId];
+  name.textContent = def ? moduleName(def) : '—';
+  text.appendChild(name);
+  wrap.appendChild(text);
+
+  return wrap;
 }
 
 /** Builds a single `[pixel-icon] [amount]` chip for the main-menu top bar. */
