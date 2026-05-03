@@ -375,18 +375,21 @@ export class MainMenu {
 }
 
 function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number }): void {
+  // Mirrors `applyDailyReward` in `dailyRewardsOverlay.ts`. The two
+  // copies exist because the main-menu card's "claim" tap takes a
+  // shortcut path and never opens the full overlay; keep them in sync.
   switch (reward.type) {
-    case 'gold':
-      meta.blueEssence += reward.amount;
-      break;
     case 'blue_essence':
       meta.blueEssence += reward.amount;
       break;
     case 'ancient_essence':
       meta.ancientEssence += reward.amount;
       break;
-    case 'keys':
-      meta.keys += reward.amount;
+    case 'epic_key':
+      meta.epicKeys += reward.amount;
+      break;
+    case 'ancient_key':
+      meta.ancientKeys += reward.amount;
       break;
     case 'rerolls':
       meta.bonusRerolls += reward.amount;

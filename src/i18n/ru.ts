@@ -141,6 +141,8 @@ export const RU: Record<string, string> = {
   'ui.settings.stat.blue': 'СЭ: ',
   'ui.settings.stat.ancient': 'ДЭ: ',
   'ui.settings.stat.keys': 'Ключи: ',
+  'ui.settings.stat.epicKeys': 'Эпические ключи: ',
+  'ui.settings.stat.ancientKeys': 'Древние ключи: ',
   'ui.settings.reset': 'Сбросить прогресс',
   'ui.settings.resetConfirm': 'Сбросить весь прогресс? Это действие нельзя отменить.',
   'ui.settings.close': 'Закрыть',
@@ -203,11 +205,15 @@ export const RU: Record<string, string> = {
   'ui.preview.epic.tagline': 'ОПАСНОСТЬ ВЫСОКАЯ',
   'ui.preview.ancient.tagline': 'ВХОД БЕЗ ВОЗВРАТА',
 
-  // Reward labels (data/dailyRewards.ts, data/battlePass.ts)
-  'reward.gold': '{n} зол.',
+  // Reward labels (data/dailyRewards.ts, data/battlePass.ts).
+  // Only currencies that actually live in MetaSave appear here — gold is
+  // per-run-only and was removed (was being silently miscredited as СЭ),
+  // and the legacy "keys" bucket was split into the two real difficulty
+  // keys (`epicKeys` / `ancientKeys`).
   'reward.blue_essence': '{n} СЭ',
   'reward.ancient_essence': '{n} ДЭ',
-  'reward.keys': '{n} кл.',
+  'reward.epic_key': '{n} эп.кл.',
+  'reward.ancient_key': '{n} др.кл.',
   'reward.rerolls': '{n} рер.',
 
   // Difficulty mode ability labels

@@ -121,18 +121,21 @@ export class DailyRewardsOverlay {
 }
 
 function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number }): void {
+  // All reward types here MUST credit a real meta-save bucket. If you add
+  // a new type to `DailyReward['type']`, add the matching crediting line
+  // below — TypeScript's exhaustiveness guard catches missing cases.
   switch (reward.type) {
-    case 'gold':
-      meta.blueEssence += reward.amount;
-      break;
     case 'blue_essence':
       meta.blueEssence += reward.amount;
       break;
     case 'ancient_essence':
       meta.ancientEssence += reward.amount;
       break;
-    case 'keys':
-      meta.keys += reward.amount;
+    case 'epic_key':
+      meta.epicKeys += reward.amount;
+      break;
+    case 'ancient_key':
+      meta.ancientKeys += reward.amount;
       break;
     case 'rerolls':
       meta.bonusRerolls += reward.amount;

@@ -1,4 +1,5 @@
 import { BP_LEVELS, BP_MAX_LEVEL, bpRewardLabel } from '../data/battlePass';
+import type { BpReward } from '../data/battlePass';
 import { rewardSprite } from '../data/dailyRewards';
 import type { MetaSave } from '../game/save';
 import { saveMeta } from '../game/save';
@@ -183,7 +184,7 @@ export class BattlePassOverlay {
 /** Builds a `[pixel-icon][amount label]` cell used for both free and
  *  premium rewards. Centralised so the two columns stay visually identical
  *  with the daily-rewards calendar. */
-function buildBpRewardCell(reward: { type: 'gold' | 'blue_essence' | 'ancient_essence' | 'keys'; amount: number }): HTMLElement {
+function buildBpRewardCell(reward: BpReward): HTMLElement {
   const wrap = document.createElement('span');
   wrap.className = 'bp-reward';
   // Ancient-essence rewards glow gold; the rest stay flat.
@@ -211,18 +212,24 @@ function claimBpReward(meta: MetaSave, level: number, track: 'free' | 'premium')
 }
 
 function applyBpReward(meta: MetaSave, reward: { type: string; amount: number }): void {
+  // Mirror of `applyDailyReward` — every reward type maps directly to a
+  // real meta-save bucket. See `BpReward['type']` in `data/battlePass.ts`
+  // for the exhaustive list.
   switch (reward.type) {
-    case 'gold':
-      meta.blueEssence += reward.amount;
-      break;
     case 'blue_essence':
       meta.blueEssence += reward.amount;
       break;
     case 'ancient_essence':
       meta.ancientEssence += reward.amount;
       break;
-    case 'keys':
-      meta.keys += reward.amount;
+    case 'epic_key':
+      meta.epicKeys += reward.amount;
+      break;
+    case 'ancient_key':
+      meta.ancientKeys += reward.amount;
+      break;
+    case 'rerolls':
+      meta.bonusRerolls += reward.amount;
       break;
   }
 }
