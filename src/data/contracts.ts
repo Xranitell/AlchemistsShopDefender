@@ -187,12 +187,21 @@ export const CONTRACTS: ContractDef[] = [
     i18nName: 'ui.contract.no_reroll.name',
     i18nDesc: 'ui.contract.no_reroll.desc',
     reward: { kind: 'blueMult', amount: 0.25 },
-    progress: (s) => ({
-      current: s.contractStats.rerollUsed ? 0 : 1,
-      target: 1,
-      done: !s.contractStats.rerollUsed,
-      failed: s.contractStats.rerollUsed,
-    }),
+    // Pass-fail goal: predicate is "the player never used a reroll".
+    // Goal is *only* realised once the run terminates, so we gate `done`
+    // on the run actually being over. Otherwise the HUD would flip to
+    // "✓ Выполнено" on wave 1 before the player has drafted anything,
+    // which players read as a bug.
+    progress: (s) => {
+      const broken = s.contractStats.rerollUsed;
+      const runEnded = s.phase === 'victory' || s.phase === 'gameover';
+      return {
+        current: broken || !runEnded ? 0 : 1,
+        target: 1,
+        done: !broken && runEnded,
+        failed: broken,
+      };
+    },
   },
   {
     id: 'no_skip',
@@ -200,12 +209,18 @@ export const CONTRACTS: ContractDef[] = [
     i18nName: 'ui.contract.no_skip.name',
     i18nDesc: 'ui.contract.no_skip.desc',
     reward: { kind: 'blue', amount: 8 },
-    progress: (s) => ({
-      current: s.contractStats.cardSkipUsed ? 0 : 1,
-      target: 1,
-      done: !s.contractStats.cardSkipUsed,
-      failed: s.contractStats.cardSkipUsed,
-    }),
+    // See `no_reroll` — same gating: the contract counts as `done` only
+    // after the run ends without any draft skip.
+    progress: (s) => {
+      const broken = s.contractStats.cardSkipUsed;
+      const runEnded = s.phase === 'victory' || s.phase === 'gameover';
+      return {
+        current: broken || !runEnded ? 0 : 1,
+        target: 1,
+        done: !broken && runEnded,
+        failed: broken,
+      };
+    },
   },
   {
     id: 'gold_hoarder',
