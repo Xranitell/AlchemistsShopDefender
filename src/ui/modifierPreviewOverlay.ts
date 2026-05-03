@@ -18,16 +18,85 @@ export class ModifierPreviewOverlay {
   }): void {
     this.root.innerHTML = '';
     const panel = document.createElement('div');
-    panel.className = 'panel modifier-preview-panel';
+    // Mode-specific class lets the stylesheet pick a colourway: epic = a
+    // violet/crimson "danger" palette, ancient = an even more menacing
+    // gold/blood/onyx palette. Other modes fall back to the generic look.
+    panel.className = `panel modifier-preview-panel mp-mode-${opts.mode}`;
     panel.style.setProperty('--dif-color', DIFFICULTY_MODES[opts.mode].color);
 
     const def = DIFFICULTY_MODES[opts.mode];
+    const dramatic = opts.mode === 'epic' || opts.mode === 'ancient';
+
+    // ── Stage: ominous backdrop with rotating rays + drifting embers,
+    // mirroring the defeat screen's "smouldering" feel. Only rendered
+    // on dangerous modes — normal/endless/daily keep the plain header.
+    if (dramatic) {
+      const stage = document.createElement('div');
+      stage.className = 'mp-stage';
+      const rays = document.createElement('div');
+      rays.className = 'mp-rays';
+      stage.appendChild(rays);
+      const sparkLayer = document.createElement('div');
+      sparkLayer.className = 'mp-sparks';
+      // Ancient gets noticeably more particles so it reads as a stronger,
+      // more chaotic threat than Epic.
+      const sparkCount = opts.mode === 'ancient' ? 18 : 12;
+      for (let i = 0; i < sparkCount; i++) {
+        const spark = document.createElement('span');
+        spark.className = 'mp-spark';
+        spark.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+        spark.style.setProperty('--delay', `${(Math.random() * 2.4).toFixed(2)}s`);
+        spark.style.setProperty('--dur', `${(2.2 + Math.random() * 1.6).toFixed(2)}s`);
+        spark.style.setProperty('--scale', `${(0.6 + Math.random() * 0.9).toFixed(2)}`);
+        sparkLayer.appendChild(spark);
+      }
+      stage.appendChild(sparkLayer);
+
+      // Pixel "alarm" sigil: hollow octagon framing a triangular danger
+      // glyph. Pure CSS so we don't ship another sprite.
+      const sigil = document.createElement('div');
+      sigil.className = 'mp-sigil';
+      sigil.setAttribute('aria-hidden', 'true');
+      stage.appendChild(sigil);
+
+      panel.appendChild(stage);
+    }
 
     const header = document.createElement('div');
     header.className = 'mp-header';
     const h = document.createElement('h2');
-    h.textContent = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
+    h.className = 'mp-title';
+    const titleText = tWithFallback(`ui.difficulty.${opts.mode}.name`, def.name);
+    if (dramatic) {
+      // Per-character glitch wrapper — same trick as the defeat title so
+      // each letter can jitter independently and carry a chromatic
+      // aberration ghost via ::before.
+      for (const ch of Array.from(titleText)) {
+        if (ch === ' ') {
+          h.appendChild(document.createTextNode(' '));
+          continue;
+        }
+        const span = document.createElement('span');
+        span.className = 'mp-title-char';
+        span.textContent = ch;
+        span.dataset.char = ch;
+        span.style.animationDelay = `${(Math.random() * 0.6).toFixed(2)}s`;
+        h.appendChild(span);
+      }
+    } else {
+      h.textContent = titleText;
+    }
     header.appendChild(h);
+
+    if (dramatic) {
+      // Loud uppercase tagline directly under the title. Different copy
+      // per mode so Ancient feels like a step beyond Epic.
+      const tagline = document.createElement('div');
+      tagline.className = 'mp-tagline';
+      tagline.textContent = t(`ui.preview.${opts.mode}.tagline`);
+      header.appendChild(tagline);
+    }
+
     const sub = document.createElement('p');
     sub.className = 'mp-subtitle';
     sub.textContent = t('ui.preview.subtitle');
@@ -86,9 +155,19 @@ export class ModifierPreviewOverlay {
     // Warning ribbon
     const warn = document.createElement('div');
     warn.className = 'mp-warn';
-    warn.textContent = def.keyCost === 'ancient'
+    if (dramatic) {
+      const icon = document.createElement('span');
+      icon.className = 'mp-warn-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '⚠';
+      warn.appendChild(icon);
+    }
+    const warnText = document.createElement('span');
+    warnText.className = 'mp-warn-text';
+    warnText.textContent = def.keyCost === 'ancient'
       ? t('ui.preview.consumeAncient')
       : t('ui.preview.consumeEpic');
+    warn.appendChild(warnText);
     panel.appendChild(warn);
 
     // Actions

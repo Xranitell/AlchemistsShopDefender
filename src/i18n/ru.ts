@@ -191,6 +191,8 @@ export const RU: Record<string, string> = {
   'ui.preview.endless.line0': 'Волны повторяются по кругу',
   'ui.preview.endless.line1': 'Сложность растёт линейно с каждой волной',
   'ui.preview.endless.line2': 'Не требует ключа',
+  'ui.preview.epic.tagline': 'ОПАСНОСТЬ ВЫСОКАЯ',
+  'ui.preview.ancient.tagline': 'ВХОД БЕЗ ВОЗВРАТА',
 
   // Reward labels (data/dailyRewards.ts, data/battlePass.ts)
   'reward.gold': '{n} зол.',

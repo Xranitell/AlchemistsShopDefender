@@ -268,6 +268,8 @@ export const EN: Record<string, string> = {
   'ui.preview.endless.line0': 'Waves loop endlessly',
   'ui.preview.endless.line1': 'Each loop: +10% HP and +5% speed for enemies',
   'ui.preview.endless.line2': 'No key required',
+  'ui.preview.epic.tagline': 'HIGH DANGER',
+  'ui.preview.ancient.tagline': 'POINT OF NO RETURN',
 
   // Reward labels (data/dailyRewards.ts, data/battlePass.ts)
   'reward.gold': '{n} gold',
