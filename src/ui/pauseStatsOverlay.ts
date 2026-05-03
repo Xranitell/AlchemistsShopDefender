@@ -4,6 +4,7 @@ import { MUTATOR_BY_ID } from '../data/mutators';
 import { CONTRACT_BY_ID } from '../data/contracts';
 import { BLESSING_BY_ID, CURSE_BY_ID } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
+import { endlessModifierDesc, endlessModifierName } from './endlessModifierOverlay';
 
 /** Pause-menu stats overlay.
  *  Shows all active player and enemy modifiers in a scrollable panel,
@@ -197,8 +198,8 @@ export class PauseStatsOverlay {
       // ── Endless modifiers ──────────────────────────────────────────────
       if (hasEndless) {
         const endlessList: StatLine[] = state.endlessModifiers.map((em) => ({
-          label: em.label,
-          value: em.desc,
+          label: endlessModifierName(em),
+          value: endlessModifierDesc(em),
           kind: 'debuff',
         }));
         const endlessSection = this.buildSection(

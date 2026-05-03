@@ -618,6 +618,22 @@ Object.assign(EN, {
   'ui.lb.loading': 'Loading…',
   'ui.lb.empty': 'No entries yet.',
 
+  // ── Endless modifiers ────────────────────────────────────────────────
+  'ui.endless.cycleTitle': 'Endless Cycle {loop}',
+  'ui.endless.newModifier': 'New modifier for the next cycle:',
+  'ui.endless.activeModifiers': 'Active modifiers:',
+  'ui.endless.continue': 'Continue',
+  'endless.hp_x125.name': 'Vitality',
+  'endless.hp_x125.desc': '+25% enemy HP',
+  'endless.speed_x110.name': 'Fleet Feet',
+  'endless.speed_x110.desc': '+10% enemy speed',
+  'endless.gold_minus10.name': 'Stinginess',
+  'endless.gold_minus10.desc': '−10% gold',
+  'endless.extra_enemies.name': 'Reinforcements',
+  'endless.extra_enemies.desc': '+2 enemies in every wave',
+  'endless.elites_on_normal.name': 'Elite Patrol',
+  'endless.elites_on_normal.desc': 'Elites on normal waves',
+
   // ── Revive overlay ──────────────────────────────────────────────────
   'ui.revive.title': 'Mannequin destroyed!',
   'ui.revive.desc': 'Watch an ad to revive at 50% HP with a 4-second shield.',
