@@ -16,6 +16,7 @@
  *  - `cards.<id>.name` / `.desc`       — content from data/cards.ts.
  *  - `towers.<id>.name` / `.desc`      — content from data/towers.ts.
  *  - `modules.<id>.name` / `.desc`     — content from data/modules.ts.
+ *  - `endless.<id>.name` / `.desc`     — endless-mode modifiers.
  *  - `enemies.<kind>.name`             — enemy display names.
  *  - `floating.<id>`                   — short floating-text strings.
  *
@@ -75,12 +76,6 @@ export function setLocale(loc: Locale): void {
 export function t(key: string, params?: Record<string, string | number>): string {
   const dict = DICTS[currentLocale];
   let s = dict[key];
-  if (s === undefined) {
-    // Fallback chain: try the other locale (so RU strings show up even
-    // when only RU has been authored yet for a particular key).
-    const other: Locale = currentLocale === 'ru' ? 'en' : 'ru';
-    s = DICTS[other][key];
-  }
   if (s === undefined) return key;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -99,16 +94,13 @@ export function onLocaleChange(cb: () => void): () => void {
 }
 
 /**
- * Look up a content key with a fallback string. Used by the data-layer
- * accessors (e.g. `cardName(card)`): if no translation exists for the
- * given key, the data file's source-of-truth Russian string is returned
- * unchanged.
+ * Look up a content key with a Russian fallback string. Used by the
+ * data-layer accessors (e.g. `cardName(card)`): if a Russian translation is
+ * missing, the source data fallback is returned; non-Russian locales show the
+ * key instead of leaking Russian text into the interface.
  */
 export function tWithFallback(key: string, fallback: string): string {
   const dict = DICTS[currentLocale];
   if (dict[key] !== undefined) return dict[key];
-  // Fallback chain: try the other locale (English coverage may be partial).
-  const other: Locale = currentLocale === 'ru' ? 'en' : 'ru';
-  if (DICTS[other][key] !== undefined) return DICTS[other][key];
-  return fallback;
+  return currentLocale === 'ru' ? fallback : key;
 }

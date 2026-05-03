@@ -318,15 +318,18 @@ const loop = new Loop((dt) => tick(dt));
 onLocaleChange(() => {
   if (mainMenu.isVisible?.()) showMainMenu();
   else if (settingsOverlay.isVisible?.()) showSettings();
-  // Update portrait-warning text for the current locale.
-  const pw = document.getElementById('portrait-warning');
-  if (pw) {
-    const main = pw.querySelector('[data-i18n="ui.rotate"]');
-    const sub = pw.querySelector('[data-i18n="ui.rotate.sub"]');
-    if (main) main.textContent = t('ui.rotate');
-    if (sub) sub.textContent = t('ui.rotate.sub');
-  }
+  updateStaticI18nText();
 });
+updateStaticI18nText();
+
+function updateStaticI18nText(): void {
+  const pw = document.getElementById('portrait-warning');
+  if (!pw) return;
+  const main = pw.querySelector('[data-i18n="ui.rotate"]');
+  const sub = pw.querySelector('[data-i18n="ui.rotate.sub"]');
+  if (main) main.textContent = t('ui.rotate');
+  if (sub) sub.textContent = t('ui.rotate.sub');
+}
 
 tutorial.attach(canvas, {
   onSkip: () => {
@@ -1683,5 +1686,3 @@ function restart(): void {
   mannequinShop.attach(state);
   showMainMenu();
 }
-
-
