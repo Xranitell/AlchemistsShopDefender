@@ -20,6 +20,24 @@ export class DifficultyOverlay {
     const panel = document.createElement('div');
     panel.className = 'panel difficulty-panel';
 
+    // Decorative ember layer drifting up across the panel (mirrors the
+    // run-end / main-menu language so the dungeon-select screen feels
+    // like the same cinematic surface). Each spark gets randomised
+    // x/delay/duration/scale so the layer never visibly loops.
+    const sparks = document.createElement('div');
+    sparks.className = 'difficulty-sparks';
+    sparks.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 16; i++) {
+      const s = document.createElement('span');
+      s.className = 'difficulty-spark';
+      s.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+      s.style.setProperty('--delay', `${(Math.random() * 6).toFixed(2)}s`);
+      s.style.setProperty('--dur', `${(5 + Math.random() * 4).toFixed(2)}s`);
+      s.style.setProperty('--scale', `${(0.5 + Math.random() * 1.1).toFixed(2)}`);
+      sparks.appendChild(s);
+    }
+    panel.appendChild(sparks);
+
     const header = document.createElement('div');
     header.className = 'difficulty-header';
     const h = document.createElement('h2');
@@ -56,10 +74,27 @@ export class DifficultyOverlay {
       label.textContent = t(`ui.difficulty.${modeId}.short`).toUpperCase();
       card.appendChild(label);
 
-      // Icon / large sigil
+      // Icon / large sigil. The glyph itself sits in `.difficulty-glyph`
+      // so we can animate it (rotate / bob) independently of the halo
+      // and orbiting sparkle dots that decorate it. Sparkle markup lives
+      // here (rather than as ::before/::after) so we can have several
+      // dots at separate offsets / phases per mode.
       const iconWrap = document.createElement('div');
       iconWrap.className = 'difficulty-icon';
-      iconWrap.textContent = modeIcon(modeId);
+      const halo = document.createElement('span');
+      halo.className = 'difficulty-icon-halo';
+      iconWrap.appendChild(halo);
+      const glyph = document.createElement('span');
+      glyph.className = 'difficulty-glyph';
+      glyph.textContent = modeIcon(modeId);
+      iconWrap.appendChild(glyph);
+      // Three orbiting sparkle dots — picked up by per-mode CSS so each
+      // dungeon has its own feel (orbit speed, distance, colour).
+      for (let i = 0; i < 3; i++) {
+        const orb = document.createElement('span');
+        orb.className = `difficulty-orb difficulty-orb-${i + 1}`;
+        iconWrap.appendChild(orb);
+      }
       card.appendChild(iconWrap);
 
       // Name
