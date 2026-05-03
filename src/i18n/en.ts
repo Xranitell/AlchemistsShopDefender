@@ -312,6 +312,10 @@ export const EN: Record<string, string> = {
 
   // ── Meta tree (laboratory) ───────────────────────────────────────────
   'ui.meta.title': 'Talent Laboratory',
+  'ui.meta.tagline': 'three schools · one mannequin heart',
+  'ui.meta.tab.potions': 'School of Vials',
+  'ui.meta.tab.engineering': 'School of Towers',
+  'ui.meta.tab.survival': 'School of Survival',
   'ui.meta.blue': 'BE: ',
   'ui.meta.ancient': 'AE: ',
   'ui.meta.statsLine': 'Runs: {runs} · Best wave: {wave}',
