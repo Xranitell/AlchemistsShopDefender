@@ -300,6 +300,8 @@ export const EN: Record<string, string> = {
   'ui.daily.today': 'Today',
   'ui.daily.day': 'Day {n}',
   'ui.daily.claim': 'Claim',
+  'ui.daily.indicator.unclaimed': 'Reward waiting — tap to open the calendar',
+  'ui.daily.indicator.claimed': 'Today\u2019s reward already claimed',
   'ui.daily.claimed': 'Already claimed',
 
   // ── Battle pass ──────────────────────────────────────────────────────
