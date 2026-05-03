@@ -85,8 +85,12 @@ export function branchName(b: MetaBranch): string {
 // ────────── Layout constants for the three diamond trees ──────────
 //
 // The tree panel renders three rhombi side-by-side. Each tree spans the
-// same seven tiers (top keystone → 3 → 3 → 5 → 3 → 3 → bottom root) and
+// same seven tiers (top keystone → 3 → 5 → 5 → 5 → 3 → bottom root) and
 // the same widths, so the player sees three identical-shaped diamonds.
+// The middle three tiers all hold 5 cells, which gives every tree two extra
+// slots compared with the original 1-3-3-5-3-3-1 shape — the engineering
+// branch uses those slots to host the two new "+1 руническая точка" talents
+// (δ / ε) that unlock the last pair of locked rune points around the dais.
 
 /** Per-row Y coordinate inside the SVG view-box. Tier indices are top→bottom. */
 const TIER_Y = [110, 220, 330, 440, 550, 660, 770];
@@ -95,9 +99,9 @@ const TIER_Y = [110, 220, 330, 440, 550, 660, 770];
 const TIER_X_OFFSETS: number[][] = [
   [0],                                    // tier 0 — top apex (1 cell)
   [-80, 0, 80],                           // tier 1 — 3 cells
-  [-80, 0, 80],                           // tier 2 — 3 cells
+  [-160, -80, 0, 80, 160],                // tier 2 — 5 cells
   [-160, -80, 0, 80, 160],                // tier 3 — 5 cells (widest)
-  [-80, 0, 80],                           // tier 4 — 3 cells
+  [-160, -80, 0, 80, 160],                // tier 4 — 5 cells
   [-80, 0, 80],                           // tier 5 — 3 cells
   [0],                                    // tier 6 — bottom apex (1 cell)
 ];
@@ -226,14 +230,10 @@ function buildTreeNodes(def: TreeDef): MetaUpgrade[] {
     }
   }
 
-  // Extra fan-out from the wide centre row to its narrower neighbours so
-  // every tier-3 wing cell has at least two upward paths.
-  // (TIER_X_OFFSETS[3] has 5 cells; TIER_X_OFFSETS[2] / [4] have 3 cells at
-  //  -80, 0, 80. Wing cells at ±160 would otherwise only link to ±80.)
-  link(cellId(2, 0), cellId(3, 0));
-  link(cellId(2, 2), cellId(3, 4));
-  link(cellId(4, 0), cellId(3, 0));
-  link(cellId(4, 2), cellId(3, 4));
+  // The wide centre tier (3) and its neighbours (2 / 4) all share the same
+  // five-cell offsets, so the auto-linker above already wires same-offset
+  // cells together. No extra fan-out is needed for the wing cells: each ±160
+  // cell has its same-offset partner directly above and below.
 
   // The single-cell apex tiers (root at the bottom, keystone at the top)
   // fan out to *every* cell of the adjacent 3-cell tier. This makes the
@@ -296,8 +296,16 @@ const POTION_TREE: TreeDef = {
         effect: { kind: 'reactionDamage', value: 1.10 },
       },
     ],
-    // Tier 2 — 3 (small / notable / small)
+    // Tier 2 — 5 cells (small / small / notable / small / small)
     [
+      {
+        kind: 'small',
+        name: 'Резонансный порошок',
+        desc: '+10% урона элементальным реакциям',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'reactionDamage', value: 1.10 },
+      },
       {
         kind: 'small',
         name: 'Бронебойные склянки',
@@ -321,6 +329,14 @@ const POTION_TREE: TreeDef = {
         cost: 30,
         currency: 'blue',
         effect: { kind: 'critChance', value: 0.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Широкий всплеск III',
+        desc: '+5% радиус взрыва склянок',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'potionRadius', value: 1.05 },
       },
     ],
     // Tier 3 — 5 small (widest)
@@ -366,8 +382,16 @@ const POTION_TREE: TreeDef = {
         effect: { kind: 'potionEchoChance', value: 0.08 },
       },
     ],
-    // Tier 4 — 3 (small / notable / small)
+    // Tier 4 — 5 cells (small / small / notable / small / small)
     [
+      {
+        kind: 'small',
+        name: 'Тонкий помол II',
+        desc: '+5% радиус взрыва склянок',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'potionRadius', value: 1.05 },
+      },
       {
         kind: 'small',
         name: 'Концентрат II',
@@ -392,6 +416,14 @@ const POTION_TREE: TreeDef = {
         cost: 18,
         currency: 'blue',
         effect: { kind: 'potionCooldown', value: 0.96 },
+      },
+      {
+        kind: 'small',
+        name: 'Запальный клапан',
+        desc: '+4% шанс микровзрыва склянки',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'potionEchoChance', value: 0.04 },
       },
     ],
     // Tier 5 — 3 small
@@ -480,8 +512,17 @@ const TOWER_TREE: TreeDef = {
         effect: { kind: 'runePointUnlock', value: 4 },
       },
     ],
-    // Tier 2 — small / notable / small
+    // Tier 2 — 5 cells; the wing slots host the new rune-unlock talents δ / ε
+    // so every locked rune around the dais now has a matching talent.
     [
+      {
+        kind: 'small',
+        name: 'Открытая руническая точка δ',
+        desc: '+1 руническая точка стойки',
+        cost: 36,
+        currency: 'blue',
+        effect: { kind: 'runePointUnlock', value: 5 },
+      },
       {
         kind: 'small',
         name: 'Стартовый разряд',
@@ -506,6 +547,14 @@ const TOWER_TREE: TreeDef = {
         cost: 27,
         currency: 'blue',
         effect: { kind: 'towerDiscount', value: 10 },
+      },
+      {
+        kind: 'small',
+        name: 'Открытая руническая точка ε',
+        desc: '+1 руническая точка стойки',
+        cost: 36,
+        currency: 'blue',
+        effect: { kind: 'runePointUnlock', value: 6 },
       },
     ],
     // Tier 3 — 5 small (widest)
@@ -551,8 +600,16 @@ const TOWER_TREE: TreeDef = {
         effect: { kind: 'towerRange', value: 1.05 },
       },
     ],
-    // Tier 4 — small / notable / small
+    // Tier 4 — 5 cells (small / small / notable / small / small)
     [
+      {
+        kind: 'small',
+        name: 'Перегрузная катушка III',
+        desc: '+15 макс. заряда Перегруза',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'overloadMaxCharge', value: 15 },
+      },
       {
         kind: 'small',
         name: 'Усиленные дюзы II',
@@ -577,6 +634,14 @@ const TOWER_TREE: TreeDef = {
         cost: 18,
         currency: 'blue',
         effect: { kind: 'towerRange', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Смазанные шестерни II',
+        desc: '+4% скорострельности стоек',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'towerFireRate', value: 1.04 },
       },
     ],
     // Tier 5 — 3 small (entry tier)
@@ -665,8 +730,16 @@ const SURVIVAL_TREE: TreeDef = {
         effect: { kind: 'bossShield', value: 25 },
       },
     ],
-    // Tier 2 — small / notable / small
+    // Tier 2 — 5 cells (small / small / notable / small / small)
     [
+      {
+        kind: 'small',
+        name: 'Боевой ремонт',
+        desc: '+1 ХП/сек регенерации Манекена вне боя',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'autoRepair', value: 1 },
+      },
       {
         kind: 'small',
         name: 'Прочный каркас III',
@@ -691,6 +764,14 @@ const SURVIVAL_TREE: TreeDef = {
         cost: 30,
         currency: 'blue',
         effect: { kind: 'armor', value: 0.03 },
+      },
+      {
+        kind: 'small',
+        name: 'Щит босс-волны III',
+        desc: '+25 ХП щит в начале босс-волны',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'bossShield', value: 25 },
       },
     ],
     // Tier 3 — 5 small (widest)
@@ -736,8 +817,16 @@ const SURVIVAL_TREE: TreeDef = {
         effect: { kind: 'goldDrop', value: 1.10 },
       },
     ],
-    // Tier 4 — small / notable / small
+    // Tier 4 — 5 cells (small / small / notable / small / small)
     [
+      {
+        kind: 'small',
+        name: 'Лёгкий ход',
+        desc: '+10% радиус подбора лута',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'lootRadius', value: 1.10 },
+      },
       {
         kind: 'small',
         name: 'Прочный каркас II',
@@ -762,6 +851,14 @@ const SURVIVAL_TREE: TreeDef = {
         cost: 18,
         currency: 'blue',
         effect: { kind: 'armor', value: 0.03 },
+      },
+      {
+        kind: 'small',
+        name: 'Крепкий кошелёк',
+        desc: '+30 стартового золота',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'startGold', value: 30 },
       },
     ],
     // Tier 5 — 3 small (entry tier)
