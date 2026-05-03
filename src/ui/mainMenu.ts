@@ -19,12 +19,8 @@ export class MainMenu {
     meta: MetaSave;
     onBattle: () => void;
     onLaboratory: () => void;
-    onBattlePass: () => void;
     onDailyRewards: () => void;
     onSettings: () => void;
-    onDailyExperiment?: () => void;
-    onBossChallenge?: () => void;
-    onLeaderboards?: () => void;
     onCrafting: () => void;
   }): void {
     this.root.innerHTML = '';
@@ -173,7 +169,7 @@ export class MainMenu {
     lbTitle.className = 'mm-card-title';
     lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
     lbWrap.appendChild(lbTitle);
-    lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 3, compact: true }));
     rightCol.appendChild(lbWrap);
 
     // Inline daily rewards calendar
@@ -182,28 +178,9 @@ export class MainMenu {
     body.appendChild(rightCol);
     wrap.appendChild(body);
 
-    // ─── Bottom row: battle button + mode buttons ─────────────────
+    // ─── Bottom row: battle button ─────────────────────────────────
     const bottomRow = document.createElement('div');
     bottomRow.className = 'mm-bottom-row';
-
-    const modeBtns = document.createElement('div');
-    modeBtns.className = 'mm-mode-btns';
-    const dailyBtn2 = document.createElement('button');
-    dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
-    dailyBtn2.textContent = t('ui.menu.dailyExp');
-    if (opts.onDailyExperiment) dailyBtn2.addEventListener('click', opts.onDailyExperiment);
-    modeBtns.appendChild(dailyBtn2);
-    const bossBtn = document.createElement('button');
-    bossBtn.className = 'mm-mode-btn mm-boss-challenge';
-    bossBtn.textContent = t('ui.menu.boss');
-    if (opts.onBossChallenge) bossBtn.addEventListener('click', opts.onBossChallenge);
-    modeBtns.appendChild(bossBtn);
-    const bpBtn = document.createElement('button');
-    bpBtn.className = 'mm-mode-btn mm-bp-mode';
-    bpBtn.textContent = t('ui.menu.battlePass');
-    bpBtn.addEventListener('click', opts.onBattlePass);
-    modeBtns.appendChild(bpBtn);
-    bottomRow.appendChild(modeBtns);
 
     const battleBtn = document.createElement('button');
     battleBtn.className = 'mm-battle-btn';
@@ -239,11 +216,11 @@ export class MainMenu {
     titleRow.innerHTML = `<span>📅</span><span>${t('ui.daily.title')}</span>`;
 
     const currentDay = opts.meta.dailyDay ?? 0;
-    const weekStart = Math.floor(currentDay / 7) * 7;
-    const weekNum = Math.floor(currentDay / 7) + 1;
+    const pageStart = Math.floor(currentDay / 9) * 9;
+    const pageNum = Math.floor(currentDay / 9) + 1;
     const badge = document.createElement('span');
     badge.className = 'mm-daily-week-badge';
-    badge.textContent = t('ui.daily.week', { n: weekNum });
+    badge.textContent = t('ui.daily.week', { n: pageNum });
     titleRow.appendChild(badge);
     card.appendChild(titleRow);
 
@@ -251,8 +228,8 @@ export class MainMenu {
     grid.className = 'mm-daily-grid';
     const claimable = canClaimDaily(opts.meta);
 
-    for (let i = 0; i < 7; i++) {
-      const dayIdx = weekStart + i;
+    for (let i = 0; i < 9; i++) {
+      const dayIdx = pageStart + i;
       const reward = DAILY_REWARDS[dayIdx % DAILY_CYCLE];
       const cell = document.createElement('div');
       cell.className = 'mm-daily-cell';

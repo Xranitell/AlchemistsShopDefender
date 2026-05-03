@@ -2101,8 +2101,8 @@ body {
 }
 .mm-daily-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
   margin: 6px 0 8px;
 }
 .mm-daily-cell {
@@ -2174,7 +2174,12 @@ body {
   box-shadow: none;
 }
 
-/* ── Leaderboard icon ───────────────────────────────────────── */
+/* ── Leaderboard card ────────────────────────────────────────── */
+.mm-lb-card {
+  flex: 0 0 auto;
+  max-height: 220px;
+  overflow-y: auto;
+}
 .mm-lb-icon { font-size: 18px; }
 
 .mm-bp-sub { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-dim); }
