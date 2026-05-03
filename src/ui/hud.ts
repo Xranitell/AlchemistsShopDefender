@@ -69,8 +69,10 @@ export class Hud {
 
   // (Magnet button removed — auto-magnet is always active)
 
-  // Bottom-right ability / overload buttons
-  private abilityButton!: HTMLButtonElement;
+  // Bottom-right overload button. The matching ability button used to
+  // sit to its left but was always disabled with a "скоро будет
+  // доступно" tooltip — it had no functionality, so it was removed to
+  // declutter the HUD.
   private overloadButton!: HTMLButtonElement;
   private overloadFill!: HTMLDivElement;
   private overloadModule!: HTMLSpanElement;
@@ -330,20 +332,10 @@ export class Hud {
 
     bottom.appendChild(center);
 
-    // Bottom-right: ABILITY + OVERLOAD round buttons
+    // Bottom-right: OVERLOAD round button. (The ability button next to
+    // it was removed — see field comment above.)
     const rightButtons = document.createElement('div');
     rightButtons.className = 'hud-bottom-right';
-
-    this.abilityButton = document.createElement('button');
-    this.abilityButton.className = 'hud-round-btn hud-round-ability';
-    this.abilityButton.appendChild(spriteEl(getSprites().iconAbility, 4));
-    const abLabel = document.createElement('span');
-    abLabel.className = 'hud-icon-label';
-    abLabel.textContent = t('ui.hud.ability');
-    this.abilityButton.appendChild(abLabel);
-    this.abilityButton.disabled = true;
-    this.abilityButton.title = t('ui.hud.abilityComingSoon');
-    rightButtons.appendChild(this.abilityButton);
 
     this.overloadButton = document.createElement('button');
     this.overloadButton.className = 'hud-round-btn hud-round-overload';

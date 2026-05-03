@@ -458,10 +458,6 @@ body {
   background:
     radial-gradient(circle at 30% 25%, #f5d3ff 0%, #c084fc 25%, #7a3acb 65%, #3a1c5e 100%);
 }
-.hud-round-ability {
-  background:
-    radial-gradient(circle at 30% 25%, #ffd9b0 0%, #ff8c3a 25%, #d24f1c 65%, #5a1c08 100%);
-}
 .hud-round-overload {
   background:
     radial-gradient(circle at 30% 25%, #fff4a8 0%, #ffd166 25%, #c9941a 65%, #5a3a05 100%);
