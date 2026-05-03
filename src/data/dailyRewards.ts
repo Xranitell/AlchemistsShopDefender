@@ -8,7 +8,7 @@ export interface DailyReward {
   amount: number;
 }
 
-export const DAILY_CYCLE = 14;
+export const DAILY_CYCLE = 12;
 
 export const DAILY_REWARDS: DailyReward[] = [
   { day: 1, type: 'gold', amount: 50 },
@@ -18,13 +18,11 @@ export const DAILY_REWARDS: DailyReward[] = [
   { day: 5, type: 'blue_essence', amount: 8 },
   { day: 6, type: 'rerolls', amount: 2 },
   { day: 7, type: 'keys', amount: 2 },
-  { day: 8, type: 'gold', amount: 50 },
-  { day: 9, type: 'blue_essence', amount: 5 },
-  { day: 10, type: 'gold', amount: 100 },
-  { day: 11, type: 'keys', amount: 1 },
-  { day: 12, type: 'blue_essence', amount: 10 },
-  { day: 13, type: 'rerolls', amount: 3 },
-  { day: 14, type: 'ancient_essence', amount: 1 },
+  { day: 8, type: 'gold', amount: 100 },
+  { day: 9, type: 'keys', amount: 1 },
+  { day: 10, type: 'blue_essence', amount: 10 },
+  { day: 11, type: 'rerolls', amount: 3 },
+  { day: 12, type: 'ancient_essence', amount: 1 },
 ];
 
 export function rewardLabel(r: DailyReward): string {
