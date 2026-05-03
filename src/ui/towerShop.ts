@@ -82,14 +82,14 @@ export class TowerShop {
         el.appendChild(btn);
       }
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.cancel');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     } else {
       // Upgrade menu.
       const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
+      info.className = 'tower-shop-info';
       info.textContent = t('ui.tower.info', {
         name: towerName(tower.kind),
         lvl: tower.level,
@@ -163,6 +163,7 @@ export class TowerShop {
       el.appendChild(sell);
 
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.close');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
