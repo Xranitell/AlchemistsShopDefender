@@ -37,6 +37,9 @@ export const EN: Record<string, string> = {
   'ui.menu.tooltip.epicMastery': 'Number of full Epic-mode victories.',
   'ui.menu.tooltip.ancientMastery': 'Number of full Ancient-mode victories.',
   'ui.menu.tooltip.masteryBonus': 'Permanent bonus to blue-essence drops in every run, granted by Epic / Ancient mastery (capped at +60%).',
+  'ui.menu.leaderboard': 'LEADERBOARDS',
+  'ui.menu.dailyExp': 'DAILY EXP',
+  'ui.menu.boss': 'BOSS CHALLENGE',
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'WAVE',

@@ -1252,10 +1252,6 @@ function showMainMenu(): void {
       mainMenu.hide();
       showLaboratory();
     },
-    onBattlePass: () => {
-      mainMenu.hide();
-      showBattlePass();
-    },
     onDailyRewards: () => {
       mainMenu.hide();
       showDailyRewards();
@@ -1443,6 +1439,7 @@ function showDailyRewards(): void {
   });
 }
 
+// @ts-ignore TS6133 — kept for future use
 function showBattlePass(): void {
   bpOverlay.show({
     meta,
