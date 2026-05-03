@@ -1732,7 +1732,7 @@ body {
   max-width: none;
   margin: 0;
   padding: clamp(8px, 1.5vw, 24px);
-  gap: clamp(6px, 1vw, 14px);
+  gap: clamp(4px, 0.7vw, 10px);
   position: relative;
   isolation: isolate;
   background:
@@ -1760,15 +1760,39 @@ body {
   right: 8px;
   background: linear-gradient(-45deg, #ff6a3d 50%, transparent 50%);
 }
-.mm-top-bar {
+/* ── Top row: currencies | logo | lang+settings ─────────────── */
+.mm-top-row {
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  padding: 0 6px 10px;
-  font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 13px;
+  padding: 0 4px 4px;
+  gap: 8px;
 }
+.mm-top-left {
+  display: flex;
+  gap: 8px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 12px;
+}
+.mm-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mm-settings-gear {
+  all: unset;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid #2e1418;
+  border-radius: 6px;
+  background: rgba(26, 12, 16, 0.7);
+  transition: border-color 150ms;
+}
+.mm-settings-gear:hover { border-color: #ff8c3a; }
 .mm-currency {
   display: flex;
   align-items: center;
@@ -1826,31 +1850,36 @@ body {
   filter: drop-shadow(1px 1px 0 #07080e);
   flex-shrink: 0;
 }
-.mm-center {
+/* ── Main body: 3-column grid ───────────────────────────────── */
+.mm-body {
   display: flex;
-  gap: clamp(10px, 1.5vw, 24px);
+  gap: clamp(8px, 1.2vw, 18px);
   width: 100%;
-  align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  align-items: stretch;
 }
-.mm-left, .mm-right {
+.mm-col {
   display: flex;
   flex-direction: column;
-  gap: clamp(8px, 1vw, 14px);
-  flex: 0 0 clamp(180px, 16vw, 260px);
+  gap: clamp(6px, 0.8vw, 12px);
   min-width: 0;
+}
+.mm-col-left, .mm-col-right {
+  flex: 0 0 clamp(170px, 18vw, 280px);
   overflow-y: auto;
 }
-.mm-mid {
+.mm-col-center {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
 }
-.mm-section {
+
+/* ── Card (generic clickable menu tile) ─────────────────────── */
+.mm-card {
+  all: unset;
+  display: block;
   background:
     radial-gradient(ellipse at top, rgba(255, 209, 102, 0.10) 0%, transparent 65%),
     linear-gradient(180deg, rgba(42, 24, 32, 0.96), rgba(18, 8, 14, 0.98));
@@ -1868,7 +1897,7 @@ body {
     inset 0 -4px 0 rgba(0, 0, 0, 0.55),
     0 7px 0 rgba(0, 0, 0, 0.55);
 }
-.mm-section:hover {
+.mm-card:hover {
   border-color: var(--accent);
   box-shadow:
     0 0 0 2px rgba(255, 209, 102, 0.55),
@@ -1876,30 +1905,17 @@ body {
     inset 0 -4px 0 rgba(0, 0, 0, 0.55),
     0 7px 0 rgba(0, 0, 0, 0.55);
 }
-.mm-section-title {
+.mm-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 6px;
-  color: #ffffff;
-  text-shadow: 2px 2px 0 #07080e;
-}
-.mm-title-with-icon {
-  display: grid;
-  grid-template-columns: 22px 1fr 18px;
-  align-items: center;
-  gap: 7px;
-}
-.mm-info-dot {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--hud-frame-rim);
-  border-radius: 4px;
-  color: var(--hud-frame-shine);
-  font-size: 11px;
+  color: #ffd166;
+  text-shadow: 2px 2px 0 #1a0608;
 }
 .mm-shop-icon {
   width: 22px;
@@ -1959,46 +1975,7 @@ body {
 }
 .mm-stats { font-size: 14px; color: var(--fg-dim); display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
 .mm-lab-desc { min-height: 88px; color: var(--fg-dim); }
-.mm-lab-btn, .mm-settings-btn, .mm-bp-btn, .mm-daily-btn {
-  all: unset;
-  display: block;
-  background:
-    radial-gradient(ellipse at top, rgba(255, 209, 102, 0.10) 0%, transparent 65%),
-    linear-gradient(180deg, rgba(42, 24, 32, 0.96), rgba(18, 8, 14, 0.98));
-  border: 3px solid #1a0608;
-  border-radius: 7px;
-  padding: 12px;
-  font-family: 'VT323', monospace;
-  color: var(--fg);
-  cursor: pointer;
-  transition: border-color 150ms, box-shadow 150ms;
-  text-align: left;
-  box-shadow:
-    0 0 0 2px rgba(210, 79, 28, 0.30),
-    inset 0 2px 0 rgba(255, 209, 102, 0.14),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.55),
-    0 7px 0 rgba(0, 0, 0, 0.55);
-}
-.mm-lab-btn:hover,
-.mm-settings-btn:hover,
-.mm-bp-btn:hover,
-.mm-daily-btn:hover {
-  border-color: var(--accent);
-  box-shadow:
-    0 0 0 2px rgba(255, 209, 102, 0.55),
-    inset 0 2px 0 rgba(255, 209, 102, 0.20),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.55),
-    0 7px 0 rgba(0, 0, 0, 0.55);
-}
-.mm-lab-btn .mm-section-title,
-.mm-settings-btn .mm-section-title,
-.mm-bp-btn .mm-section-title,
-.mm-daily-btn .mm-section-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
+/* (Old mm-lab-btn etc. removed — now using mm-card) */
 .mm-flask-icon,
 .mm-gear-icon,
 .mm-chest-icon,
@@ -2089,6 +2066,112 @@ body {
 }
 .mm-lab-tree .branch.left { transform: rotate(152deg); }
 .mm-lab-tree .branch.right { transform: rotate(28deg); }
+
+/* ── Mannequin display (center) ─────────────────────────────── */
+.mm-mannequin-display {
+  width: min(100%, 360px);
+  aspect-ratio: 5/6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mm-mannequin-display svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Inline daily rewards calendar ──────────────────────────── */
+.mm-daily-calendar {
+  flex: 1 1 auto;
+}
+.mm-daily-week-badge {
+  margin-left: auto;
+  font-size: 9px;
+  color: #ff8c3a;
+  padding: 2px 6px;
+  border: 1px solid #4a2820;
+  border-radius: 3px;
+  background: rgba(210, 79, 28, 0.12);
+}
+.mm-daily-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 6px 0 8px;
+}
+.mm-daily-cell {
+  background: linear-gradient(180deg, #2a1820 0%, #140c12 100%);
+  border: 2px solid #1a0608;
+  border-radius: 5px;
+  padding: 4px 2px;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  box-shadow:
+    inset 0 0 0 1px rgba(210, 79, 28, 0.12),
+    inset 0 1px 0 rgba(255, 209, 102, 0.04),
+    inset 0 -3px 0 rgba(0,0,0,0.30);
+}
+.mm-daily-cell.today {
+  border-color: #d24f1c;
+  background: linear-gradient(180deg, #4a2020 0%, #2a1010 100%);
+  box-shadow:
+    0 0 0 1px #ff6a3d,
+    0 0 12px rgba(255, 106, 61, 0.30),
+    inset 0 2px 0 rgba(255, 209, 102, 0.12);
+}
+.mm-daily-cell.claimed {
+  border-color: #2e1418;
+  opacity: 0.45;
+}
+.mm-daily-cell.locked { opacity: 0.55; }
+.mm-daily-day-label {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 7px;
+  color: var(--fg-dim);
+}
+.mm-daily-cell.today .mm-daily-day-label { color: #ff8c3a; }
+.mm-daily-icon { font-size: 18px; }
+.mm-daily-reward-label { font-size: 11px; color: var(--fg-dim); }
+.mm-daily-claim {
+  all: unset;
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  padding: 8px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--cta-yellow-hi), var(--cta-yellow) 50%, #d98219);
+  border: 2px solid #4a250d;
+  color: #fff;
+  box-shadow:
+    0 0 0 1px #f7cf70,
+    inset 0 2px 0 rgba(255,255,255,0.35),
+    inset 0 -4px 0 rgba(138, 79, 18, 0.50),
+    0 4px 0 #5f320e;
+  text-shadow:
+    -1px -1px 0 #4a250d, 1px -1px 0 #4a250d,
+    -1px 1px 0 #4a250d, 2px 2px 0 #4a250d;
+}
+.mm-daily-claim:not(:disabled):hover {
+  background: linear-gradient(180deg, #fff0a0, #ffc93c 52%, #e08a1f);
+}
+.mm-daily-claim:disabled {
+  opacity: 0.35;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ── Leaderboard icon ───────────────────────────────────────── */
+.mm-lb-icon { font-size: 18px; }
+
 .mm-bp-sub { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-dim); }
 .mm-daily-badge {
   font-size: 12px;
@@ -2109,7 +2192,7 @@ body {
   filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35));
 }
 .mm-title-top {
-  font-size: clamp(20px, 3.4vw, 44px);
+  font-size: clamp(14px, 2.4vw, 30px);
   color: #ffd166;
   letter-spacing: 2px;
   text-shadow:
@@ -2118,7 +2201,7 @@ body {
     0 0 12px rgba(255, 209, 102, 0.45);
 }
 .mm-title-bottom {
-  font-size: clamp(22px, 3.7vw, 48px);
+  font-size: clamp(16px, 2.8vw, 36px);
   color: #ff6a3d;
   letter-spacing: 3px;
   margin-top: 5px;
@@ -2151,6 +2234,46 @@ body {
 }
 .mm-battle-btn:hover { background: linear-gradient(180deg, #fff0a0, #ffc93c 52%, #e08a1f); transform: scale(1.035); }
 .mm-battle-btn:active { transform: scale(0.97); }
+
+/* ── Bottom row: mode buttons + battle ──────────────────────── */
+.mm-bottom-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+.mm-mode-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.mm-mode-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: 1px solid #4a2820;
+  color: var(--fg-dim, #a0a0b0);
+  background: rgba(26, 12, 16, 0.65);
+  transition: background 120ms, border-color 120ms;
+}
+.mm-mode-btn:hover {
+  border-color: #ff8c3a;
+  color: var(--fg, #e6e6f0);
+  background: rgba(255, 140, 50, 0.12);
+}
+.mm-daily-exp { border-color: #f9c74f; color: #f9c74f; }
+.mm-daily-exp:hover { background: rgba(249, 199, 79, 0.18); }
+.mm-boss-challenge { border-color: #ef476f; color: #ef476f; }
+.mm-boss-challenge:hover { background: rgba(239, 71, 111, 0.18); }
+.mm-bp-mode { border-color: #c084fc; color: #c084fc; }
+.mm-bp-mode:hover { background: rgba(192, 132, 252, 0.18); }
 
 /* ============= Daily Rewards ============= */
 .daily-panel {
@@ -3358,8 +3481,8 @@ body {
 }
 .mm-lang-btn:hover { color: var(--fg, #e6e6f0); }
 .mm-lang-btn.active {
-  background: var(--accent, #f5c453);
-  color: #1a1a22;
+  background: #ff8c3a;
+  color: #1a0608;
 }
 
 .settings-lang-row { display: inline-flex; gap: 6px; margin-top: 6px; }
@@ -5854,7 +5977,7 @@ body {
   .mm-daily-btn { padding: 8px 10px; }
   .mm-section-title { font-size: 9px; margin-bottom: 4px; }
   .mm-mid { gap: 10px; }
-  .mm-illustration { display: none; }
+  .mm-mannequin-display { display: none; }
   .mm-battle-btn { padding: 10px 32px 12px; font-size: clamp(15px, 2.2vw, 22px); }
 
   /* The inline leaderboard in the main menu has a ~330px-tall body on PC
