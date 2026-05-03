@@ -109,7 +109,13 @@ export class MainMenu {
     const leftCol = document.createElement('div');
     leftCol.className = 'mm-col mm-col-left';
 
-    // Crafting card
+    // Crafting card. Empty potion slots show a faded silhouette of an
+    // unidentified vial so it's immediately obvious what the section is
+    // for, even before the player has crafted anything. The decorative
+    // alchemy backdrop (steam, glow) is layered behind the slots via
+    // CSS pseudo-elements on `.mm-shop-card`. The previous "Уровень
+    // крафта" line was removed — that information still lives inside
+    // the crafting overlay itself.
     const shopBtn = document.createElement('button');
     shopBtn.className = 'mm-card mm-shop-card';
     shopBtn.type = 'button';
@@ -117,6 +123,11 @@ export class MainMenu {
     shopTitle.className = 'mm-card-title';
     shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span>`;
     shopBtn.appendChild(shopTitle);
+    const shopBackdrop = document.createElement('div');
+    shopBackdrop.className = 'mm-shop-backdrop';
+    shopBackdrop.setAttribute('aria-hidden', 'true');
+    shopBackdrop.innerHTML = shopBackdropSVG();
+    shopBtn.appendChild(shopBackdrop);
     const shopSlots = document.createElement('div');
     shopSlots.className = 'mm-shop-slots';
     for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
@@ -126,40 +137,37 @@ export class MainMenu {
       if (pid) {
         const p = POTION_BY_ID[pid];
         if (p) {
-          slot.innerHTML = `<span class="mm-slot-potion">${p.glyph}</span>`;
+          slot.classList.add('filled');
+          slot.innerHTML = `<span class="mm-slot-potion" style="--potion-color:${p.color}">${p.glyph}</span>`;
           slot.title = t(p.i18nKey + '.name');
         }
+      } else {
+        // Empty slot: render a translucent vial silhouette so the player
+        // can read the slot as "a potion goes here" at a glance.
+        slot.classList.add('empty');
+        slot.innerHTML = `<span class="mm-slot-silhouette" aria-hidden="true"></span>`;
       }
       shopSlots.appendChild(slot);
     }
     shopBtn.appendChild(shopSlots);
-    const craftLvl = document.createElement('div');
-    craftLvl.className = 'mm-craft-level';
-    craftLvl.textContent = t('ui.menu.craftingLevel', { level: opts.meta.craftingLevel });
-    shopBtn.appendChild(craftLvl);
     shopBtn.addEventListener('click', opts.onCrafting);
     leftCol.appendChild(shopBtn);
 
-    // Laboratory card
+    // Laboratory card. The header used to carry a small green-flask
+    // pixel icon next to the title — removed per request, the title
+    // now reads cleanly. The card body shows a decorative skill-tree
+    // diorama (purely visual; the real talent tree opens in its own
+    // overlay on click).
     const labBtn = document.createElement('button');
     labBtn.className = 'mm-card mm-lab-card';
     labBtn.type = 'button';
     const labTitle = document.createElement('div');
     labTitle.className = 'mm-card-title';
-    labTitle.innerHTML = `<span class="mm-flask-icon"></span><span>${t('ui.menu.laboratory')}</span>`;
+    labTitle.innerHTML = `<span>${t('ui.menu.laboratory')}</span>`;
     labBtn.appendChild(labTitle);
     const labDesc = document.createElement('div');
     labDesc.className = 'mm-lab-desc';
-    const hpNode = 0;
-    const damageNode = 0;
-    labDesc.innerHTML = `
-      <span class="mm-lab-tree">
-        <span class="branch left"></span><span class="branch right"></span>
-        <span class="node core"></span>
-        <span class="node hp">HP<br>+${hpNode}%</span>
-        <span class="node dmg">DMG<br>+${damageNode}%</span>
-      </span>
-    `;
+    labDesc.innerHTML = labSkillTreeSVG();
     labBtn.appendChild(labDesc);
     labBtn.addEventListener('click', opts.onLaboratory);
     leftCol.appendChild(labBtn);
@@ -373,7 +381,119 @@ function applyDailyReward(meta: MetaSave, reward: { type: string; amount: number
   }
 }
 
-/** Animated mannequin illustration for the centre of the main menu.
+/** Decorative skill-tree diorama for the laboratory card.
+ *
+ *  Renders a 1-3-5 mini diamond of glowing nodes connected by warm
+ *  edges, mirroring the structure of the real Talent Laboratory tree
+ *  (which is much larger — see `metaTree.ts`). The visualisation is
+ *  purely cosmetic; clicking the card opens the actual tree overlay.
+ *
+ *  Node states are baked-in here (root + 3 owned + mix of available /
+ *  locked) so the widget always reads as "in-progress" — the player
+ *  sees a tree they could pour points into. The CSS animates the
+ *  edges and "owned" nodes so the diorama feels alive. */
+function labSkillTreeSVG(): string {
+  return `<svg class="mm-lab-tree-svg" viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <radialGradient id="mm-lab-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffe091" stop-opacity="0.35"/>
+        <stop offset="60%" stop-color="#ff8c3a" stop-opacity="0.10"/>
+        <stop offset="100%" stop-color="#ff8c3a" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="mm-lab-blur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="2.4"/>
+      </filter>
+    </defs>
+    <!-- Soft warm halo behind the whole tree -->
+    <ellipse cx="100" cy="60" rx="92" ry="46" fill="url(#mm-lab-glow)"/>
+
+    <!-- Connecting edges: tier0→tier1, tier1→tier2 -->
+    <g class="mm-lab-edges">
+      <line class="edge owned" x1="100" y1="20" x2="60"  y2="50"/>
+      <line class="edge owned" x1="100" y1="20" x2="100" y2="50"/>
+      <line class="edge owned" x1="100" y1="20" x2="140" y2="50"/>
+      <line class="edge avail" x1="60"  y1="50" x2="30"  y2="86"/>
+      <line class="edge avail" x1="60"  y1="50" x2="60"  y2="86"/>
+      <line class="edge avail" x1="100" y1="50" x2="100" y2="86"/>
+      <line class="edge locked" x1="140" y1="50" x2="140" y2="86"/>
+      <line class="edge locked" x1="140" y1="50" x2="170" y2="86"/>
+    </g>
+
+    <!-- Nodes: root (gold) → tier1 (3 owned) → tier2 (5 mixed) -->
+    <g class="mm-lab-nodes">
+      <!-- Tier 0: root keystone (gold) -->
+      <circle class="node-halo" cx="100" cy="20" r="14"/>
+      <circle class="node root" cx="100" cy="20" r="9"/>
+
+      <!-- Tier 1: 3 owned, colour-coded -->
+      <circle class="node-halo" cx="60"  cy="50" r="11"/>
+      <circle class="node owned hp"      cx="60"  cy="50" r="7"/>
+      <circle class="node-halo" cx="100" cy="50" r="11"/>
+      <circle class="node owned utility" cx="100" cy="50" r="7"/>
+      <circle class="node-halo" cx="140" cy="50" r="11"/>
+      <circle class="node owned dmg"     cx="140" cy="50" r="7"/>
+
+      <!-- Tier 2: 5 nodes, mixed states -->
+      <circle class="node avail hp"        cx="30"  cy="86" r="6"/>
+      <circle class="node avail hp"        cx="60"  cy="86" r="6"/>
+      <circle class="node avail keystone"  cx="100" cy="86" r="9"/>
+      <circle class="node locked dmg"      cx="140" cy="86" r="6"/>
+      <circle class="node locked dmg"      cx="170" cy="86" r="6"/>
+    </g>
+  </svg>`;
+}
+
+/** Decorative alchemy-table backdrop for the crafting card.
+ *
+ *  Layered behind the potion slots so the section reads as an
+ *  apothecary's bench rather than a row of empty squares. Drawn in
+ *  pure SVG so the asset ships with the bundle and scales with the
+ *  card. The slots themselves are absolutely positioned over this. */
+function shopBackdropSVG(): string {
+  return `<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <radialGradient id="mm-shop-warm" cx="50%" cy="55%" r="65%">
+        <stop offset="0%"  stop-color="#ffd166" stop-opacity="0.30"/>
+        <stop offset="55%" stop-color="#ff8c3a" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#ff8c3a" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="mm-shop-shelf" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#3a1d10"/>
+        <stop offset="100%" stop-color="#1a0c08"/>
+      </linearGradient>
+      <linearGradient id="mm-shop-shelf-edge" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#7a3a14"/>
+        <stop offset="100%" stop-color="#3a1d10"/>
+      </linearGradient>
+    </defs>
+    <!-- Warm radial glow behind everything -->
+    <rect x="0" y="0" width="200" height="110" fill="url(#mm-shop-warm)"/>
+
+    <!-- Wooden shelf the slots will sit on -->
+    <rect x="0" y="74" width="200" height="22" fill="url(#mm-shop-shelf)"/>
+    <rect x="0" y="74" width="200" height="3"  fill="url(#mm-shop-shelf-edge)"/>
+
+    <!-- Drifting steam wisps (animated via CSS) -->
+    <g class="mm-shop-steam">
+      <ellipse cx="40"  cy="22" rx="18" ry="6" fill="rgba(255,210,140,0.18)"/>
+      <ellipse cx="100" cy="14" rx="22" ry="5" fill="rgba(255,210,140,0.22)"/>
+      <ellipse cx="160" cy="22" rx="18" ry="6" fill="rgba(255,210,140,0.18)"/>
+    </g>
+
+    <!-- Sparks: tiny warm dots scattered above the shelf -->
+    <g class="mm-shop-sparkles">
+      <circle cx="20"  cy="40" r="1.6" fill="#ffe091"/>
+      <circle cx="50"  cy="32" r="1.2" fill="#ffd166"/>
+      <circle cx="80"  cy="45" r="1.6" fill="#ffe091"/>
+      <circle cx="120" cy="36" r="1.2" fill="#ffd166"/>
+      <circle cx="150" cy="44" r="1.6" fill="#ffe091"/>
+      <circle cx="180" cy="32" r="1.2" fill="#ffd166"/>
+    </g>
+  </svg>`;
+}
+
+/** Pixel-art wooden artist's mannequin (centre of the main menu).
+ *
  *  Chunky pixel-art wooden artist's mannequin — every shape is built
  *  from rectangles snapped to a 2-unit pixel grid, joints are octagonal
  *  (square with 1-pixel chamfered corners), and the SVG renders with
