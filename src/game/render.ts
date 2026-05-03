@@ -1,7 +1,7 @@
 import type { GameState } from './state';
 import { getActiveEffect } from './overload';
 import { getSprites } from '../render/sprites';
-import { drawSprite, drawSpriteRotated } from '../render/sprite';
+import { drawSprite, drawSpriteRotated, type BakedSprite } from '../render/sprite';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
 import {
@@ -358,13 +358,33 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
     0.12 + corePulse * 0.06,
   );
 
-  // Idle bob (slow breathing); throw window lunges forward one pixel toward
-  // the aim direction to sell the motion without needing extra sprite frames.
+  // Idle bob (slow breathing) plus a 2-frame idle "breath" cycle that drifts
+  // chest/head highlights once per ~0.6s so the wooden mannequin reads as
+  // alive even when standing still. Throw uses a 2-phase animation: first
+  // ~60% of the throw window is the windup pose (right arm raised back),
+  // last ~40% is the release pose (right arm extended), and the whole sprite
+  // lunges toward the throw direction in world space.
   const bob = Math.round(Math.sin(state.worldTime * 2.4) * 1);
   const lunge = m.throwAnim > 0
     ? { x: Math.round(m.throwDir.x * 2), y: Math.round(m.throwDir.y * 2) }
     : { x: 0, y: 0 };
-  const sprite = m.throwAnim > 0 ? s.mannequinThrow : s.mannequin;
+  let sprite: BakedSprite;
+  if (m.throwAnim > 0) {
+    // Throw window lasts THROW_ANIM_DURATION (see mannequin.ts). Windup for
+    // the first portion, release for the rest. Using throwAnim as a count-
+    // down: high values = early in the throw (windup), low values = late
+    // (release).
+    const THROW_RELEASE_FRACTION = 0.4;
+    const windupCutoff = 0.22 * THROW_RELEASE_FRACTION;
+    sprite = m.throwAnim > windupCutoff ? s.mannequinThrowWindup : s.mannequinThrowRelease;
+  } else {
+    // Two-frame idle loop. ~1.65 Hz alternation reads as a slow breath that
+    // pairs naturally with the bob amplitude above.
+    const idleFramePeriod = 0.6;
+    sprite = Math.floor(state.worldTime / idleFramePeriod) % 2 === 0
+      ? s.mannequin
+      : s.mannequinIdleAlt;
+  }
   const drawX = m.pos.x + lunge.x;
   const drawY = m.pos.y + bob + lunge.y;
 

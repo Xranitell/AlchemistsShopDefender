@@ -12,7 +12,9 @@ let _baked: Sprites | null = null;
 
 export interface Sprites {
   mannequin: BakedSprite;
-  mannequinThrow: BakedSprite;
+  mannequinIdleAlt: BakedSprite;
+  mannequinThrowWindup: BakedSprite;
+  mannequinThrowRelease: BakedSprite;
   slime: BakedSprite;
   slimeBoss: BakedSprite;
   rat: BakedSprite;
@@ -79,92 +81,163 @@ export function getSprites(): Sprites {
 
 function bakeAll(): Sprites {
   return {
-    // Wooden alchemist mannequin: a refined clockwork automaton with warm
-    // wood tones, brass accents, glowing cyan core, and a small potion
-    // held in the right hand. More detailed shading and proportions.
+    // Wooden articulated training mannequin matching the menu illustration:
+    // hexagonal head, octagonal shoulder/elbow/hip/knee joints, warm brown
+    // wood tones (no facial features, no glowing core). Idle frame 1 — the
+    // default standing pose with highlights on the upper-left interior.
     mannequin: bakeSprite(
       {
         rows: [
-          '.......cCCCc.........',
-          '......IIIIIII........',
-          '......IHcCcHI........',
-          '......IHHWHHID.......',
-          '.....DIHHHHHID.......',
-          '....DDBBBBBBBDD......',
-          '...DDBBWMMMWBbDD.....',
-          '..DDBBBMCCCCCMBBBDD..',
-          '..DBbBMMCcCcCMMBbBD..',
-          '.DDBbBMMCCCCCMMBbBDD.',
-          '.DDBBBBMMMMMMMBBBBd..',
-          '..DMWWBBDDDDDBBWWMD..',
-          '.DMWHWWMMMMMMMWWHWMD.',
-          'DMWWHHWMBBBBBMWWHHWMD',
-          'DMMWWWMBBCCCBMMWWWMD.',
-          '.DMMMMMBBCCCBMMMMMD..',
-          '..DMMbBBBBBBBBbMMD...',
-          '...DMMBBDDDDBBMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DMWMD.....DMWMD....',
-          '..DHHBD.....DHBHD....',
-          '..DHHBD.....DHBHD....',
-          '...DDD.......DDD.....',
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDMMMDMMMDDMD...',
+          '..DMMMDMMMMMMMDMMMD..',
+          '...DMDDDDDDDDDDDMD...',
+          '...DMD..DMMMD..DMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
         ],
         legend: {
           D: 'mechShadow',
-          d: 'mechDark',
           M: 'mechMid',
           W: 'mechLight',
           H: 'mechHi',
-          B: 'brass',
-          b: 'brassDark',
-          C: 'mechCore',
-          c: 'mechCoreHi',
-          I: 'mechIron',
         },
       },
       { x: 10.5, y: 22 },
     ),
 
-    // Throw frame: right arm extends forward with a potion.
-    mannequinThrow: bakeSprite(
+    // Idle frame 2 — subtle "breathing" variant. Highlights drift one row
+    // down (head + chest) so swapping with the base frame at ~2 Hz reads as
+    // a soft inhale-exhale without changing the silhouette.
+    mannequinIdleAlt: bakeSprite(
       {
         rows: [
-          '.......cCCCc.........',
-          '......IIIIIII........',
-          '......IHcCcHI........',
-          '......IHHWHHID.......',
-          '.....DIHHHHHID.......',
-          '....DDBBBBBBBDD......',
-          '...DDBBWMMMWBbDD.....',
-          '..DDBBBMCCCCCMBBBDD..',
-          '..DBbBMMCcCcCMMBbBBDD',
-          '.DDBbBMMCCCCCMMBbBBW.',
-          '.DDBBBBMMMMMMMBBBBww.',
-          '..DMWWBBDDDDDBBWWMWH.',
-          '.DMWHWWMMMMMMMWWDWHH.',
-          'DMWWHHWMBBBBBMWDWHH..',
-          'DMMWWWMBBCCCBMMWWW...',
-          '.DMMMMMBBCCCBMMMMMD..',
-          '..DMMbBBBBBBBBbMMD...',
-          '...DMMBBDDDDBBMMD....',
-          '..DMMMD.....DMMMD....',
-          '..DMWMD.....DMWMD....',
-          '..DHHBD.....DHBHD....',
-          '..DHHBD.....DHBHD....',
-          '...DDD.......DDD.....',
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DMMMMMD.......',
+          '.......DHMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMDMMMDDMD...',
+          '..DMMMDMMMMMMMDMMMD..',
+          '...DMDDDDDDDDDDDMD...',
+          '...DMD..DMMMD..DMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
         ],
         legend: {
           D: 'mechShadow',
-          d: 'mechDark',
           M: 'mechMid',
           W: 'mechLight',
-          w: 'mechLight',
           H: 'mechHi',
-          B: 'brass',
-          b: 'brassDark',
-          C: 'mechCore',
-          c: 'mechCoreHi',
-          I: 'mechIron',
+        },
+      },
+      { x: 10.5, y: 22 },
+    ),
+
+    // Throw windup — right arm raised straight up above the shoulder, hand
+    // at head height. Body unchanged below the chest. Held briefly at the
+    // start of the throw window before swapping to the release frame.
+    mannequinThrowWindup: bakeSprite(
+      {
+        rows: [
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD..DDD...',
+          '.........DDD...DMD...',
+          '........DMMMD..DMD...',
+          '....D.DDDDDDDDDDMD...',
+          '...DMDDHMMMMMMDDMD...',
+          '...DMDDMMMMMMMDDMD...',
+          '...DMDDMMMDMMMD......',
+          '..DMMMDMMMMMMMD......',
+          '...DMDDDDDDDDDD......',
+          '...DMD..DMMMD........',
+          '...DMDDMMMMMMMD......',
+          '...DMDDHMMMMMMD......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
+        ],
+        legend: {
+          D: 'mechShadow',
+          M: 'mechMid',
+          W: 'mechLight',
+          H: 'mechHi',
+        },
+      },
+      { x: 10.5, y: 22 },
+    ),
+
+    // Throw release — right arm extends out to the side at chest height
+    // with hand at the tip. Combined with the world-space lunge offset in
+    // render.ts (translation toward the throw direction), this sells the
+    // throw motion regardless of which way the player is aiming.
+    mannequinThrowRelease: bakeSprite(
+      {
+        rows: [
+          '.........DDD.........',
+          '........DMMMD........',
+          '.......DHMMMMD.......',
+          '.......DMMMMMD.......',
+          '........DMMMD........',
+          '.........DDD.........',
+          '........DMMMD........',
+          '....D.DDDDDDDDD.D....',
+          '...DMDDHMMMMMMDDMDDDD',
+          '...DMDDMMMMMMMDDMDMMD',
+          '...DMDDMMMDMMMDDMDDDD',
+          '..DMMMDMMMMMMMD......',
+          '...DMDDDDDDDDDD......',
+          '...DMD..DMMMD........',
+          '...DMDDMMMMMMMD......',
+          '...DMDDHMMMMMMD......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DMMMD.DMMMD....',
+          '.......DMD.DMD.......',
+          '.......DMD.DMD.......',
+          '......DDDD.DDDD......',
+        ],
+        legend: {
+          D: 'mechShadow',
+          M: 'mechMid',
+          W: 'mechLight',
+          H: 'mechHi',
         },
       },
       { x: 10.5, y: 22 },
