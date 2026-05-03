@@ -1297,57 +1297,231 @@ body {
   color: var(--accent);
 }
 
+/* ── Tower-rune popup ("установка стоек") ────────────────────────────
+ *
+ * Mid-action popup that opens when the player taps a rune point on the
+ * arena to build / upgrade / sell a tower. Reuses the same warm
+ * gold / amber language as the defeat-screen and blessing panels so all
+ * the "important moment" surfaces feel like one family — but tuned down
+ * for a HUD popup (no rotating rays / particles, no glitch text), since
+ * the player still needs to read it through battle chaos.
+ *
+ * Layout: gold-rimmed talisman card with pixel corner ornaments and a
+ * warm radial glow. Action buttons are big pixel-press rectangles in
+ * the same gold gradient as the defeat CTA; the cost suffix becomes a
+ * dark gold chip. Sell gets a crimson variant; cancel gets a muted
+ * "secondary" style. */
 .tower-shop {
   position: absolute;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: linear-gradient(180deg, rgba(50, 60, 86, 0.98), rgba(20, 26, 43, 0.98));
-  border: 3px solid #090b13;
-  border-radius: 7px;
-  padding: 8px;
+  padding: 12px 10px 10px;
   pointer-events: auto;
-  min-width: 200px;
+  min-width: 220px;
   z-index: 1600;
-  box-shadow:
-    0 0 0 2px var(--hud-frame-rim),
-    inset 0 2px 0 rgba(255,255,255,0.1),
-    0 7px 0 rgba(0, 0, 0, 0.6);
   font-family: 'VT323', monospace;
   font-size: 17px;
+  color: #f4f0e6;
+  border: 3px solid #ffd166;
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse at top, rgba(255, 174, 58, 0.25) 0%, transparent 60%),
+    linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 209, 102, 0.5),
+    inset 0 0 36px rgba(0, 0, 0, 0.55),
+    0 0 0 1px #06030a,
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(255, 209, 102, 0.45);
+  animation: tower-shop-in 140ms ease-out;
+}
+@keyframes tower-shop-in {
+  from { transform: translateY(-4px) scale(0.96); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.tower-shop::before,
+.tower-shop::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 3;
+}
+.tower-shop::before {
+  top: 4px; left: 4px;
+  background: linear-gradient(135deg, #ffd166 50%, transparent 50%);
+}
+.tower-shop::after {
+  bottom: 4px; right: 4px;
+  background: linear-gradient(-45deg, #ffd166 50%, transparent 50%);
 }
 
+/* Build / upgrade action buttons — big pixel-press rectangles in the
+ * defeat-CTA gold gradient. Disabled state desaturates the gradient so
+ * "can't afford" reads at a glance even in peripheral vision. */
 .tower-shop button {
-  background: linear-gradient(180deg, var(--hud-frame-mid), var(--hud-frame-dark));
-  color: var(--fg);
-  border: 2px solid var(--hud-frame-light);
-  padding: 8px 10px;
-  border-radius: 2px;
-  cursor: pointer;
-  text-align: left;
-  font-size: 16px;
-  font-family: 'VT323', monospace;
+  position: relative;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1a0608;
+  background: linear-gradient(180deg, #ffe27a 0%, #ffd166 50%, #c9941a 100%);
+  border: 2px solid #6a3a06;
+  border-radius: 4px;
+  outline: none;
+  text-align: left;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(255, 209, 102, 0.45);
+  transition: transform 90ms ease, filter 120ms ease, box-shadow 120ms ease;
 }
 .tower-shop button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(255, 209, 102, 0.75);
 }
-.tower-shop button:disabled { opacity: 0.4; cursor: not-allowed; }
-.tower-shop .cost { color: var(--gold); }
-.tower-shop-sell { border-color: #ff6a3d !important; }
-.tower-shop-sell:hover:not(:disabled) { border-color: #ff8c3a !important; color: #ff8c3a !important; }
-.tower-shop-rune-banner {
-  font-family: 'VT323', monospace;
-  font-size: 13px;
-  color: var(--accent);
-  padding: 4px 6px;
-  margin-bottom: 4px;
-  border: 1px dashed rgba(125, 249, 255, 0.4);
+.tower-shop button:active:not(:disabled) {
+  transform: translateY(2px) scale(0.99);
+}
+.tower-shop button:focus-visible {
+  outline: 3px solid #fff2c2;
+  outline-offset: 3px;
+}
+.tower-shop button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.55) brightness(0.7);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32),
+    0 3px 0 rgba(0, 0, 0, 0.55);
+  animation: none;
+}
+
+/* Cost suffix on each row — dark gold chip, mirrors the defeat-chip
+ * treatment. Stays readable on top of the gold gradient because the
+ * chip itself is dark. */
+.tower-shop .cost {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #fff2c2;
+  background: linear-gradient(180deg, rgba(60, 36, 14, 0.95), rgba(30, 18, 6, 0.95));
+  border: 2px solid #2a1a08;
   border-radius: 3px;
-  background: rgba(125, 249, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  text-shadow:
+    -1px -1px 0 #141018, 1px -1px 0 #141018,
+    -1px 1px 0 #141018, 1px 1px 0 #141018;
+}
+
+/* Sell button — crimson CTA so the destructive action is clearly
+ * tagged before the player commits to it. */
+.tower-shop-sell {
+  color: #fff2e2 !important;
+  background: linear-gradient(180deg, #ff7a5a 0%, #e0341a 50%, #7a1206 100%) !important;
+  border-color: #4a0a06 !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 220, 200, 0.35) !important,
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4) !important,
+    0 3px 0 rgba(0, 0, 0, 0.55) !important,
+    0 0 16px rgba(255, 60, 30, 0.55) !important;
+}
+.tower-shop-sell:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 220, 200, 0.45) !important,
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4) !important,
+    0 4px 0 rgba(0, 0, 0, 0.55) !important,
+    0 0 24px rgba(255, 60, 30, 0.85) !important;
+}
+.tower-shop-sell .cost {
+  color: #ffd0c0;
+  background: linear-gradient(180deg, rgba(60, 14, 8, 0.95), rgba(30, 6, 4, 0.95));
+  border-color: #2a0808;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 120, 90, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Cancel / close button — muted secondary so it doesn't compete with
+ * the gold actions. Same shape, dark palette. */
+.tower-shop-cancel {
+  color: var(--fg-dim) !important;
+  background: linear-gradient(180deg, #2a1820 0%, #160a10 100%) !important;
+  border-color: #3a1818 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 100, 60, 0.18) !important,
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4) !important,
+    0 3px 0 rgba(0, 0, 0, 0.55) !important;
+}
+.tower-shop-cancel:hover:not(:disabled) {
+  color: var(--fg) !important;
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 209, 102, 0.25) !important,
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4) !important,
+    0 4px 0 rgba(0, 0, 0, 0.55) !important,
+    0 0 12px rgba(255, 209, 102, 0.35) !important;
+}
+
+/* "Дальность 350 / Урон 25" info line shown when a tower is already on
+ * the rune. Sits flat above the actions, no border. */
+.tower-shop-info {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #d8d8e8;
+  text-align: center;
+  padding: 0 4px 2px;
+}
+
+/* Rune-kind banner — uppercase ribbon at the top of the popup that
+ * tells the player what bonus the tower placed here will get. Cyan
+ * accent so it doesn't fight the warm gold body. */
+.tower-shop-rune-banner {
+  position: relative;
+  z-index: 2;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border: 2px solid rgba(125, 249, 255, 0.55);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(125, 249, 255, 0.16) 0%, rgba(125, 249, 255, 0.04) 100%);
+  text-shadow:
+    -1px -1px 0 #060008, 1px -1px 0 #060008,
+    -1px 1px 0 #060008, 1px 1px 0 #060008,
+    0 0 6px rgba(125, 249, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(125, 249, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tower-shop { animation: none; }
 }
 
 /* Meta-progression overlay */

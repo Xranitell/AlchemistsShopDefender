@@ -26,8 +26,7 @@ export class MannequinShop {
     el.style.top = `${screenPos.y - 20}px`;
 
     const title = document.createElement('div');
-    title.style.color = 'var(--fg-dim)';
-    title.style.fontSize = '12px';
+    title.className = 'tower-shop-info';
     title.textContent = t('ui.mannequin.title');
     el.appendChild(title);
 
@@ -35,6 +34,7 @@ export class MannequinShop {
     this.appendShieldButton(el);
 
     const cancel = document.createElement('button');
+    cancel.className = 'tower-shop-cancel';
     cancel.textContent = t('ui.mannequin.close');
     cancel.addEventListener('click', () => this.close());
     el.appendChild(cancel);
@@ -75,8 +75,7 @@ export class MannequinShop {
     const cost = 120;
     if (this.state.tempShieldTime > 0) {
       const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
+      info.className = 'tower-shop-info';
       info.textContent = t('ui.mannequin.shieldActive', { sec: this.state.tempShieldTime.toFixed(1) });
       el.appendChild(info);
       return;
