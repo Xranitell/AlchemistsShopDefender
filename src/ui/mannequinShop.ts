@@ -1,4 +1,5 @@
 import type { GameState } from '../game/state';
+import { placePopupNearAnchor } from './popupPlacement';
 import { t } from '../i18n';
 
 /**
@@ -40,6 +41,7 @@ export class MannequinShop {
 
     this.root.appendChild(el);
     this.el = el;
+    placePopupNearAnchor(el, screenPos);
   }
 
   private appendRepairButton(el: HTMLDivElement): void {

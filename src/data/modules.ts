@@ -111,7 +111,7 @@ export const AURA_MODULES: Record<AuraModuleId, ModuleDef> = {
     id: 'vital_pulse',
     slot: 'aura',
     name: 'Витальный пульс',
-    desc: '+1 HP/сек регенерация в бою.',
+    desc: '+1 ХП/сек регенерация в бою.',
   },
   gold_aura: {
     id: 'gold_aura',

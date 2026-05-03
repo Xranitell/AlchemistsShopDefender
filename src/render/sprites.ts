@@ -41,12 +41,27 @@ export interface Sprites {
   candle: BakedSprite;
   // HUD icons (not drawn on the world canvas; used by hud.ts)
   iconCoin: BakedSprite;
-  iconEssence: BakedSprite;
   iconMagnet: BakedSprite;
   iconLightning: BakedSprite;
   iconAbility: BakedSprite;
   iconWavePip: BakedSprite;
   iconHpHeart: BakedSprite;
+  // Meta-progression resource icons. Same flat pixel-art language as the
+  // HUD icons so the main menu / overlays read as part of the game instead
+  // of looking like CSS chrome.
+  iconBlueEssence: BakedSprite;
+  iconAncientEssence: BakedSprite;
+  iconEpicKey: BakedSprite;
+  iconAncientKey: BakedSprite;
+  iconKey: BakedSprite;
+  iconRerolls: BakedSprite;
+  iconCrystal: BakedSprite;
+  iconOrb: BakedSprite;
+  // Treasure chest used by the victory ("Сундук Алхимика") screen. Two
+  // frames: closed (player taps to open) → opened (lid lifted, glow + gold
+  // contents visible). Same canvas size so the swap is in-place.
+  iconChestClosed: BakedSprite;
+  iconChestOpen: BakedSprite;
   flyingFlask: BakedSprite;
   shaman: BakedSprite;
   ratKing: BakedSprite;
@@ -975,34 +990,9 @@ function bakeAll(): Sprites {
       { x: 6, y: 5.5 },
     ),
 
-    // Essence potion (purple, with cork)
-    iconEssence: bakeSprite(
-      {
-        rows: [
-          '..kkkk....',
-          '..ddDD....',
-          '...DD.....',
-          '..ddDDdd..',
-          '.dDPpppDD.',
-          'dDPppPpppD',
-          'dDpPpppppD',
-          'dDppppPpPD',
-          'dDPpppPpPD',
-          'dDpppppppD',
-          '.dDppPppDd',
-          '..ddpppdd.',
-          '...dddd...',
-        ],
-        legend: {
-          k: 'woodDark',
-          d: 'essenceD',
-          D: 'essenceC',
-          p: 'essenceB',
-          P: 'essenceA',
-        },
-      },
-      { x: 5, y: 6.5 },
-    ),
+    // (The old purple `iconEssence` was removed — both the HUD and every
+    // menu now use `iconBlueEssence` so the player sees one canonical
+    // essence vial across the entire game.)
 
     // Magnet U-shape (purple gem)
     iconMagnet: bakeSprite(
@@ -1109,6 +1099,296 @@ function bakeAll(): Sprites {
         },
       },
       { x: 3.5, y: 3.5 },
+    ),
+
+    // ──────────── Meta currencies ────────────
+    // Blue Essence — cyan crystal vial. Same silhouette as the in-run
+    // essence icon so the player intuitively reads them as the same family,
+    // just retinted to the cool blue palette used everywhere else for the
+    // "blue" currency.
+    iconBlueEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDPpppDD.',
+          'dDPppPpppD',
+          'dDpPpppppD',
+          'dDppppPpPD',
+          'dDPpppPpPD',
+          'dDpppppppD',
+          '.dDppPppDd',
+          '..ddpppdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'crystalD',
+          D: 'crystalC',
+          p: 'crystalB',
+          P: 'crystalA',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Ancient Essence — molten-gold crystal vial. Same silhouette as the
+    // blue-essence and in-run essence vials so the player parses it as
+    // "essence", but with a far richer 5-tone palette (deep gold edge →
+    // saturated gold body → bright core → near-white shimmer) plus a
+    // sparkle cluster on the liquid surface. Combined with the
+    // `glow-gold` CSS class on the rendered canvas, this reads as the
+    // game's most legendary currency.
+    iconAncientEssence: bakeSprite(
+      {
+        rows: [
+          '..kkkk....',
+          '..ddDD....',
+          '...DD.....',
+          '..ddDDdd..',
+          '.dDpSSpDD.',
+          'dDpBpPpppD',
+          'dDpBPpPpPD',
+          'dDPBpPppPD',
+          'dDpBPpPppD',
+          'dDpPpBpPpD',
+          '.dDpPpPpDd',
+          '..ddpPpdd.',
+          '...dddd...',
+        ],
+        legend: {
+          k: 'woodDark',
+          d: 'brassDark',
+          D: 'goldB',
+          p: 'goldA',
+          P: 'brassGlow',
+          B: 'ancientCore',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 5, y: 6.5 },
+    ),
+
+    // Epic key — purple skeleton key. Bow on the left with a hole, three
+    // teeth carved into the shaft. Used in the main-menu top bar and the
+    // difficulty-select overlay (replaces the 🗝️ emoji that broke the
+    // pixel-art look).
+    iconEpicKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'essenceA',
+          D: 'essenceC',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Ancient key — legendary gold skeleton key. Shares the epic key's
+    // overall silhouette so the pair still reads as a set, but adds:
+    //  * a red ruby gem inlaid in the bow's hole (R),
+    //  * bright `brassGlow` highlights on the bow rim (B),
+    //  * `ancientShimmer` sparkle pixels on the corners + first tooth (S).
+    // The CSS `.glow-gold` class on the rendered canvas adds an outer
+    // gold drop-shadow halo so the icon visibly "glints" against any
+    // background.
+    iconAncientKey: bakeSprite(
+      {
+        rows: [
+          '.LSLL.........',
+          'LBDDBLLLLLLLL.',
+          'LDRRDLSL.L.L..',
+          'LBDDBLLLLLLLL.',
+          '.LLLS.........',
+        ],
+        legend: {
+          L: 'goldA',
+          B: 'brassGlow',
+          D: 'brassDark',
+          R: 'ancientGem',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Generic key — used for "+N keys" rewards (battle pass, daily) where
+    // the tier doesn't matter. Slightly muted gold so it doesn't look
+    // identical to the ancient key.
+    iconKey: bakeSprite(
+      {
+        rows: [
+          '.LLLL.........',
+          'LLDDLLLLLLLLL.',
+          'LD..DL.L.L.L..',
+          'LLDDLLLLLLLLL.',
+          '.LLLL.........',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brassDark',
+        },
+      },
+      { x: 7, y: 2.5 },
+    ),
+
+    // Rerolls — two stacked arrows / dice face. Replaces the 🔄 emoji used
+    // for the "free reroll" daily reward.
+    iconRerolls: bakeSprite(
+      {
+        rows: [
+          '..LLLLLL..',
+          '.LDDDDDDL.',
+          'LDD.LL.DDL',
+          'LDLLDDLLDL',
+          'LDLLDDLLDL',
+          'LDD.LL.DDL',
+          '.LDDDDDDL.',
+          '..LLLLLL..',
+        ],
+        legend: {
+          L: 'brassHi',
+          D: 'brass',
+        },
+      },
+      { x: 5, y: 4 },
+    ),
+
+    // Crystal gem — diamond shape used as a generic "essence shard" reward
+    // glyph (replaces 💎 emoji in the daily-rewards calendar).
+    iconCrystal: bakeSprite(
+      {
+        rows: [
+          '..LL..',
+          '.LDDL.',
+          'LDOODL',
+          'LDOODL',
+          '.LDDL.',
+          '..LL..',
+        ],
+        legend: {
+          L: 'crystalA',
+          D: 'crystalB',
+          O: 'crystalC',
+        },
+      },
+      { x: 3, y: 3 },
+    ),
+
+    // Mystic orb — spherical purple/cyan orb (replaces 🔮). Used as the
+    // ancient-essence reward glyph in the daily calendar.
+    iconOrb: bakeSprite(
+      {
+        rows: [
+          '..LLLL..',
+          '.LppppL.',
+          'LpPPpPpL',
+          'LpPpppdL',
+          'LppppddL',
+          'LpdpdddL',
+          '.LdddddL',
+          '..LLLL..',
+        ],
+        legend: {
+          L: 'essenceD',
+          P: 'essenceA',
+          p: 'essenceB',
+          d: 'essenceC',
+        },
+      },
+      { x: 4, y: 4 },
+    ),
+
+    // ──────────── Victory chest ────────────
+    // Wooden treasure chest with brass band + keyhole. Closed frame: lid
+    // sealed. Both sprites are 18×16 so the canvas position is identical
+    // and the open frame can replace the closed one in place. Legend:
+    //   K = woodDark        (outer outline)
+    //   M = woodMid         (dark wood side)
+    //   L = woodLight       (mid wood)
+    //   H = woodHi          (highlight wood, lid top)
+    //   w = woodMid         (body interior)
+    //   G = goldA           (gold band)
+    //   B = brassGlow       (gold band highlight / inside-glow)
+    //   g = brassDark       (gold band shadow ring around keyhole)
+    //   S = ancientShimmer  (white sparkle pixel)
+    iconChestClosed: bakeSprite(
+      {
+        rows: [
+          '..................',
+          '....KKKKKKKKKK....',
+          '..KKMHHHHHHHHMKK..',
+          '.KMHLLLLLLLLLLHMK.',
+          'KMHLLLLLLLLLLLLHMK',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGBGGgggKKgggGGBGK',
+          'KGGGGGggKKggGGGGGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          g: 'brassDark',
+        },
+      },
+      { x: 9, y: 8 },
+    ),
+
+    // Open chest: lid hinged back (small trapezoid above body), bright
+    // golden contents inside the body, sparkle pixels for the "treasure"
+    // shine. Drawn at the same 18×16 footprint as `iconChestClosed`.
+    iconChestOpen: bakeSprite(
+      {
+        rows: [
+          '.....KKKKKKKK.....',
+          '...KKMLLLLLLLLMKK.',
+          '..KMLLLLLLLLLLLMK.',
+          '.KKKKKKKKKKKKKKKK.',
+          '.SSS............S.',
+          '....BBBBBBBBBB....',
+          '.KKLLLLLLLLLLLLKK.',
+          'KGGGGGGGGGGGGGGGGK',
+          'KGSBBSwBSBwBSBwBGK',
+          'KGwBSwBwBSwBSwSBGK',
+          'KKKKKKKKKKKKKKKKKK',
+          'KMLLLLLLLLLLLLLLMK',
+          'KMLwHHHHHHHHHHwLMK',
+          'KMLwwwwwwwwwwwwLMK',
+          'KKKKKKKKKKKKKKKKKK',
+          '..................',
+        ],
+        legend: {
+          K: 'woodDark',
+          M: 'woodMid',
+          L: 'woodLight',
+          H: 'woodHi',
+          w: 'woodMid',
+          G: 'goldA',
+          B: 'brassGlow',
+          S: 'ancientShimmer',
+        },
+      },
+      { x: 9, y: 8 },
     ),
   };
 }

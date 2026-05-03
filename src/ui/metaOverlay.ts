@@ -1,7 +1,19 @@
-import { META_UPGRADES, type MetaBranch } from '../data/metaTree';
-import { t } from '../i18n';
 import {
-  ROOT_NODE_ID,
+  META_UPGRADES,
+  TREE_CENTERS,
+  TREE_TITLE_Y,
+  TREE_KEYSTONE_Y,
+  TREE_ROOT_Y,
+  VIEW_W,
+  VIEW_H,
+  branchName,
+  type MetaBranch,
+} from '../data/metaTree';
+import { t } from '../i18n';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
+import {
+  isRootNode,
   allocatedSet,
   buyMetaUpgrade,
   canAllocate,
@@ -23,10 +35,9 @@ import {
 import { metaNodeName, metaNodeDesc } from '../data/metaTree';
 
 const BRANCH_COLORS: Record<MetaBranch, string> = {
-  potions: '#c084fc',     // purple
-  engineering: '#ff8c5a', // orange
-  core: '#7df9ff',        // cyan
-  survival: '#a3e36a',    // green
+  potions: '#c084fc',     // purple — Мастер колб
+  engineering: '#ff8c5a', // orange — Мастер стоек
+  survival: '#a3e36a',    // green  — Выживаемость
 };
 
 const NODE_RADIUS: Record<string, number> = {
@@ -36,16 +47,10 @@ const NODE_RADIUS: Record<string, number> = {
   small: 14,
 };
 
-// SVG viewBox dimensions. Covers the entire node-position space defined in
-// metaTree.ts. Width and height were widened in the v2 layout pass so each
-// branch gets its own non-overlapping wedge and connections no longer cross.
-const VIEW_W = 1400;
-const VIEW_H = 900;
-// The visual centre of the tree — used to pick the curve direction so
-// connections bend along a radial arc (PoE-style) rather than crossing
-// straight through the middle.
-const TREE_CX = 700;
-const TREE_CY = 450;
+// The visual centre of each diamond tree — used to pick the curve direction
+// so connections bend outward along a radial arc instead of cutting through
+// the middle of the rhombus.
+const TREE_CY = (TREE_KEYSTONE_Y + TREE_ROOT_Y) / 2;
 
 /** Glyph for a node, derived from its effect kind. Unicode-only so we
  *  don't ship a sprite atlas — characters render in the native pixel
@@ -70,7 +75,6 @@ const EFFECT_ICONS: Record<string, string> = {
   overloadMaxCharge: '🔋',
   auraRadius: '◯',
   reactionDamage: '✸',
-  catalystSlot: '◆',
   // Survival
   maxHp: '❤',
   armor: '🛡',
@@ -107,7 +111,7 @@ const AURA_MODULE_ICONS: Record<string, string> = {
 };
 
 function nodeGlyph(node: { id: string; effect: { kind: string } }): string {
-  if (node.id === ROOT_NODE_ID) return ROOT_GLYPH;
+  if (isRootNode(node.id)) return ROOT_GLYPH;
   return EFFECT_ICONS[node.effect.kind] ?? '✦';
 }
 
@@ -157,13 +161,38 @@ export class MetaOverlay {
     h.textContent = t('ui.meta.title');
     header.appendChild(h);
 
+    // Currency strip — pixel sprite icon next to the amount, matching the
+    // main-menu top bar so the player has one consistent way to read
+    // currencies across every screen.
     const currencies = document.createElement('div');
     currencies.className = 'meta-currencies';
-    currencies.innerHTML = `
-      <span class="meta-currency blue">${t('ui.meta.blue')}<strong>${opts.meta.blueEssence}</strong></span>
-      <span class="meta-currency ancient">${t('ui.meta.ancient')}<strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="meta-stats">${t('ui.meta.statsLine', { runs: opts.meta.totalRuns, wave: opts.meta.bestWave })}</span>
-    `;
+    const sprites = getSprites();
+    const blueChip = document.createElement('span');
+    blueChip.className = 'meta-currency blue';
+    blueChip.appendChild(spriteIcon(sprites.iconBlueEssence, { scale: 2 }));
+    const blueLabel = document.createElement('span');
+    blueLabel.textContent = t('ui.meta.blue');
+    blueChip.appendChild(blueLabel);
+    const blueAmount = document.createElement('strong');
+    blueAmount.textContent = `${opts.meta.blueEssence}`;
+    blueChip.appendChild(blueAmount);
+    currencies.appendChild(blueChip);
+
+    const ancientChip = document.createElement('span');
+    ancientChip.className = 'meta-currency ancient';
+    ancientChip.appendChild(spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }));
+    const ancientLabel = document.createElement('span');
+    ancientLabel.textContent = t('ui.meta.ancient');
+    ancientChip.appendChild(ancientLabel);
+    const ancientAmount = document.createElement('strong');
+    ancientAmount.textContent = `${opts.meta.ancientEssence}`;
+    ancientChip.appendChild(ancientAmount);
+    currencies.appendChild(ancientChip);
+
+    const stats = document.createElement('span');
+    stats.className = 'meta-stats';
+    stats.textContent = t('ui.meta.statsLine', { runs: opts.meta.totalRuns, wave: opts.meta.bestWave });
+    currencies.appendChild(stats);
     header.appendChild(currencies);
 
     panel.appendChild(header);
@@ -211,7 +240,9 @@ export class MetaOverlay {
     body.appendChild(sidePanel);
 
     if (this.selectedId === null) {
-      this.selectedId = ROOT_NODE_ID;
+      // Default selection: the root of the first tree (Мастер колб).
+      const firstRoot = META_UPGRADES.find((u) => u.kind === 'root');
+      this.selectedId = firstRoot ? firstRoot.id : null;
     }
 
     const saveCallback = () => opts.onSave();
@@ -229,7 +260,7 @@ export class MetaOverlay {
         return;
       }
 
-      const owned = opts.meta.purchased.includes(node.id) || node.id === ROOT_NODE_ID;
+      const owned = opts.meta.purchased.includes(node.id) || isRootNode(node.id);
       const reachable = isReachable(opts.meta, node);
       const affordable = canAllocate(opts.meta, node);
       const branchColor = BRANCH_COLORS[node.branch];
@@ -255,8 +286,22 @@ export class MetaOverlay {
       if (node.cost <= 0) {
         cost.textContent = t('ui.meta.cost.free');
       } else {
-        const label = node.currency === 'blue' ? t('ui.meta.blueEssence') : t('ui.meta.ancientEssence');
-        cost.innerHTML = t('ui.meta.cost.amount', { n: node.cost, label });
+        // Built as `[Cost:] [N] [pixel-icon]` so the player sees the same
+        // currency sprite that appears in the menu top bar / HUD instead
+        // of a plain "Древняя эссенция" string. Ancient currency reuses
+        // the `glow-gold` halo for visual hierarchy.
+        const prefix = document.createElement('span');
+        prefix.textContent = t('ui.meta.cost.prefix') + ' ';
+        cost.appendChild(prefix);
+        const amount = document.createElement('strong');
+        amount.textContent = `${node.cost}`;
+        cost.appendChild(amount);
+        const isAncient = node.currency === 'ancient';
+        const sprite = isAncient ? sprites.iconAncientEssence : sprites.iconBlueEssence;
+        cost.appendChild(spriteIcon(sprite, {
+          scale: 2,
+          extraClass: isAncient ? 'glow-gold' : undefined,
+        }));
       }
       sidePanel.appendChild(cost);
 
@@ -288,7 +333,7 @@ export class MetaOverlay {
           }
         });
         actions.appendChild(learn);
-      } else if (node.id !== ROOT_NODE_ID) {
+      } else if (!isRootNode(node.id)) {
         const undo = document.createElement('button');
         undo.className = 'meta-side-refund';
         undo.textContent = t('ui.meta.refund');
@@ -311,13 +356,46 @@ export class MetaOverlay {
       const allocated = allocatedSet(opts.meta);
       const drawnEdges = new Set<string>();
 
-      // 1) Edges first (so they sit behind the nodes). PoE-style: every
-      //    edge is a quadratic Bézier curve whose control point sits
-      //    *outside* the line connecting the two nodes, biased away from
-      //    the tree centre. Doing this turns crossings between adjacent
-      //    branches into clearly separated arcs (the radial pattern PoE
-      //    uses) so the player can visually trace each connection.
+      // 0) Per-tree decorations: title text above each diamond, plus a
+      //    faint diamond outline that traces the rhombus silhouette so
+      //    the shape reads even before any nodes are allocated.
+      for (const branch of Object.keys(TREE_CENTERS) as MetaBranch[]) {
+        const cx = TREE_CENTERS[branch];
+        const color = BRANCH_COLORS[branch];
+
+        // Faint diamond silhouette (outline that hugs the widest tier 3
+        // and tapers to the keystone / root apexes).
+        const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const tipTopY = TREE_KEYSTONE_Y - 30;
+        const tipBotY = TREE_ROOT_Y + 30;
+        const wideY = (TREE_KEYSTONE_Y + TREE_ROOT_Y) / 2;
+        const wideX = 200;
+        diamond.setAttribute(
+          'd',
+          `M ${cx} ${tipTopY} L ${cx + wideX} ${wideY} L ${cx} ${tipBotY} L ${cx - wideX} ${wideY} Z`,
+        );
+        diamond.setAttribute('fill', 'none');
+        diamond.setAttribute('stroke', 'rgba(255,255,255,0.07)');
+        diamond.setAttribute('stroke-width', '1');
+        svg.appendChild(diamond);
+
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        title.setAttribute('x', String(cx));
+        title.setAttribute('y', String(TREE_TITLE_Y));
+        title.setAttribute('text-anchor', 'middle');
+        title.setAttribute('class', 'meta-tree-title');
+        title.setAttribute('fill', color);
+        title.textContent = branchName(branch);
+        svg.appendChild(title);
+      }
+
+      // 1) Edges first (so they sit behind the nodes). Each edge is a
+      //    quadratic Bézier curve whose control point sits *outside* the
+      //    line connecting the two nodes, biased away from the owning
+      //    tree's centre. This turns same-row connections into outward
+      //    arcs that don't cut through the diamond's interior.
       for (const node of META_UPGRADES) {
+        const treeCx = TREE_CENTERS[node.branch];
         for (const otherId of node.connects) {
           const a = node.id;
           const b = otherId;
@@ -330,9 +408,6 @@ export class MetaOverlay {
           const y1 = node.pos.y;
           const x2 = other.pos.x;
           const y2 = other.pos.y;
-          // Midpoint biased perpendicular to the segment, away from
-          // the tree centre. The bias scales with the segment length so
-          // long arcs curve more than short ones.
           const mx = (x1 + x2) / 2;
           const my = (y1 + y2) / 2;
           const dx = x2 - x1;
@@ -342,13 +417,13 @@ export class MetaOverlay {
           // points away from the tree centre (radial outward).
           let nx = -dy / len;
           let ny = dx / len;
-          const radialX = mx - TREE_CX;
+          const radialX = mx - treeCx;
           const radialY = my - TREE_CY;
           if (nx * radialX + ny * radialY < 0) {
             nx = -nx;
             ny = -ny;
           }
-          const curveAmt = Math.min(60, len * 0.18);
+          const curveAmt = Math.min(40, len * 0.14);
           const cx = mx + nx * curveAmt;
           const cy = my + ny * curveAmt;
           const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -440,7 +515,7 @@ export class MetaOverlay {
         // Right-click still works as a quick refund.
         g.addEventListener('contextmenu', (ev) => {
           ev.preventDefault();
-          if (node.id === ROOT_NODE_ID) return;
+          if (isRootNode(node.id)) return;
           if (!owned) return;
           if (refundMetaUpgrade(opts.meta, node)) {
             saveCallback();
@@ -508,7 +583,6 @@ function branchLabel(b: MetaBranch): string {
   switch (b) {
     case 'potions': return t('ui.meta.branch.potions');
     case 'engineering': return t('ui.meta.branch.engineering');
-    case 'core': return t('ui.meta.branch.core');
     case 'survival': return t('ui.meta.branch.survival');
   }
 }

@@ -1,4 +1,7 @@
 import { DIFFICULTY_MODES, type DifficultyMode } from '../data/difficulty';
+import { mutatorCountForDifficulty } from '../data/mutators';
+import { contractCountForDifficulty } from '../data/contracts';
+import { blessingChoiceCount, curseChoiceCount } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
 
 export class ModifierPreviewOverlay {
@@ -35,10 +38,10 @@ export class ModifierPreviewOverlay {
     const stats = document.createElement('div');
     stats.className = 'mp-stats';
     const mod = def.modifier;
-    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d'));
-    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6'));
-    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166'));
-    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc'));
+    stats.appendChild(statBar('❤', t('ui.preview.hp'), mod.hpMult, '#ff6a3d', true));
+    stats.appendChild(statBar('⚡', t('ui.preview.speed'), mod.speedMult, '#8ecae6', true));
+    stats.appendChild(statBar('🗡', t('ui.preview.damage'), mod.damageMult, '#ffd166', true));
+    stats.appendChild(statBar('💰', t('ui.preview.gold'), mod.goldMult, '#c084fc', false));
     panel.appendChild(stats);
 
     // Bullet list — human-friendly description
@@ -47,6 +50,35 @@ export class ModifierPreviewOverlay {
     for (let i = 0; i < def.previewLines.length; i++) {
       const li = document.createElement('li');
       li.textContent = tWithFallback(`ui.preview.${opts.mode}.line${i}`, def.previewLines[i]!);
+      list.appendChild(li);
+    }
+    // Mention the random "dungeon law" mutator(s) that will roll for this
+    // run — the actual roll happens at run start, so we only advertise the
+    // count here, not the picks.
+    const mutCount = mutatorCountForDifficulty(opts.mode);
+    if (mutCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(mutCount === 1 ? 'ui.mutator.previewEpic' : 'ui.mutator.previewAncient');
+      li.style.color = '#7df9ff';
+      list.appendChild(li);
+    }
+    // Mention the random side contracts (2 in Epic, 3 in Ancient).
+    const contractCount = contractCountForDifficulty(opts.mode);
+    if (contractCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = t(contractCount === 2 ? 'ui.contract.previewEpic' : 'ui.contract.previewAncient');
+      li.style.color = '#ffd166';
+      list.appendChild(li);
+    }
+    // Blessing pre-run picker (Epic: pick 1 of 3; Ancient: pick 1 of 3
+    // blessings + 1 of 3 curses).
+    const blessingCount = blessingChoiceCount(opts.mode);
+    if (blessingCount > 0) {
+      const li = document.createElement('li');
+      li.textContent = curseChoiceCount(opts.mode) > 0
+        ? t('ui.blessing.previewAncient')
+        : t('ui.blessing.previewEpic');
+      li.style.color = '#fde047';
       list.appendChild(li);
     }
     panel.appendChild(list);
@@ -84,20 +116,23 @@ export class ModifierPreviewOverlay {
   }
 }
 
-function statBar(icon: string, label: string, mult: number, color: string): HTMLElement {
+function statBar(icon: string, label: string, mult: number, color: string, enemyStat: boolean): HTMLElement {
   const row = document.createElement('div');
   row.className = 'mp-stat';
   const iconEl = document.createElement('span');
   iconEl.className = 'mp-stat-icon';
   iconEl.textContent = icon;
   row.appendChild(iconEl);
-  // Value FIRST, then the label — bonus labels follow the
-  // "value then name" convention (e.g. "+25% tower cost").
   const value = document.createElement('span');
   value.className = 'mp-stat-value';
   value.textContent = `×${mult.toFixed(2)}`;
-  if (mult > 1) value.classList.add('up');
-  else if (mult < 1) value.classList.add('down');
+  if (enemyStat) {
+    if (mult > 1) value.classList.add('debuff');
+    else if (mult < 1) value.classList.add('buff');
+  } else {
+    if (mult > 1) value.classList.add('buff');
+    else if (mult < 1) value.classList.add('debuff');
+  }
   row.appendChild(value);
   const labelEl = document.createElement('span');
   labelEl.className = 'mp-stat-label';

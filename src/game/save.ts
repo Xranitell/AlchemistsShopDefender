@@ -10,6 +10,7 @@ import {
   POTION_INVENTORY_SIZE,
   type IngredientId,
 } from '../data/potions';
+import { META_BY_ID } from '../data/metaTree';
 
 const SAVE_KEY = 'asd_meta_v2';
 
@@ -49,6 +50,13 @@ export interface MetaSave {
   tutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  /** Mode-mastery counters: number of full victories per difficulty. Each
+   *  Epic / Ancient victory grants +1 mastery, which scales blue-essence
+   *  drops in *every* future run by a small amount (capped). This is the
+   *  meta hook that makes higher modes worth replaying — see
+   *  `masteryEssenceMult` in game/meta.ts. */
+  epicMastery: number;
+  ancientMastery: number;
   // ─── Potion crafting (PR-«крафт») ───────────────────────────────────────
   /** Stockpile of crafting ingredients. Keys come from `IngredientId`; missing
    *  keys are treated as 0. Drops persist across runs. */
@@ -85,6 +93,8 @@ export function newMetaSave(): MetaSave {
     musicVolume: 0.4,
     tutorialDone: false,
     locale: defaultLocale(),
+    epicMastery: 0,
+    ancientMastery: 0,
     ingredients: {},
     inventory: emptyInventory(),
   };
@@ -104,6 +114,21 @@ function sanitizeIngredients(
     if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
       out[id] = Math.floor(v);
     }
+  }
+  return out;
+}
+
+/** Drop any allocated upgrade ids that are no longer present in the meta
+ *  tree. Old saves built against the previous tree layout would otherwise
+ *  carry ghost ids that confuse refund-connectivity checks. */
+function sanitizePurchased(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string') continue;
+    if (!META_BY_ID[id]) continue;
+    if (out.includes(id)) continue;
+    out.push(id);
   }
   return out;
 }
@@ -137,7 +162,7 @@ export function loadMeta(): MetaSave {
       keys: data.keys ?? 0,
       epicKeys: data.epicKeys ?? 1,
       ancientKeys: data.ancientKeys ?? 1,
-      purchased: Array.isArray(data.purchased) ? data.purchased : [],
+      purchased: sanitizePurchased(data.purchased),
       bestWave: data.bestWave ?? 0,
       totalRuns: data.totalRuns ?? 0,
       dailyDay: data.dailyDay ?? 0,
@@ -167,6 +192,8 @@ export function loadMeta(): MetaSave {
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      epicMastery: typeof data.epicMastery === 'number' ? Math.max(0, Math.floor(data.epicMastery)) : 0,
+      ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
       inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
     };

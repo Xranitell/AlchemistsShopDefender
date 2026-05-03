@@ -1,26 +1,25 @@
 /**
- * Meta-progression tree, modelled after the Path-of-Exile passive tree:
+ * Meta-progression — three independent diamond-shaped trees.
  *
- *  - Every node has an explicit (x, y) position on a fixed canvas.
- *  - Nodes connect to one or more neighbours via the `connects` field.
- *  - To allocate a node the player must own AT LEAST ONE of its neighbours
- *    (the central `heart_root` node is allocated for free at the start).
- *  - Three sizes / tiers exist:
- *      "small"    - cheap +x% nodes (cost ~3-8 СЭ)
- *      "notable"  - thicker rings, larger payoffs (cost ~20-40 СЭ)
- *      "keystone" - dramatic build-defining effects, paid in Древняя Эссенция
- *
- *  Saves still store an array of allocated ids — the only thing that changes
- *  is how the UI renders the graph and how `applyMetaUpgrades` follows the
- *  links. Previously-saved ids that no longer exist are silently ignored,
- *  so an old save just loses meta upgrades that were removed.
+ *  - Each tree is its own self-contained graph: nodes only connect to other
+ *    nodes within the same tree. The graph forms a vertical rhombus made of
+ *    seven tiers (1 – 3 – 3 – 5 – 3 – 3 – 1). The lone bottom node of every
+ *    tree is its `root` (always allocated for free); the lone top node is the
+ *    tree's `keystone` (powerful, paid in Древняя Эссенция).
+ *  - The three tree branches are: «Мастер колб» (potions), «Мастер стоек»
+ *    (engineering / towers) and «Выживаемость» (survival / mannequin).
+ *  - Allocation rule unchanged: a node becomes available once at least one of
+ *    its neighbours is allocated. Roots are pre-allocated, so every tree has
+ *    one always-reachable entry point.
+ *  - Saves still store an array of allocated ids; ids that no longer exist
+ *    are silently ignored, so an old save just loses progress.
  */
 export interface MetaUpgrade {
   id: string;
   branch: MetaBranch;
   /** Node tier — drives cost class, render size and outline thickness. */
   kind: NodeKind;
-  /** Layout in the tree canvas (≈ 0..1400 × 0..900). */
+  /** Layout in the tree canvas (≈ 0..1500 × 0..900). */
   pos: { x: number; y: number };
   /** All neighbour ids — symmetrical edges, no special "parent" direction. */
   connects: string[];
@@ -29,11 +28,14 @@ export interface MetaUpgrade {
   cost: number;
   currency: 'blue' | 'ancient';
   effect: MetaEffect;
+  /** Additional effects applied alongside the primary `effect`. Used by
+   *  keystones and compound nodes that grant more than one bonus. */
+  extraEffects?: MetaEffect[];
 }
 
 export type NodeKind = 'root' | 'small' | 'notable' | 'keystone';
 
-export type MetaBranch = 'potions' | 'engineering' | 'core' | 'survival';
+export type MetaBranch = 'potions' | 'engineering' | 'survival';
 
 export type MetaEffect =
   // Potions
@@ -55,7 +57,6 @@ export type MetaEffect =
   | { kind: 'overloadMaxCharge'; value: number }
   | { kind: 'auraRadius'; value: number }
   | { kind: 'reactionDamage'; value: number }
-  | { kind: 'catalystSlot'; value: number }
   // Survival
   | { kind: 'maxHp'; value: number }
   | { kind: 'armor'; value: number }
@@ -72,767 +73,752 @@ export type MetaEffect =
   | { kind: 'critChance'; value: number }; // additive: +X% per-shot crit chance
 
 const BRANCH_NAMES: Record<MetaBranch, string> = {
-  potions: 'Алхимия',
-  engineering: 'Инженерия',
-  core: 'Аркана',
-  survival: 'Живучесть',
+  potions: 'Мастер колб',
+  engineering: 'Мастер стоек',
+  survival: 'Выживаемость',
 };
 
 export function branchName(b: MetaBranch): string {
   return BRANCH_NAMES[b];
 }
 
-// Rough quadrant guide:
-//   NW = potions     NE = engineering
-//   SW = core        SE = survival
+// ────────── Layout constants for the three diamond trees ──────────
+//
+// The tree panel renders three rhombi side-by-side. Each tree spans the
+// same seven tiers (top keystone → 3 → 3 → 5 → 3 → 3 → bottom root) and
+// the same widths, so the player sees three identical-shaped diamonds.
 
-export const META_UPGRADES: MetaUpgrade[] = [
-  // ─────────────────────────── Root ───────────────────────────
-  {
-    id: 'heart_root',
-    branch: 'survival',
-    kind: 'root',
-    pos: { x: 700, y: 450 },
-    connects: [
-      'p_cd_1', 'p_dmg_1',
-      'e_fire_1', 'e_range_1',
-      'c_overload_1', 'c_aura_1',
-      's_hp_1', 's_armor_1',
-      'eco_essence_1',
-    ],
-    name: 'Сердце Голема',
-    desc: 'Стартовый узел. Открывает четыре круга школ.',
-    cost: 0,
-    currency: 'blue',
-    effect: { kind: 'maxHp', value: 0 },
-  },
-
-  // ─────────────────────────── Alchemy (NW) ───────────────────────────
-  {
-    id: 'p_dmg_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 620, y: 400 },
-    connects: ['heart_root', 'p_dmg_2', 'p_aim_1'],
-    name: 'Концентрат',
-    desc: '+5% урон склянок',
-    cost: 12, currency: 'blue',
-    effect: { kind: 'potionDamage', value: 1.05 },
-  },
-  {
-    id: 'p_cd_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 620, y: 500 },
-    connects: ['heart_root', 'p_cd_2', 'p_radius_1'],
-    name: 'Быстрые руки',
-    desc: '-4% кулдаун склянок',
-    cost: 12, currency: 'blue',
-    effect: { kind: 'potionCooldown', value: 0.96 },
-  },
-  {
-    id: 'p_dmg_2',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 530, y: 380 },
-    connects: ['p_dmg_1', 'p_notable_brew', 'p_dmg_3'],
-    name: 'Концентрат II',
-    desc: '+5% урон склянок',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'potionDamage', value: 1.05 },
-  },
-  {
-    id: 'p_cd_2',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 530, y: 520 },
-    connects: ['p_cd_1', 'p_notable_brew', 'p_cd_3'],
-    name: 'Быстрые руки II',
-    desc: '-4% кулдаун склянок',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'potionCooldown', value: 0.96 },
-  },
-  {
-    id: 'p_radius_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 560, y: 580 },
-    connects: ['p_cd_1', 'p_radius_2'],
-    name: 'Широкий всплеск',
-    desc: '+5% радиус AoE',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'potionRadius', value: 1.05 },
-  },
-  {
-    id: 'p_radius_2',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 470, y: 600 },
-    connects: ['p_radius_1', 'p_notable_brew', 'p_radius_3'],
-    name: 'Широкий всплеск II',
-    desc: '+5% радиус AoE',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'potionRadius', value: 1.05 },
-  },
-  {
-    id: 'p_notable_brew',
-    branch: 'potions',
-    kind: 'notable',
-    pos: { x: 440, y: 460 },
-    connects: ['p_dmg_2', 'p_cd_2', 'p_radius_2', 'p_aim_2', 'p_echo_1'],
-    name: 'Тяжёлый состав',
-    desc: '+15% урон, +10% радиус AoE склянок',
-    cost: 82, currency: 'blue',
-    effect: { kind: 'potionDamage', value: 1.15 },
-  },
-  {
-    id: 'p_aim_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 570, y: 320 },
-    connects: ['p_dmg_1', 'p_aim_2', 'eco_essence_notable'],
-    name: 'Прицельный бросок',
-    desc: '+5% бонус за ручное попадание',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'potionAimBonus', value: 0.05 },
-  },
-  {
-    id: 'p_aim_2',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 470, y: 280 },
-    connects: ['p_aim_1', 'p_notable_brew', 'p_keystone_salamander'],
-    name: 'Точный бросок II',
-    desc: '+5% бонус за ручное попадание',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'potionAimBonus', value: 0.05 },
-  },
-  {
-    id: 'p_echo_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 360, y: 460 },
-    connects: ['p_notable_brew', 'p_echo_2'],
-    name: 'Эхо взрыва',
-    desc: '+8% шанс микровзрыва',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'potionEchoChance', value: 0.08 },
-  },
-  {
-    id: 'p_echo_2',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 290, y: 470 },
-    connects: ['p_echo_1', 'p_keystone_salamander'],
-    name: 'Эхо взрыва II',
-    desc: '+8% шанс микровзрыва',
-    cost: 33, currency: 'blue',
-    effect: { kind: 'potionEchoChance', value: 0.08 },
-  },
-  {
-    id: 'p_keystone_salamander',
-    branch: 'potions',
-    kind: 'keystone',
-    pos: { x: 320, y: 280 },
-    connects: ['p_aim_2', 'p_echo_2'],
-    name: 'Великий рецепт Саламандры',
-    desc: '+огонь от всех склянок, горение длится дольше',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'potionLeavesFire', value: 1 },
-  },
-
-  // ─────────────────────────── Engineering (NE) ───────────────────────────
-  {
-    id: 'e_fire_1',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 800, y: 400 },
-    connects: ['heart_root', 'e_fire_2', 'e_range_1'],
-    name: 'Смазанные шестерни',
-    desc: '+4% скорострельность стоек',
-    cost: 12, currency: 'blue',
-    effect: { kind: 'towerFireRate', value: 1.04 },
-  },
-  {
-    id: 'e_range_1',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 800, y: 500 },
-    connects: ['heart_root', 'e_range_2', 'e_fire_1', 'e_dmg_1'],
-    name: 'Точная оптика',
-    desc: '+5% дальность стоек',
-    cost: 12, currency: 'blue',
-    effect: { kind: 'towerRange', value: 1.05 },
-  },
-  {
-    id: 'e_fire_2',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 890, y: 360 },
-    connects: ['e_fire_1', 'e_notable_workshop', 'e_discount'],
-    name: 'Смазка II',
-    desc: '+4% скорострельность стоек',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'towerFireRate', value: 1.04 },
-  },
-  {
-    id: 'e_range_2',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 890, y: 540 },
-    connects: ['e_range_1', 'e_notable_workshop', 'e_range_3'],
-    name: 'Оптика II',
-    desc: '+5% дальность стоек',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'towerRange', value: 1.05 },
-  },
-  {
-    id: 'e_dmg_1',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 910, y: 470 },
-    connects: ['e_range_1', 'e_dmg_2', 'e_notable_workshop'],
-    name: 'Усиленные дюзы',
-    desc: '+5% урон стоек',
-    cost: 18, currency: 'blue',
-    effect: { kind: 'towerDamage', value: 1.05 },
-  },
-  {
-    id: 'e_dmg_2',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 1000, y: 500 },
-    connects: ['e_dmg_1', 'e_rune_1', 'e_dmg_3'],
-    name: 'Усиленные дюзы II',
-    desc: '+5% урон стоек',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'towerDamage', value: 1.05 },
-  },
-  {
-    id: 'e_notable_workshop',
-    branch: 'engineering',
-    kind: 'notable',
-    pos: { x: 970, y: 430 },
-    connects: ['e_fire_2', 'e_range_2', 'e_dmg_1', 'e_discount', 'e_rune_1'],
-    name: 'Мастерская Архимастера',
-    desc: '+10% урон, +5% скорострельность стоек',
-    cost: 90, currency: 'blue',
-    effect: { kind: 'towerDamage', value: 1.10 },
-  },
-  {
-    id: 'e_discount',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 950, y: 290 },
-    connects: ['e_fire_2', 'e_notable_workshop', 'e_start_level', 'e_fire_3'],
-    name: 'Скидка на стойки',
-    desc: '−10 золота на первую стойку',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'towerDiscount', value: 10 },
-  },
-  {
-    id: 'e_start_level',
-    branch: 'engineering',
-    kind: 'notable',
-    pos: { x: 1040, y: 240 },
-    connects: ['e_discount', 'e_rune_1'],
-    name: 'Мастер-сборка',
-    desc: '+1 стартовый уровень первой стойки',
-    cost: 105, currency: 'blue',
-    effect: { kind: 'towerStartLevel', value: 2 },
-  },
-  {
-    id: 'e_rune_1',
-    branch: 'engineering',
-    kind: 'notable',
-    pos: { x: 1080, y: 410 },
-    connects: ['e_dmg_2', 'e_notable_workshop', 'e_start_level', 'e_rune_2'],
-    name: 'Открытая руническая точка α',
-    desc: '+1 руническая точка для стойки',
-    cost: 105, currency: 'blue',
-    effect: { kind: 'runePointUnlock', value: 1 },
-  },
-  {
-    id: 'e_rune_2',
-    branch: 'engineering',
-    kind: 'notable',
-    pos: { x: 1180, y: 380 },
-    connects: ['e_rune_1', 'e_keystone_archmaster'],
-    name: 'Открытая руническая точка β',
-    desc: '+1 руническая точка для стойки',
-    cost: 150, currency: 'blue',
-    effect: { kind: 'runePointUnlock', value: 2 },
-  },
-  {
-    id: 'e_keystone_archmaster',
-    branch: 'engineering',
-    kind: 'keystone',
-    pos: { x: 1290, y: 280 },
-    connects: ['e_rune_2'],
-    name: 'Чертёж Архимастера',
-    desc: '+1 руническая точка β и +10% дальность стоек',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'towerRange', value: 1.10 },
-  },
-
-  // ─────────────────────────── Arcanum (SW, core/overload) ───────────────────
-  {
-    id: 'c_overload_1',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 620, y: 580 },
-    connects: ['heart_root', 'c_overload_2', 'c_aura_1'],
-    name: 'Ускоренный заряд',
-    desc: '+8% скорость заряда Overload',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'overloadRate', value: 1.08 },
-  },
-  {
-    id: 'c_aura_1',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 690, y: 590 },
-    connects: ['heart_root', 'c_overload_1', 'c_reaction_1', 'c_aura_2'],
-    name: 'Резонансная сетка',
-    desc: '+8% радиус аур',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'auraRadius', value: 1.08 },
-  },
-  {
-    id: 'c_overload_2',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 540, y: 660 },
-    connects: ['c_overload_1', 'c_notable_capacitor', 'c_overload_3'],
-    name: 'Конденсатор',
-    desc: '+15 макс. заряд Overload',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'overloadMaxCharge', value: 15 },
-  },
-  {
-    id: 'c_reaction_1',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 640, y: 680 },
-    connects: ['c_aura_1', 'c_notable_capacitor', 'c_reaction_2'],
-    name: 'Стихийный резонанс',
-    desc: '+10% урон элементальных реакций',
-    cost: 18, currency: 'blue',
-    effect: { kind: 'reactionDamage', value: 1.10 },
-  },
-  {
-    id: 'c_reaction_2',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 580, y: 740 },
-    connects: ['c_reaction_1', 'c_keystone_resonator', 'c_reaction_3'],
-    name: 'Стихийный резонанс II',
-    desc: '+10% урон элементальных реакций',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'reactionDamage', value: 1.10 },
-  },
-  {
-    id: 'c_notable_capacitor',
-    branch: 'core',
-    kind: 'notable',
-    pos: { x: 470, y: 700 },
-    connects: ['c_overload_2', 'c_reaction_1', 'c_catalyst', 'c_keystone_resonator'],
-    name: 'Расширенный конденсатор',
-    desc: '+25 макс. заряд Overload и +15% скорость заряда',
-    cost: 82, currency: 'blue',
-    effect: { kind: 'overloadMaxCharge', value: 25 },
-  },
-  {
-    id: 'c_catalyst',
-    branch: 'core',
-    kind: 'notable',
-    pos: { x: 360, y: 640 },
-    connects: ['c_notable_capacitor'],
-    name: 'Слот катализатора',
-    desc: '+1 катализатор в забеге (зарезервирован)',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'catalystSlot', value: 1 },
-  },
-  {
-    id: 'c_keystone_resonator',
-    branch: 'core',
-    kind: 'keystone',
-    pos: { x: 350, y: 770 },
-    connects: ['c_notable_capacitor', 'c_reaction_2'],
-    name: 'Резонатор стихий',
-    desc: '+30% урона реакциям стихий',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'reactionDamage', value: 1.30 },
-  },
-
-  // ─────────────────────────── Survival (SE) ───────────────────────────
-  {
-    id: 's_hp_1',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 770, y: 560 },
-    connects: ['heart_root', 's_hp_2', 's_armor_1'],
-    name: 'Прочный каркас',
-    desc: '+10 макс. HP манекена',
-    cost: 12, currency: 'blue',
-    effect: { kind: 'maxHp', value: 10 },
-  },
-  {
-    id: 's_armor_1',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 820, y: 510 },
-    connects: ['heart_root', 's_hp_1', 's_armor_2', 's_repair_1'],
-    name: 'Железная обшивка',
-    desc: '+3% брони манекена',
-    cost: 15, currency: 'blue',
-    effect: { kind: 'armor', value: 0.03 },
-  },
-  {
-    id: 's_hp_2',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 800, y: 640 },
-    connects: ['s_hp_1', 's_notable_frame', 's_hp_3'],
-    name: 'Прочный каркас II',
-    desc: '+15 макс. HP манекена',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'maxHp', value: 15 },
-  },
-  {
-    id: 's_armor_2',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 900, y: 560 },
-    connects: ['s_armor_1', 's_notable_frame', 's_repair_1', 's_armor_3'],
-    name: 'Железная обшивка II',
-    desc: '+3% брони манекена',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'armor', value: 0.03 },
-  },
-  {
-    id: 's_notable_frame',
-    branch: 'survival',
-    kind: 'notable',
-    pos: { x: 880, y: 680 },
-    connects: ['s_hp_2', 's_armor_2', 's_thorns', 's_boss_shield'],
-    name: 'Усиленный корпус',
-    desc: '+25 HP и +5% брони манекена',
-    cost: 82, currency: 'blue',
-    effect: { kind: 'maxHp', value: 25 },
-  },
-  {
-    id: 's_repair_1',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 950, y: 490 },
-    connects: ['s_armor_1', 's_armor_2', 's_repair_notable'],
-    name: 'Авто-ремонт',
-    desc: '+1 HP/сек регенерация вне боя',
-    cost: 30, currency: 'blue',
-    effect: { kind: 'autoRepair', value: 1 },
-  },
-  {
-    id: 's_repair_notable',
-    branch: 'survival',
-    kind: 'notable',
-    pos: { x: 1020, y: 540 },
-    connects: ['s_repair_1', 's_boss_shield', 's_keystone_thorns'],
-    name: 'Полевой ремонт',
-    desc: '+2 HP/сек регенерация вне боя',
-    cost: 90, currency: 'blue',
-    effect: { kind: 'autoRepair', value: 2 },
-  },
-  {
-    id: 's_thorns',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 820, y: 760 },
-    connects: ['s_notable_frame', 's_keystone_thorns'],
-    name: 'Шипастый каркас',
-    desc: '+3 урона атакующему врагу',
-    cost: 33, currency: 'blue',
-    effect: { kind: 'thornyShell', value: 1 },
-  },
-  {
-    id: 's_boss_shield',
-    branch: 'survival',
-    kind: 'notable',
-    pos: { x: 950, y: 700 },
-    connects: ['s_notable_frame', 's_repair_notable', 's_keystone_thorns'],
-    name: 'Щит босс-волны',
-    desc: '+25 HP щита в начале босс-волны',
-    cost: 105, currency: 'blue',
-    effect: { kind: 'bossShield', value: 25 },
-  },
-  {
-    id: 's_keystone_thorns',
-    branch: 'survival',
-    kind: 'keystone',
-    pos: { x: 1050, y: 800 },
-    connects: ['s_thorns', 's_boss_shield', 's_repair_notable'],
-    name: 'Сердце Голема (Закалённое)',
-    desc: '+5 урона шипам, +30% эффективности авто-ремонта',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'thornyShell', value: 1 },
-  },
-
-  // ─────────────────────────── Economy ring (cross-branch) ──────────────────
-  {
-    id: 'eco_essence_1',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 700, y: 360 },
-    connects: ['heart_root', 'eco_essence_notable'],
-    name: 'Эссенциальная жатва I',
-    desc: '+10% Синей Эссенции за забег',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'essenceBonus', value: 1.10 },
-  },
-  {
-    id: 'eco_essence_notable',
-    branch: 'survival',
-    kind: 'notable',
-    pos: { x: 640, y: 270 },
-    connects: ['eco_essence_1', 'eco_gold_1', 'p_aim_1'],
-    name: 'Эссенциальная жатва II',
-    desc: '+25% Синей Эссенции за забег',
-    cost: 120, currency: 'blue',
-    effect: { kind: 'essenceBonus', value: 1.25 },
-  },
-  {
-    id: 'eco_gold_1',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 800, y: 280 },
-    connects: ['eco_essence_notable', 'eco_gold_2'],
-    name: 'Золотая жила',
-    desc: '+10% золота с врагов',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'goldDrop', value: 1.10 },
-  },
-  {
-    id: 'eco_gold_2',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 920, y: 200 },
-    connects: ['eco_gold_1'],
-    name: 'Стартовый кошелёк',
-    desc: '+30 стартового золота',
-    cost: 30, currency: 'blue',
-    effect: { kind: 'startGold', value: 30 },
-  },
-  // ─────────────────────────── v2: Alchemy expansion ───────────────────────
-  {
-    id: 'p_dmg_3',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 410, y: 360 },
-    connects: ['p_dmg_2', 'p_notable_concentrate'],
-    name: 'Концентрат III',
-    desc: '+5% урон склянок',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'potionDamage', value: 1.05 },
-  },
-  {
-    id: 'p_cd_3',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 400, y: 580 },
-    connects: ['p_cd_2', 'p_notable_concentrate'],
-    name: 'Быстрые руки III',
-    desc: '-4% кулдаун склянок',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'potionCooldown', value: 0.96 },
-  },
-  {
-    id: 'p_radius_3',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 350, y: 620 },
-    connects: ['p_radius_2', 'p_notable_concentrate'],
-    name: 'Широкий всплеск III',
-    desc: '+5% радиус AoE',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'potionRadius', value: 1.05 },
-  },
-  {
-    id: 'p_notable_concentrate',
-    branch: 'potions',
-    kind: 'notable',
-    pos: { x: 240, y: 460 },
-    connects: ['p_dmg_3', 'p_cd_3', 'p_radius_3', 'p_armor_pen', 'p_crit_1'],
-    name: 'Совершенный состав',
-    desc: '+20% урон, +5% радиус AoE',
-    cost: 98, currency: 'blue',
-    effect: { kind: 'potionDamage', value: 1.20 },
-  },
-  {
-    id: 'p_armor_pen',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 170, y: 400 },
-    connects: ['p_notable_concentrate'],
-    name: 'Бронебойные склянки',
-    desc: '+10% бронепробитие склянок и стоек',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'armorPen', value: 0.10 },
-  },
-  {
-    id: 'p_crit_1',
-    branch: 'potions',
-    kind: 'small',
-    pos: { x: 160, y: 510 },
-    connects: ['p_notable_concentrate', 'p_armor_pen'],
-    name: 'Алхимический скол',
-    desc: '+5% шанс крит. удара (×2 урон)',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'critChance', value: 0.05 },
-  },
-  {
-    id: 'p_keystone_volcano',
-    branch: 'potions',
-    kind: 'keystone',
-    pos: { x: 80, y: 450 },
-    connects: ['p_armor_pen', 'p_crit_1'],
-    name: 'Вулканический рецепт',
-    desc: '+50% урона и +огонь каждому 4-му броску',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'potionLeavesFire', value: 1 },
-  },
-
-  // ─────────────────────────── v2: Engineering expansion ───────────────────
-  {
-    id: 'e_fire_3',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 1010, y: 200 },
-    connects: ['e_discount', 'e_notable_armament'],
-    name: 'Смазка III',
-    desc: '+4% скорострельность стоек',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'towerFireRate', value: 1.04 },
-  },
-  {
-    id: 'e_dmg_3',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 1100, y: 510 },
-    connects: ['e_dmg_2', 'e_notable_armament'],
-    name: 'Усиленные дюзы III',
-    desc: '+5% урон стоек',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'towerDamage', value: 1.05 },
-  },
-  {
-    id: 'e_range_3',
-    branch: 'engineering',
-    kind: 'small',
-    pos: { x: 970, y: 590 },
-    connects: ['e_range_2', 'e_notable_armament'],
-    name: 'Оптика III',
-    desc: '+5% дальность стоек',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'towerRange', value: 1.05 },
-  },
-  {
-    id: 'e_notable_armament',
-    branch: 'engineering',
-    kind: 'notable',
-    pos: { x: 1140, y: 320 },
-    connects: ['e_fire_3', 'e_dmg_3', 'e_range_3', 'e_keystone_overdrive'],
-    name: 'Полный арсенал',
-    desc: '+15% урон и +10% дальность стоек',
-    cost: 105, currency: 'blue',
-    effect: { kind: 'towerDamage', value: 1.15 },
-  },
-  {
-    id: 'e_keystone_overdrive',
-    branch: 'engineering',
-    kind: 'keystone',
-    pos: { x: 1190, y: 540 },
-    connects: ['e_notable_armament', 'e_dmg_3'],
-    name: 'Overdrive',
-    desc: '+5% крит-шанс стоек и склянок',
-    cost: 2, currency: 'ancient',
-    effect: { kind: 'critChance', value: 0.05 },
-  },
-
-  // ─────────────────────────── v2: Arcanum expansion ───────────────────────
-  {
-    id: 'c_overload_3',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 460, y: 760 },
-    connects: ['c_overload_2', 'c_notable_amplifier'],
-    name: 'Конденсатор II',
-    desc: '+20 макс. заряд Overload',
-    cost: 33, currency: 'blue',
-    effect: { kind: 'overloadMaxCharge', value: 20 },
-  },
-  {
-    id: 'c_reaction_3',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 540, y: 800 },
-    connects: ['c_reaction_2', 'c_notable_amplifier'],
-    name: 'Стихийный резонанс III',
-    desc: '+10% урон элементальных реакций',
-    cost: 27, currency: 'blue',
-    effect: { kind: 'reactionDamage', value: 1.10 },
-  },
-  {
-    id: 'c_aura_2',
-    branch: 'core',
-    kind: 'small',
-    pos: { x: 720, y: 690 },
-    connects: ['c_aura_1', 'c_notable_amplifier'],
-    name: 'Резонансная сетка II',
-    desc: '+8% радиус аур',
-    cost: 21, currency: 'blue',
-    effect: { kind: 'auraRadius', value: 1.08 },
-  },
-  {
-    id: 'c_notable_amplifier',
-    branch: 'core',
-    kind: 'notable',
-    pos: { x: 600, y: 820 },
-    connects: ['c_overload_3', 'c_reaction_3', 'c_aura_2'],
-    name: 'Усилитель резонанса',
-    desc: '+30 макс. заряд Overload и +10% скорость заряда',
-    cost: 90, currency: 'blue',
-    effect: { kind: 'overloadMaxCharge', value: 30 },
-  },
-
-  // ─────────────────────────── v2: Survival expansion ──────────────────────
-  {
-    id: 's_hp_3',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 870, y: 730 },
-    connects: ['s_hp_2', 's_armor_3'],
-    name: 'Прочный каркас III',
-    desc: '+20 макс. HP манекена',
-    cost: 30, currency: 'blue',
-    effect: { kind: 'maxHp', value: 20 },
-  },
-  {
-    id: 's_armor_3',
-    branch: 'survival',
-    kind: 'small',
-    pos: { x: 970, y: 620 },
-    connects: ['s_armor_2', 's_hp_3'],
-    name: 'Железная обшивка III',
-    desc: '+3% брони манекена',
-    cost: 24, currency: 'blue',
-    effect: { kind: 'armor', value: 0.03 },
-  },
+/** Per-row Y coordinate inside the SVG view-box. Tier indices are top→bottom. */
+const TIER_Y = [110, 220, 330, 440, 550, 660, 770];
+/** Per-row column X-offsets relative to the tree's centre. Each entry maps a
+ *  tier index to the offsets used by the cells in that row (left → right). */
+const TIER_X_OFFSETS: number[][] = [
+  [0],                                    // tier 0 — top apex (1 cell)
+  [-80, 0, 80],                           // tier 1 — 3 cells
+  [-80, 0, 80],                           // tier 2 — 3 cells
+  [-160, -80, 0, 80, 160],                // tier 3 — 5 cells (widest)
+  [-80, 0, 80],                           // tier 4 — 3 cells
+  [-80, 0, 80],                           // tier 5 — 3 cells
+  [0],                                    // tier 6 — bottom apex (1 cell)
 ];
+
+/** Centres of each tree along the X axis (in SVG view-box coords). */
+export const TREE_CENTERS: Record<MetaBranch, number> = {
+  potions: 250,
+  engineering: 750,
+  survival: 1250,
+};
+
+export const TREE_TIER_Y = TIER_Y;
+export const TREE_KEYSTONE_Y = TIER_Y[0];
+export const TREE_ROOT_Y = TIER_Y[TIER_Y.length - 1];
+
+/** Tree title Y (above the keystone). Used by metaOverlay to render labels. */
+export const TREE_TITLE_Y = 50;
+
+// View-box dimensions used by the overlay SVG.
+export const VIEW_W = 1500;
+export const VIEW_H = 900;
+
+// ────────── Node-construction helper ──────────
+
+/** Compact intermediate description of a single tree cell. */
+interface CellDef {
+  kind: NodeKind;
+  name: string;
+  desc: string;
+  cost: number;
+  currency: 'blue' | 'ancient';
+  effect: MetaEffect;
+  extraEffects?: MetaEffect[];
+}
+
+/** Per-tree definition — exactly seven tiers; widths must match TIER_X_OFFSETS. */
+interface TreeDef {
+  prefix: string;
+  branch: MetaBranch;
+  /** rows[i] is the array of cells at tier i, left → right. */
+  rows: CellDef[][];
+}
+
+/** Default vertical edges: each cell connects to the cells in the row above
+ *  whose horizontal offset is closest. Adjacent same-row cells are also
+ *  connected so the layout reads as a connected rhombus.
+ *
+ *  The result is encoded as symmetric `connects` arrays on the produced
+ *  `MetaUpgrade` objects. */
+function buildTreeNodes(def: TreeDef): MetaUpgrade[] {
+  const cellId = (tier: number, col: number) => `${def.prefix}_${tier}_${col}`;
+  const cx = TREE_CENTERS[def.branch];
+  const nodes: MetaUpgrade[] = [];
+  for (let tier = 0; tier < def.rows.length; tier++) {
+    const row = def.rows[tier];
+    const offsets = TIER_X_OFFSETS[tier];
+    if (row.length !== offsets.length) {
+      throw new Error(
+        `metaTree: tree '${def.prefix}' tier ${tier} has ${row.length} cells but expected ${offsets.length}`,
+      );
+    }
+    for (let col = 0; col < row.length; col++) {
+      const cell = row[col];
+      nodes.push({
+        id: cellId(tier, col),
+        branch: def.branch,
+        kind: cell.kind,
+        pos: { x: cx + offsets[col], y: TIER_Y[tier] },
+        connects: [],
+        name: cell.name,
+        desc: cell.desc,
+        cost: cell.cost,
+        currency: cell.currency,
+        effect: cell.effect,
+        extraEffects: cell.extraEffects,
+      });
+    }
+  }
+
+  // Index by id for fast lookup while wiring edges.
+  const byId = new Map(nodes.map((n) => [n.id, n] as const));
+  const link = (a: string, b: string) => {
+    const na = byId.get(a);
+    const nb = byId.get(b);
+    if (!na || !nb) return;
+    if (!na.connects.includes(b)) na.connects.push(b);
+    if (!nb.connects.includes(a)) nb.connects.push(a);
+  };
+
+  // Vertical edges: each cell links to the cell(s) directly above whose
+  // x-offset is identical OR the two whose x-offsets bracket it.
+  for (let tier = 1; tier < def.rows.length; tier++) {
+    const upper = TIER_X_OFFSETS[tier - 1];
+    const lower = TIER_X_OFFSETS[tier];
+    for (let col = 0; col < lower.length; col++) {
+      const x = lower[col];
+      // Find upper indices that are the closest above this cell. Connect to
+      // the closest, and additionally to the second-closest if both sides of
+      // the cell exist (so a wide-row cell at -160 still links upward).
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < upper.length; i++) {
+        const d = Math.abs(upper[i] - x);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      link(cellId(tier - 1, bestIdx), cellId(tier, col));
+      // If the cell sits between two upper cells (tie or near-tie), link both.
+      for (let i = 0; i < upper.length; i++) {
+        if (i === bestIdx) continue;
+        if (Math.abs(upper[i] - x) <= bestDist + 1e-3) {
+          link(cellId(tier - 1, i), cellId(tier, col));
+        }
+      }
+    }
+  }
+
+  // Horizontal edges: connect adjacent cells in the same row so the diamond
+  // reads as a single mesh, not a tree of disconnected verticals.
+  for (let tier = 0; tier < def.rows.length; tier++) {
+    const row = def.rows[tier];
+    for (let col = 0; col + 1 < row.length; col++) {
+      link(cellId(tier, col), cellId(tier, col + 1));
+    }
+  }
+
+  // Extra fan-out from the wide centre row to its narrower neighbours so
+  // every tier-3 wing cell has at least two upward paths.
+  // (TIER_X_OFFSETS[3] has 5 cells; TIER_X_OFFSETS[2] / [4] have 3 cells at
+  //  -80, 0, 80. Wing cells at ±160 would otherwise only link to ±80.)
+  link(cellId(2, 0), cellId(3, 0));
+  link(cellId(2, 2), cellId(3, 4));
+  link(cellId(4, 0), cellId(3, 0));
+  link(cellId(4, 2), cellId(3, 4));
+
+  // The single-cell apex tiers (root at the bottom, keystone at the top)
+  // fan out to *every* cell of the adjacent 3-cell tier. This makes the
+  // diamond a true converging point: the player can enter the tree from
+  // any of the three nodes flanking the root, and likewise the keystone
+  // can be reached from any of the three tier-1 nodes — no single
+  // forced path through the middle.
+  const lastTier = def.rows.length - 1;
+  for (let i = 0; i < TIER_X_OFFSETS[lastTier - 1].length; i++) {
+    link(cellId(lastTier, 0), cellId(lastTier - 1, i));
+  }
+  for (let i = 0; i < TIER_X_OFFSETS[1].length; i++) {
+    link(cellId(0, 0), cellId(1, i));
+  }
+
+  return nodes;
+}
+
+// ────────── Tree 1: Мастер колб (Potion Master) ──────────
+
+const POTION_TREE: TreeDef = {
+  prefix: 'pm',
+  branch: 'potions',
+  rows: [
+    // Tier 0 — apex keystone
+    [
+      {
+        kind: 'keystone',
+        name: 'Вулканический рецепт',
+        desc: '+огонь к каждому 4-му броску склянки и +50% урона горения',
+        cost: 2,
+        currency: 'ancient',
+        effect: { kind: 'potionLeavesFire', value: 1 },
+      },
+    ],
+    // Tier 1 — 3 small (close to keystone)
+    [
+      {
+        kind: 'small',
+        name: 'Прицельный бросок II',
+        desc: '+5% бонус ручного попадания склянками',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'potionAimBonus', value: 0.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Эхо взрыва II',
+        desc: '+8% шанс микровзрыва склянки',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'potionEchoChance', value: 0.08 },
+      },
+      {
+        kind: 'small',
+        name: 'Стихийный резонанс II',
+        desc: '+10% урона элементальным реакциям',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'reactionDamage', value: 1.10 },
+      },
+    ],
+    // Tier 2 — 3 (small / notable / small)
+    [
+      {
+        kind: 'small',
+        name: 'Бронебойные склянки',
+        desc: '+10% бронепробития склянок и стоек',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'armorPen', value: 0.10 },
+      },
+      {
+        kind: 'notable',
+        name: 'Совершенный состав',
+        desc: '+20% урона склянок',
+        cost: 98,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1.20 },
+      },
+      {
+        kind: 'small',
+        name: 'Алхимический скол',
+        desc: '+5% шанса критического удара (×2 урон)',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'critChance', value: 0.05 },
+      },
+    ],
+    // Tier 3 — 5 small (widest)
+    [
+      {
+        kind: 'small',
+        name: 'Концентрат III',
+        desc: '+5% урона склянок',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Прицельный бросок',
+        desc: '+5% бонус ручного попадания',
+        cost: 21,
+        currency: 'blue',
+        effect: { kind: 'potionAimBonus', value: 0.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Широкий всплеск II',
+        desc: '+5% радиус взрыва склянок',
+        cost: 21,
+        currency: 'blue',
+        effect: { kind: 'potionRadius', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Стихийный резонанс',
+        desc: '+10% урона элементальным реакциям',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'reactionDamage', value: 1.10 },
+      },
+      {
+        kind: 'small',
+        name: 'Эхо взрыва',
+        desc: '+8% шанс микровзрыва склянки',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'potionEchoChance', value: 0.08 },
+      },
+    ],
+    // Tier 4 — 3 (small / notable / small)
+    [
+      {
+        kind: 'small',
+        name: 'Концентрат II',
+        desc: '+5% урона склянок',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1.05 },
+      },
+      {
+        kind: 'notable',
+        name: 'Тяжёлый состав',
+        desc: '+15% урона и +10% радиус взрыва склянок',
+        cost: 82,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1.15 },
+        extraEffects: [{ kind: 'potionRadius', value: 1.10 }],
+      },
+      {
+        kind: 'small',
+        name: 'Быстрые руки II',
+        desc: '−4% откат склянок',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'potionCooldown', value: 0.96 },
+      },
+    ],
+    // Tier 5 — 3 small
+    [
+      {
+        kind: 'small',
+        name: 'Концентрат',
+        desc: '+5% урона склянок',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Широкий всплеск',
+        desc: '+5% радиус взрыва склянок',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'potionRadius', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Быстрые руки',
+        desc: '−4% откат склянок',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'potionCooldown', value: 0.96 },
+      },
+    ],
+    // Tier 6 — root
+    [
+      {
+        kind: 'root',
+        name: 'Сердце алхимика',
+        desc: 'Стартовый узел школы склянок.',
+        cost: 0,
+        currency: 'blue',
+        effect: { kind: 'potionDamage', value: 1 },
+      },
+    ],
+  ],
+};
+
+// ────────── Tree 2: Мастер стоек (Tower / Engineering Master) ──────────
+
+const TOWER_TREE: TreeDef = {
+  prefix: 'tm',
+  branch: 'engineering',
+  rows: [
+    // Tier 0 — apex keystone
+    [
+      {
+        kind: 'keystone',
+        name: 'Чертёж Архимастера',
+        desc: '+1 руническая точка стойки и +10% дальность стоек',
+        cost: 2,
+        currency: 'ancient',
+        effect: { kind: 'runePointUnlock', value: 3 },
+        extraEffects: [{ kind: 'towerRange', value: 1.10 }],
+      },
+    ],
+    // Tier 1 — 3 small near keystone
+    [
+      {
+        kind: 'small',
+        name: 'Открытая руническая точка β',
+        desc: '+1 руническая точка стойки',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'runePointUnlock', value: 2 },
+      },
+      {
+        kind: 'small',
+        name: 'Перегрузная катушка II',
+        desc: '+25 макс. заряда Перегруза',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'overloadMaxCharge', value: 25 },
+      },
+      {
+        kind: 'small',
+        name: 'Открытая руническая точка γ',
+        desc: '+1 руническая точка стойки',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'runePointUnlock', value: 4 },
+      },
+    ],
+    // Tier 2 — small / notable / small
+    [
+      {
+        kind: 'small',
+        name: 'Стартовый разряд',
+        desc: '+1 стартовый уровень первой стойки',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'towerStartLevel', value: 2 },
+      },
+      {
+        kind: 'notable',
+        name: 'Полный арсенал',
+        desc: '+15% урона и +10% дальность стоек',
+        cost: 105,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1.15 },
+        extraEffects: [{ kind: 'towerRange', value: 1.10 }],
+      },
+      {
+        kind: 'small',
+        name: 'Скидка на стойки',
+        desc: '−10 золота на первую стойку',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'towerDiscount', value: 10 },
+      },
+    ],
+    // Tier 3 — 5 small (widest)
+    [
+      {
+        kind: 'small',
+        name: 'Усиленные дюзы III',
+        desc: '+5% урона стоек',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Открытая руническая точка α',
+        desc: '+1 руническая точка стойки',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'runePointUnlock', value: 1 },
+      },
+      {
+        kind: 'small',
+        name: 'Перегрузная катушка',
+        desc: '+15 макс. заряда Перегруза',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'overloadMaxCharge', value: 15 },
+      },
+      {
+        kind: 'small',
+        name: 'Ускоренный заряд',
+        desc: '+8% скорости заряда Перегруза',
+        cost: 21,
+        currency: 'blue',
+        effect: { kind: 'overloadRate', value: 1.08 },
+      },
+      {
+        kind: 'small',
+        name: 'Оптика III',
+        desc: '+5% дальности стоек',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'towerRange', value: 1.05 },
+      },
+    ],
+    // Tier 4 — small / notable / small
+    [
+      {
+        kind: 'small',
+        name: 'Усиленные дюзы II',
+        desc: '+5% урона стоек',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1.05 },
+      },
+      {
+        kind: 'notable',
+        name: 'Мастерская Архимастера',
+        desc: '+10% урон и +5% скорострельность стоек',
+        cost: 90,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1.10 },
+        extraEffects: [{ kind: 'towerFireRate', value: 1.05 }],
+      },
+      {
+        kind: 'small',
+        name: 'Оптика II',
+        desc: '+5% дальности стоек',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'towerRange', value: 1.05 },
+      },
+    ],
+    // Tier 5 — 3 small (entry tier)
+    [
+      {
+        kind: 'small',
+        name: 'Усиленные дюзы',
+        desc: '+5% урона стоек',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1.05 },
+      },
+      {
+        kind: 'small',
+        name: 'Смазанные шестерни',
+        desc: '+4% скорострельности стоек',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'towerFireRate', value: 1.04 },
+      },
+      {
+        kind: 'small',
+        name: 'Точная оптика',
+        desc: '+5% дальности стоек',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'towerRange', value: 1.05 },
+      },
+    ],
+    // Tier 6 — root
+    [
+      {
+        kind: 'root',
+        name: 'Сердце инженера',
+        desc: 'Стартовый узел школы стоек.',
+        cost: 0,
+        currency: 'blue',
+        effect: { kind: 'towerDamage', value: 1 },
+      },
+    ],
+  ],
+};
+
+// ────────── Tree 3: Выживаемость (Survival) ──────────
+
+const SURVIVAL_TREE: TreeDef = {
+  prefix: 'sv',
+  branch: 'survival',
+  rows: [
+    // Tier 0 — apex keystone
+    [
+      {
+        kind: 'keystone',
+        name: 'Шипастый голем',
+        desc: 'Враги получают 3 урона при атаке Манекена и +30 макс. ХП',
+        cost: 2,
+        currency: 'ancient',
+        effect: { kind: 'thornyShell', value: 1 },
+        extraEffects: [{ kind: 'maxHp', value: 30 }],
+      },
+    ],
+    // Tier 1 — 3 small near keystone
+    [
+      {
+        kind: 'small',
+        name: 'Полевой ремонт',
+        desc: '+2 ХП/сек регенерации Манекена вне боя',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'autoRepair', value: 2 },
+      },
+      {
+        kind: 'small',
+        name: 'Шипастый каркас II',
+        desc: '+3 урона врагу при атаке Манекена',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'thornyShell', value: 1 },
+      },
+      {
+        kind: 'small',
+        name: 'Щит босс-волны II',
+        desc: '+25 ХП щит в начале босс-волны',
+        cost: 33,
+        currency: 'blue',
+        effect: { kind: 'bossShield', value: 25 },
+      },
+    ],
+    // Tier 2 — small / notable / small
+    [
+      {
+        kind: 'small',
+        name: 'Прочный каркас III',
+        desc: '+20 макс. ХП Манекена',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 20 },
+      },
+      {
+        kind: 'notable',
+        name: 'Усиленный корпус',
+        desc: '+25 ХП и +5% брони Манекена',
+        cost: 90,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 25 },
+        extraEffects: [{ kind: 'armor', value: 0.05 }],
+      },
+      {
+        kind: 'small',
+        name: 'Железная обшивка III',
+        desc: '+3% брони Манекена',
+        cost: 30,
+        currency: 'blue',
+        effect: { kind: 'armor', value: 0.03 },
+      },
+    ],
+    // Tier 3 — 5 small (widest)
+    [
+      {
+        kind: 'small',
+        name: 'Авто-ремонт',
+        desc: '+1 ХП/сек регенерации Манекена вне боя',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'autoRepair', value: 1 },
+      },
+      {
+        kind: 'small',
+        name: 'Шипастый каркас',
+        desc: '+3 урона врагу при атаке Манекена',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'thornyShell', value: 1 },
+      },
+      {
+        kind: 'small',
+        name: 'Щит босс-волны',
+        desc: '+25 ХП щит в начале босс-волны',
+        cost: 27,
+        currency: 'blue',
+        effect: { kind: 'bossShield', value: 25 },
+      },
+      {
+        kind: 'small',
+        name: 'Эссенциальная жатва',
+        desc: '+25% Синей Эссенции за забег',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'essenceBonus', value: 1.25 },
+      },
+      {
+        kind: 'small',
+        name: 'Золотая жила',
+        desc: '+10% золота с врагов',
+        cost: 24,
+        currency: 'blue',
+        effect: { kind: 'goldDrop', value: 1.10 },
+      },
+    ],
+    // Tier 4 — small / notable / small
+    [
+      {
+        kind: 'small',
+        name: 'Прочный каркас II',
+        desc: '+15 макс. ХП Манекена',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 15 },
+      },
+      {
+        kind: 'notable',
+        name: 'Стальная клёпка',
+        desc: '+25 ХП и +3% брони Манекена',
+        cost: 82,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 25 },
+        extraEffects: [{ kind: 'armor', value: 0.03 }],
+      },
+      {
+        kind: 'small',
+        name: 'Железная обшивка II',
+        desc: '+3% брони Манекена',
+        cost: 18,
+        currency: 'blue',
+        effect: { kind: 'armor', value: 0.03 },
+      },
+    ],
+    // Tier 5 — 3 small (entry tier)
+    [
+      {
+        kind: 'small',
+        name: 'Прочный каркас',
+        desc: '+10 макс. ХП Манекена',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 10 },
+      },
+      {
+        kind: 'small',
+        name: 'Стартовый кошелёк',
+        desc: '+30 стартового золота',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'startGold', value: 30 },
+      },
+      {
+        kind: 'small',
+        name: 'Железная обшивка',
+        desc: '+3% брони Манекена',
+        cost: 12,
+        currency: 'blue',
+        effect: { kind: 'armor', value: 0.03 },
+      },
+    ],
+    // Tier 6 — root
+    [
+      {
+        kind: 'root',
+        name: 'Сердце голема',
+        desc: 'Стартовый узел школы выживания.',
+        cost: 0,
+        currency: 'blue',
+        effect: { kind: 'maxHp', value: 0 },
+      },
+    ],
+  ],
+};
+
+const ALL_TREES: TreeDef[] = [POTION_TREE, TOWER_TREE, SURVIVAL_TREE];
+
+export const META_UPGRADES: MetaUpgrade[] = ALL_TREES.flatMap(buildTreeNodes);
 
 /** Convenience: id → upgrade map. */
 export const META_BY_ID: Record<string, MetaUpgrade> = Object.fromEntries(
   META_UPGRADES.map((u) => [u.id, u]),
 );
+
+/** Per-tree root ids. The root nodes are pre-allocated for free, so each
+ *  tree always has one reachable entry point. */
+export const ROOT_NODE_IDS: readonly string[] = META_UPGRADES
+  .filter((u) => u.kind === 'root')
+  .map((u) => u.id);
 
 import { tWithFallback } from '../i18n';
 

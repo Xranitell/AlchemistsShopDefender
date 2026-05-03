@@ -7,11 +7,53 @@ import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
 import type { EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
+import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
+import { rerollWaveMutators } from './world';
 
 /** Return the active wave list for the current difficulty mode. */
 function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
-  return state.difficulty === 'boss_challenge' ? BOSS_WAVES : WAVES;
+  // Daily Event: Boss-day uses BOSS_WAVES; the rest of the events use the
+  // standard wave list and rely on enemy/spawn modifiers for their twist.
+  // Boss Challenge is no longer a standalone difficulty — it lives as one
+  // of the rotating daily events (Tuesday).
+  if (state.difficulty === 'daily' && state.dailyEventId) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    if (ev?.useBossWaves) return BOSS_WAVES;
+  }
+  return WAVES;
+}
+
+/** True when the current run should loop wave 1 → end → wave 1 again
+ *  (endless mode + every Daily Event since the user wants infinite waves). */
+function isInfiniteRun(state: GameState): boolean {
+  return state.difficulty === 'endless' || state.difficulty === 'daily';
+}
+
+// ── Linear per-wave difficulty scaling ──────────────────────────────────────
+// Every wave adds a fixed increment to enemy HP and speed so difficulty
+// grows linearly rather than exponentially. The formula counts the
+// effective wave number across endless loops so the curve stays smooth.
+
+/** Additive HP increment per wave (4 % of base per wave). */
+const HP_PER_WAVE = 0.04;
+/** Additive speed increment per wave (1 % of base per wave). */
+const SPEED_PER_WAVE = 0.01;
+
+/** 0-based effective wave number counting across endless loops. */
+function effectiveWaveNumber(state: GameState): number {
+  const wavesPerCycle = activeWaves(state).length;
+  return state.endlessLoop * wavesPerCycle + Math.max(0, state.waveState.currentIndex);
+}
+
+/** Linear HP scaling multiplier for the current wave. */
+export function waveHpScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * HP_PER_WAVE;
+}
+
+/** Linear speed scaling multiplier for the current wave. */
+export function waveSpeedScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * SPEED_PER_WAVE;
 }
 
 /** Configured length of the active wave in seconds, or 0 if no wave is set. */
@@ -42,9 +84,10 @@ export function startNextWave(state: GameState): void {
   ws.currentIndex += 1;
   const waves = activeWaves(state);
   if (ws.currentIndex >= waves.length) {
-    if (state.difficulty === 'endless') {
-      // Endless: loop back to wave 0 with stiffer modifiers + random
-      // modifier from the pool. Show the modifier selector overlay first.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: loop back to wave 0 with stiffer modifiers +
+      // a random modifier from the pool. Show the modifier selector overlay
+      // first so the player can read the new twist.
       state.endlessLoop += 1;
       ws.currentIndex = 0;
 
@@ -81,6 +124,20 @@ function doStartWave(state: GameState): void {
       at: state.rng.range(0, def.durationSec - 1),
       entrance: state.rng.int(0, 4),
     });
+  }
+  // Daily-event Horde / similar: copy a fraction of base spawns at random
+  // times to inflate density. `spawnCountMult` of 1.5 ⇒ +50% extra spawns.
+  const mult = state.spawnCountMult ?? 1;
+  if (mult > 1 && baseSpawns.length > 0) {
+    const bonus = Math.round(baseSpawns.length * (mult - 1));
+    for (let i = 0; i < bonus; i++) {
+      const template = baseSpawns[i % baseSpawns.length]!;
+      extra.push({
+        kind: template.kind,
+        at: state.rng.range(0, def.durationSec - 1),
+        entrance: state.rng.int(0, 4),
+      });
+    }
   }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
 
@@ -119,6 +176,9 @@ export function startPause(state: GameState): void {
   ws.pauseDurationLeft = def?.pauseAfterSec ?? 6;
   state.entrances.forEach((e) => { e.active = false; });
   state.phase = 'preparing';
+  // Re-roll the wave-rotating "dungeon laws" so the upcoming prep window
+  // surfaces the next wave's mutators. No-op outside Epic / Ancient.
+  rerollWaveMutators(state);
 }
 
 export function updateWave(state: GameState, dt: number): void {
@@ -152,8 +212,9 @@ export function updateWave(state: GameState, dt: number): void {
 
   // Wave is over when all spawns finished and arena is empty.
   if (ws.pendingSpawns.length === 0 && state.enemies.length === 0) {
-    if (state.difficulty === 'endless') {
-      // Award end-of-wave gold and trigger card draft — no victory.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: award end-of-wave gold and trigger card
+      // draft — there is no victory screen.
       const reward = 25 + ws.currentIndex * 8;
       state.gold += reward;
       state.phase = 'card_select';
@@ -180,7 +241,7 @@ export function spawnEnemy(
   splitGeneration = 0,
 ): void {
   const mod = state.difficultyModifier;
-  let maxHp = Math.round(kind.hp * mod.hpMult);
+  let maxHp = Math.round(kind.hp * mod.hpMult * waveHpScale(state));
   const abilities = pickEnemyAbilities(kind.id, mod.abilities);
   // Homunculus enters phase 1 and starts summoning minions every 4 sec.
   const isHomunculus = kind.id === 'boss_homunculus';
@@ -204,6 +265,13 @@ export function spawnEnemy(
     goldPending: 0,
     abilities,
     shieldCharges: abilities.includes('one_hit_shield') ? 1 : 0,
+    // Cursed-extra: seed the bonus damage-soak shield from the global
+    // multiplier. Bosses don't get this — their HP pools are already
+    // tuned, and stacking another shield ruins their pacing. The
+    // spawn-time max is cached so the renderer can show a proportional
+    // bar above the enemy.
+    extraShield: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
+    extraShieldMax: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
     dashBackTimer: 0,
     splitGeneration,
     damageTaken: 1,
@@ -221,6 +289,7 @@ export function spawnEnemy(
     bossDodgeDir: { x: 0, y: 0 },
     bossDodgeSpeed: 0,
     bossSlamWindup: 0,
+    lastHitElement: 'neutral',
   });
 }
 
@@ -277,10 +346,10 @@ export function confirmEndlessModifier(state: GameState): void {
   // Apply the modifier to the difficulty bundle.
   switch (modId) {
     case 'hp_x125':
-      state.difficultyModifier.hpMult *= 1.25;
+      state.difficultyModifier.hpMult += 0.25;
       break;
     case 'speed_x110':
-      state.difficultyModifier.speedMult *= 1.10;
+      state.difficultyModifier.speedMult += 0.10;
       break;
     case 'gold_minus10':
       state.difficultyModifier.goldMult *= 0.90;

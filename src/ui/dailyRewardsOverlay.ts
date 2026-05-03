@@ -1,7 +1,8 @@
-import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardIcon } from '../data/dailyRewards';
+import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/dailyRewards';
 import type { MetaSave } from '../game/save';
 import { canClaimDaily, todayString, saveMeta } from '../game/save';
 import { t } from '../i18n';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class DailyRewardsOverlay {
   private root: HTMLElement;
@@ -57,9 +58,18 @@ export class DailyRewardsOverlay {
       dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
       cell.appendChild(dayLabel);
 
+      // Reward icon. Once a day is claimed we drop in a checkmark instead of
+      // the icon so the cell still reads the same width.
       const icon = document.createElement('div');
       icon.className = 'daily-icon';
-      icon.textContent = claimed ? '✓' : rewardIcon(rewardDef.type);
+      if (claimed) {
+        icon.textContent = '✓';
+      } else {
+        // Ancient-tier rewards get a CSS gold glow so the player visibly
+        // sees them as the rarer prize on the calendar.
+        const extraClass = rewardDef.type === 'ancient_essence' ? 'glow-gold' : undefined;
+        icon.appendChild(spriteIcon(rewardSprite(rewardDef.type), { scale: 3, extraClass }));
+      }
       cell.appendChild(icon);
 
       const label = document.createElement('div');

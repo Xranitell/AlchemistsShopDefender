@@ -20,23 +20,34 @@ export class Input {
   private canvas: HTMLCanvasElement;
   private cssToGameX = 1;
   private cssToGameY = 1;
+  // Cached canvas client rect — invalidated by resize / scroll. Calling
+  // `getBoundingClientRect` on every mousemove forces a layout flush, which
+  // becomes a measurable hotspot when the HUD updates DOM each frame.
+  private cachedRect: DOMRect | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.attach();
   }
 
-  private updateScale() {
-    const rect = this.canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      this.cssToGameX = this.canvas.width / rect.width;
-      this.cssToGameY = this.canvas.height / rect.height;
+  private getRect(): DOMRect {
+    if (!this.cachedRect) {
+      this.cachedRect = this.canvas.getBoundingClientRect();
+      if (this.cachedRect.width > 0 && this.cachedRect.height > 0) {
+        this.cssToGameX = this.canvas.width / this.cachedRect.width;
+        this.cssToGameY = this.canvas.height / this.cachedRect.height;
+      }
     }
+    return this.cachedRect;
   }
 
+  /** Drop the cached rect so the next pointer event re-measures. */
+  private invalidateRect = (): void => {
+    this.cachedRect = null;
+  };
+
   private toGame(clientX: number, clientY: number): Vec2 {
-    this.updateScale();
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.getRect();
     return {
       x: (clientX - rect.left) * this.cssToGameX,
       y: (clientY - rect.top) * this.cssToGameY,
@@ -44,7 +55,7 @@ export class Input {
   }
 
   private isInsideCanvas(clientX: number, clientY: number): boolean {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.getRect();
     return (
       clientX >= rect.left && clientX <= rect.right &&
       clientY >= rect.top && clientY <= rect.bottom
@@ -53,6 +64,10 @@ export class Input {
 
   private attach() {
     const c = this.canvas;
+    // Invalidate the cached canvas rect whenever layout could move it.
+    window.addEventListener('resize', this.invalidateRect);
+    window.addEventListener('scroll', this.invalidateRect, { passive: true });
+    window.addEventListener('orientationchange', this.invalidateRect);
     // Listen on window so aim updates even when cursor is over HUD overlays.
     window.addEventListener('mousemove', (e) => {
       if (this.isInsideCanvas(e.clientX, e.clientY)) {

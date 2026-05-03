@@ -1,4 +1,4 @@
-import { dist, dist2, norm, scale, sub, type Vec2 } from '../engine/math';
+import { dist, norm, scale, sub, type Vec2 } from '../engine/math';
 import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
@@ -98,6 +98,19 @@ export function throwPotion(
 }
 
 export function updateProjectiles(state: GameState, dt: number): void {
+  // Build an enemy id → enemy lookup once per frame. Tower projectiles each
+  // need to resolve `targetId` and the previous code did `state.enemies.find`
+  // per projectile per frame (O(P×E)). With many projectiles in flight this
+  // dominated the update phase on weaker devices.
+  let enemyById: Map<number, Enemy> | null = null;
+  for (let i = 0; i < state.projectiles.length; i++) {
+    if (state.projectiles[i]!.kind === 'tower' && state.projectiles[i]!.targetId !== null) {
+      enemyById = new Map();
+      for (const e of state.enemies) enemyById.set(e.id, e);
+      break;
+    }
+  }
+
   const remove: number[] = [];
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]!;
@@ -131,28 +144,33 @@ export function updateProjectiles(state: GameState, dt: number): void {
     p.pos.y += p.vel.y * dt;
 
     if (p.kind === 'tower') {
-      // Track target if alive.
-      if (p.targetId !== null) {
-        const target = state.enemies.find((e) => e.id === p.targetId);
-        if (target && dist(p.pos, target.pos) < (target.kind.radius + 6)) {
-          hit = target;
+      // Track target if alive (O(1) lookup via cached map).
+      if (p.targetId !== null && enemyById) {
+        const target = enemyById.get(p.targetId);
+        if (target) {
+          const dx = p.pos.x - target.pos.x;
+          const dy = p.pos.y - target.pos.y;
+          const r = target.kind.radius + 6;
+          if (dx * dx + dy * dy < r * r) hit = target;
         }
       }
-      // Fall back: any enemy within 8px (handles homing+death).
+      // Fall back: any enemy within range (handles homing+death).
       if (!hit) {
         for (const e of state.enemies) {
-          if (dist2(e.pos, p.pos) < (e.kind.radius + 4) ** 2) {
-            hit = e; break;
-          }
+          const dx = e.pos.x - p.pos.x;
+          const dy = e.pos.y - p.pos.y;
+          const r = e.kind.radius + 4;
+          if (dx * dx + dy * dy < r * r) { hit = e; break; }
         }
       }
     } else if (p.kind === 'potion') {
       // Echo-explosion secondary blasts do not have an arc — they sit still
       // and just wait out their tiny life before detonating.
       for (const e of state.enemies) {
-        if (dist2(e.pos, p.pos) < (e.kind.radius + 6) ** 2) {
-          hit = e; break;
-        }
+        const dx = e.pos.x - p.pos.x;
+        const dy = e.pos.y - p.pos.y;
+        const r = e.kind.radius + 6;
+        if (dx * dx + dy * dy < r * r) { hit = e; break; }
       }
     }
 
@@ -219,10 +237,12 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
 
 function nearestEnemy(state: GameState, at: Vec2, maxDistance: number): Enemy | null {
   let best: Enemy | null = null;
-  let bestD = maxDistance;
+  let bestD2 = maxDistance * maxDistance;
   for (const e of state.enemies) {
-    const d = dist(at, e.pos);
-    if (d < bestD) { bestD = d; best = e; }
+    const dx = at.x - e.pos.x;
+    const dy = at.y - e.pos.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; best = e; }
   }
   return best;
 }
@@ -236,10 +256,16 @@ export function applyAreaDamage(
   manualBonus: boolean,
 ): void {
   for (const e of state.enemies) {
-    const d = dist(at, e.pos);
-    if (d > radius + e.kind.radius) continue;
+    const dx = at.x - e.pos.x;
+    const dy = at.y - e.pos.y;
+    const d2 = dx * dx + dy * dy;
+    const outerR = radius + e.kind.radius;
+    if (d2 > outerR * outerR) continue;
     let dmg = damage;
-    if (manualBonus && d < radius * 0.4) dmg *= 1.2 + state.metaPotionAimBonus;
+    if (manualBonus) {
+      const innerR = radius * 0.4;
+      if (d2 < innerR * innerR) dmg *= 1.2 + state.metaPotionAimBonus;
+    }
     applyDamageToEnemy(state, e, dmg, element);
   }
 }
@@ -250,6 +276,19 @@ export function applyDamageToEnemy(
   rawDamage: number,
   element: Projectile['element'],
 ): void {
+  // Cursed-extra: dodge roll. Non-boss enemies get a per-hit chance to
+  // fully evade the projectile. The chance is hard-capped so the player
+  // can never softlock from too many stacked dodge extras.
+  if (
+    !e.kind.isBoss
+    && state.modifiers.enemyDodgeChance > 0
+    && state.rng.chance(Math.min(0.6, state.modifiers.enemyDodgeChance))
+  ) {
+    e.hitFlash = 0.08;
+    spawnFloatingText(state, t('floating.dodge'), e.pos, '#a0c4ff');
+    return;
+  }
+
   // Difficulty abilities:
   // One-hit shield absorbs the first hit completely and breaks.
   if (e.shieldCharges > 0) {
@@ -266,11 +305,15 @@ export function applyDamageToEnemy(
     return;
   }
 
-  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
+  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction
+  // and any cursed-extra global armour bump. The total is clamped to
+  // [0, 0.95] so the floor ensures damage still ticks through.
   const baseArmor = e.kind.armor
-    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
+    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0)
+    + state.modifiers.enemyArmorAdd;
   // Meta armour penetration scales the effective armour value down.
-  const armor = baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen);
+  const armor = Math.min(0.95,
+    baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen));
   let dmg = Math.max(1, rawDamage * (1 - armor));
 
   // Meta crit chance: doubled damage on a successful roll.
@@ -295,8 +338,25 @@ export function applyDamageToEnemy(
     dmg *= 1.3;
   }
 
+  // Cursed-extra: bonus shield soaks damage before it spills over to HP.
+  // Damage that fully drains the shield bleeds the remainder into HP so
+  // the hit still registers.
+  if (e.extraShield > 0) {
+    const absorbed = Math.min(e.extraShield, dmg);
+    e.extraShield -= absorbed;
+    dmg -= absorbed;
+    if (dmg <= 0) {
+      e.hitFlash = 0.10;
+      audio.playSfx('enemyHit', { detune: 1.2 });
+      return;
+    }
+  }
+
   e.hp -= dmg;
   e.hitFlash = 0.12;
+  // Stamp the element so on-death attribution (run contracts) can count
+  // this hit's element as the killing blow if hp reaches 0 below.
+  e.lastHitElement = element;
   audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
 
   // Dash-back: on a successful hit push the enemy away from the hero for

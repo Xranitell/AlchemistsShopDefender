@@ -2,7 +2,11 @@ import type { MetaSave } from '../game/save';
 import { canClaimDaily, todayString, saveMeta } from '../game/save';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 import { POTION_BY_ID, POTION_INVENTORY_SIZE } from '../data/potions';
-import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardIcon } from '../data/dailyRewards';
+import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/dailyRewards';
+import { buildLeaderboardPanel } from './leaderboardOverlay';
+import { getSprites } from '../render/sprites';
+import { spriteIcon } from '../render/spriteIcon';
+import { masteryEssenceMult } from '../game/meta';
 
 export class MainMenu {
   private root: HTMLElement;
@@ -18,9 +22,9 @@ export class MainMenu {
     onBattlePass: () => void;
     onDailyRewards: () => void;
     onSettings: () => void;
-    onDailyExperiment: () => void;
-    onBossChallenge: () => void;
-    onLeaderboards: () => void;
+    onDailyExperiment?: () => void;
+    onBossChallenge?: () => void;
+    onLeaderboards?: () => void;
     onCrafting: () => void;
   }): void {
     this.root.innerHTML = '';
@@ -33,12 +37,31 @@ export class MainMenu {
 
     const topLeft = document.createElement('div');
     topLeft.className = 'mm-top-left';
-    topLeft.innerHTML = `
-      <span class="mm-currency blue-essence" title="${t('ui.menu.tooltip.blueEssence')}"><span class="mm-res-icon blue-essence"></span><strong>${opts.meta.blueEssence}</strong></span>
-      <span class="mm-currency ancient-essence" title="${t('ui.menu.tooltip.ancientEssence')}"><span class="mm-res-icon ancient-essence"></span><strong>${opts.meta.ancientEssence}</strong></span>
-      <span class="mm-currency epic-key" title="${t('ui.menu.tooltip.epicKey')}"><span class="mm-res-icon key epic"></span><strong>${opts.meta.epicKeys}</strong></span>
-      <span class="mm-currency ancient-key" title="${t('ui.menu.tooltip.ancientKey')}"><span class="mm-res-icon key ancient"></span><strong>${opts.meta.ancientKeys}</strong></span>
-    `;
+    const sprites = getSprites();
+    topLeft.appendChild(buildCurrencyChip(
+      'blue-essence',
+      spriteIcon(sprites.iconBlueEssence, { scale: 2 }),
+      opts.meta.blueEssence,
+      t('ui.menu.tooltip.blueEssence'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'ancient-essence',
+      spriteIcon(sprites.iconAncientEssence, { scale: 2, extraClass: 'glow-gold' }),
+      opts.meta.ancientEssence,
+      t('ui.menu.tooltip.ancientEssence'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'epic-key',
+      spriteIcon(sprites.iconEpicKey, { scale: 2 }),
+      opts.meta.epicKeys,
+      t('ui.menu.tooltip.epicKey'),
+    ));
+    topLeft.appendChild(buildCurrencyChip(
+      'ancient-key',
+      spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }),
+      opts.meta.ancientKeys,
+      t('ui.menu.tooltip.ancientKey'),
+    ));
     topRow.appendChild(topLeft);
 
     // Logo / title
@@ -55,14 +78,17 @@ export class MainMenu {
     settingsBtn.className = 'mm-settings-gear';
     settingsBtn.type = 'button';
     settingsBtn.innerHTML = '<span class="mm-gear-icon"></span>';
-    settingsBtn.title = t('ui.menu.settings');
     settingsBtn.addEventListener('click', opts.onSettings);
     topRight.appendChild(settingsBtn);
     topRow.appendChild(topRight);
 
     wrap.appendChild(topRow);
 
-    // ─── Main body: left | center | right ─────────────────────────
+    // Mastery line (only visible once the player has Epic / Ancient victories)
+    const masteryLine = buildMasteryLine(opts.meta);
+    if (masteryLine) wrap.appendChild(masteryLine);
+
+    // ─── Body: 3-column grid ──────────────────────────────────────
     const body = document.createElement('div');
     body.className = 'mm-body';
 
@@ -70,36 +96,38 @@ export class MainMenu {
     const leftCol = document.createElement('div');
     leftCol.className = 'mm-col mm-col-left';
 
-    // Crafting (Зельеварка)
-    const shopSection = document.createElement('button');
-    shopSection.className = 'mm-card mm-shop-card';
-    shopSection.type = 'button';
+    // Crafting card
+    const shopBtn = document.createElement('button');
+    shopBtn.className = 'mm-card mm-shop-card';
+    shopBtn.type = 'button';
     const shopTitle = document.createElement('div');
     shopTitle.className = 'mm-card-title';
-    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span>`;
-    shopSection.appendChild(shopTitle);
-    const slotRow = document.createElement('div');
-    slotRow.className = 'mm-shop-slots';
+    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.crafting')}</span>`;
+    shopBtn.appendChild(shopTitle);
+    const shopSlots = document.createElement('div');
+    shopSlots.className = 'mm-shop-slots';
     for (let i = 0; i < POTION_INVENTORY_SIZE; i++) {
       const slot = document.createElement('div');
-      const id = opts.meta.inventory[i];
-      const recipe = id ? POTION_BY_ID[id] : null;
-      slot.className = `mm-shop-slot${recipe ? ' filled' : ''}`;
-      if (recipe) {
-        slot.title = t(`${recipe.i18nKey}.name`);
-        slot.innerHTML = `<span class="mm-slot-potion" style="color:${recipe.color}">${recipe.glyph}</span>`;
+      slot.className = 'mm-shop-slot';
+      const pid = opts.meta.inventory[i];
+      if (pid) {
+        const p = POTION_BY_ID[pid];
+        if (p) {
+          slot.innerHTML = `<span class="mm-slot-potion">${p.glyph}</span>`;
+          slot.title = t(p.i18nKey + '.name');
+        }
       }
-      slotRow.appendChild(slot);
+      shopSlots.appendChild(slot);
     }
-    shopSection.appendChild(slotRow);
-    const craftHint = document.createElement('div');
-    craftHint.className = 'mm-craft-level';
-    craftHint.innerHTML = `<span>${t('ui.menu.craftingHint')}</span>`;
-    shopSection.appendChild(craftHint);
-    shopSection.addEventListener('click', opts.onCrafting);
-    leftCol.appendChild(shopSection);
+    shopBtn.appendChild(shopSlots);
+    const craftLvl = document.createElement('div');
+    craftLvl.className = 'mm-craft-level';
+    craftLvl.textContent = `${t('ui.menu.craftLevel')} ${opts.meta.craftingLevel}`;
+    shopBtn.appendChild(craftLvl);
+    shopBtn.addEventListener('click', opts.onCrafting);
+    leftCol.appendChild(shopBtn);
 
-    // Laboratory (Лаборатория талантов)
+    // Laboratory card
     const labBtn = document.createElement('button');
     labBtn.className = 'mm-card mm-lab-card';
     labBtn.type = 'button';
@@ -109,12 +137,12 @@ export class MainMenu {
     labBtn.appendChild(labTitle);
     const labDesc = document.createElement('div');
     labDesc.className = 'mm-lab-desc';
-    const hpNode = opts.meta.purchased.includes('hp_1') ? 10 : 0;
-    const damageNode = opts.meta.purchased.includes('potion_damage_1') ? 5 : 0;
+    const hpNode = 0;
+    const damageNode = 0;
     labDesc.innerHTML = `
       <span class="mm-lab-tree">
-        <span class="node core"></span>
         <span class="branch left"></span><span class="branch right"></span>
+        <span class="node core"></span>
         <span class="node hp">HP<br>+${hpNode}%</span>
         <span class="node dmg">DMG<br>+${damageNode}%</span>
       </span>
@@ -138,20 +166,15 @@ export class MainMenu {
     const rightCol = document.createElement('div');
     rightCol.className = 'mm-col mm-col-right';
 
-    // Leaderboard
-    const lbBtn = document.createElement('button');
-    lbBtn.className = 'mm-card mm-lb-card';
-    lbBtn.type = 'button';
+    // Inline leaderboard panel
+    const lbWrap = document.createElement('div');
+    lbWrap.className = 'mm-card mm-lb-card';
     const lbTitle = document.createElement('div');
     lbTitle.className = 'mm-card-title';
     lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboards')}</span>`;
-    lbBtn.appendChild(lbTitle);
-    const statsRow = document.createElement('div');
-    statsRow.className = 'mm-stats';
-    statsRow.innerHTML = `<span>${t('ui.menu.runs', { n: opts.meta.totalRuns })}</span><span>${t('ui.menu.bestWave', { n: opts.meta.bestWave })}</span>`;
-    lbBtn.appendChild(statsRow);
-    lbBtn.addEventListener('click', opts.onLeaderboards);
-    rightCol.appendChild(lbBtn);
+    lbWrap.appendChild(lbTitle);
+    lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
+    rightCol.appendChild(lbWrap);
 
     // Inline daily rewards calendar
     rightCol.appendChild(this.buildInlineDailyCalendar(opts));
@@ -168,12 +191,12 @@ export class MainMenu {
     const dailyBtn2 = document.createElement('button');
     dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
     dailyBtn2.textContent = t('ui.menu.dailyExperiment');
-    dailyBtn2.addEventListener('click', opts.onDailyExperiment);
+    if (opts.onDailyExperiment) dailyBtn2.addEventListener('click', opts.onDailyExperiment);
     modeBtns.appendChild(dailyBtn2);
     const bossBtn = document.createElement('button');
     bossBtn.className = 'mm-mode-btn mm-boss-challenge';
     bossBtn.textContent = t('ui.menu.bossChallenge');
-    bossBtn.addEventListener('click', opts.onBossChallenge);
+    if (opts.onBossChallenge) bossBtn.addEventListener('click', opts.onBossChallenge);
     modeBtns.appendChild(bossBtn);
     const bpBtn = document.createElement('button');
     bpBtn.className = 'mm-mode-btn mm-bp-mode';
@@ -203,8 +226,7 @@ export class MainMenu {
     this.root.innerHTML = '';
   }
 
-  /** Build the inline daily rewards calendar shown directly in the main menu
-   *  right column. Includes the 7-day grid and a claim button. */
+  /** Builds the 7-day inline daily rewards calendar widget. */
   private buildInlineDailyCalendar(opts: {
     meta: MetaSave;
     onDailyRewards: () => void;
@@ -212,66 +234,70 @@ export class MainMenu {
     const card = document.createElement('div');
     card.className = 'mm-card mm-daily-calendar';
 
-    const calTitle = document.createElement('div');
-    calTitle.className = 'mm-card-title';
-    const weekNum = Math.floor(opts.meta.dailyDay / 7) + 1;
-    calTitle.innerHTML = `<span class="mm-calendar-icon"></span><span>${t('ui.daily.title')}</span><span class="mm-daily-week-badge">${t('ui.daily.week', { n: weekNum })}</span>`;
-    card.appendChild(calTitle);
+    const titleRow = document.createElement('div');
+    titleRow.className = 'mm-card-title';
+    titleRow.innerHTML = `<span>📅</span><span>${t('ui.dailyRewards.title')}</span>`;
+
+    const currentDay = opts.meta.dailyDay ?? 0;
+    const weekStart = Math.floor(currentDay / 7) * 7;
+    const weekNum = Math.floor(currentDay / 7) + 1;
+    const badge = document.createElement('span');
+    badge.className = 'mm-daily-week-badge';
+    badge.textContent = `${t('ui.dailyRewards.week')} ${weekNum}`;
+    titleRow.appendChild(badge);
+    card.appendChild(titleRow);
 
     const grid = document.createElement('div');
     grid.className = 'mm-daily-grid';
-
-    const startDay = Math.floor(opts.meta.dailyDay / 7) * 7;
     const claimable = canClaimDaily(opts.meta);
 
     for (let i = 0; i < 7; i++) {
-      const dayIdx = startDay + i;
-      const rewardDef = DAILY_REWARDS[dayIdx % DAILY_CYCLE]!;
+      const dayIdx = weekStart + i;
+      const reward = DAILY_REWARDS[dayIdx % DAILY_CYCLE];
       const cell = document.createElement('div');
       cell.className = 'mm-daily-cell';
 
-      const claimed = dayIdx < opts.meta.dailyDay;
-      const isToday = dayIdx === opts.meta.dailyDay;
-      const locked = dayIdx > opts.meta.dailyDay;
-
-      if (claimed) cell.classList.add('claimed');
+      const isToday = dayIdx === currentDay;
+      const isClaimed = dayIdx < currentDay;
       if (isToday) cell.classList.add('today');
-      if (locked) cell.classList.add('locked');
+      if (isClaimed) cell.classList.add('claimed');
+      if (dayIdx > currentDay) cell.classList.add('locked');
 
       const dayLabel = document.createElement('div');
       dayLabel.className = 'mm-daily-day-label';
-      dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
+      dayLabel.textContent = isToday ? t('ui.dailyRewards.today') : `${t('ui.dailyRewards.day')} ${dayIdx + 1}`;
       cell.appendChild(dayLabel);
 
-      const icon = document.createElement('div');
-      icon.className = 'mm-daily-icon';
-      icon.textContent = claimed ? '✓' : rewardIcon(rewardDef.type);
-      cell.appendChild(icon);
+      const iconEl = document.createElement('div');
+      iconEl.className = 'mm-daily-icon';
+      if (isClaimed) {
+        iconEl.textContent = '✓';
+      } else {
+        iconEl.appendChild(spriteIcon(rewardSprite(reward.type), { scale: 2 }));
+      }
+      cell.appendChild(iconEl);
 
       const label = document.createElement('div');
       label.className = 'mm-daily-reward-label';
-      label.textContent = rewardLabel(rewardDef);
+      label.textContent = rewardLabel(reward);
       cell.appendChild(label);
 
       grid.appendChild(cell);
     }
     card.appendChild(grid);
 
-    // Claim button
     const claimBtn = document.createElement('button');
     claimBtn.className = 'mm-daily-claim';
-    claimBtn.textContent = claimable ? t('ui.daily.claim') : t('ui.daily.claimed');
+    claimBtn.type = 'button';
+    claimBtn.textContent = t('ui.dailyRewards.claim');
     claimBtn.disabled = !claimable;
     if (claimable) {
-      claimBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const dayIdx = opts.meta.dailyDay;
-        const rewardDef = DAILY_REWARDS[dayIdx % DAILY_CYCLE]!;
-        applyDailyReward(opts.meta, rewardDef);
-        opts.meta.dailyDay += 1;
+      claimBtn.addEventListener('click', () => {
+        const reward = DAILY_REWARDS[currentDay % DAILY_CYCLE];
+        applyDailyReward(opts.meta, reward);
+        opts.meta.dailyDay = currentDay + 1;
         opts.meta.dailyLastClaim = todayString();
         saveMeta(opts.meta);
-        // Re-render the whole menu so currencies and calendar update
         this.show(opts as Parameters<MainMenu['show']>[0]);
       });
     }
@@ -378,6 +404,68 @@ function mannequinIllustrationSVG(): string {
     <!-- Gentle idle bob animation -->
     <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite" />
   </svg>`;
+}
+
+/** Builds a single `[pixel-icon] [amount]` chip for the main-menu top bar. */
+function buildCurrencyChip(
+  modifier: string,
+  icon: HTMLElement,
+  amount: number,
+  tooltip: string,
+): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = `mm-currency ${modifier}`;
+  chip.title = tooltip;
+  chip.appendChild(icon);
+  const amt = document.createElement('strong');
+  amt.textContent = `${amount}`;
+  chip.appendChild(amt);
+  return chip;
+}
+
+/** Builds the small mastery summary line shown right below the top bar.
+ *  Returns null while the player has 0 mastery in both modes. */
+function buildMasteryLine(meta: MetaSave): HTMLElement | null {
+  const epic = meta.epicMastery ?? 0;
+  const ancient = meta.ancientMastery ?? 0;
+  if (epic === 0 && ancient === 0) return null;
+  const bonus = Math.round((masteryEssenceMult(meta) - 1) * 100);
+  const wrap = document.createElement('div');
+  wrap.className = 'mm-mastery-line';
+
+  const sprites = getSprites();
+  if (epic > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-epic';
+    chip.title = t('ui.menu.tooltip.epicMastery');
+    chip.appendChild(spriteIcon(sprites.iconEpicKey, { scale: 2 }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.epicMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${epic}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  if (ancient > 0) {
+    const chip = document.createElement('span');
+    chip.className = 'mm-mastery-chip mm-mastery-ancient';
+    chip.title = t('ui.menu.tooltip.ancientMastery');
+    chip.appendChild(spriteIcon(sprites.iconAncientKey, { scale: 2, extraClass: 'glow-gold' }));
+    const lbl = document.createElement('span');
+    lbl.textContent = t('ui.menu.ancientMastery');
+    chip.appendChild(lbl);
+    const amt = document.createElement('strong');
+    amt.textContent = `${ancient}`;
+    chip.appendChild(amt);
+    wrap.appendChild(chip);
+  }
+  const bonusEl = document.createElement('span');
+  bonusEl.className = 'mm-mastery-bonus';
+  bonusEl.textContent = t('ui.menu.masteryBonus', { n: bonus });
+  bonusEl.title = t('ui.menu.tooltip.masteryBonus');
+  wrap.appendChild(bonusEl);
+  return wrap;
 }
 
 /** RU/EN locale switcher. */

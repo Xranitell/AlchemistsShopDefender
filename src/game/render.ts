@@ -14,7 +14,9 @@ import {
 import { COLORS } from '../render/palette';
 import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
+import { getViewportSize } from './world';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
+import { drawRadialGlow, getVignette } from '../render/glowCache';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -28,22 +30,29 @@ const HERO_SCALE = 3;
 const TOWER_SCALE = 3;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
+let lastRenderTime = -1;
+
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
+  const { width: canvasW, height: canvasH } = getViewportSize();
   ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, canvasW, canvasH);
 
   // Set biome so the room backdrop picks the right palette.
   setBiome(state.biomeId);
 
-  // Dark background fill (visible at corners due to rotation)
+  // Dark background fill — covers the full canvas in viewport pixels so
+  // any tiny gap left by float-rounding the world transform is filled.
   const pal = getActiveBiomePalette();
   ctx.fillStyle = pal.bg;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasW, canvasH);
 
-  // Flat 2D camera (identity transform). Kept as save/restore so per-frame
-  // world drawing can still freely mutate the canvas state.
-  const camera: Camera = { cx: width / 2, cy: height / 2, scale: 1 };
+  // World→canvas camera. `width`/`height` are world dimensions, `canvasH`
+  // is the actual canvas pixel height; `getRenderCamera()` returns a scale
+  // such that ctx.scale(scale, scale) maps world (0..width, 0..height) onto
+  // canvas (0..canvasW, 0..canvasH). On a 1920×1080 PC viewport scale === 1
+  // and the transform is a no-op (existing behaviour preserved).
+  const camera: Camera = getRenderCamera(width, height);
   ctx.save();
   applyIsoTransform(ctx, camera);
 
@@ -70,8 +79,16 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawMannequin(ctx, state);
   drawProjectiles(ctx, state);
   drawChainBolts(ctx, state);
-  // Update and draw particle system
-  updateParticles(1 / 60);
+  // Update and draw particle system. Use real frame delta derived from
+  // worldTime so particles stay frame-rate independent. Clamp the delta to
+  // avoid huge jumps after tab-switch / pause; a missed frame should never
+  // teleport particles across the screen.
+  let particleDt = 1 / 60;
+  if (lastRenderTime >= 0) {
+    particleDt = Math.max(0, Math.min(1 / 20, state.worldTime - lastRenderTime));
+  }
+  lastRenderTime = state.worldTime;
+  updateParticles(particleDt);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
   drawAimReticle(ctx, state);
@@ -79,11 +96,37 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Dynamic lighting from fire pools
   drawDynamicLighting(ctx, state);
 
+  // Daily-Event Night mode: overlay a heavy dark vignette so visibility
+  // shrinks to a light disc around the mannequin. Drawn inside the world
+  // transform so the disc tracks the mannequin in world coordinates.
+  if (state.nightModeActive) {
+    drawNightVignette(ctx, state);
+  }
+
   // Restore from isometric transform
   ctx.restore();
 
   // Post-process: ambient particles drawn in screen space
   drawAmbientParticles(ctx, state);
+}
+
+/** Heavy radial darkness centred on the mannequin. The interior is fully
+ *  transparent so the player can still see a disc of the floor; everything
+ *  beyond the visible radius fades to near-black. */
+function drawNightVignette(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const { width, height } = state.arena;
+  const cx = state.mannequin.pos.x;
+  const cy = state.mannequin.pos.y;
+  // Inner = visible disc, outer = full darkness. Tuned so a player sees a
+  // generous personal radius but the arena edges are invisible.
+  const inner = 180;
+  const outer = 480;
+  const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+  grad.addColorStop(0, 'rgba(2, 4, 10, 0)');
+  grad.addColorStop(0.6, 'rgba(2, 4, 10, 0.75)');
+  grad.addColorStop(1, 'rgba(2, 4, 10, 0.95)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
 }
 
 function drawDoorOverlays(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -209,15 +252,14 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Drop shadow under base.
     drawShadow(ctx, t.pos.x, t.pos.y + 22, 24, 7, 0.42);
 
-    // Base glow
-    ctx.save();
-    ctx.globalAlpha = 0.08;
-    const baseGlow = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 28);
-    baseGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-    baseGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = baseGlow;
-    ctx.fillRect(t.pos.x - 28, t.pos.y - 28, 56, 56);
-    ctx.restore();
+    // Base glow (cached halo to avoid per-frame gradient allocation).
+    drawRadialGlow(
+      ctx,
+      { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+      t.pos.x,
+      t.pos.y,
+      0.08,
+    );
 
     // Base sprite
     let base = s.towerNeedler;
@@ -306,16 +348,15 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Drop shadow
   drawShadow(ctx, m.pos.x, m.pos.y + 28, 32, 9, 0.52);
 
-  // Core glow pulse
+  // Core glow pulse (cached halo).
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
-  ctx.save();
-  ctx.globalAlpha = 0.12 + corePulse * 0.06;
-  const mannGlow = ctx.createRadialGradient(m.pos.x, m.pos.y - 4, 0, m.pos.x, m.pos.y - 4, 40);
-  mannGlow.addColorStop(0, 'rgba(125, 249, 255, 0.4)');
-  mannGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = mannGlow;
-  ctx.fillRect(m.pos.x - 40, m.pos.y - 44, 80, 80);
-  ctx.restore();
+  drawRadialGlow(
+    ctx,
+    { radius: 40, inner: 'rgba(125, 249, 255, 0.4)', outer: 'rgba(125, 249, 255, 0)' },
+    m.pos.x,
+    m.pos.y - 4,
+    0.12 + corePulse * 0.06,
+  );
 
   // Idle bob (slow breathing); throw window lunges forward one pixel toward
   // the aim direction to sell the motion without needing extra sprite frames.
@@ -343,8 +384,6 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   } else {
     drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
   }
-
-  drawOrbitalCatalysts(ctx, state, drawX, drawY);
 
   // Translucent blue shield bubble — shown whenever the mannequin has any
   // active barrier (Alch-Dome / boss-wave shield via tempShield, or the
@@ -416,75 +455,6 @@ function drawMannequinShieldBubble(
   );
   ctx.fill();
   ctx.restore();
-}
-
-/** Catalyst color palette (GDD §7.5). Maps each catalyst card id to a
- *  color used for its orbiting orb. Unknown ids fall back to white. */
-const CATALYST_COLORS: Record<string, string> = {
-  curse_fire_ruby: '#ff5a32',
-  curse_mercury_ring: '#c0c0c0',
-  curse_acid_prism: '#a3e36a',
-  curse_aether_engine: '#7df9ff',
-  curse_crown_of_elements: '#ffd166',
-};
-
-/** Render orbiting catalyst icons around the Mannequin. Catalysts are
- *  spaced evenly on the orbit and rotate slowly with `worldTime`. Empty
- *  slots show a faint placeholder ring so the player can see how many
- *  slots are still open. */
-function drawOrbitalCatalysts(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  cx: number,
-  cy: number,
-): void {
-  const slots = Math.max(0, state.catalystSlots);
-  if (slots === 0) return;
-  const equipped = state.equippedCatalysts;
-  const radius = 38;
-  const verticalScale = 0.45; // squashed to match iso plane
-  const phase = state.worldTime * 0.7;
-
-  for (let i = 0; i < slots; i++) {
-    const angle = phase + (i * Math.PI * 2) / slots;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy - 18 + Math.sin(angle) * radius * verticalScale;
-    const equippedId = equipped[i];
-
-    if (!equippedId) {
-      // Empty slot — faint dashed pip.
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.setLineDash([2, 2]);
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-      continue;
-    }
-
-    const color = CATALYST_COLORS[equippedId] ?? '#ffffff';
-    // Outer halo
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    // Inner orb
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    // Bright pip
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.beginPath();
-    ctx.arc(x - 0.7, y - 0.7, 0.9, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
 }
 
 function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -584,23 +554,20 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Boss visual distinction: pulsing red/purple glow + crown marker
     if (e.kind.isBoss) {
       const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
-      ctx.save();
-      ctx.globalAlpha = 0.35 * bPulse;
-      const bossGlow = ctx.createRadialGradient(
-        e.pos.x, e.pos.y, e.kind.radius * 0.3,
-        e.pos.x, e.pos.y, e.kind.radius * 2.2,
+      drawRadialGlow(
+        ctx,
+        {
+          radius: 64,
+          inner: 'rgba(255, 50, 50, 0.6)',
+          mid: 'rgba(180, 40, 120, 0.3)',
+          midStop: 0.5,
+          outer: 'rgba(180, 40, 120, 0)',
+        },
+        e.pos.x,
+        e.pos.y,
+        0.35 * bPulse,
+        e.kind.radius * 2.2,
       );
-      bossGlow.addColorStop(0, 'rgba(255, 50, 50, 0.6)');
-      bossGlow.addColorStop(0.5, 'rgba(180, 40, 120, 0.3)');
-      bossGlow.addColorStop(1, 'rgba(180, 40, 120, 0)');
-      ctx.fillStyle = bossGlow;
-      ctx.fillRect(
-        e.pos.x - e.kind.radius * 2.2,
-        e.pos.y - e.kind.radius * 2.2,
-        e.kind.radius * 4.4,
-        e.kind.radius * 4.4,
-      );
-      ctx.restore();
 
       // Crown symbol above boss
       ctx.save();
@@ -648,15 +615,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (Math.random() < 0.4) {
         spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
       }
-      // Under-glow
-      ctx.save();
-      ctx.globalAlpha = 0.15;
-      const fireGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 2);
-      fireGlow.addColorStop(0, 'rgba(255, 140, 58, 0.4)');
-      fireGlow.addColorStop(1, 'rgba(255, 140, 58, 0)');
-      ctx.fillStyle = fireGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
-      ctx.restore();
+      // Under-glow (cached halo).
+      drawRadialGlow(
+        ctx,
+        { radius: 32, inner: 'rgba(255, 140, 58, 0.4)', outer: 'rgba(255, 140, 58, 0)' },
+        e.pos.x,
+        e.pos.y,
+        0.15,
+        e.kind.radius * 2,
+      );
     }
     if (e.status.slowTime > 0) {
       ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
@@ -664,15 +631,15 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.beginPath();
       ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
       ctx.stroke();
-      // Frost shimmer
-      ctx.save();
-      ctx.globalAlpha = 0.1;
-      const frostGlow = ctx.createRadialGradient(e.pos.x, e.pos.y, 0, e.pos.x, e.pos.y, e.kind.radius * 1.5);
-      frostGlow.addColorStop(0, 'rgba(125, 249, 255, 0.3)');
-      frostGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-      ctx.fillStyle = frostGlow;
-      ctx.fillRect(e.pos.x - e.kind.radius * 2, e.pos.y - e.kind.radius * 2, e.kind.radius * 4, e.kind.radius * 4);
-      ctx.restore();
+      // Frost shimmer (cached halo).
+      drawRadialGlow(
+        ctx,
+        { radius: 24, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+        e.pos.x,
+        e.pos.y,
+        0.1,
+        e.kind.radius * 1.5,
+      );
     }
     if (e.status.armorBreakTime > 0) {
       ctx.strokeStyle = `rgba(210, 245, 90, 0.6)`;
@@ -684,8 +651,9 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.setLineDash([]);
     }
 
-    // HP bar
-    if (e.hp < e.maxHp) {
+    // HP bar (+ optional bonus shield bar above it for cursed-extra shielded
+    // enemies). The shield bar shrinks left-to-right as it gets soaked.
+    if (e.hp < e.maxHp || e.extraShield > 0) {
       const w = Math.max(20, e.kind.radius * 2.4);
       const x = Math.round(e.pos.x - w / 2);
       const y = Math.round(e.pos.y - e.kind.radius - 10);
@@ -697,6 +665,17 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
       ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
       ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
+
+      if (e.extraShield > 0 && e.extraShieldMax > 0) {
+        const shieldFrac = e.extraShield / e.extraShieldMax;
+        const sy = y - 4;
+        ctx.fillStyle = '#0d0a14';
+        ctx.fillRect(x - 1, sy - 1, w + 2, 4);
+        ctx.fillStyle = 'rgba(125, 200, 255, 0.85)';
+        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 2);
+        ctx.fillStyle = 'rgba(220, 240, 255, 0.85)';
+        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 1);
+      }
 
       // Elite badge above HP bar.
       if (e.elite) {
@@ -939,32 +918,40 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): v
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
 
-  // Mannequin core glow
+  // Mannequin core glow (cached halo).
   const m = state.mannequin;
-  const coreGlow = ctx.createRadialGradient(m.pos.x, m.pos.y, 0, m.pos.x, m.pos.y, 80);
-  coreGlow.addColorStop(0, 'rgba(125, 249, 255, 0.06)');
-  coreGlow.addColorStop(1, 'rgba(125, 249, 255, 0)');
-  ctx.fillStyle = coreGlow;
-  ctx.fillRect(m.pos.x - 80, m.pos.y - 80, 160, 160);
+  drawRadialGlow(
+    ctx,
+    { radius: 80, inner: 'rgba(125, 249, 255, 0.06)', outer: 'rgba(125, 249, 255, 0)' },
+    m.pos.x,
+    m.pos.y,
+    1,
+  );
 
-  // Fire pool lights
+  // Fire pool lights — base alpha is folded into a single cached halo;
+  // per-pool fade is applied via globalAlpha (no gradient re-allocation).
   for (const fp of state.firePools) {
     const fadeOut = Math.max(0, Math.min(1, fp.time / 0.5));
-    const r = fp.radius * 3;
-    const g = ctx.createRadialGradient(fp.pos.x, fp.pos.y, 0, fp.pos.x, fp.pos.y, r);
-    g.addColorStop(0, `rgba(255, 140, 58, ${0.08 * fadeOut})`);
-    g.addColorStop(1, 'rgba(255, 140, 58, 0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(fp.pos.x - r, fp.pos.y - r, r * 2, r * 2);
+    if (fadeOut <= 0) continue;
+    drawRadialGlow(
+      ctx,
+      { radius: 64, inner: 'rgba(255, 140, 58, 0.08)', outer: 'rgba(255, 140, 58, 0)' },
+      fp.pos.x,
+      fp.pos.y,
+      fadeOut,
+      fp.radius * 3,
+    );
   }
 
-  // Tower range glow (subtle)
+  // Tower range glow (cached halo).
   for (const t of state.towers) {
-    const tg = ctx.createRadialGradient(t.pos.x, t.pos.y, 0, t.pos.x, t.pos.y, 30);
-    tg.addColorStop(0, 'rgba(125, 249, 255, 0.03)');
-    tg.addColorStop(1, 'rgba(125, 249, 255, 0)');
-    ctx.fillStyle = tg;
-    ctx.fillRect(t.pos.x - 30, t.pos.y - 30, 60, 60);
+    drawRadialGlow(
+      ctx,
+      { radius: 30, inner: 'rgba(125, 249, 255, 0.03)', outer: 'rgba(125, 249, 255, 0)' },
+      t.pos.x,
+      t.pos.y,
+      1,
+    );
   }
 
   ctx.restore();
@@ -1000,14 +987,15 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = COLORS.whiteSoft;
     ctx.fillRect(Math.round(p.x) - 3, Math.round(p.y) - 3, 6, 6);
-    // Point glow
-    ctx.globalAlpha = alpha * 0.3;
-    const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
-    pg.addColorStop(0, 'rgba(189, 246, 255, 0.5)');
-    pg.addColorStop(1, 'rgba(189, 246, 255, 0)');
-    ctx.fillStyle = pg;
-    ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
     ctx.restore();
+    // Point glow (cached halo).
+    drawRadialGlow(
+      ctx,
+      { radius: 20, inner: 'rgba(189, 246, 255, 0.5)', outer: 'rgba(189, 246, 255, 0)' },
+      p.x,
+      p.y,
+      alpha * 0.3,
+    );
     // Spawn spark particles
     if (alpha > 0.5 && Math.random() < 0.6) {
       spawnBurst(p.x, p.y, 2, AETHER_COLORS, 40, 0.2, 1.5, 50);
@@ -1035,14 +1023,21 @@ interface AmbientParticle {
 }
 
 const ambientParticles: AmbientParticle[] = [];
+const AMBIENT_PARTICLE_CAP = 80;
 let lastAmbientSpawn = 0;
+let lastAmbientTime = -1;
 
 function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
   const t = state.worldTime;
+  const dt = lastAmbientTime < 0 ? 1 / 60 : Math.min(1 / 20, Math.max(0, t - lastAmbientTime));
+  lastAmbientTime = t;
 
-  // Spawn new particles periodically
-  if (t - lastAmbientSpawn > 0.08) {
+  // Spawn new particles periodically. Capped so we never accumulate a huge
+  // backlog if the tab was unfocused (worldTime stops, but spawn cadence is
+  // still time-based so the next visible frame would dump dozens of dust
+  // motes at once).
+  if (t - lastAmbientSpawn > 0.08 && ambientParticles.length < AMBIENT_PARTICLE_CAP) {
     lastAmbientSpawn = t;
     const biomePal = getActiveBiomePalette();
     const colors = biomePal.ambientColors;
@@ -1058,36 +1053,47 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
     });
   }
 
-  // Update and draw
+  // Update and draw. Single save/restore pair around the whole batch — the
+  // previous version saved/restored per particle which costs more than the
+  // actual fillRect for a mote-sized sprite.
+  ctx.save();
+  let lastAlpha = -1;
+  let lastColor = '';
   for (let i = ambientParticles.length - 1; i >= 0; i--) {
     const p = ambientParticles[i]!;
-    p.life -= 0.016;
+    p.life -= dt;
     if (p.life <= 0) {
-      ambientParticles.splice(i, 1);
+      // Swap-remove: O(1) compared to splice-shift through the tail.
+      ambientParticles[i] = ambientParticles[ambientParticles.length - 1]!;
+      ambientParticles.pop();
       continue;
     }
-    p.x += p.vx * 0.016;
-    p.y += p.vy * 0.016;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
     const alpha = Math.min(1, p.life / p.maxLife) * Math.min(1, (p.maxLife - p.life) / 0.5);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color;
+    if (alpha !== lastAlpha) {
+      ctx.globalAlpha = alpha;
+      lastAlpha = alpha;
+    }
+    if (p.color !== lastColor) {
+      ctx.fillStyle = p.color;
+      lastColor = p.color;
+    }
     ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
-    ctx.restore();
   }
+  ctx.restore();
 
-  // Vignette overlay for cinematic depth
-  const grad = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.25,
-    width / 2, height / 2, Math.max(width, height) * 0.7,
-  );
-  grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+  // Vignette overlay for cinematic depth (cached canvas keyed by size).
+  ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
 }
 
-// Export camera config for input system
-export function getRenderCamera(width: number, height: number): Camera {
-  return { cx: width / 2, cy: height / 2, scale: 1 };
+// Export camera config for input system. Maps world coordinates onto canvas
+// pixels via a single uniform scale that fits the world height (`height`)
+// into the canvas height. World width matches canvas aspect (see
+// `setArenaSize`), so the same scale also maps world (0..world.w) onto
+// canvas (0..canvas.w) with no horizontal letterboxing.
+export function getRenderCamera(_width: number, height: number): Camera {
+  const { height: canvasH } = getViewportSize();
+  const scale = canvasH / height;
+  return { cx: 0, cy: 0, scale };
 }
