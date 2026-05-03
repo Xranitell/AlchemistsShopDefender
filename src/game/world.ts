@@ -32,8 +32,8 @@ export function buildEntrances(width: number = ARENA_W, height: number = ARENA_H
 }
 
 export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_H): RunePoint[] {
-  // 8 points on a ring around the centre, of which the first 4 (indices 0..3
-  // in unlock order) are active by default. The remaining 4 slots unlock via
+  // 10 points evenly spaced around the dais. Four indices (0, 3, 5, 8) are
+  // active by default; the remaining six start locked and are revealed via
   // meta-progression — see `runePointUnlock` upgrades. The unlock order is
   // separate from the visual angle so each unlock opens a slot on a different
   // side of the arena rather than them all clustering together.
@@ -50,44 +50,43 @@ export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_
   // 1920×1080 layout exactly on every viewport.
   const rx = Math.min(378, Math.max(0, width / 2 - 24));
   const ry = Math.min(194, Math.max(0, height / 2 - 24));
-  // Visual angles around the dais.
-  const angles = [
-    -Math.PI / 2,                  // 0  top         (active)
-    -Math.PI / 2 + Math.PI / 4,    // 1  top-right   (locked)
-    0,                              // 2  right       (active)
-    Math.PI / 4,                    // 3  bottom-right(locked)
-    Math.PI / 2,                    // 4  bottom      (active)
-    Math.PI / 2 + Math.PI / 4,      // 5  bottom-left (locked)
-    Math.PI,                        // 6  left        (active)
-    -Math.PI / 2 - Math.PI / 4,     // 7  top-left    (locked)
-  ];
+  // Visual angles around the dais — ten evenly spaced points (every 36°).
+  const angles: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    angles.push(-Math.PI / 2 + (i * 2 * Math.PI) / 10);
+  }
   // GDD §7.4: each rune point has a kind that buffs whatever tower is placed
-  // on it. The default arena layout mixes one of every kind across both the
-  // four starting points and the four meta-unlocked points so the player
-  // sees variety from wave 1 and gets new types as they progress.
-  // Index → kind:
-  //   0 (top, active)    : reinforced
-  //   1 (top-r, locked)  : unstable
-  //   2 (right, active)  : resonant
-  //   3 (br, locked)     : defensive
-  //   4 (bottom, active) : normal
-  //   5 (bl, locked)     : reinforced
-  //   6 (left, active)   : defensive
-  //   7 (tl, locked)     : resonant
+  // on it. The default arena layout mixes every kind across both the four
+  // starting points and the six meta-unlocked points so the player sees
+  // variety from wave 1 and gets new types as they progress.
+  // Index → kind (each kind appears twice across the ten slots, and the
+  // four starting indices {0, 3, 5, 8} cover four distinct kinds):
+  //   0 (active,    0°): reinforced
+  //   1 (locked,   36°): unstable
+  //   2 (locked,   72°): defensive
+  //   3 (active,  108°): normal
+  //   4 (locked,  144°): resonant
+  //   5 (active,  180°): resonant
+  //   6 (locked,  216°): reinforced
+  //   7 (locked,  252°): unstable
+  //   8 (active,  288°): defensive
+  //   9 (locked,  324°): normal
   const KIND_BY_INDEX: import('./state').RunePointKind[] = [
     'reinforced',
     'unstable',
-    'resonant',
     'defensive',
     'normal',
-    'reinforced',
-    'defensive',
     'resonant',
+    'resonant',
+    'reinforced',
+    'unstable',
+    'defensive',
+    'normal',
   ];
   // Indices that start active. Other indices are revealed by meta upgrades —
-  // `runePointUnlock` effects use 1-based slot numbers matching this list:
-  // unlock 1 → index 1, unlock 2 → index 3, unlock 3 → index 5, unlock 4 → 7.
-  const startActive = new Set([0, 2, 4, 6]);
+  // see `runeUnlockSlotToIndex` below for how `runePointUnlock` slot values
+  // map onto the locked indices.
+  const startActive = new Set([0, 3, 5, 8]);
   for (let i = 0; i < angles.length; i++) {
     const angle = angles[i]!;
     points.push({
@@ -106,9 +105,16 @@ export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_
 /** Map a 1-based "rune unlock slot" (the value carried by a `runePointUnlock`
  *  meta effect) to the actual rune-point array index that should be opened.
  *  The mapping points only to the slots that start LOCKED, so an unlock can
- *  never be a no-op. */
+ *  never be a no-op. Six slots match the six locked rune positions, so once
+ *  the player buys all six rune-unlock talents in the engineering tree every
+ *  rune point around the dais becomes available.
+ *
+ *  The order is intentionally staggered (one quadrant at a time) so the
+ *  earlier unlocks in the tree open visually distinct points rather than
+ *  filling a single side first. */
 export function runeUnlockSlotToIndex(slot: number): number {
-  const LOCKED = [1, 3, 5, 7];
+  // [top-right, bottom-right, bottom-left, top-left, right, left]
+  const LOCKED = [1, 4, 6, 9, 2, 7];
   const i = Math.max(0, Math.min(LOCKED.length - 1, slot - 1));
   return LOCKED[i]!;
 }

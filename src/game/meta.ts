@@ -149,8 +149,10 @@ function applySingleEffect(state: GameState, e: MetaEffect): void {
       m.towerRangeMult *= e.value;
       break;
     case 'runePointUnlock': {
-      // `e.value` is a 1-based slot id (1..4) for the unlockable points so
-      // callers don't have to know about the underlying ring layout.
+      // `e.value` is a 1-based slot id (1..6) for the unlockable points so
+      // callers don't have to know about the underlying ring layout. Six
+      // slots cover every locked rune point around the dais — see
+      // `runeUnlockSlotToIndex` for the slot → index mapping.
       const idx = runeUnlockSlotToIndex(e.value);
       const rp = state.runePoints[idx];
       if (rp) rp.active = true;
