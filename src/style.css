@@ -5754,21 +5754,23 @@ body {
 }
 
 /* ── Ingredient stockpile ─────────────────────────────────────────── */
+/* Single-column list per design request — gives every ingredient row
+ * its full width so the localised name never has to be truncated. */
 .craft-ing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 .craft-ing-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 8px 12px;
   background: linear-gradient(180deg, rgba(48, 28, 36, 0.9), rgba(18, 10, 16, 0.95));
   border: 2px solid rgba(255, 209, 102, 0.22);
   border-radius: 6px;
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 16px;
   color: #f4f4f4;
   transition: transform 120ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -5789,42 +5791,76 @@ body {
 .craft-ing-name {
   flex: 1;
   color: #fff2c2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* In a 1-column list we want the full name visible — no ellipsis. */
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.2;
 }
 .craft-ing-count {
   font-weight: bold;
   color: #ffd166;
   text-shadow: 0 0 6px rgba(255, 174, 58, 0.6);
-  min-width: 18px;
+  min-width: 28px;
+  font-size: 18px;
   text-align: right;
 }
 .craft-ing-glyph {
-  font-size: 18px;
+  font-size: 20px;
   text-shadow: 0 0 6px currentColor;
+  flex-shrink: 0;
 }
 
 /* ── Recipe list ──────────────────────────────────────────────────── */
+/* Vertical scroll with a clearly visible warm-gold scrollbar so it
+ * reads as part of the alchemy table, not a default browser chrome. */
 .craft-recipes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  padding: 2px 4px 2px 0;
+  overflow-y: scroll;
+  padding: 2px 10px 2px 2px;
+  scrollbar-gutter: stable;
+  scrollbar-color: #ffae3a rgba(26, 14, 18, 0.7);
+  scrollbar-width: thin;
+}
+.craft-recipes::-webkit-scrollbar { width: 10px; }
+.craft-recipes::-webkit-scrollbar-track {
+  background: rgba(26, 14, 18, 0.85);
+  border-radius: 6px;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.6);
+}
+.craft-recipes::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ffd166 0%, #ffae3a 50%, #c98d23 100%);
+  border-radius: 6px;
+  border: 1px solid #5f320e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 8px rgba(255, 174, 58, 0.45);
+}
+.craft-recipes::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.1);
 }
 .craft-recipe {
   --recipe-color: #ffd166;
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* Two-column grid: stacked content (name + desc + cost chips) on
+   * the left, brew CTA on the right spanning both rows. */
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "left brew"
+    "cost brew";
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  column-gap: 14px;
+  row-gap: 6px;
+  padding: 14px 16px;
+  /* Prevent the flex-column parent (`.craft-recipes`) from squashing
+   * each row below its natural height — the scrollbar handles overflow. */
+  flex-shrink: 0;
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--recipe-color) 10%, rgba(28, 14, 22, 0.92)) 0%,
     rgba(14, 8, 14, 0.96) 100%);
@@ -5889,24 +5925,26 @@ body {
 }
 
 .craft-recipe-left {
+  grid-area: left;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   position: relative;
   z-index: 1;
 }
 .craft-recipe-glyph {
-  font-size: 30px;
+  font-size: 36px;
   flex-shrink: 0;
   text-shadow: 0 0 8px currentColor, 0 0 18px color-mix(in srgb, currentColor 45%, transparent);
 }
 .craft-recipe-text { min-width: 0; }
 .craft-recipe-name {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.25;
   color: #fff2c2;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   letter-spacing: 0.5px;
   text-shadow:
     -1px -1px 0 #1a0608, 1px -1px 0 #1a0608,
@@ -5915,11 +5953,12 @@ body {
 }
 .craft-recipe-desc {
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 16px;
   color: #cdd0da;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 .craft-recipe-cost {
+  grid-area: cost;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -5929,18 +5968,19 @@ body {
 .craft-cost-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 6px;
+  padding: 4px 10px;
   background: linear-gradient(180deg, rgba(48, 28, 36, 0.9), rgba(18, 10, 16, 0.96));
   border: 2px solid rgba(255, 209, 102, 0.40);
   border-radius: 12px;
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 16px;
   color: #fff2c2;
   box-shadow:
     inset 0 1px 0 rgba(255, 209, 102, 0.18),
     inset 0 -2px 0 rgba(0, 0, 0, 0.45);
 }
+.craft-cost-chip .craft-ing-glyph { font-size: 18px; }
 .craft-cost-chip.has {
   border-color: #ffd166;
   box-shadow:
@@ -5957,14 +5997,17 @@ body {
 .craft-cost-num { font-weight: bold; }
 
 .craft-brew-btn {
+  grid-area: brew;
+  align-self: center;
   pointer-events: auto;
-  padding: 10px 18px;
+  padding: 14px 22px;
+  min-width: 110px;
   background: linear-gradient(180deg, var(--cta-yellow-hi) 0%, var(--cta-yellow) 50%, #c89a14 100%);
   color: #3a2a05;
   border: 2px solid #4a250d;
   border-radius: 8px;
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1px;
   cursor: pointer;
   text-shadow:
@@ -6030,9 +6073,15 @@ body {
   .craft-recipe-shimmer { display: none; }
 }
 @media (max-width: 600px) {
-  .craft-recipe { grid-template-columns: 1fr; }
+  .craft-recipe {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "left"
+      "cost"
+      "brew";
+  }
   .craft-recipe-cost { justify-content: flex-start; }
-  .craft-brew-btn { width: 100%; }
+  .craft-brew-btn { width: 100%; min-width: 0; }
 }
 
 /* ============ Victory chest overlay ============ */
