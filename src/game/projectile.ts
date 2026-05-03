@@ -7,6 +7,7 @@ import type { Element } from './types';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import { shakeCamera } from '../engine/shake';
 import {
   potionDamageMultiplier,
   consumeStormCharge,
@@ -192,6 +193,14 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
     // skip the SFX so the rate-limit stays kind to chained reactions.
     audio.playSfx('potionImpact');
   }
+  // Camera shake for splash impacts: scaled by splash radius so a wide
+  // mortar boom shakes harder than a single-target needler. Echo
+  // secondaries get a softer kick to avoid double-thump on chains.
+  if (p.splashRadius > 0) {
+    const base = Math.min(5, 1.5 + p.splashRadius / 40);
+    const mag = p.echoExplosion ? base * 0.5 : base;
+    shakeCamera(mag, 0.16);
+  }
   // Did this potion actually land on top of (or touching) an enemy? The
   // tutorial fires its "manual aim bonus" hint only on the first such hit.
   if (p.kind === 'potion' && p.bonusFromManualAim) {
@@ -319,7 +328,11 @@ export function applyDamageToEnemy(
   // Meta crit chance: doubled damage on a successful roll.
   if (state.metaCritChance > 0 && state.rng.chance(state.metaCritChance)) {
     dmg *= 2;
-    spawnFloatingText(state, t('floating.crit'), e.pos, '#ffd166');
+    // Crit indicator: render as the gold-sparkle 'crit' variant. The
+    // damage number itself isn't shown (towers fire too fast for that
+    // to be readable), but the crit tag pops up above the enemy so
+    // the player gets a clear "yes that hit harder" beat.
+    spawnFloatingText(state, t('floating.crit'), e.pos, '#ffe17a', 'crit');
   }
 
   // Armored elite: ×0.6 physical damage, aether unaffected.
@@ -358,6 +371,13 @@ export function applyDamageToEnemy(
   // this hit's element as the killing blow if hp reaches 0 below.
   e.lastHitElement = element;
   audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
+  // Boss-hit camera shake: each non-killing boss hit gets a small kick so
+  // the player physically feels they're chipping a chunky enemy. Boss
+  // *deaths* (a much bigger shake) are triggered separately in
+  // `onEnemyDeath` to avoid double-shaking the kill frame.
+  if (e.kind.isBoss && e.hp > 0) {
+    shakeCamera(2.5, 0.1);
+  }
 
   // Dash-back: on a successful hit push the enemy away from the hero for
   // a brief period so the projectile knocks them back slightly.

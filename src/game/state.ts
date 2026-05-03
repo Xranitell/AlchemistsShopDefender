@@ -227,7 +227,14 @@ export interface FloatingText {
   pos: Vec2;
   color: string;
   life: number;
+  /** Original life at spawn — needed to compute the scale-pop envelope and
+   *  the fade curve independently of `life`'s shrinking value. Set by
+   *  `spawnFloatingText` based on `kind`. */
+  maxLife: number;
   vy: number;
+  /** Visual variant. 'crit' is rendered larger, with a gold-glow halo and
+   *  four sparkles around the number. Defaults to 'normal'. */
+  kind: 'normal' | 'crit';
 }
 
 /** Short-lived visual segment for chain-lightning beams (Эфирная катушка).
@@ -564,14 +571,21 @@ export function spawnFloatingText(
   text: string,
   pos: Vec2,
   color: string,
+  kind: 'normal' | 'crit' = 'normal',
 ): void {
+  // Crits live a bit longer and float slightly faster so they read as
+  // "big" against ambient ticks of armor / dodge text.
+  const life = kind === 'crit' ? 1.1 : 0.8;
+  const vy = kind === 'crit' ? -42 : -32;
   state.floatingTexts.push({
     id: newId(state),
     text,
     pos: { ...pos },
     color,
-    life: 0.8,
-    vy: -32,
+    life,
+    maxLife: life,
+    vy,
+    kind,
   });
 }
 

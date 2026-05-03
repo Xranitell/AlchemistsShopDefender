@@ -5,6 +5,7 @@ import { spawnFloatingText } from './state';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import { shakeCamera } from '../engine/shake';
 import {
   ALCH_DOME_DURATION,
   ALCH_DOME_REDUCTION,
@@ -43,6 +44,8 @@ export function tryActivateOverload(state: GameState): boolean {
   o.charge = 0;
   audio.playSfx('overloadActivate');
   tutorial.notify('overloadActivated');
+  // Big satisfying kick on overload — this is the player's "big button".
+  shakeCamera(6, 0.28);
 
   switch (state.activeModuleId) {
     case 'chronos':

@@ -16,7 +16,10 @@ import { ELITE_MODS } from '../data/eliteMods';
 import { applyIsoTransform, type Camera } from '../render/camera';
 import { getViewportSize } from './world';
 import { updateParticles, drawParticles, spawnTrail, spawnBurst, FIRE_COLORS, MERCURY_COLORS, ACID_COLORS, AETHER_COLORS, FROST_COLORS, POISON_COLORS } from '../render/particles';
-import { drawRadialGlow, getVignette } from '../render/glowCache';
+import { drawRadialGlow, getVignette, getColoredVignette } from '../render/glowCache';
+import { getShakeOffset } from '../engine/shake';
+import { drawShockwaves, updateShockwaves } from '../render/shockwaves';
+import { getScreenFlash } from '../render/screenFlash';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -54,6 +57,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // and the transform is a no-op (existing behaviour preserved).
   const camera: Camera = getRenderCamera(width, height);
   ctx.save();
+  // Camera shake is applied in viewport space (before the world transform)
+  // so a 4-pixel shake reads as 4 pixels regardless of the world→canvas
+  // scale used by the camera. Drawn against `Math.round` so the offset
+  // stays on the pixel-art grid and doesn't introduce sub-pixel blur.
+  const shake = getShakeOffset();
+  if (shake.x !== 0 || shake.y !== 0) {
+    ctx.translate(Math.round(shake.x), Math.round(shake.y));
+  }
   applyIsoTransform(ctx, camera);
 
   // Pre-baked floor + walls + decor.
@@ -89,6 +100,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   lastRenderTime = state.worldTime;
   updateParticles(particleDt);
+  // Shockwaves drawn before particles so the bright rings don't bury the
+  // sparks — particles fly outward "through" the ring, which reads as the
+  // explosion shoving them outward.
+  updateShockwaves(particleDt);
+  drawShockwaves(ctx);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
   drawAimReticle(ctx, state);
@@ -1025,8 +1041,25 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
 
 function drawFloatingTexts(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const t of state.floatingTexts) {
-    const alpha = Math.max(0, t.life / 0.8);
-    drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha);
+    const ageNorm = Math.max(0, Math.min(1, 1 - t.life / t.maxLife));
+    const alpha = Math.max(0, t.life / t.maxLife);
+    // Scale-pop envelope: overshoot to 1.35× in the first 12% of life,
+    // settle back to 1.0 by 30%. Reads as "snap into existence" without
+    // the float losing its readable size for the rest of its lifetime.
+    let scale: number;
+    if (ageNorm < 0.12) {
+      const k = ageNorm / 0.12;
+      scale = 0.6 + k * 0.75; // 0.6 → 1.35
+    } else if (ageNorm < 0.30) {
+      const k = (ageNorm - 0.12) / 0.18;
+      scale = 1.35 - k * 0.35; // 1.35 → 1.0
+    } else {
+      scale = 1.0;
+    }
+    drawPixelFloatingText(ctx, t.text, t.pos.x, t.pos.y, t.color, alpha, {
+      scale,
+      kind: t.kind,
+    });
   }
 }
 
@@ -1105,6 +1138,20 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
 
   // Vignette overlay for cinematic depth (cached canvas keyed by size).
   ctx.drawImage(getVignette(width, height, 0.5), 0, 0);
+
+  // Mannequin damage screen-edge flash. Drawn after the cinematic vignette
+  // so the red tint sits clearly on top of the dark fall-off and reads as
+  // a separate "ow" effect rather than darkening the corners further.
+  // A single cached red vignette is reused — alpha is varied per-frame
+  // via globalAlpha so the cache size stays bounded.
+  const flash = getScreenFlash();
+  if (flash.alpha > 0.01) {
+    const { width: cw, height: ch } = getViewportSize();
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, flash.alpha);
+    ctx.drawImage(getColoredVignette(cw, ch, 0.85, flash.rgb), 0, 0);
+    ctx.restore();
+  }
 }
 
 // Export camera config for input system. Maps world coordinates onto canvas
