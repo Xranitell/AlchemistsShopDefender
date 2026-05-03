@@ -12,6 +12,7 @@ import { waveSpeedScale } from './wave';
 import { shakeCamera } from '../engine/shake';
 import { spawnShockwave } from '../render/shockwaves';
 import { flashScreen } from '../render/screenFlash';
+import { spawnScorchDecal } from '../render/scorchDecals';
 import {
   spawnBurst,
   FIRE_COLORS,
@@ -462,7 +463,13 @@ export function updateFirePools(state: GameState, dt: number): void {
   for (let i = 0; i < state.firePools.length; i++) {
     const fp = state.firePools[i]!;
     fp.time -= dt;
-    if (fp.time <= 0) { remove.push(i); continue; }
+    if (fp.time <= 0) {
+      // Leave behind a fading scorch mark so the fire pool's footprint
+      // doesn't vanish instantly. Purely cosmetic.
+      spawnScorchDecal(fp.pos.x, fp.pos.y, fp.radius * 0.95, 1.5);
+      remove.push(i);
+      continue;
+    }
     for (const e of state.enemies) {
       if (e.elite === 'ethereal' && e.etherealActive) continue;
       const dx = fp.pos.x - e.pos.x;

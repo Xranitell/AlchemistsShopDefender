@@ -20,6 +20,7 @@ import { drawRadialGlow, getVignette, getColoredVignette } from '../render/glowC
 import { getShakeOffset } from '../engine/shake';
 import { drawShockwaves, updateShockwaves } from '../render/shockwaves';
 import { getScreenFlash } from '../render/screenFlash';
+import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
 
@@ -82,6 +83,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   );
   drawDangerRim(ctx, state);
   drawRunePoints(ctx, state);
+  drawScorchDecals(ctx);
   drawFirePools(ctx, state);
   drawReactionPools(ctx, state);
   drawGoldPickups(ctx, state);
@@ -104,6 +106,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // sparks — particles fly outward "through" the ring, which reads as the
   // explosion shoving them outward.
   updateShockwaves(particleDt);
+  updateScorchDecals(particleDt);
   drawShockwaves(ctx);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
@@ -233,16 +236,33 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
 function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave') return;
   const { x, y } = state.mannequin.pos;
-  const pulse = 0.55 + 0.25 * Math.sin(state.worldTime * 4);
+  // Pulse + danger scaling: count enemies within a "near" zone of the
+  // mannequin and crossfade pulse depth + line thickness toward red as
+  // pressure mounts. Empty arena → almost invisible; surrounded → meaty
+  // throbbing rim. Distance threshold matches the inner ellipse's
+  // radius so the visual "matches" what the player feels close.
+  const NEAR_R2 = 380 * 380;
+  let nearCount = 0;
+  for (let i = 0; i < state.enemies.length; i++) {
+    const e = state.enemies[i]!;
+    const dx = e.pos.x - x;
+    const dy = e.pos.y - y;
+    if (dx * dx + dy * dy < NEAR_R2) nearCount++;
+  }
+  // Pressure ramps from 0 (no near enemies) to 1 (~10 enemies). Avoids
+  // dividing by max-enemies because some waves spawn small swarms that
+  // shouldn't max-saturate the rim.
+  const pressure = Math.min(1, nearCount / 10);
+  const pulse = 0.55 + 0.25 * Math.sin(state.worldTime * (4 + 4 * pressure));
   ctx.save();
   ctx.strokeStyle = RIM_RED;
-  ctx.lineWidth = 3;
-  ctx.globalAlpha = pulse;
+  ctx.lineWidth = 3 + pressure * 2;
+  ctx.globalAlpha = (0.4 + pressure * 0.55) * pulse;
   ctx.beginPath();
   ctx.ellipse(x, y + 4, 300, 158, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.globalAlpha = 0.14 * pulse;
-  ctx.lineWidth = 16;
+  ctx.globalAlpha = (0.10 + pressure * 0.18) * pulse;
+  ctx.lineWidth = 16 + pressure * 12;
   ctx.stroke();
   ctx.restore();
 }
@@ -995,7 +1015,65 @@ function drawDynamicLighting(ctx: CanvasRenderingContext2D, state: GameState): v
 
 function drawAimReticle(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.phase !== 'wave' && state.phase !== 'preparing') return;
+  // Trajectory preview during prep + first ~6s of a wave so the player
+  // can read the throw arc without it lingering forever during long
+  // battles. Fades out so it doesn't dominate later. Skipped for the
+  // very first 0.3s of a wave so the wave-start beat isn't crowded.
+  const showPreview =
+    state.phase === 'preparing'
+    || (state.waveState.timeInWave > 0.3 && state.waveState.timeInWave < 6);
+  if (showPreview) {
+    const alpha =
+      state.phase === 'preparing'
+        ? 0.7
+        : 0.7 * Math.max(0, 1 - (state.waveState.timeInWave - 0.3) / 5.7);
+    drawTrajectoryPreview(ctx, state, alpha);
+  }
   drawReticle(ctx, state.aim.x, state.aim.y);
+}
+
+function drawTrajectoryPreview(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  alpha: number,
+): void {
+  // Mirror `throwPotion`'s arc parameters so the preview matches what the
+  // next throw will actually do. Distance-driven peak height keeps the
+  // shape consistent with the in-flight projectile.
+  const m = state.mannequin;
+  const start = m.pos;
+  const target = state.aim;
+  const dx = target.x - start.x;
+  const dy = target.y - start.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 8) return;
+  const peak = Math.min(140, 40 + d * 0.18);
+  const segments = 16;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#bdf6ff';
+  // Punctured line: tiny squares at every other segment so it reads as a
+  // dotted parabola without a per-segment lineDash setup. Squares scale
+  // down toward the landing point so the player's eye is led to the aim.
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = start.x + dx * t;
+    // sin-shaped arc, identical to throwPotion's `Math.sin(t * PI) * peakHeight`.
+    const arcDrop = Math.sin(t * Math.PI) * peak;
+    const y = start.y + dy * t - arcDrop;
+    if (i % 2 === 1) {
+      const sz = Math.max(2, Math.round(4 - (i / segments) * 2.5));
+      ctx.fillRect(Math.round(x) - sz / 2, Math.round(y) - sz / 2, sz, sz);
+    }
+  }
+  // Landing marker: a small flat ellipse at the aim point so the player's
+  // eye can attach to "where it'll land".
+  ctx.strokeStyle = '#bdf6ff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(target.x, target.y, 8, 8 * 0.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {

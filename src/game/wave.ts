@@ -10,6 +10,8 @@ import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
 import { rerollWaveMutators } from './world';
+import { shakeCamera } from '../engine/shake';
+import { spawnShockwave } from '../render/shockwaves';
 
 /** Return the active wave list for the current difficulty mode. */
 function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
@@ -166,6 +168,20 @@ function doStartWave(state: GameState): void {
   }
 
   state.phase = 'wave';
+  // Wave-start stinger: a small shake + a wide cyan shockwave from the
+  // mannequin so the wave kick-off has a clear physical "go!" beat.
+  // Boss waves get a meatier version because they're meant to feel
+  // heavier as a drumroll moment.
+  shakeCamera(def.isBoss ? 4 : 1, 0.22);
+  spawnShockwave(
+    state.mannequin.pos.x,
+    state.mannequin.pos.y,
+    20,
+    def.isBoss ? 320 : 220,
+    def.isBoss ? 'rgba(255, 200, 130, 1)' : 'rgba(189, 246, 255, 1)',
+    def.isBoss ? 0.55 : 0.4,
+    def.isBoss ? 5 : 3,
+  );
 }
 
 export function startPause(state: GameState): void {

@@ -26,6 +26,7 @@ import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { tickShake, resetShake } from './engine/shake';
 import { resetShockwaves } from './render/shockwaves';
 import { tickScreenFlash, resetScreenFlash } from './render/screenFlash';
+import { resetScorchDecals } from './render/scorchDecals';
 import { render, getRenderCamera } from './game/render';
 import { screenToWorld, worldToScreen } from './render/camera';
 import { getSprites } from './render/sprites';
@@ -1553,6 +1554,7 @@ function startRun(mode: DifficultyMode): void {
   resetShake();
   resetShockwaves();
   resetScreenFlash();
+  resetScorchDecals();
   applyMetaUpgrades(state, meta);
   applyBiomeModifiers(state);
   // Daily Experiment runs an MSK-day-of-week event with its own modifier
