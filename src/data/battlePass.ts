@@ -1,7 +1,17 @@
 import { t } from '../i18n';
 
+/** Battle-pass reward types. Same constraint as `DailyReward` — every
+ *  entry must credit a real meta-save bucket; per-run currencies (gold)
+ *  are deliberately excluded because they have no inventory between runs.
+ *  Keys awarded here are difficulty keys (`epicKeys` / `ancientKeys`),
+ *  not the legacy `meta.keys` field. */
 export interface BpReward {
-  type: 'gold' | 'blue_essence' | 'ancient_essence' | 'keys';
+  type:
+    | 'blue_essence'
+    | 'ancient_essence'
+    | 'epic_key'
+    | 'ancient_key'
+    | 'rerolls';
   amount: number;
 }
 
@@ -31,18 +41,23 @@ export const BP_LEVELS: BpLevel[] = Array.from({ length: BP_MAX_LEVEL }, (_, i) 
   };
 });
 
+// The free/premium curves use only meta-save-backed currencies. Every-other
+// level (the "filler" tier) gives blue essence in escalating amounts so
+// late-pass progression keeps feeling rewarding even outside the headline
+// 5-level cadence.
 function freeRewardForLevel(lv: number): BpReward | null {
-  if (lv % 5 === 0) return { type: 'keys', amount: lv <= 15 ? 1 : 2 };
+  if (lv % 5 === 0) return { type: 'epic_key', amount: lv <= 15 ? 1 : 2 };
   if (lv % 3 === 0) return { type: 'blue_essence', amount: 5 + Math.floor(lv / 5) * 3 };
-  if (lv % 2 === 0) return { type: 'gold', amount: 30 + lv * 5 };
+  if (lv % 2 === 0) return { type: 'rerolls', amount: 1 + Math.floor(lv / 10) };
   return null;
 }
 
 function premiumRewardForLevel(lv: number): BpReward | null {
   if (lv % 5 === 0) return { type: 'ancient_essence', amount: 1 };
-  if (lv % 4 === 0) return { type: 'keys', amount: 2 };
+  if (lv % 10 === 0) return { type: 'ancient_key', amount: 1 };
+  if (lv % 4 === 0) return { type: 'epic_key', amount: 2 };
   if (lv % 3 === 0) return { type: 'blue_essence', amount: 8 + Math.floor(lv / 5) * 5 };
-  if (lv % 2 === 0) return { type: 'gold', amount: 50 + lv * 5 };
+  if (lv % 2 === 0) return { type: 'rerolls', amount: 2 + Math.floor(lv / 10) };
   return null;
 }
 

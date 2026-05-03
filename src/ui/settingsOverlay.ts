@@ -50,7 +50,8 @@ export class SettingsOverlay {
       <div class="settings-stat">${t('ui.settings.stat.bestWave')}<strong>${opts.meta.bestWave}</strong></div>
       <div class="settings-stat">${t('ui.settings.stat.blue')}<strong>${opts.meta.blueEssence}</strong></div>
       <div class="settings-stat">${t('ui.settings.stat.ancient')}<strong>${opts.meta.ancientEssence}</strong></div>
-      <div class="settings-stat">${t('ui.settings.stat.keys')}<strong>${opts.meta.keys}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.epicKeys')}<strong>${opts.meta.epicKeys}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.ancientKeys')}<strong>${opts.meta.ancientKeys}</strong></div>
     `;
     body.appendChild(stats);
 

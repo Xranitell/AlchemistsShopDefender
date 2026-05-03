@@ -140,6 +140,8 @@ export const EN: Record<string, string> = {
   'ui.settings.stat.blue': 'BE: ',
   'ui.settings.stat.ancient': 'AE: ',
   'ui.settings.stat.keys': 'Keys: ',
+  'ui.settings.stat.epicKeys': 'Epic keys: ',
+  'ui.settings.stat.ancientKeys': 'Ancient keys: ',
   'ui.settings.reset': 'Reset progress',
   'ui.settings.resetConfirm': 'Reset all progress? This cannot be undone.',
   'ui.settings.close': 'Close',
@@ -280,11 +282,15 @@ export const EN: Record<string, string> = {
   'ui.preview.epic.tagline': 'HIGH DANGER',
   'ui.preview.ancient.tagline': 'POINT OF NO RETURN',
 
-  // Reward labels (data/dailyRewards.ts, data/battlePass.ts)
-  'reward.gold': '{n} gold',
+  // Reward labels (data/dailyRewards.ts, data/battlePass.ts).
+  // Only currencies that actually live in MetaSave appear here — gold is
+  // per-run-only and was removed (was being silently miscredited as BE),
+  // and the legacy "keys" bucket was split into the two real difficulty
+  // keys (`epicKeys` / `ancientKeys`).
   'reward.blue_essence': '{n} BE',
   'reward.ancient_essence': '{n} AE',
-  'reward.keys': '{n} keys',
+  'reward.epic_key': '{n} epic key',
+  'reward.ancient_key': '{n} anc. key',
   'reward.rerolls': '{n} rerolls',
 
   // Difficulty mode ability labels
