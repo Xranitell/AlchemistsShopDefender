@@ -21,17 +21,6 @@ import {
   refundMetaUpgrade,
 } from '../game/meta';
 import type { MetaSave } from '../game/save';
-import {
-  ACTIVE_MODULES,
-  AURA_MODULES,
-  isActiveModule,
-  isAuraModule,
-  moduleName,
-  moduleDesc,
-  type ActiveModuleId,
-  type AuraModuleId,
-  type ModuleDef,
-} from '../data/modules';
 import { metaNodeName, metaNodeDesc } from '../data/metaTree';
 
 const BRANCH_COLORS: Record<MetaBranch, string> = {
@@ -93,32 +82,9 @@ const EFFECT_ICONS: Record<string, string> = {
 
 const ROOT_GLYPH = '✶';
 
-const ACTIVE_MODULE_ICONS: Record<string, string> = {
-  lightning: '⚡',
-  chronos: '⏳',
-  transmute: '⛁',
-  alch_dome: '⛨',
-  frost_nova: '❄',
-  vortex: '🌀',
-};
-const AURA_MODULE_ICONS: Record<string, string> = {
-  ether_amp: '✦',
-  thorn_shell: '🜨',
-  elem_reson: '◎',
-  vital_pulse: '♥',
-  gold_aura: '🜚',
-  long_range: '➶',
-};
-
 function nodeGlyph(node: { id: string; effect: { kind: string } }): string {
   if (isRootNode(node.id)) return ROOT_GLYPH;
   return EFFECT_ICONS[node.effect.kind] ?? '✦';
-}
-
-function moduleGlyph(slot: 'active' | 'aura', id: string): string {
-  return slot === 'active'
-    ? ACTIVE_MODULE_ICONS[id] ?? '⚡'
-    : AURA_MODULE_ICONS[id] ?? '◯';
 }
 
 /**
@@ -204,26 +170,6 @@ export class MetaOverlay {
     const body = document.createElement('div');
     body.className = 'meta-tree-body';
     panel.appendChild(body);
-
-    const loadout = document.createElement('div');
-    loadout.className = 'meta-loadout meta-loadout-side';
-    body.appendChild(loadout);
-    const renderLoadout = () => {
-      loadout.innerHTML = '';
-      loadout.appendChild(
-        buildModuleSlot(t('ui.meta.activeModule'), 'active', opts.meta, () => {
-          opts.onSave();
-          renderLoadout();
-        }),
-      );
-      loadout.appendChild(
-        buildModuleSlot(t('ui.meta.auraModule'), 'aura', opts.meta, () => {
-          opts.onSave();
-          renderLoadout();
-        }),
-      );
-    };
-    renderLoadout();
 
     const treeWrap = document.createElement('div');
     treeWrap.className = 'meta-tree-canvas';
@@ -587,65 +533,4 @@ function branchLabel(b: MetaBranch): string {
   }
 }
 
-/** Build the UI for one module slot (active or aura). The slot lists the
- *  available modules as buttons and visually marks the currently-selected
- *  one. Picking another button updates the meta save in-place and calls
- *  `onChange` so the host overlay can persist + re-render. */
-function buildModuleSlot(
-  label: string,
-  slot: 'active' | 'aura',
-  meta: MetaSave,
-  onChange: () => void,
-): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'meta-loadout-slot';
 
-  const title = document.createElement('div');
-  title.className = 'meta-loadout-title';
-  title.textContent = label;
-  wrap.appendChild(title);
-
-  const grid = document.createElement('div');
-  grid.className = 'meta-loadout-grid';
-  wrap.appendChild(grid);
-
-  const desc = document.createElement('div');
-  desc.className = 'meta-loadout-desc';
-  wrap.appendChild(desc);
-
-  const pool = slot === 'active' ? ACTIVE_MODULES : AURA_MODULES;
-  const currentRaw = slot === 'active' ? meta.selectedActiveModule : meta.selectedAuraModule;
-  const valid = slot === 'active' ? isActiveModule(currentRaw) : isAuraModule(currentRaw);
-  const current = valid ? currentRaw : Object.keys(pool)[0]!;
-
-  const updateDesc = (id: string) => {
-    const def = (pool as Record<string, ModuleDef>)[id];
-    desc.textContent = def ? moduleDesc(def) : '';
-  };
-
-  for (const def of Object.values(pool)) {
-    const btn = document.createElement('button');
-    btn.className = 'meta-loadout-btn';
-    const icon = document.createElement('span');
-    icon.className = 'meta-loadout-btn-icon';
-    icon.textContent = moduleGlyph(slot, def.id);
-    const label = document.createElement('span');
-    label.className = 'meta-loadout-btn-label';
-    label.textContent = moduleName(def);
-    btn.appendChild(icon);
-    btn.appendChild(label);
-    btn.title = moduleDesc(def);
-    if (def.id === current) btn.classList.add('selected');
-    btn.addEventListener('click', () => {
-      if (slot === 'active') meta.selectedActiveModule = def.id as ActiveModuleId;
-      else meta.selectedAuraModule = def.id as AuraModuleId;
-      onChange();
-    });
-    btn.addEventListener('mouseenter', () => updateDesc(def.id));
-    btn.addEventListener('mouseleave', () => updateDesc(current));
-    grid.appendChild(btn);
-  }
-
-  updateDesc(current);
-  return wrap;
-}

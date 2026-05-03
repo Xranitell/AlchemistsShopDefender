@@ -33,6 +33,7 @@ import { CardOverlay } from './ui/cardOverlay';
 import { TowerShop } from './ui/towerShop';
 import { MannequinShop } from './ui/mannequinShop';
 import { MetaOverlay } from './ui/metaOverlay';
+import { LoadoutOverlay } from './ui/loadoutOverlay';
 import { MainMenu } from './ui/mainMenu';
 import { DailyRewardsOverlay } from './ui/dailyRewardsOverlay';
 import { BattlePassOverlay, addBpXp } from './ui/battlePassOverlay';
@@ -175,6 +176,7 @@ function requestFullscreenOnMobile(): void {
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);
+const loadoutOverlay = new LoadoutOverlay(overlayRoot);
 const mainMenu = new MainMenu(overlayRoot);
 const dailyOverlay = new DailyRewardsOverlay(overlayRoot);
 const bpOverlay = new BattlePassOverlay(overlayRoot);
@@ -1369,6 +1371,21 @@ function showMainMenu(): void {
     onCrafting: () => {
       mainMenu.hide();
       showCrafting();
+    },
+    onLoadout: () => {
+      mainMenu.hide();
+      showLoadout();
+    },
+  });
+}
+
+function showLoadout(): void {
+  loadoutOverlay.show({
+    meta,
+    onSave: () => saveMeta(meta),
+    onClose: () => {
+      loadoutOverlay.hide();
+      showMainMenu();
     },
   });
 }
