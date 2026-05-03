@@ -102,7 +102,7 @@ export class MainMenu {
     shopBtn.type = 'button';
     const shopTitle = document.createElement('div');
     shopTitle.className = 'mm-card-title';
-    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.crafting')}</span>`;
+    shopTitle.innerHTML = `<span class="mm-shop-icon"></span><span>${t('ui.menu.shop')}</span>`;
     shopBtn.appendChild(shopTitle);
     const shopSlots = document.createElement('div');
     shopSlots.className = 'mm-shop-slots';
@@ -122,7 +122,7 @@ export class MainMenu {
     shopBtn.appendChild(shopSlots);
     const craftLvl = document.createElement('div');
     craftLvl.className = 'mm-craft-level';
-    craftLvl.textContent = `${t('ui.menu.craftLevel')} ${opts.meta.craftingLevel}`;
+    craftLvl.textContent = t('ui.menu.craftingLevel', { level: opts.meta.craftingLevel });
     shopBtn.appendChild(craftLvl);
     shopBtn.addEventListener('click', opts.onCrafting);
     leftCol.appendChild(shopBtn);
@@ -171,7 +171,7 @@ export class MainMenu {
     lbWrap.className = 'mm-card mm-lb-card';
     const lbTitle = document.createElement('div');
     lbTitle.className = 'mm-card-title';
-    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboards')}</span>`;
+    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
     lbWrap.appendChild(lbTitle);
     lbWrap.appendChild(buildLeaderboardPanel({ topN: 5, compact: true }));
     rightCol.appendChild(lbWrap);
@@ -190,12 +190,12 @@ export class MainMenu {
     modeBtns.className = 'mm-mode-btns';
     const dailyBtn2 = document.createElement('button');
     dailyBtn2.className = 'mm-mode-btn mm-daily-exp';
-    dailyBtn2.textContent = t('ui.menu.dailyExperiment');
+    dailyBtn2.textContent = t('ui.menu.dailyExp');
     if (opts.onDailyExperiment) dailyBtn2.addEventListener('click', opts.onDailyExperiment);
     modeBtns.appendChild(dailyBtn2);
     const bossBtn = document.createElement('button');
     bossBtn.className = 'mm-mode-btn mm-boss-challenge';
-    bossBtn.textContent = t('ui.menu.bossChallenge');
+    bossBtn.textContent = t('ui.menu.boss');
     if (opts.onBossChallenge) bossBtn.addEventListener('click', opts.onBossChallenge);
     modeBtns.appendChild(bossBtn);
     const bpBtn = document.createElement('button');
@@ -236,14 +236,14 @@ export class MainMenu {
 
     const titleRow = document.createElement('div');
     titleRow.className = 'mm-card-title';
-    titleRow.innerHTML = `<span>📅</span><span>${t('ui.dailyRewards.title')}</span>`;
+    titleRow.innerHTML = `<span>📅</span><span>${t('ui.daily.title')}</span>`;
 
     const currentDay = opts.meta.dailyDay ?? 0;
     const weekStart = Math.floor(currentDay / 7) * 7;
     const weekNum = Math.floor(currentDay / 7) + 1;
     const badge = document.createElement('span');
     badge.className = 'mm-daily-week-badge';
-    badge.textContent = `${t('ui.dailyRewards.week')} ${weekNum}`;
+    badge.textContent = t('ui.daily.week', { n: weekNum });
     titleRow.appendChild(badge);
     card.appendChild(titleRow);
 
@@ -265,7 +265,7 @@ export class MainMenu {
 
       const dayLabel = document.createElement('div');
       dayLabel.className = 'mm-daily-day-label';
-      dayLabel.textContent = isToday ? t('ui.dailyRewards.today') : `${t('ui.dailyRewards.day')} ${dayIdx + 1}`;
+      dayLabel.textContent = isToday ? t('ui.daily.today') : t('ui.daily.day', { n: dayIdx + 1 });
       cell.appendChild(dayLabel);
 
       const iconEl = document.createElement('div');
@@ -289,7 +289,7 @@ export class MainMenu {
     const claimBtn = document.createElement('button');
     claimBtn.className = 'mm-daily-claim';
     claimBtn.type = 'button';
-    claimBtn.textContent = t('ui.dailyRewards.claim');
+    claimBtn.textContent = t('ui.daily.claim');
     claimBtn.disabled = !claimable;
     if (claimable) {
       claimBtn.addEventListener('click', () => {

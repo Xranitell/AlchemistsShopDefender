@@ -38,6 +38,9 @@ export const RU: Record<string, string> = {
   'ui.menu.tooltip.epicMastery': 'Число полных побед в эпическом режиме.',
   'ui.menu.tooltip.ancientMastery': 'Число полных побед в древнем режиме.',
   'ui.menu.tooltip.masteryBonus': 'Постоянный бонус к синей эссенции во всех забегах от мастерства эпика/древнего (макс. +60%).',
+  'ui.menu.leaderboard': 'ЛИДЕРБОРДЫ',
+  'ui.menu.dailyExp': 'ДНЕВНОЙ ОПЫТ',
+  'ui.menu.boss': 'БОСС-ВЫЗОВ',
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'ВОЛНА',
