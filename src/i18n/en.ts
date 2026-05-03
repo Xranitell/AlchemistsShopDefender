@@ -162,6 +162,19 @@ export const EN: Record<string, string> = {
   'ui.difficulty.daily.short': 'Daily',
   'ui.difficulty.daily.flavor': 'A unique event for each weekday.',
 
+  // ── Exit-to-menu confirm (from the pause overlay) ───────────────────
+  'ui.exitConfirm.title': 'Exit to menu?',
+  'ui.exitConfirm.body': 'You will lose your run progress.',
+  'ui.exitConfirm.bodyKeyEpic': 'The Epic key spent on this run will not be refunded if you leave now.',
+  'ui.exitConfirm.bodyKeyAncient': 'The Ancient key spent on this run will not be refunded if you leave now.',
+  'ui.exitConfirm.exit': 'Exit',
+  'ui.exitConfirm.stay': 'Stay',
+  'ui.pause.exitToMenu': 'Exit to menu',
+
+  // ── Dungeon-law announcement toast ──────────────────────────────────
+  'ui.lawAnnounce.title': 'The dungeon law has changed',
+  'ui.lawAnnounce.subtitle': 'New rules are in effect from this wave.',
+
   // ── Pause stats overlay ─────────────────────────────────────────────
   'ui.pause.playerTitle': 'Player Modifiers',
   'ui.pause.uniqueTitle': 'Unique Effects',
