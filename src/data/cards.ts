@@ -101,7 +101,7 @@ const MINUS_IS_NEGATIVE: RegExp[] = [
 
 /** Classify a single bullet as `pos` or `neg` for the player based on
  *  its leading sign + the keyword set. Bullets without an explicit sign
- *  (pure flavour effects like "+стихия Мороза") are treated as positive. */
+ *  (pure flavour effects like "стихия Мороза") are treated as positive. */
 export function classifyBullet(text: string): EffectPolarity {
   const trimmed = text.trim();
   const sign = trimmed[0];
@@ -112,6 +112,23 @@ export function classifyBullet(text: string): EffectPolarity {
     return MINUS_IS_NEGATIVE.some((rx) => rx.test(trimmed)) ? 'neg' : 'pos';
   }
   return 'pos';
+}
+
+/** Drop a leading "+" from purely textual bonuses where it has no associated
+ *  numeric value. Source descriptions occasionally prefix unique effects
+ *  with "+" (e.g. "+стихия Ртути ко всем склянкам") to mark them as
+ *  additive, but the sign reads as a typo when no quantity follows. We keep
+ *  the "+" for signed numeric bonuses ("+15% урон склянок",
+ *  "+25 макс. ХП Манекена") so the value chip still highlights. */
+function stripLeadingTextualPlus(text: string): string {
+  if (!text.startsWith('+')) return text;
+  const rest = text.slice(1).replace(/^\s+/, '');
+  if (rest.length === 0) return text;
+  // Keep the "+" only when it is immediately followed by a numeric token
+  // (digit, decimal, or a multiplier like ×2). Otherwise the bonus is a
+  // textual effect and the leading "+" should be dropped.
+  if (/^[\d×]/.test(rest)) return text;
+  return rest;
 }
 
 /** Split a card description into its `·`-separated bullets, classify each
@@ -133,7 +150,7 @@ export function cardBullets(card: CardDef): CardBullet[] {
     .filter((p) => p.length > 0);
   const isCursed = card.isCursed === true;
   const base: CardBullet[] = (parts.length > 0 ? parts : [desc]).map((text, idx) => ({
-    text,
+    text: stripLeadingTextualPlus(text),
     polarity: classifyBullet(text),
     isUnique: isCursed && idx === 0,
   }));
@@ -141,7 +158,7 @@ export function cardBullets(card: CardDef): CardBullet[] {
   for (const id of extras) {
     const def = getCursedExtra(id);
     if (!def) continue;
-    base.push({ text: cursedExtraLabel(id), polarity: def.polarity });
+    base.push({ text: stripLeadingTextualPlus(cursedExtraLabel(id)), polarity: def.polarity });
   }
   return base;
 }
