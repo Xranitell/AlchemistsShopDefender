@@ -20,6 +20,10 @@
 export type TutorialTrigger =
   /** Play this step the moment the given (1-based) wave starts. */
   | { kind: 'waveStart'; wave: number }
+  /** Play during the prep phase *before* the given wave — so hints that
+   *  require between-wave interaction (e.g. tower placement) surface when
+   *  the player can actually act on them. */
+  | { kind: 'prepStart'; wave: number }
   /** Play once the player lands their first manual-aim hit (potion). */
   | { kind: 'firstManualHit' }
   /** Play once the player picks their first card after wave 1. */
@@ -101,15 +105,15 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: 'w3-rune',
-    trigger: { kind: 'waveStart', wave: 3 },
-    text: 'Кликни на руну рядом с манекеном, чтобы поставить туда автоматическую стойку.',
+    trigger: { kind: 'prepStart', wave: 3 },
+    text: 'Кликни на руну рядом с манекеном, чтобы поставить туда автоматическую стойку. Стойки можно устанавливать только во время подготовки — между волнами.',
     target: { kind: 'rune' },
     dismiss: { kind: 'towerPlaced' },
   },
   {
     id: 'w3-upgrade',
-    trigger: { kind: 'waveStart', wave: 3 },
-    text: 'Кликни по своей стойке, чтобы прокачать её — это сильно дешевле, чем ставить новую.',
+    trigger: { kind: 'prepStart', wave: 3 },
+    text: 'Кликни по своей стойке, чтобы прокачать её — это сильно дешевле, чем ставить новую. Улучшать стойки тоже можно только в подготовке.',
     target: { kind: 'firstTower' },
     dismiss: { kind: 'towerUpgraded' },
   },

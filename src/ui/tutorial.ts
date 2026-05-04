@@ -77,6 +77,7 @@ class TutorialController {
   private currentDismissTimer: number | null = null;
   private completed = new Set<string>();
   private lastWaveIndex = -1;
+  private lastPrepIndex = -1;
   /** Snapshot of the latest game state, refreshed every frame via update(). */
   private lastState: GameState | null = null;
 
@@ -101,6 +102,7 @@ class TutorialController {
     this.active = true;
     this.completed.clear();
     this.lastWaveIndex = -1;
+    this.lastPrepIndex = -1;
     this.refreshRootVisibility();
   }
 
@@ -118,11 +120,25 @@ class TutorialController {
   update(state: GameState): void {
     this.lastState = state;
     if (this.active) {
-      // Detect wave transitions to fire `waveStart` triggers.
-      const wave = state.waveState.currentIndex + 1;
-      if (wave !== this.lastWaveIndex && state.phase === 'wave') {
-        this.lastWaveIndex = wave;
-        this.tryFireWaveStart(wave);
+      // `waveStart` fires when wave N's combat begins; `prepStart` fires
+      // during the prep window leading into wave N (so prep-only hints
+      // like tower placement appear when the player can actually act).
+      // The +2 during prep accounts for `currentIndex` still pointing
+      // at the just-finished wave while `pauseDurationLeft` ticks down
+      // toward the next one.
+      const idx = state.waveState.currentIndex;
+      if (state.phase === 'wave') {
+        const wave = idx + 1;
+        if (wave !== this.lastWaveIndex) {
+          this.lastWaveIndex = wave;
+          this.tryFireWaveStart(wave);
+        }
+      } else if (state.phase === 'preparing') {
+        const upcoming = idx + 2;
+        if (upcoming !== this.lastPrepIndex) {
+          this.lastPrepIndex = upcoming;
+          this.tryFirePrepStart(upcoming);
+        }
       }
     }
 
@@ -388,6 +404,26 @@ class TutorialController {
           s !== step &&
           !this.completed.has(s.id) &&
           s.trigger.kind === 'waveStart' &&
+          s.trigger.wave === wave,
+      );
+      return;
+    }
+  }
+
+  /** Like tryFireWaveStart but for `prepStart` triggers — fires during the
+   *  preparing phase so hints that need between-wave interaction (tower
+   *  placement) appear while the player can actually act on them. */
+  private tryFirePrepStart(wave: number): void {
+    for (const step of TUTORIAL_STEPS) {
+      if (step.trigger.kind !== 'prepStart') continue;
+      if (step.trigger.wave !== wave) continue;
+      if (this.completed.has(step.id)) continue;
+      this.showStep(step);
+      this.pendingSteps = TUTORIAL_STEPS.filter(
+        (s) =>
+          s !== step &&
+          !this.completed.has(s.id) &&
+          s.trigger.kind === 'prepStart' &&
           s.trigger.wave === wave,
       );
       return;

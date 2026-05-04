@@ -23,6 +23,10 @@ export class TowerShop {
   /** Show shop near a rune point. */
   open(runePointId: number, screenPos: { x: number; y: number }): void {
     if (!this.state) return;
+    // Defence-in-depth: tower install / upgrade is a between-waves
+    // action only. handleClick already guards this, but if any other
+    // call site forgets to gate on phase we silently no-op here too.
+    if (this.state.phase !== 'preparing') return;
     const rp = this.state.runePoints.find((r) => r.id === runePointId);
     if (!rp || !rp.active) return;
 

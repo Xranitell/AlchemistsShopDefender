@@ -367,21 +367,20 @@ export function calcRunEssence(
   // Difficulty-based key drops:
   //   normal → epic keys (the ticket into Epic mode).
   //   epic   → ancient keys (the ticket into Ancient mode).
-  //   ancient → bonus ancient keys on victory (so a perfect Ancient run
-  //   funds the *next* Ancient run instead of grinding Epic in between).
-  // Keys scale with progress: 1 every ~5 waves, +1 on full victory.
+  //   ancient → bonus ancient keys (so a perfect Ancient run funds the
+  //   *next* Ancient run instead of grinding Epic in between).
+  // Keys are awarded only on a full victory — they're a clearance prize,
+  // not a progress reward. Defeats give no keys.
   let epicKeys = 0;
   let ancientKeys = 0;
-  if (difficulty === 'normal') {
-    epicKeys = Math.max(0, Math.floor(waveReached / 5));
-    if (victory) epicKeys += 1;
-  } else if (difficulty === 'epic') {
-    ancientKeys = Math.max(0, Math.floor(waveReached / 5));
-    if (victory) ancientKeys += 1;
-  } else if (difficulty === 'ancient' && victory) {
-    // Ancient sustains itself: 1 ancient key on full victory so a
-    // committed player can chain Ancient runs.
-    ancientKeys = 1;
+  if (victory) {
+    if (difficulty === 'normal') {
+      epicKeys = 1 + Math.max(0, Math.floor(waveReached / 5));
+    } else if (difficulty === 'epic') {
+      ancientKeys = 1 + Math.max(0, Math.floor(waveReached / 5));
+    } else if (difficulty === 'ancient') {
+      ancientKeys = 1;
+    }
   }
 
   return { blue, ancient, epicKeys, ancientKeys };
