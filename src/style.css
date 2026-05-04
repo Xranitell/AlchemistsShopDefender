@@ -299,6 +299,16 @@ body {
 .hud-tag-gold { color: var(--gold); }
 .hud-tag-essence { color: var(--essence); }
 
+/* Iconic resource badges (icon + value, no GOLD/ESSENCE labels). The
+ * value sits vertically centred next to the sprite so the badge stays
+ * compact when the label string is removed. */
+.hud-resource-badge-iconic .hud-resource-inner {
+  justify-content: center;
+}
+.hud-resource-badge-iconic .hud-resource-value {
+  font-size: 22px;
+}
+
 /* Pause button — sits in the top-right HUD stack. Square chunky button so
  * the icon glyph (❚❚ / ▶) is large enough for thumb taps on mobile. */
 .hud-pause-btn {
@@ -1114,21 +1124,30 @@ body {
 
 .card-rh-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  /* Bumped from 13px → 17px so the card titles read clearly at the new
-   * card size. Legendary names like "Великий рецепт Саламандры" still
-   * fit thanks to the 3-line clamp below. */
-  font-size: 17px;
-  letter-spacing: 1.5px;
+  /* Pixel-art font: keep modest so longer Russian titles
+   * ("РТУТНОЕ ПОКРЫТИЕ", "ОГНЕННЫЙ КАМЕНЬ ПРОКЛЯТЫЙ") fit on 2-3 lines
+   * without horizontal overflow. */
+  font-size: 15px;
+  letter-spacing: 1px;
   text-align: center;
   color: #f6f0e0;
   text-transform: uppercase;
   text-shadow: 1px 1px 0 #141018, 0 0 6px var(--rh-glow);
-  padding: 0 4px;
+  padding: 2px 4px 4px;
+  /* Allow long Russian words to wrap mid-word when needed so we never
+   * clip on the right edge. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  /* Don't let the flex column squash the title — without this, on cards
+   * with a tight aspect-ratio the title shrinks vertically and the
+   * descenders get clipped. */
+  flex-shrink: 0;
+  line-height: 1.35;
+  /* Visible cap at 3 lines if the title still doesn't fit (legendaries). */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.25;
 }
 
 .card-rh-divider {
@@ -3460,6 +3479,7 @@ body {
   height: 320px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  border-radius: 50%;
   background:
     radial-gradient(circle at center,
       color-mix(in srgb, var(--mp-glow) 55%, transparent) 0%,
@@ -6238,6 +6258,9 @@ body {
   height: 380px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  /* Clip the conic-gradient "rays" to a circle so they don't visibly
+   * snap to the bounding-box square at the corners. */
+  border-radius: 50%;
   background:
     radial-gradient(circle at center, rgba(255, 220, 130, 0.45) 0%, rgba(255, 200, 90, 0.18) 30%, transparent 60%),
     conic-gradient(
@@ -6595,6 +6618,7 @@ body {
   height: 360px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  border-radius: 50%;
   background:
     radial-gradient(circle at center, rgba(210, 79, 28, 0.45) 0%, rgba(150, 35, 35, 0.18) 30%, transparent 60%),
     conic-gradient(
