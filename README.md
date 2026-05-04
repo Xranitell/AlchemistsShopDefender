@@ -1,4 +1,4 @@
-# Alchemist's Shop Defender
+# Alchemist's Shop: Rune Defense
 
 Roguelike Tower Defense / Survival Strategy для веб-платформ (Yandex Games / CrazyGames). Реализация на чистом HTML5 Canvas + TypeScript + Vite, **без Unity** — статическая сборка зипуется одним архивом и заливается в Yandex Games Console.
 
@@ -20,14 +20,14 @@ npm run dev          # vite dev-server на http://localhost:5173
 npm run build        # production-сборка в dist/
 npm run preview      # локальный предпросмотр прод-сборки
 npm run typecheck    # tsc --noEmit
-npm run package      # npm run build + zip в alchemists-shop-defender.zip
+npm run package      # npm run build + zip в alchemists-shop-rune-defense.zip
 ```
 
 Требования: Node.js 18+ (тест на v22.12). `npm install` не требует системных пакетов.
 
 ## Заливка на Yandex Games
 
-1. Запусти `npm run package`. В корне появится `alchemists-shop-defender.zip` со статической сборкой (`index.html` в корне архива).
+1. Запусти `npm run package`. В корне появится `alchemists-shop-rune-defense.zip` со статической сборкой (`index.html` в корне архива).
 2. Загрузи zip в [Yandex Games Console](https://yandex.ru/dev/games/console) → "Добавить версию".
 3. SDK уже подключён в [`index.html`](index.html). Wrapper [`src/yandex.ts`](src/yandex.ts) вызывает:
    - `LoadingAPI.ready()` — после инициализации, чтобы убрать спиннер площадки;
