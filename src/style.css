@@ -9974,3 +9974,219 @@ body {
   .craft-recipe { padding: 8px 10px; }
   .craft-brew-btn { padding: 6px 14px; font-size: 11px; min-width: 0; }
 }
+
+/* ============================================================
+ *  Meta-tree (Лаборатория талантов) — landscape-mobile + narrow
+ *  ============================================================
+ *
+ *  The meta-tree panel is fullscreen (100vw × 100vh) with three
+ *  flex children laid out horizontally inside `.meta-tree-body`:
+ *      tabs (≈140 px)  · canvas (1fr)  · side panel (≈220 px)
+ *  plus a header above and an action bar + help below.
+ *
+ *  Two pre-existing media queries break that layout on mobile:
+ *
+ *  1. `@media (max-width: 900px)` and its dramatic-meta companion
+ *     switch the body to `flex-direction: column`. That stacks
+ *     tabs → canvas → side-panel vertically, but doesn't size them.
+ *     The side panel grows to fit its content (≈220 px tall) and
+ *     the bottom action bar plus help text take another ≈100 px.
+ *     On a 540-CSS-px tall phone in landscape that leaves ≈80 px
+ *     for the canvas — the entire skill tree collapses to a thin
+ *     dark strip and is unusable.
+ *
+ *  2. The `@media (orientation: landscape) and (max-height: 540px)`
+ *     block elsewhere targets popup `.panel`s with desktop-only
+ *     padding (`padding: 14px 18px; max-height: 94dvh`). Those
+ *     overrides bleed into `.meta-tree-panel` even though it's a
+ *     fullscreen 100vh panel, again pushing content off the screen.
+ *
+ *  Strategy: on landscape mobile keep the horizontal 3-column
+ *  layout (the tree is the primary content and needs the full
+ *  width), and shrink the chrome around it — header, tabs, side
+ *  panel, and action bar. We override the column-stack rules
+ *  inside the dramatic-meta variant so the three flex children
+ *  always sit side-by-side on landscape phones.
+ */
+@media (orientation: landscape) and (max-height: 700px) {
+  /* Override the desktop popup .panel rule that gets pulled in by
+     the existing `@media (orientation: landscape) and (max-height: 540px)`
+     and similar — meta-tree is a fullscreen panel, so any extra
+     padding or max-height shrinks the usable area.
+
+     We re-pin it to 100vh/100vw with tight padding here. */
+  .panel.meta-tree-panel {
+    padding: 6px 8px 8px;
+    max-height: 100dvh;
+    height: 100dvh;
+    gap: 6px;
+  }
+
+  /* Header — single compact row. Title shrinks, tagline becomes
+     8px (or hides), currency / stats row stays inline. */
+  .meta-tree-panel .meta-tree-header {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .meta-tree-panel .meta-tree-glitch-title { font-size: 14px; letter-spacing: 1px; }
+  .meta-tree-panel .meta-tree-tagline      { font-size: 7px;  letter-spacing: 1.5px; }
+  .meta-tree-panel .meta-currencies        { gap: 8px; font-size: 13px; }
+  .meta-tree-panel .meta-currency          { font-size: 13px; }
+  .meta-tree-panel .meta-stats             { font-size: 12px; }
+
+  /* Force the 3-column horizontal body even when a stacking rule
+     (like `@media (max-width: 900px)`) tries to flip it to column.
+     The tree is the primary content and only works horizontally. */
+  .meta-tree-panel.dramatic-meta .meta-tree-body { flex-direction: row; }
+  .meta-tree-panel               .meta-tree-body { flex-direction: row; }
+
+  /* Tabs column — narrower, and the dramatic-meta media query at
+     900px tries to make them flex-direction: row (a horizontal
+     pill bar). Pin them back to a vertical strip. */
+  .meta-tree-panel.dramatic-meta .meta-tree-tabs {
+    flex: 0 0 110px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 2px;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab {
+    /* Pin to content-size so the 3 tabs don't stretch and gobble up
+       the column's vertical space (the existing 900px-wide rule sets
+       flex: 1 1 auto, which makes them grow to fill). */
+    flex: 0 0 auto;
+    padding: 5px 7px;
+    gap: 6px;
+    border-radius: 6px;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-glyph {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    font-size: 18px;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-name {
+    font-size: 9px;
+    letter-spacing: 0;
+    /* Only break a word like "Выживаемость" when it can't fit on a
+       single line — short words like "Мастер" stay on one line. */
+    overflow-wrap: break-word;
+    line-height: 1.15;
+    white-space: normal;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-sub {
+    font-size: 11px;
+    overflow-wrap: break-word;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  /* Side panel — narrower, smaller text, tighter padding. */
+  .meta-tree-panel.dramatic-meta .meta-tree-side {
+    flex: 0 0 170px;
+    padding: 8px 10px 10px;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .meta-tree-panel .meta-side-hint   { font-size: 12px; }
+  .meta-tree-panel .meta-side-name   { font-size: 11px; line-height: 1.25; }
+  .meta-tree-panel .meta-side-meta   { font-size: 11px; }
+  .meta-tree-panel .meta-side-desc   { font-size: 13px; line-height: 1.3; min-height: 2.5em; }
+  .meta-tree-panel .meta-side-cost   { font-size: 13px; }
+  .meta-tree-panel .meta-side-status { font-size: 11px; }
+  .meta-tree-panel .meta-side-actions { gap: 6px; }
+  .meta-tree-panel .meta-side-learn,
+  .meta-tree-panel .meta-side-refund {
+    padding: 8px 10px;
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  /* Canvas — keep the SVG square viewBox but cap its line/glyph
+     fonts so text on the tree doesn't overlap on a tight tree. */
+  .meta-tree-panel .meta-tree-canvas { padding: 2px; }
+  .meta-tree-title    { font-size: 18px; }
+
+  /* Bottom actions / help — keep them compact so they don't steal
+     vertical room from the tree. */
+  .meta-tree-panel > .meta-actions { gap: 8px; margin-top: 0; }
+  .meta-tree-panel > .meta-actions .meta-start  { padding: 8px 22px 10px; font-size: 12px; }
+  .meta-tree-panel > .meta-actions .meta-reset  { padding: 7px 14px; font-size: 11px; }
+  .meta-tree-panel .meta-tree-help { font-size: 12px; }
+}
+
+/* Even shorter landscape (≤540 CSS-px tall) — extra compression so
+   the tree itself still has visible breathing room. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .panel.meta-tree-panel { padding: 4px 6px 6px; gap: 4px; }
+  .meta-tree-panel .meta-tree-header { gap: 8px; }
+  .meta-tree-panel .meta-tree-glitch-title { font-size: 12px; }
+  .meta-tree-panel .meta-tree-tagline      { display: none; }
+  .meta-tree-panel .meta-stats             { display: none; }
+
+  .meta-tree-panel.dramatic-meta .meta-tree-tabs { flex: 0 0 96px; }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab  { padding: 4px 6px; }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-name { font-size: 8px; }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-sub  { font-size: 10px; }
+
+  .meta-tree-panel.dramatic-meta .meta-tree-side {
+    flex: 0 0 150px;
+    padding: 6px 8px 8px;
+  }
+  .meta-tree-panel .meta-side-desc { min-height: 2em; font-size: 12px; }
+
+  .meta-tree-panel > .meta-actions { gap: 6px; }
+  .meta-tree-panel > .meta-actions .meta-start { padding: 6px 16px 8px; font-size: 10px; }
+  .meta-tree-panel > .meta-actions .meta-reset { padding: 5px 10px; font-size: 9px; }
+  .meta-tree-panel .meta-tree-help { font-size: 10px; }
+}
+
+/* Narrow CSS-viewport (≤900 CSS-px wide) used by Yandex-Games
+   sandboxes that don't honour the width=1280 viewport meta. The
+   pre-existing `@media (max-width: 900px)` block flips the body to
+   column; in landscape mode that kills the canvas. Force horizontal
+   layout here too and squeeze tabs / side panel further. */
+@media (max-width: 900px) and (orientation: landscape) {
+  .meta-tree-panel.dramatic-meta .meta-tree-body { flex-direction: row; }
+  .meta-tree-panel               .meta-tree-body { flex-direction: row; }
+  .meta-tree-panel.dramatic-meta .meta-tree-tabs {
+    flex: 0 0 104px;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-glyph {
+    flex: 0 0 18px; width: 18px; height: 18px; font-size: 14px;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-name {
+    font-size: 8px;
+    letter-spacing: 0;
+    overflow-wrap: break-word;
+    line-height: 1.15;
+    white-space: normal;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-tab-sub  {
+    /* On really narrow viewports the school sub-line eats too much
+       space — drop it and rely on the school name. */
+    display: none;
+  }
+  .meta-tree-panel.dramatic-meta .meta-tree-side {
+    flex: 0 0 140px;
+    padding: 6px 8px 8px;
+    font-size: 12px;
+  }
+  .meta-tree-panel .meta-side-name   { font-size: 10px; }
+  .meta-tree-panel .meta-side-desc   { font-size: 12px; min-height: 2em; }
+  .meta-tree-panel .meta-side-cost   { font-size: 12px; }
+  .meta-tree-panel .meta-side-actions { flex-direction: column; gap: 4px; }
+  .meta-tree-panel .meta-side-learn,
+  .meta-tree-panel .meta-side-refund { padding: 6px 8px; font-size: 9px; }
+  .meta-tree-panel .meta-tree-header { gap: 6px; }
+  .meta-tree-panel .meta-currencies  { gap: 6px; }
+  .meta-tree-panel .meta-currency    { font-size: 12px; }
+}
