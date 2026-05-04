@@ -9691,3 +9691,165 @@ body {
     animation: none !important;
   }
 }
+
+/* ============================================================
+ *  Main menu — landscape-mobile adaptation
+ *  ============================================================
+ *
+ *  `applyMobileViewport()` in main.ts pins CSS width to 1280 on
+ *  phones, so menu widths stay desktop-sized. The CSS *height*,
+ *  however, is dictated by the device aspect ratio: a typical
+ *  19.5:9 phone in landscape ends up at ≈576 CSS-px tall — well
+ *  short of the 720 px the desktop layout was tuned for. Three
+ *  stacked cards in the left column (shop + lab + loadout) plus
+ *  the right column's leaderboard + daily-rewards calendar plus
+ *  the big «В БОЙ» CTA simply do not fit, and the bottom of the
+ *  menu is cropped behind the browser chrome.
+ *
+ *  Earlier landscape-mobile rules in this file targeted legacy
+ *  class names (.mm-top-bar, .mm-left, .mm-right, .mm-section,
+ *  .mm-mid, .mm-mid-lb, …) which the current main-menu markup no
+ *  longer emits, so they have no effect. The block below uses the
+ *  active class names, allows the menu to scroll vertically as a
+ *  safety net, and compresses paddings + cards proportionally so
+ *  the entire menu fits on common 19.5:9 / 20:9 phones in
+ *  landscape without scrolling.
+ *
+ *  Scoped to landscape touch viewports only — desktop is taller
+ *  than 700 CSS-px and almost never has `pointer: coarse`.
+ */
+@media (orientation: landscape) and (max-height: 700px) {
+  .main-menu {
+    /* Drop the rigid 100vh height so the menu can grow if the
+       summed card heights exceed the viewport (common on 540-580
+       CSS-px phones). 100dvh keeps the visible area tracking the
+       browser's dynamic toolbar. */
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: clamp(6px, 1vw, 14px);
+    gap: 6px;
+  }
+
+  /* Title — scaled down so the top row doesn't dominate. */
+  .main-menu .mm-title-top    { font-size: clamp(13px, 1.7vw, 22px); }
+  .main-menu .mm-title-bottom { font-size: clamp(15px, 2.0vw, 26px); margin-top: 2px; }
+
+  /* Top row: smaller chips + gear so the title clears them. */
+  .mm-top-row { padding: 0 4px 4px; gap: 6px; }
+  .mm-top-left, .mm-top-right { gap: 6px; }
+  .mm-currency { padding: 4px 7px; font-size: 11px; gap: 6px; }
+  .mm-currency .pixel-icon { transform: scale(0.85); transform-origin: center; }
+  .mm-settings-gear { width: 32px; height: 32px; }
+  .mm-mastery-line { padding: 0 4px 4px; font-size: 9px; gap: 6px; }
+  .mm-mastery-chip { padding: 3px 6px; }
+
+  /* Body grid — keep 3 columns but slightly narrower side rails so
+     the centre column (mannequin + battle CTA) stays prominent. */
+  .mm-body { gap: 8px; }
+  .mm-col  { gap: 6px; }
+  .mm-col-left,
+  .mm-col-right { flex: 0 0 clamp(220px, 26vw, 360px); }
+
+  /* Generic card chrome — thinner padding, smaller titles. The 3D
+     drop-shadow is preserved so the menu still reads as the same
+     pixel-art frame. */
+  .mm-card { padding: 8px 10px; }
+  .mm-card-title { font-size: 10px; margin-bottom: 4px; gap: 6px; }
+
+  /* Left column: shop + lab + loadout share the available height
+     instead of each demanding 160 px min — otherwise the loadout
+     card is pushed below the fold on a 576-tall viewport. */
+  .mm-col-left .mm-shop-card,
+  .mm-col-left .mm-lab-card { min-height: 0; flex: 1 1 0; }
+
+  /* Shop slot row — 52px on desktop becomes 36px on phone. */
+  .mm-col-left .mm-shop-card .mm-shop-slots { margin: 6px 0 4px; gap: 6px; }
+  .mm-col-left .mm-shop-card .mm-shop-slot  { height: 36px; }
+  .mm-shop-backdrop { inset: 28px 4px 4px 4px; }
+
+  /* Lab card — shrink the diorama so the card body sits in
+     ~80 px instead of ~120 px. */
+  .mm-col-left .mm-lab-card .mm-lab-desc { min-height: 0; padding: 2px 4px; }
+  .mm-col-left .mm-lab-card .mm-lab-tree { width: 160px; height: 80px; margin: 0 auto; }
+  .mm-lab-tree-svg { max-width: 200px; }
+
+  /* Loadout card — keep both slots on screen but compact. */
+  .mm-loadout-card  { min-height: 0; padding: 6px 10px; }
+  .mm-loadout-slots { gap: 4px; }
+  .mm-loadout-slot  { padding: 4px 6px; gap: 6px; }
+  .mm-loadout-slot-icon { width: 26px; height: 26px; font-size: 16px; }
+  .mm-loadout-slot-tag  { font-size: 9px; }
+  .mm-loadout-slot-name { font-size: 13px; }
+  .mm-loadout-hint      { font-size: 11px; }
+
+  /* Right column — leaderboard + daily-rewards calendar share the
+     remaining height. The leaderboard is the focal panel; the
+     daily-rewards calendar collapses to its header strip until
+     tapped. */
+  .mm-col-right .mm-lb-card             { min-height: 100px; max-height: 280px; }
+  .mm-col-right.daily-open .mm-lb-card  { min-height: 100px; max-height: 200px; }
+  .mm-lb-card .lb-panel-compact .lb-body { min-height: 0; }
+  .lb-panel-compact            { font-size: 12px; }
+  .lb-panel-compact .lb-row    { padding: 4px 6px; }
+  .lb-panel-compact .lb-tabs   { margin-bottom: 6px; }
+  .lb-panel-compact .lb-tab    { padding: 6px 10px; font-size: 11px; }
+
+  /* Daily rewards — denser grid + smaller cells. */
+  .mm-daily-grid       { gap: 4px; margin: 4px 0 6px; }
+  .mm-daily-cell       { padding: 4px 3px; min-height: 0; }
+  .mm-daily-icon       { font-size: 16px; }
+  .mm-daily-day-label  { font-size: 7px; }
+  .mm-daily-reward-label { font-size: 10px; }
+  .mm-daily-claim      { padding: 8px 12px; font-size: 11px; }
+
+  /* Mannequin column — keep the silhouette visible but smaller so
+     it doesn't push the side columns inward. */
+  .mm-mannequin-display {
+    width: min(100%, 240px);
+    transform: scale(0.85);
+    transform-origin: center;
+  }
+
+  /* Bottom row — В БОЙ stays the player's primary action and is
+     kept comfortably tappable, but with trimmed padding so the
+     row sits above the home-bar / browser chrome on phones. */
+  .mm-bottom-row { padding-top: 4px; gap: 6px; }
+  .mm-battle-btn {
+    padding: 11px 36px 13px;
+    font-size: clamp(14px, 2.2vw, 22px);
+  }
+  .mm-mode-btns { gap: 6px; margin-top: 2px; }
+  .mm-mode-btn  { padding: 5px 10px; font-size: 9px; }
+}
+
+/* Even shorter heights (≤540 CSS-px tall — 20:9 phones, foldables
+   in book mode, etc.). Additional compression so the menu still
+   fits without scroll on these devices. The mannequin silhouette
+   is hidden entirely — the centre column collapses to just the
+   battle CTA, which is what the player actually needs. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .main-menu { gap: 4px; padding: 4px clamp(4px, 1vw, 10px); }
+  .main-menu .mm-title-top    { font-size: clamp(12px, 1.5vw, 18px); }
+  .main-menu .mm-title-bottom { font-size: clamp(14px, 1.8vw, 22px); margin-top: 1px; }
+
+  .mm-top-row     { padding: 0 4px 2px; gap: 4px; }
+  .mm-currency    { padding: 3px 6px; font-size: 10px; }
+  .mm-settings-gear { width: 28px; height: 28px; }
+
+  .mm-col-left .mm-shop-card .mm-shop-slot  { height: 28px; }
+  .mm-col-left .mm-shop-card .mm-shop-slots { margin: 4px 0; gap: 4px; }
+  .mm-col-left .mm-lab-card .mm-lab-tree    { width: 140px; height: 70px; }
+
+  .mm-loadout-card      { padding: 4px 8px; }
+  .mm-loadout-slot-icon { width: 22px; height: 22px; font-size: 14px; }
+  .mm-loadout-slot-name { font-size: 12px; }
+  .mm-loadout-slot-tag  { font-size: 8px; }
+
+  .mm-mannequin-display { display: none; }
+
+  .mm-battle-btn { padding: 9px 30px 11px; font-size: clamp(13px, 2vw, 19px); }
+  .mm-mode-btn   { padding: 4px 9px; font-size: 9px; }
+}
