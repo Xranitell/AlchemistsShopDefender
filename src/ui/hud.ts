@@ -141,7 +141,7 @@ export class Hud {
     const waveBadge = badgeFrame('hud-wave-badge');
     const waveLabel = document.createElement('div');
     waveLabel.className = 'hud-tag-label';
-    waveLabel.textContent = 'WAVE';
+    waveLabel.textContent = t('ui.hud.wave');
     this.waveValue = document.createElement('span');
     this.waveValue.className = 'hud-wave-value';
     this.waveValue.textContent = '1 / 5';
@@ -226,34 +226,30 @@ export class Hud {
     const rightStack = document.createElement('div');
     rightStack.className = 'hud-right-stack';
 
-    const goldBadge = badgeFrame('hud-resource-badge');
+    // Top-right resource badges show only the icon + value (no GOLD /
+    // ESSENCE text labels — Yandex moderation requires currency strings
+    // localised, and the cleanest cross-locale solution is to drop the
+    // labels entirely and let the iconography speak for itself).
+    const goldBadge = badgeFrame('hud-resource-badge hud-resource-badge-iconic');
     goldBadge.appendChild(spriteEl(getSprites().iconCoin, 3));
     const goldInner = document.createElement('div');
     goldInner.className = 'hud-resource-inner';
-    const goldLab = document.createElement('div');
-    goldLab.className = 'hud-tag-label hud-tag-gold';
-    goldLab.textContent = 'GOLD';
     this.goldLabel = document.createElement('span');
     this.goldLabel.className = 'hud-resource-value';
     this.goldLabel.textContent = '0';
-    goldInner.appendChild(goldLab);
     goldInner.appendChild(this.goldLabel);
     goldBadge.appendChild(goldInner);
     rightStack.appendChild(goldBadge);
 
-    const essBadge = badgeFrame('hud-resource-badge');
+    const essBadge = badgeFrame('hud-resource-badge hud-resource-badge-iconic');
     // Use the same blue-essence sprite as the main menu so the player sees a
     // single, consistent "essence" icon in the HUD and the meta UI.
     essBadge.appendChild(spriteEl(getSprites().iconBlueEssence, 3));
     const essInner = document.createElement('div');
     essInner.className = 'hud-resource-inner';
-    const essLab = document.createElement('div');
-    essLab.className = 'hud-tag-label hud-tag-essence';
-    essLab.textContent = 'ESSENCE';
     this.essenceLabel = document.createElement('span');
     this.essenceLabel.className = 'hud-resource-value';
     this.essenceLabel.textContent = '0';
-    essInner.appendChild(essLab);
     essInner.appendChild(this.essenceLabel);
     essBadge.appendChild(essInner);
     rightStack.appendChild(essBadge);
