@@ -10674,6 +10674,159 @@ body {
   .dev-btn,
   .revive-btn,
   .tutorial-ok-btn,
-  .tutorial-skip-btn { min-height: 36px; }
+  .tutorial-skip-btn,
+  .chest-footer button,
+  .defeat-cta-primary,
+  .defeat-cta-secondary,
+  .pause-exit-btn { min-height: 36px; }
   .overlay-close { min-width: 36px; min-height: 36px; }
+}
+
+/* ============================================================
+ * Run-end overlays (chest = victory loot, defeat = run-over)
+ * + the "exit to menu" confirm dialog.
+ *
+ * These three overlays were authored desktop-first with very
+ * generous paddings and large title typography (28 px) — at a
+ * 19.5:9 phone in landscape (≈ 1280×576 CSS-px after the meta-
+ * viewport override) the panels overflow the viewport and the
+ * primary CTA is pushed off the bottom.
+ *
+ * The rules below compress padding, gaps, title/CTA sizes, and
+ * the rays/stage backdrops, while keeping every functional
+ * element (CTAs, reward tiles, chips) reachable and readable.
+ *
+ * NOTE: rules are scoped to landscape + max-height so desktop
+ * rendering is untouched. ============================================================ */
+@media (orientation: landscape) and (max-height: 700px) {
+  /* ── Victory chest overlay ───────────────────────────────────── */
+  .chest-overlay {
+    gap: 8px;
+    padding: 12px 18px 12px;
+    max-width: min(96vw, 640px);
+    max-height: 96dvh;
+    overflow-y: auto;
+  }
+  .chest-summary { font-size: 14px; margin-top: 0; }
+  .chest-stage { min-height: 92px; padding: 4px 0 2px; }
+  .chest-rays { width: 220px; height: 220px; }
+  .chest-sprite { transform: scale(0.7); transform-origin: center; }
+  .chest-hint { font-size: 9px; letter-spacing: 0.5px; }
+  .chest-progress { width: 160px; height: 8px; }
+  .chest-reward-container { gap: 8px; }
+  .chest-reward-grid {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px;
+  }
+  .chest-reward-tile { padding: 6px 4px 6px; gap: 2px; }
+  .chest-reward-tile-icon { height: 24px; }
+  .chest-reward-tile-icon canvas { transform: scale(0.7); transform-origin: center; }
+  .chest-reward-tile-amount { font-size: 12px; }
+  .chest-reward-tile-label { font-size: 11px; }
+  .chest-footer { gap: 6px; margin-top: 2px; }
+  .chest-footer button { padding: 8px 12px; font-size: 9px; letter-spacing: 0.6px; }
+  .chest-contracts { padding: 8px 10px; gap: 4px; }
+  .chest-contracts-heading { font-size: 11px; }
+  .chest-contract-row { font-size: 11px; padding: 4px 6px; }
+
+  /* ── Defeat overlay ──────────────────────────────────────────── */
+  .defeat-overlay {
+    gap: 6px;
+    padding: 12px 18px 12px;
+    max-width: min(96vw, 640px);
+    max-height: 96dvh;
+    overflow-y: auto;
+  }
+  .defeat-stage { min-height: 100px; padding: 4px 0 2px; }
+  .defeat-rays { width: 220px; height: 220px; }
+  .defeat-mannequin { transform: rotate(-14deg) translateY(2px) scale(0.7); }
+  .defeat-title { font-size: 18px; letter-spacing: 1px; }
+  .defeat-tagline { font-size: 8px; letter-spacing: 1.4px; margin-top: -2px; }
+  .defeat-summary { font-size: 14px; }
+  .defeat-chips { gap: 5px; margin: 2px 0 0; }
+  .defeat-chip { padding: 3px 7px; gap: 4px; }
+  .defeat-chip canvas { transform: scale(0.75); transform-origin: center; }
+  .defeat-chip span { font-size: 10px; }
+  .defeat-tip { font-size: 12px; padding: 5px 9px; max-width: 360px; }
+  .defeat-cta-wrap { gap: 6px; margin-top: 2px; }
+  .defeat-cta-primary {
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 10px 16px;
+  }
+  .defeat-secondary-row { gap: 6px; }
+  .defeat-cta-secondary { padding: 7px 12px; font-size: 9px; letter-spacing: 0.6px; }
+
+  /* Sub-panel for the rewarded-ad reward-doubled state — shares the
+     defeat-overlay shell, just trim the doubled-icon glow. */
+  .defeat-doubled .defeat-stage { min-height: 80px; }
+  .defeat-doubled-icon { transform: scale(0.7); transform-origin: center; }
+
+  /* ── Pause-exit confirm dialog ───────────────────────────────── */
+  .pause-exit-confirm { padding: 10px; }
+  .pause-exit-dialog {
+    max-width: min(96vw, 460px);
+    padding: 12px 16px 12px;
+  }
+  .pause-exit-title { font-size: 13px; letter-spacing: 1px; margin: 0 0 6px; }
+  .pause-exit-body { font-size: 14px; line-height: 1.25; margin-bottom: 4px; }
+  .pause-exit-warning {
+    font-size: 13px;
+    line-height: 1.25;
+    padding: 6px 10px;
+    margin-top: 4px;
+    max-width: 340px;
+  }
+  .pause-exit-buttons { gap: 8px; margin-top: 10px; }
+  .pause-exit-btn {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    padding: 8px 14px;
+    min-width: 100px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  /* Extra compression for the smallest landscape phones (16:9). */
+  .chest-overlay { gap: 6px; padding: 10px 14px 10px; }
+  .chest-stage { min-height: 76px; }
+  .chest-rays { width: 180px; height: 180px; }
+  .chest-sprite { transform: scale(0.6); }
+  .chest-reward-grid { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 5px; }
+  .chest-reward-tile { padding: 5px 3px 5px; }
+  .chest-reward-tile-amount { font-size: 11px; }
+  .chest-reward-tile-label { font-size: 10px; }
+  .chest-footer button { padding: 7px 10px; font-size: 8px; }
+
+  .defeat-overlay { gap: 5px; padding: 10px 14px 10px; }
+  .defeat-stage { min-height: 80px; }
+  .defeat-rays { width: 180px; height: 180px; }
+  .defeat-mannequin { transform: rotate(-14deg) translateY(2px) scale(0.6); }
+  .defeat-title { font-size: 15px; letter-spacing: 0.8px; }
+  .defeat-tagline { font-size: 7px; }
+  .defeat-summary { font-size: 12px; }
+  .defeat-tip { font-size: 11px; padding: 4px 8px; }
+  .defeat-cta-primary { font-size: 10px; padding: 8px 14px; letter-spacing: 0.8px; }
+  .defeat-cta-secondary { padding: 6px 10px; font-size: 8px; }
+
+  .pause-exit-dialog { padding: 10px 14px 10px; }
+  .pause-exit-title { font-size: 11px; }
+  .pause-exit-body { font-size: 13px; }
+  .pause-exit-warning { font-size: 12px; padding: 5px 9px; }
+  .pause-exit-btn { font-size: 9px; padding: 7px 12px; min-width: 92px; }
+}
+
+/* ── Narrow CSS-viewport (Yandex Games sandbox, ≤ 900 px wide) ──── */
+@media (orientation: landscape) and (max-width: 900px) {
+  .chest-overlay { max-width: 96vw; width: 96vw; }
+  .defeat-overlay { max-width: 96vw; width: 96vw; }
+  .pause-exit-dialog { max-width: 92vw; width: 92vw; }
+}
+
+/* Touch-friendly minimums for run-end CTAs on coarse pointers. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .chest-footer button,
+  .defeat-cta-primary,
+  .defeat-cta-secondary,
+  .pause-exit-btn { min-height: 36px; }
 }
