@@ -9853,3 +9853,124 @@ body {
   .mm-battle-btn { padding: 9px 30px 11px; font-size: clamp(13px, 2vw, 19px); }
   .mm-mode-btn   { padding: 4px 9px; font-size: 9px; }
 }
+
+/* ============================================================
+ *  Crafting overlay — landscape-mobile + narrow-viewport adaptation
+ *  ============================================================
+ *
+ *  The crafting panel was tuned for desktop heights (720+ CSS-px).
+ *  On a phone in landscape with our 1280-wide viewport override the
+ *  92dvh panel cap shrinks to ≈530 CSS-px tall, and after the
+ *  header + section titles only ~350 remain for body content. The
+ *  inventory (~110), the 12-row ingredient list (~530) and the
+ *  recipes column (>200) clearly overflow that. `.craft-col-left`
+ *  had no `overflow-y` of its own, so its bottom ingredient rows
+ *  were clipped by the panel's `overflow:hidden` and the recipes
+ *  column got pushed off-screen.
+ *
+ *  The pre-existing `@media (max-width: 820px) { 1fr }` collapses
+ *  the body to a single column when the viewport is narrow enough,
+ *  but it didn't add any vertical-scroll fallback either, so the
+ *  3 stacked sections were also clipped.
+ *
+ *  This block fixes both modes:
+ *
+ *    - On any landscape viewport ≤700 CSS-px tall: compress
+ *      paddings / font-sizes / slot heights, switch the ingredient
+ *      grid to 2 columns (12 ingredients in ~6 rows), and let
+ *      `.craft-col-left` scroll vertically when its content is
+ *      taller than the available body height.
+ *    - On any viewport ≤820 CSS-px wide (the existing 1-col mode
+ *      used by the Yandex-Games sandbox): make the body itself
+ *      scroll vertically as a single flow, and undo the per-column
+ *      overflow so we don't get a double scroll.
+ */
+@media (orientation: landscape) and (max-height: 700px) {
+  .craft-panel {
+    /* 100dvh - 12px gives a tighter fit than 92dvh on phones with
+       a chrome bar at the top. Padding shrinks proportionally. */
+    max-height: calc(100dvh - 12px);
+    padding: 12px 14px 14px;
+  }
+
+  /* Header — collapse the row gaps and shrink the title block so
+     it doesn't eat the body's vertical budget. */
+  .craft-head    { margin-bottom: 8px; row-gap: 2px; column-gap: 10px; }
+  .craft-title   { font-size: 16px; letter-spacing: 1px; }
+  .craft-tagline { font-size: 8px;  letter-spacing: 1.5px; }
+  .craft-sub     { font-size: 12px; }
+
+  /* Body — let the left column scroll on its own; the right
+     column already scrolls inside .craft-recipes. */
+  .craft-body { gap: 10px; }
+  .craft-col  { gap: 8px; }
+  .craft-col-left {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+
+  /* Section chrome — thinner padding + smaller titles. */
+  .craft-section       { padding: 8px 10px; gap: 6px; }
+  .craft-section-title { padding: 4px 8px; font-size: 9px; letter-spacing: 1px; }
+  .craft-section-icon  { font-size: 12px; }
+
+  /* Inventory: shrink the 64-px slot row to 44 px. */
+  .craft-inv-slots { gap: 6px; }
+  .craft-inv-slot  { height: 44px; font-size: 14px; }
+
+  /* Ingredients: 2 columns instead of 1 so all 12 ingredients
+     fit in ~6 rows even on the wide-viewport landscape phone. */
+  .craft-ing-grid  { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .craft-ing-cell  { padding: 4px 8px; font-size: 13px; gap: 6px; }
+  .craft-ing-name  { font-size: 13px; }
+  .craft-ing-count { font-size: 14px; min-width: 22px; }
+  .craft-ing-glyph { font-size: 16px; }
+
+  /* Recipes: thinner rows + smaller chips + smaller brew button. */
+  .craft-recipes        { gap: 6px; padding-right: 6px; }
+  .craft-recipe         { padding: 8px 10px; column-gap: 8px; row-gap: 4px; }
+  .craft-recipe-name    { font-size: 13px; }
+  .craft-recipe-desc    { font-size: 11px; line-height: 1.2; }
+  .craft-recipe-glyph   { font-size: 22px; }
+  .craft-cost-chip      { padding: 2px 6px; font-size: 11px; }
+  .craft-cost-chip .craft-ing-glyph { font-size: 14px; }
+  .craft-brew-btn       { padding: 6px 14px; font-size: 11px; min-width: 0; }
+
+  /* Smaller close button so the header row stays compact. */
+  .craft-panel .overlay-close { width: 36px; height: 36px; font-size: 18px; }
+}
+
+/* Narrow-viewport (≤820 CSS-px wide) — the body is already in
+   single-column mode via the existing rule at line ~5749. Add the
+   overflow handling that rule was missing so the stacked sections
+   can scroll instead of being clipped. */
+@media (max-width: 820px) {
+  .craft-panel {
+    max-height: calc(100dvh - 12px);
+    padding: 12px 14px 14px;
+  }
+  .craft-body {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+  /* Reset per-column overflow so we don't get a double scroll. */
+  .craft-col-left  { overflow: visible; }
+  .craft-col-right { overflow: visible; }
+  /* Recipes: drop the inner scroll and let the list flow inside the
+     body's single scroll. */
+  .craft-recipes { overflow: visible; max-height: none; padding-right: 0; }
+
+  /* Inventory + ingredients still need to be readable in the
+     narrow column — keep the 2-column ingredient grid and slim
+     down the 64-px slot row. */
+  .craft-ing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .craft-inv-slot { height: 48px; }
+  .craft-section  { padding: 8px 10px; gap: 6px; }
+  .craft-section-title { padding: 4px 8px; font-size: 9px; }
+  .craft-recipe { padding: 8px 10px; }
+  .craft-brew-btn { padding: 6px 14px; font-size: 11px; min-width: 0; }
+}
