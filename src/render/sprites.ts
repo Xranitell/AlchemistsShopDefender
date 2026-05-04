@@ -43,6 +43,7 @@ export interface Sprites {
   candle: BakedSprite;
   // HUD icons (not drawn on the world canvas; used by hud.ts)
   iconCoin: BakedSprite;
+  iconSkull: BakedSprite;
   iconMagnet: BakedSprite;
   iconLightning: BakedSprite;
   iconAbility: BakedSprite;
@@ -1061,6 +1062,32 @@ function bakeAll(): Sprites {
         },
       },
       { x: 6, y: 5.5 },
+    ),
+
+    // Skull — bone-cream silhouette with two empty sockets and a small
+    // tooth row. Used as the "kills counter" glyph on the chest / defeat
+    // panels (replaces the old gold coin so kills aren't visually
+    // confused with the in-run gold currency).
+    iconSkull: bakeSprite(
+      {
+        rows: [
+          '..bBBBBBBb..',
+          '.bBBBBBBBBb.',
+          'bBBBBBBBBBBb',
+          'bBkkBBBBkkBb',
+          'bBkkBBBBkkBb',
+          'bBBBBkkBBBBb',
+          '.bBBBBBBBBb.',
+          '..bBkBkBkBb.',
+          '...bbbbbbb..',
+        ],
+        legend: {
+          B: 'parchment',
+          b: 'brassDark',
+          k: 'mortar',
+        },
+      },
+      { x: 6, y: 4.5 },
     ),
 
     // (The old purple `iconEssence` was removed — both the HUD and every

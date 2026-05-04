@@ -175,6 +175,12 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Iso-plane y-compression so the chalk circles read as painted on the
   // floor and not floating perpendicular to the camera.
   const YS = 0.5;
+  // During preparing-phase only, empty active runes get an extra animated
+  // ring + an upward-floating "+" glyph hovering above the chalk circle.
+  // This is a pure visual nudge so the player always knows where they
+  // can place a tower between waves — once the wave starts, the hint
+  // disappears (placement is locked in combat).
+  const showPrepHint = state.phase === 'preparing';
 
   for (const rp of state.runePoints) {
     if (rp.towerId !== null) continue; // tower will be drawn over the rune
@@ -234,6 +240,38 @@ function drawRunePoints(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.ellipse(0, 0, 28, 28 * YS, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
+
+    // Prep-phase placement hint — only on active empty runes, only while
+    // the player can actually act on it. Two layers:
+    //   1. An expanding outer ring that fades from full to zero alpha
+    //      every cycle (think "ping radar"), tinted to the rune kind so
+    //      it doesn't visually fight the existing chalk circle.
+    //   2. A bobbing "+" glyph above the rune so the eye is drawn even
+    //      on quiet floors with many runes.
+    if (showPrepHint && isActive) {
+      const ringPhase = (state.worldTime * 1.4 + rp.unstablePhase) % 1;
+      const ringR = 22 + ringPhase * 24;
+      const ringAlpha = 0.55 * (1 - ringPhase);
+      ctx.strokeStyle = `${colorBase} ${ringAlpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ringR, ringR * YS, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const bob = Math.sin(state.worldTime * 3 + rp.unstablePhase) * 2;
+      const plusAlpha = 0.85 + 0.15 * Math.sin(state.worldTime * 4 + rp.unstablePhase);
+      ctx.globalAlpha = plusAlpha;
+      ctx.strokeStyle = COLORS.brassHi;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(-5, -22 + bob);
+      ctx.lineTo(5, -22 + bob);
+      ctx.moveTo(0, -27 + bob);
+      ctx.lineTo(0, -17 + bob);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
   }
 }

@@ -581,15 +581,21 @@ function isHoveringInteractive(at: { x: number; y: number }): boolean {
 }
 
 function handleClick(at: { x: number; y: number }): void {
-  // Rune point click → tower shop.
+  // Rune point click → tower shop. Towers can only be installed or
+  // upgraded between waves: clicks on rune points during active combat
+  // fall through to the throw / shop-close logic below so the player
+  // can still aim through the rune's hit area.
+  const canBuildTowers = state.phase === 'preparing';
   const rR = runeHitRadius();
-  for (const rp of state.runePoints) {
-    if (!rp.active) continue;
-    if (dist(at, rp.pos) < rR) {
-      const screen = canvasToScreen(canvas!, rp.pos);
-      mannequinShop.close();
-      towerShop.open(rp.id, screen);
-      return;
+  if (canBuildTowers) {
+    for (const rp of state.runePoints) {
+      if (!rp.active) continue;
+      if (dist(at, rp.pos) < rR) {
+        const screen = canvasToScreen(canvas!, rp.pos);
+        mannequinShop.close();
+        towerShop.open(rp.id, screen);
+        return;
+      }
     }
   }
 
@@ -826,16 +832,15 @@ function buildChestRewardEntries(
   const sprites = getSprites();
   const entries: ChestRewardEntry[] = [];
   // The kill counter is shown alongside the meta-currency tiles so the
-  // chest reads as a "what you walked away with" board — same gold-coin
-  // glyph the in-run HUD uses, with the run's kill total. Other tiles
-  // are skipped when the currency value is 0 (a defeat-on-victory edge
-  // case), so the grid never shows empty slots.
-  entries.push({ sprite: sprites.iconCoin, amount: state.totalKills, label: t('ui.chest.label.kills') });
+  // chest reads as a "what you walked away with" board — uses a dedicated
+  // skull glyph so it doesn't visually collide with the in-run gold coin
+  // currency. Other tiles are skipped when the currency value is 0
+  // (a defeat-on-victory edge case), so the grid never shows empty slots.
+  entries.push({ sprite: sprites.iconSkull, amount: state.totalKills, label: t('ui.chest.label.kills') });
   if (r.blue > 0) entries.push({ sprite: sprites.iconBlueEssence, amount: r.blue, label: t('ui.chest.label.blue') });
   if (r.ancient > 0) entries.push({ sprite: sprites.iconAncientEssence, amount: r.ancient, label: t('ui.chest.label.ancient'), glow: true });
   if (r.epicKeys > 0) entries.push({ sprite: sprites.iconEpicKey, amount: r.epicKeys, label: t('ui.chest.label.epicKey') });
   if (r.ancientKeys > 0) entries.push({ sprite: sprites.iconAncientKey, amount: r.ancientKeys, label: t('ui.chest.label.ancientKey'), glow: true });
-  if (r.bpXp > 0) entries.push({ sprite: sprites.iconRerolls, amount: r.bpXp, label: t('ui.chest.label.bpXp') });
   return entries;
 }
 
@@ -1284,13 +1289,15 @@ function showGameOver(): void {
   const chipRow = document.createElement('div');
   chipRow.className = 'defeat-chips';
   const chips: { sprite: BakedSprite; amount: number; glow?: boolean }[] = [
-    { sprite: sprites.iconCoin, amount: state.totalKills },
+    { sprite: sprites.iconSkull, amount: state.totalKills },
   ];
   if (reward.blue > 0) chips.push({ sprite: sprites.iconBlueEssence, amount: reward.blue });
   if (reward.ancient > 0) chips.push({ sprite: sprites.iconAncientEssence, amount: reward.ancient, glow: true });
+  // Keys are victory-only rewards (see `calcRunEssence`), so the defeat
+  // panel never shows a key chip — but we still gate on > 0 in case
+  // contract-driven epic keys ever pay out on a partial run.
   if (reward.epicKeys > 0) chips.push({ sprite: sprites.iconEpicKey, amount: reward.epicKeys });
   if (reward.ancientKeys > 0) chips.push({ sprite: sprites.iconAncientKey, amount: reward.ancientKeys, glow: true });
-  if (reward.bpXp > 0) chips.push({ sprite: sprites.iconRerolls, amount: reward.bpXp });
   for (const c of chips) {
     const chip = document.createElement('div');
     chip.className = 'defeat-chip';
