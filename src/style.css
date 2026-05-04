@@ -10190,3 +10190,132 @@ body {
   .meta-tree-panel .meta-currencies  { gap: 6px; }
   .meta-tree-panel .meta-currency    { font-size: 12px; }
 }
+
+/* ============================================================
+ *  Tower-shop / Mannequin-shop popup — landscape-mobile + narrow
+ *  ============================================================
+ *
+ *  The shop popup floats over the arena (`position: absolute`) and
+ *  is positioned by `placePopupNearAnchor` so it stays inside the
+ *  viewport. On desktop (>=720 CSS-px tall) the default chrome is
+ *  generous — ~12 px padding, 17 px body font, 11 px button labels,
+ *  220 px min-width — so it breathes and the player can read it
+ *  from across the screen.
+ *
+ *  On a phone in landscape with our 1280-wide CSS-viewport
+ *  override the same chrome ends up taking ~50% of the screen
+ *  height and gets large enough to obscure the rune that opened
+ *  it. On a narrow CSS-viewport (~800 CSS-px wide for the
+ *  Yandex-Games sandbox) it can take ~50% of the screen width.
+ *
+ *  Strategy: shrink padding / fonts / chips / min-width on
+ *  landscape phones and narrow viewports without changing the
+ *  popup structure. The placement helper still clamps the popup
+ *  to the viewport, but with smaller dimensions there's room for
+ *  it to actually sit beside the rune instead of being shoved
+ *  into a corner. Ensures touch targets stay ≥36 px tall on
+ *  coarse pointers.
+ *
+ *  `MannequinShop` reuses `.tower-shop` as its base class plus
+ *  `.mannequin-shop` modifier, so all rules below cover both.
+ */
+@media (orientation: landscape) and (max-height: 700px) {
+  .tower-shop {
+    padding: 8px 8px 8px;
+    gap: 5px;
+    font-size: 14px;
+    min-width: 200px;
+    max-width: min(280px, 92vw);
+    border-width: 2px;
+    border-radius: 6px;
+  }
+  .tower-shop::before,
+  .tower-shop::after { width: 9px; height: 9px; }
+
+  .tower-shop-rune-banner {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    border-width: 1px;
+  }
+
+  .tower-shop button {
+    padding: 7px 10px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    gap: 6px;
+    border-width: 2px;
+    border-radius: 3px;
+  }
+  .tower-shop .cost {
+    padding: 2px 6px;
+    font-size: 9px;
+    letter-spacing: 0;
+    border-width: 1px;
+  }
+  .tower-shop-info {
+    font-size: 12px;
+    padding: 0 2px 1px;
+  }
+}
+
+/* Even shorter landscape viewports — extra compression so a tower
+   popup with 4-5 rows still fits between the top HUD and the
+   bottom action bar. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .tower-shop {
+    padding: 6px 6px 6px;
+    gap: 4px;
+    min-width: 180px;
+    max-width: min(260px, 90vw);
+  }
+  .tower-shop-rune-banner {
+    font-size: 8px;
+    padding: 3px 5px;
+  }
+  .tower-shop button {
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+  .tower-shop .cost {
+    font-size: 8px;
+    padding: 2px 5px;
+  }
+  .tower-shop-info { font-size: 11px; }
+}
+
+/* Narrow CSS-viewport (≤900 CSS-px wide) — same compression as
+   landscape mobile, applied independently so the Yandex-Games
+   sandbox (which doesn't honour the 1280 viewport meta) gets a
+   compact popup even in portrait or square aspect ratios. */
+@media (max-width: 900px) {
+  .tower-shop {
+    padding: 8px 8px 8px;
+    gap: 5px;
+    font-size: 14px;
+    min-width: 180px;
+    max-width: min(260px, 92vw);
+    border-radius: 6px;
+  }
+  .tower-shop-rune-banner {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+  }
+  .tower-shop button {
+    padding: 7px 10px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+  .tower-shop .cost {
+    padding: 2px 6px;
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+  .tower-shop-info {
+    font-size: 12px;
+    padding: 0 2px 1px;
+  }
+}
