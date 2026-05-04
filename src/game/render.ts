@@ -30,8 +30,12 @@ function difficultyAuraColor(mode: DifficultyMode): string | null {
   return DIFFICULTY_MODES[mode].color;
 }
 
-const SPRITE_SCALE = 2;
-const HERO_SCALE = 3;
+// Visual sprite scales — bumped 1.5× from the original (SPRITE_SCALE 2→3,
+// HERO_SCALE 3→4.5) so enemies and the mannequin read as more substantial
+// on screen. Per-enemy `kind.radius` values in `data/enemies.ts` were
+// scaled in lock-step so collision/aoe still match the visible silhouette.
+const SPRITE_SCALE = 3;
+const HERO_SCALE = 4.5;
 const TOWER_SCALE = 3;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
@@ -382,16 +386,16 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.stroke();
   ctx.restore();
 
-  // Drop shadow
-  drawShadow(ctx, m.pos.x, m.pos.y + 28, 32, 9, 0.52);
+  // Drop shadow (sized to match the 1.5×-scaled mannequin sprite).
+  drawShadow(ctx, m.pos.x, m.pos.y + 42, 48, 13, 0.52);
 
   // Core glow pulse (cached halo).
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
   drawRadialGlow(
     ctx,
-    { radius: 40, inner: 'rgba(125, 249, 255, 0.4)', outer: 'rgba(125, 249, 255, 0)' },
+    { radius: 60, inner: 'rgba(125, 249, 255, 0.4)', outer: 'rgba(125, 249, 255, 0)' },
     m.pos.x,
-    m.pos.y - 4,
+    m.pos.y - 6,
     0.12 + corePulse * 0.06,
   );
 
@@ -462,11 +466,12 @@ function drawMannequinShieldBubble(
   const hasPotion = state.potionShieldHp > 0;
   if (!hasTemp && !hasPotion) return;
 
-  const baseR = 46;
+  // Sized to wrap the 1.5×-scaled mannequin (was 46/cy-4 at HERO_SCALE 3).
+  const baseR = 69;
   const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 3);
   const radius = baseR + pulse * 2;
   const ox = cx;
-  const oy = cy - 4; // centre on the mannequin's torso
+  const oy = cy - 6; // centre on the mannequin's torso
 
   ctx.save();
   // Outer glow halo.

@@ -194,8 +194,9 @@ export function updateEnemies(state: GameState, dt: number): void {
       }
     }
 
-    // Hit mannequin.
-    const hitR = e.kind.radius + 22;
+    // Hit mannequin. The +33 mannequin-body radius matches the 1.5×-scaled
+    // sprite footprint (was +22 at HERO_SCALE 3, now HERO_SCALE 4.5).
+    const hitR = e.kind.radius + 33;
     if (d2 < hitR * hitR) {
       const scaledDamage = e.kind.damage * state.difficultyModifier.damageMult;
       const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
