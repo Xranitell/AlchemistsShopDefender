@@ -20,6 +20,7 @@ import { moduleGlyph } from './loadoutOverlay';
 
 export class MainMenu {
   private root: HTMLElement;
+  private leaderboardCollapseCleanup: (() => void) | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -34,6 +35,8 @@ export class MainMenu {
     onCrafting: () => void;
     onLoadout: () => void;
   }): void {
+    this.leaderboardCollapseCleanup?.();
+    this.leaderboardCollapseCleanup = null;
     this.root.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'main-menu';
@@ -203,7 +206,7 @@ export class MainMenu {
     lbWrap.dataset.tutorialTarget = 'menu-leaderboard';
     const lbTitle = document.createElement('div');
     lbTitle.className = 'mm-card-title';
-    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span>`;
+    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span><span class="mm-lb-chev">▾</span>`;
     lbWrap.appendChild(lbTitle);
     lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
     rightCol.appendChild(lbWrap);
@@ -239,6 +242,7 @@ export class MainMenu {
 
     this.root.appendChild(wrap);
     this.root.classList.add('visible');
+    this.leaderboardCollapseCleanup = this.installInlineLeaderboardCollapse(rightCol, lbWrap, lbTitle);
   }
 
   isVisible(): boolean {
@@ -246,8 +250,109 @@ export class MainMenu {
   }
 
   hide(): void {
+    this.leaderboardCollapseCleanup?.();
+    this.leaderboardCollapseCleanup = null;
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
+  }
+
+  private installInlineLeaderboardCollapse(
+    rightCol: HTMLElement,
+    lbWrap: HTMLElement,
+    lbTitle: HTMLElement,
+  ): () => void {
+    const body = lbWrap.querySelector<HTMLElement>('.lb-body');
+    const media = window.matchMedia('(orientation: landscape) and (max-height: 540px)');
+    const minVisibleRows = 3;
+    const fallbackRowHeight = 32;
+
+    const updateAria = () => {
+      const collapsible = rightCol.classList.contains('leaderboard-collapsible');
+      if (!collapsible) {
+        lbTitle.removeAttribute('role');
+        lbTitle.removeAttribute('tabindex');
+        lbTitle.removeAttribute('aria-expanded');
+        return;
+      }
+
+      const collapsed = !rightCol.classList.contains('leaderboard-open');
+      lbTitle.setAttribute('role', 'button');
+      lbTitle.tabIndex = 0;
+      lbTitle.setAttribute('aria-expanded', String(!collapsed));
+    };
+
+    const shouldCollapse = (): boolean => {
+      if (!media.matches || !body) return false;
+
+      const wasOpen = rightCol.classList.contains('leaderboard-open');
+      if (rightCol.classList.contains('leaderboard-collapsible') && !wasOpen) {
+        rightCol.classList.add('leaderboard-open');
+      }
+
+      const bodyHeight = body.getBoundingClientRect().height;
+      const row = body.querySelector<HTMLElement>('.lb-row');
+      const rowHeight = row?.getBoundingClientRect().height ?? fallbackRowHeight;
+      const list = body.querySelector<HTMLElement>('.lb-list');
+      const listStyle = list ? getComputedStyle(list) : null;
+      const rowGap = listStyle ? Number.parseFloat(listStyle.rowGap || listStyle.gap || '0') || 0 : 4;
+
+      if (!wasOpen) {
+        rightCol.classList.remove('leaderboard-open');
+      }
+
+      return bodyHeight < rowHeight * minVisibleRows + rowGap * (minVisibleRows - 1);
+    };
+
+    const update = () => {
+      const collapsible = shouldCollapse();
+      rightCol.classList.toggle('leaderboard-collapsible', collapsible);
+      if (!collapsible) {
+        rightCol.classList.remove('leaderboard-open');
+      }
+      updateAria();
+    };
+
+    let frame = 0;
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(update);
+    };
+
+    const toggleLeaderboard = (ev: Event) => {
+      if (!rightCol.classList.contains('leaderboard-collapsible')) return;
+      ev.stopPropagation();
+      const opening = !rightCol.classList.contains('leaderboard-open');
+      rightCol.classList.toggle('leaderboard-open', opening);
+      if (opening) rightCol.classList.remove('daily-open');
+      updateAria();
+    };
+
+    lbTitle.addEventListener('click', toggleLeaderboard);
+    lbTitle.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      toggleLeaderboard(ev);
+    });
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(rightCol);
+    resizeObserver.observe(lbWrap);
+    if (body) resizeObserver.observe(body);
+
+    const mutationObserver = new MutationObserver(scheduleUpdate);
+    if (body) mutationObserver.observe(body, { childList: true, subtree: true });
+
+    media.addEventListener('change', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+    scheduleUpdate();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      media.removeEventListener('change', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+    };
   }
 
   /** Builds the 7-day inline daily rewards calendar widget.
@@ -367,7 +472,11 @@ export class MainMenu {
       const target = ev.target as HTMLElement | null;
       if (target && target.closest('.mm-daily-claim')) return;
       const col = card.closest('.mm-col-right');
-      if (col) col.classList.toggle('daily-open');
+      if (col) {
+        const opening = !col.classList.contains('daily-open');
+        col.classList.toggle('daily-open', opening);
+        if (opening) col.classList.remove('leaderboard-open');
+      }
     });
 
     return card;

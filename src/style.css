@@ -2551,6 +2551,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .mm-daily-content,
   .mm-daily-chev,
+  .mm-lb-chev,
   .mm-col-right .mm-lb-card,
   .mm-daily-indicator-claimable {
     transition: none;
@@ -2672,6 +2673,14 @@ body {
   max-height: none;
 }
 .mm-lb-icon { font-size: 18px; }
+.mm-lb-chev {
+  display: none;
+  margin-left: auto;
+  font-size: 12px;
+  color: #ffd166;
+  transition: transform 320ms ease;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.5);
+}
 
 /* ── Shop / Laboratory cards (left column, alongside daily rewards) ──
  * Stretched to fill the available width and grow vertically so they
@@ -9891,6 +9900,31 @@ body {
   .mm-col-left .mm-shop-card .mm-shop-slots { margin: 4px 0; gap: 4px; }
   .mm-col-left .mm-lab-card .mm-lab-tree    { width: 140px; height: 54px; }
   .mm-col-right .mm-lb-card                 { min-height: 96px; max-height: 44dvh; }
+  .mm-col-right.leaderboard-collapsible .mm-lb-card {
+    flex: 0 0 auto;
+    min-height: 0;
+    max-height: none;
+  }
+  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-card {
+    flex: 1 1 0;
+  }
+  .mm-col-right.leaderboard-collapsible .mm-lb-card .lb-panel-compact {
+    display: grid;
+    grid-template-rows: 0fr;
+    min-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding-block: 0;
+    pointer-events: none;
+  }
+  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-card .lb-panel-compact {
+    display: flex;
+    opacity: 1;
+    padding-block: 10px 12px;
+    pointer-events: auto;
+  }
+  .mm-col-right.leaderboard-collapsible .mm-lb-chev { display: inline-block; }
+  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-chev { transform: rotate(180deg); }
 
   .mm-loadout-card      { padding: 4px 8px; }
   .mm-loadout-slot-icon { width: 22px; height: 22px; font-size: 14px; }
