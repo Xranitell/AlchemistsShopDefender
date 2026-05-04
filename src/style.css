@@ -3380,8 +3380,9 @@ body {
 @media (max-height: 749px) { .modifier-preview-panel { zoom: 0.84; } }
 @media (max-height: 679px) { .modifier-preview-panel { zoom: 0.76; } }
 @media (max-height: 619px) { .modifier-preview-panel { zoom: 0.68; } }
-@media (max-height: 559px) { .modifier-preview-panel { zoom: 0.6; } }
-@media (max-height: 499px) { .modifier-preview-panel { zoom: 0.54; } }
+@media (max-height: 579px) { .modifier-preview-panel { zoom: 0.62; } }
+@media (max-height: 549px) { .modifier-preview-panel { zoom: 0.56; } }
+@media (max-height: 499px) { .modifier-preview-panel { zoom: 0.5; } }
 
 /* Browsers without `zoom` support (older Firefox builds) get a
  * transform-based fallback. transform doesn't shrink the layout box, so
@@ -3394,8 +3395,9 @@ body {
   @media (max-height: 749px) { .modifier-preview-panel { transform: scale(0.84); } }
   @media (max-height: 679px) { .modifier-preview-panel { transform: scale(0.76); } }
   @media (max-height: 619px) { .modifier-preview-panel { transform: scale(0.68); } }
-  @media (max-height: 559px) { .modifier-preview-panel { transform: scale(0.6); } }
-  @media (max-height: 499px) { .modifier-preview-panel { transform: scale(0.54); } }
+  @media (max-height: 579px) { .modifier-preview-panel { transform: scale(0.62); } }
+  @media (max-height: 549px) { .modifier-preview-panel { transform: scale(0.56); } }
+  @media (max-height: 499px) { .modifier-preview-panel { transform: scale(0.5); } }
 }
 
 /* Mode-specific colourways — overrides the panel background, border, and
@@ -10318,4 +10320,360 @@ body {
     font-size: 12px;
     padding: 0 2px 1px;
   }
+}
+
+/* ====================================================================
+ *  Generic landscape-mobile adaptation for the remaining popup panels.
+ *  --------------------------------------------------------------------
+ *  The main-menu, crafting, meta-tree and tower-shop already have
+ *  bespoke landscape-mobile blocks higher up in this file. Everything
+ *  below is for the other overlays (settings, daily-rewards, daily-
+ *  event, loadout, battle-pass, leaderboard, difficulty, modifier-
+ *  preview, endless-modifier, blessing, card-draft, law-announce,
+ *  pause-stats, revive, tutorial-tooltip) so they fit into a typical
+ *  19.5:9 phone in landscape (~1280×576 CSS-px after the meta-viewport
+ *  override in main.ts) without breaking desktop rendering.
+ *
+ *  Two breakpoints:
+ *    - max-height: 700px → the everyday "phone in landscape" band.
+ *      Trims chrome, font sizes and gaps so the panel + its actions
+ *      fit on one screen; falls back to internal scrolling if not.
+ *    - max-height: 540px → already partially handled by the legacy
+ *      block at ~line 8495; this file extends it where needed.
+ *
+ *  An additional `(orientation: landscape) and (max-width: 900px)`
+ *  band exists for the narrow CSS-viewport sandbox (Yandex Games).
+ * ==================================================================== */
+
+@media (orientation: landscape) and (max-height: 700px) {
+  /* ── Settings overlay ──────────────────────────────────────────── */
+  .settings-panel {
+    max-width: min(94vw, 460px);
+    width: min(94vw, 460px);
+    max-height: 94dvh;
+    padding: 14px 16px 14px;
+  }
+  .settings-header { margin-bottom: 8px; }
+  .settings-header h2 { font-size: 13px; }
+  .settings-body { gap: 10px; }
+  .settings-section { padding: 10px 12px; }
+  .settings-section h3 { font-size: 13px; margin-bottom: 6px; }
+  .settings-stat,
+  .settings-volume-label,
+  .settings-volume-value { font-size: 13px; }
+  .settings-volume-row {
+    margin: 6px 0;
+    gap: 8px;
+    grid-template-columns: 64px 1fr 40px;
+  }
+  .settings-reset-btn { padding: 7px 14px; font-size: 13px; }
+
+  /* ── Daily Rewards popup ───────────────────────────────────────── */
+  .daily-panel {
+    max-height: 94dvh;
+    padding: 14px 16px;
+  }
+  .daily-header { margin-bottom: 8px; }
+  .daily-header h2 { font-size: 16px; }
+  .daily-week { font-size: 11px; padding: 5px 10px; }
+  .daily-grid { gap: 6px; margin-bottom: 10px; }
+  .daily-cell { padding: 6px 4px; min-height: 68px; gap: 2px; }
+  .daily-icon { font-size: 22px; min-height: 28px; }
+  .daily-day-label { font-size: 7px; }
+  .daily-reward-label { font-size: 12px; }
+  .daily-claim-btn { font-size: 13px; padding: 9px 28px 11px; }
+
+  /* ── Daily Event preview ───────────────────────────────────────── */
+  .dev-panel {
+    width: min(96vw, 600px);
+    max-height: 96dvh;
+    padding: 14px 16px;
+  }
+  .dev-header { padding-bottom: 8px; margin-bottom: 8px; gap: 12px; }
+  .dev-icon { font-size: 40px; }
+  .dev-day { font-size: 11px; letter-spacing: 1px; }
+  .dev-name { font-size: 14px; }
+  .dev-flavor { font-size: 13px; }
+  .dev-desc { font-size: 13px; margin-bottom: 8px; }
+  .dev-lines { gap: 4px; margin-bottom: 10px; }
+  .dev-lines li { font-size: 13px; padding: 4px 8px; }
+  .dev-week { margin-bottom: 8px; }
+  .dev-week-title { font-size: 11px; margin-bottom: 6px; }
+  .dev-week-grid { gap: 4px; }
+  .dev-week-cell { padding: 4px 2px; }
+  .dev-week-icon { font-size: 16px; }
+  .dev-week-day,
+  .dev-week-name { font-size: 9px; }
+  .dev-actions { gap: 8px; padding-top: 4px; }
+  .dev-btn { font-size: 11px; padding: 8px 18px 10px; }
+
+  /* ── Loadout (Mannequin) overlay ───────────────────────────────── */
+  .lo-panel {
+    width: min(96vw, 920px);
+    max-height: 94dvh;
+    padding: 12px 14px 12px;
+  }
+  .lo-head { margin-bottom: 6px; }
+  .lo-title { font-size: 16px; letter-spacing: 1px; margin: 0 0 2px; }
+  .lo-tagline { font-size: 8px; margin: 2px 0 4px; }
+  .lo-subtitle { font-size: 13px; margin-top: 4px; }
+  .lo-body { gap: 8px; }
+  .lo-section { gap: 4px; }
+  .lo-section-title { font-size: 10px; padding: 4px 8px; }
+  .lo-grid { gap: 6px; grid-template-columns: repeat(3, 1fr); }
+  .lo-card { padding: 8px 6px 8px; gap: 3px; }
+  .lo-cta { padding: 8px 22px; font-size: 12px; margin-top: 4px; }
+
+  /* ── Battle-Pass overlay ───────────────────────────────────────── */
+  .bp-panel { max-height: 94dvh; padding: 14px 16px; }
+  .bp-header { margin-bottom: 8px; }
+  .bp-header h2 { font-size: 16px; }
+  .bp-level-info { gap: 4px; margin-bottom: 8px; font-size: 11px; }
+  .bp-xp-bar { height: 18px; }
+  .bp-xp-label { font-size: 10px; }
+  .bp-track { gap: 3px; margin-bottom: 12px; }
+  .bp-row { gap: 4px; }
+  .bp-cell { padding: 6px 4px; font-size: 12px; min-width: 56px; }
+  .bp-track-label { width: 70px; font-size: 8px; }
+  .bp-claim-all { font-size: 12px; padding: 9px 24px 11px; }
+
+  /* ── Leaderboard standalone ────────────────────────────────────── */
+  .lb-panel:not(.lb-panel-compact) {
+    padding: 14px 16px;
+    max-height: 94dvh;
+    max-width: min(94vw, 520px);
+    width: min(94vw, 520px);
+  }
+  .lb-panel:not(.lb-panel-compact) .lb-title {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .lb-panel:not(.lb-panel-compact) .lb-tabs { margin-bottom: 8px; }
+  .lb-panel:not(.lb-panel-compact) .lb-tab { font-size: 12px; padding: 6px 8px; }
+  .lb-panel:not(.lb-panel-compact) .lb-body { min-height: 0; max-height: 50dvh; }
+  .lb-panel:not(.lb-panel-compact) .lb-row { padding: 4px 8px; }
+  .lb-panel:not(.lb-panel-compact) .lb-name { font-size: 14px; }
+  .lb-panel:not(.lb-panel-compact) .lb-rank { font-size: 10px; width: 28px; }
+  .lb-panel:not(.lb-panel-compact) .lb-score { font-size: 11px; }
+  .lb-panel:not(.lb-panel-compact) .lb-avatar { width: 24px; height: 24px; }
+
+  /* ── Difficulty selector ───────────────────────────────────────── */
+  .difficulty-panel {
+    max-height: 96dvh;
+    padding: 12px 14px;
+    overflow-y: auto;
+  }
+  .difficulty-header { margin-bottom: 8px; }
+  .difficulty-header h2 { font-size: 14px; }
+  .difficulty-subtitle { font-size: 13px; margin-top: 2px; }
+  .difficulty-grid { gap: 8px; }
+  .difficulty-card { padding: 10px; gap: 4px; min-height: 0; border-radius: 8px; }
+  .difficulty-icon { width: 60px; height: 60px; font-size: 28px; margin: 4px 0; }
+  .difficulty-glyph { font-size: 40px; }
+  .difficulty-name { font-size: 11px; }
+  .difficulty-flavor { font-size: 12px; padding: 0; min-height: 0; }
+  .difficulty-cost { padding: 4px 8px; font-size: 12px; }
+  .difficulty-label {
+    font-size: 9px;
+    padding: 2px 6px;
+    margin-top: -14px;
+    border-width: 1px;
+  }
+
+  /* ── Modifier-preview popup ────────────────────────────────────── *
+   * The panel has its own zoom-based fit logic (see ~line 3370). All
+   * we do here is shrink the inline metrics in the unscaled element so
+   * the zoom rules don't have to compress them further. The panel
+   * itself MUST keep `max-height: none; overflow: visible` (set in the
+   * base rule) — otherwise the zoomed content gets clipped by the
+   * generic `.panel { max-height: 95dvh; overflow: auto }` rule. */
+  .mp-stat { font-size: 13px; }
+  .mp-stat-icon { font-size: 16px; }
+  .mp-lines { font-size: 13px; padding-left: 14px; }
+  .mp-warn { font-size: 12px; padding: 6px 10px; }
+  .mp-btn { padding: 9px 18px; font-size: 10px; }
+
+  /* ── Endless-modifier popup ────────────────────────────────────── */
+  .endless-modifier-panel {
+    max-height: 94dvh;
+    padding: 14px 16px;
+  }
+  .em-card { padding: 10px 14px; margin-bottom: 8px; }
+  .em-card-label { font-size: 12px; }
+  .em-card-desc { font-size: 11px; }
+  .em-confirm { padding: 9px 24px; font-size: 10px; }
+
+  /* ── Blessing / Curse panel (between waves) ────────────────────── */
+  .blessing-panel {
+    max-height: 94dvh;
+    padding: 14px 18px;
+    width: min(96vw, 760px);
+  }
+
+  /* ── Card draft (Roundhouse cards) ─────────────────────────────── */
+  .cards-stage {
+    gap: 10px;
+    padding: 12px 18px;
+  }
+  .cards-stage-title { font-size: 16px; padding: 4px 16px; letter-spacing: 3px; }
+  .cards-stage-subtitle { font-size: 14px; margin-bottom: 0; }
+  .cards-rh {
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 200px));
+  }
+
+  /* ── Law announcement card ─────────────────────────────────────── */
+  .law-announce { padding: 12px 16px; }
+  .law-announce-card { padding: 12px 16px; }
+
+  /* ── Pause-stats overlay ───────────────────────────────────────── */
+  .pause-stats-group {
+    max-height: 94dvh;
+    overflow-y: auto;
+  }
+  .pause-stats-row { gap: 10px; }
+  .pause-stats-inner,
+  .pause-stats-side {
+    padding: 14px 16px 12px;
+    max-height: none;
+  }
+  .pause-stats-inner { width: min(640px, 50vw); }
+  .pause-stats-side  { width: min(440px, 44vw); }
+  .pause-stats-title { font-size: 16px; }
+  .ps-section { margin-bottom: 10px; }
+  .ps-section-title { font-size: 11px; margin-bottom: 5px; }
+  .ps-row { font-size: 14px; gap: 10px; padding: 2px 0; }
+  .ps-value { min-width: 56px; }
+
+  /* ── Revive overlay ────────────────────────────────────────────── */
+  .revive-panel {
+    padding: 16px 18px;
+    width: min(94vw, 460px);
+  }
+  .revive-title { font-size: 12px; }
+  .revive-desc { font-size: 13px; margin-bottom: 12px; }
+
+  /* ── Tutorial tooltip — keep inside the viewport. ──────────────── */
+  .tutorial-tooltip {
+    max-width: min(70vw, 360px);
+    font-size: 13px;
+    padding: 9px 11px 7px;
+  }
+
+  /* ── In-game HUD ───────────────────────────────────────────────── *
+   * Ports the existing legacy 540px HUD rules into the 700px band so
+   * 19.5:9 phones in landscape (~576 CSS-px tall) get the compact
+   * layout too — the desktop-tuned bottom-row offset would otherwise
+   * push the OVERLOAD module label off the bottom edge of the screen.
+   */
+  .hud-top { gap: 12px; }
+  .hud-badge { padding: 9px 14px 11px; gap: 9px; }
+  .hud-wave-badge { min-width: 124px; }
+  .hud-wave-value { font-size: 22px; }
+  .hud-hp-badge { flex-basis: 400px; padding: 8px 14px 10px; }
+  .hud-hp-bar { height: 20px; }
+  .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
+  .hud-resource-value { font-size: 20px; }
+  .hud-pause-btn { width: 60px; height: 60px; font-size: 18px; }
+  .hud-bottom-row {
+    gap: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .hud-center-bottom { transform: none; gap: 6px; }
+  .hud-hint { font-size: 14px; max-width: 60vw; }
+  .hud-skip-btn {
+    padding: 12px 32px 14px;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  .hud-bottom-right { gap: 12px; }
+  .hud-round-btn { width: 84px; height: 84px; }
+  .hud-round-btn .sprite { transform: scale(0.95); transform-origin: center; }
+  .hud-icon-label { font-size: 8px; }
+  .hud-overload-module { bottom: -10px; font-size: 11px; }
+  .hud-potion-bar { gap: 8px; margin-top: 0; }
+  .hud-potion-slot { width: 52px; height: 52px; font-size: 24px; }
+  .hud-potion-key { font-size: 11px; }
+  .hud-effect-chip { padding: 3px 8px; font-size: 14px; }
+  .hud-timer-bar { width: 180px; height: 16px; }
+  .hud-timer-label { font-size: 12px; }
+  .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
+  .hud-run-sidebar {
+    left: 8px;
+    top: 170px;
+    max-width: 200px;
+    max-height: calc(100vh - 260px);
+  }
+  .hud-run-card { padding: 3px 5px; min-height: 28px; }
+  .hud-run-card-name { font-size: 8px; }
+  .hud-run-card-desc { font-size: 11px; }
+  .hud-run-card-icon { width: 18px; font-size: 14px; }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  /* Extra compression for the smallest landscape phones. The legacy
+     block above (≈line 8495) already covers most panels; this block
+     just trims the elements that the new 700px block introduces. */
+  .lo-panel { padding: 10px 12px 10px; }
+  .lo-title { font-size: 14px; }
+  .lo-section-title { font-size: 9px; padding: 3px 6px; }
+  .lo-card { padding: 6px 5px 6px; gap: 2px; }
+  .lo-cta { padding: 7px 18px; font-size: 11px; }
+
+  .dev-panel { padding: 12px 14px; }
+  .blessing-panel { padding: 12px 14px; }
+
+  .cards-stage { gap: 8px; padding: 8px 14px; }
+  .cards-stage-title { font-size: 14px; padding: 3px 14px; letter-spacing: 2px; }
+  .cards-stage-subtitle { font-size: 13px; }
+  .cards-rh { gap: 10px; grid-template-columns: repeat(3, minmax(0, 180px)); }
+
+  .pause-stats-inner { width: min(560px, 50vw); }
+  .pause-stats-side  { width: min(380px, 42vw); }
+
+  .revive-panel { padding: 14px 16px; }
+  .lb-panel:not(.lb-panel-compact) .lb-body { max-height: 44dvh; }
+  .difficulty-panel { padding: 10px 12px; }
+  .difficulty-header h2 { font-size: 12px; }
+}
+
+/* ── Narrow CSS-viewport (Yandex Games sandbox, ≤ 900 px wide) ──── */
+@media (orientation: landscape) and (max-width: 900px) {
+  .settings-panel { max-width: 92vw; width: 92vw; }
+  .daily-panel { max-width: 92vw; width: 92vw; }
+  .lo-panel { width: 96vw; max-width: 96vw; }
+  .bp-panel { max-width: 96vw; width: 96vw; }
+  .lb-panel:not(.lb-panel-compact) {
+    max-width: 92vw;
+    width: 92vw;
+  }
+  .difficulty-panel { width: 96vw; max-width: 96vw; }
+  .difficulty-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .difficulty-card,
+  .difficulty-card:nth-child(4),
+  .difficulty-card:nth-child(5) { grid-column: auto; }
+  /* .modifier-preview-panel handles its own width via zoom-scaling. */
+  .endless-modifier-panel { max-width: 96vw; width: 96vw; }
+  .blessing-panel { width: 96vw; max-width: 96vw; }
+  .cards-rh { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pause-stats-row { gap: 8px; }
+  .pause-stats-inner,
+  .pause-stats-side { padding: 12px 14px 10px; }
+}
+
+/* ── Touch-friendly action sizes for coarse pointers ─────────────── */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 700px) {
+  .settings-reset-btn,
+  .daily-claim-btn,
+  .bp-claim-all,
+  .lo-cta,
+  .lb-tab,
+  .difficulty-card,
+  .mp-btn,
+  .em-confirm,
+  .dev-btn,
+  .revive-btn,
+  .tutorial-ok-btn,
+  .tutorial-skip-btn { min-height: 36px; }
+  .overlay-close { min-width: 36px; min-height: 36px; }
 }
