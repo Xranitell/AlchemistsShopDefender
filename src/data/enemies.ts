@@ -9,7 +9,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0,
     goldDrop: [1, 3],
     damage: 10,
-    radius: 16,
+    radius: 24,
     color: '#7fc97f',
   },
   rat: {
@@ -20,7 +20,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0,
     goldDrop: [2, 4],
     damage: 8,
-    radius: 12,
+    radius: 18,
     color: '#c5a36a',
   },
   golem: {
@@ -31,7 +31,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.45,
     goldDrop: [4, 8],
     damage: 18,
-    radius: 18,
+    radius: 27,
     color: '#9aa5b1',
   },
   miniboss_slime: {
@@ -42,7 +42,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.15,
     goldDrop: [30, 50],
     damage: 22,
-    radius: 30,
+    radius: 45,
     color: '#39b54a',
     isBoss: true,
   },
@@ -54,7 +54,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0,
     goldDrop: [3, 5],
     damage: 10,
-    radius: 10,
+    radius: 15,
     color: '#c084fc',
   },
   shaman: {
@@ -65,7 +65,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.15,
     goldDrop: [5, 9],
     damage: 14,
-    radius: 16,
+    radius: 24,
     color: '#5a8c14',
   },
   boss_rat_king: {
@@ -76,7 +76,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.35,
     goldDrop: [60, 100],
     damage: 18,
-    radius: 28,
+    radius: 42,
     color: '#c9a96b',
     isBoss: true,
   },
@@ -88,7 +88,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0,
     goldDrop: [3, 5],
     damage: 32, // big blast on mannequin contact
-    radius: 14,
+    radius: 21,
     color: '#ff8c3a',
   },
   boss_homunculus: {
@@ -99,7 +99,7 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.20,
     goldDrop: [130, 200],
     damage: 28,
-    radius: 34,
+    radius: 51,
     color: '#c084fc',
     isBoss: true,
   },
