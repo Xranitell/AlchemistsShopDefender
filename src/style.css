@@ -2172,12 +2172,12 @@ body {
    rewards"). */
 .mm-col-left {
   flex: 0 0 clamp(250px, 26vw, 420px);
-  overflow-y: auto;
+  overflow: hidden;
   overflow-x: hidden;
 }
 .mm-col-right {
   flex: 0 0 clamp(260px, 28vw, 460px);
-  overflow-y: auto;
+  overflow: hidden;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -8690,23 +8690,23 @@ body {
   }
   .tower-shop button { padding: 8px 9px; font-size: 13px; }
 
-  /* Pause-stats overlay — on small viewports stack panels vertically. */
+  /* Pause-stats overlay — keep two readable columns on mobile landscape. */
   .pause-stats-group {
     max-height: 92dvh;
-    overflow-y: auto;
+    overflow: hidden;
   }
   .pause-stats-row {
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
   }
   .pause-stats-inner {
-    width: min(560px, 94vw);
-    max-height: none;
+    width: min(560px, 50vw);
+    max-height: calc(92dvh - 44px);
     padding: 18px 16px 14px;
   }
   .pause-stats-side {
-    width: min(560px, 94vw);
-    max-height: none;
+    width: min(420px, 42vw);
+    max-height: calc(92dvh - 44px);
     padding: 18px 16px 14px;
   }
   .pause-stats-title { font-size: 16px; }
@@ -8758,11 +8758,7 @@ body {
    main menu on short phones (≤540px CSS height in landscape).
    ══════════════════════════════════════════════════════════════════════ */
 @media (orientation: landscape) and (max-height: 540px) {
-  /* ── Main menu: allow scrolling so TO BATTLE is always reachable ── */
-  .main-menu {
-    overflow-y: auto;
-    min-height: 0;
-  }
+  .main-menu { min-height: 0; }
   /* Shrink the lab description box which pushes content down. */
   .mm-lab-desc { min-height: 0; }
   /* Reduce shop slot height. */
@@ -8808,10 +8804,10 @@ body {
   .bp-panel { padding: 14px 16px; }
 
   /* ── Endless modifier: cap height ─────────────────────────────── */
-  .endless-modifier-panel { max-height: 94dvh; overflow-y: auto; }
+  .endless-modifier-panel { max-height: 94dvh; }
 
   /* ── Modifier preview: cap height ─────────────────────────────── */
-  .modifier-preview-panel { max-height: 94dvh; overflow-y: auto; }
+  .modifier-preview-panel { max-height: none; overflow: visible; }
 
   /* ── Mannequin / tower shop: ensure fit ────────────────────────── */
   .mannequin-shop { max-height: 88vh; overflow-y: auto; }
@@ -9719,28 +9715,11 @@ body {
  *  the right column's leaderboard + daily-rewards calendar plus
  *  the big «В БОЙ» CTA simply do not fit, and the bottom of the
  *  menu is cropped behind the browser chrome.
- *
- *  Earlier landscape-mobile rules in this file targeted legacy
- *  class names (.mm-top-bar, .mm-left, .mm-right, .mm-section,
- *  .mm-mid, .mm-mid-lb, …) which the current main-menu markup no
- *  longer emits, so they have no effect. The block below uses the
- *  active class names, allows the menu to scroll vertically as a
- *  safety net, and compresses paddings + cards proportionally so
- *  the entire menu fits on common 19.5:9 / 20:9 phones in
- *  landscape without scrolling.
- *
- *  Scoped to landscape touch viewports only — desktop is taller
- *  than 700 CSS-px and almost never has `pointer: coarse`.
  */
 @media (orientation: landscape) and (max-height: 700px) {
   .main-menu {
-    height: 100dvh;
-    min-height: 0;
-    max-height: 100dvh;
-    overflow: hidden;
-    overflow-x: hidden;
-    padding: clamp(6px, 1vw, 14px);
-    gap: 6px;
+    padding: 6px 10px;
+    gap: 4px;
   }
 
   /* Title — scaled down so the top row doesn't dominate. */
@@ -9764,17 +9743,17 @@ body {
   .mm-col {
     min-height: 0;
     gap: 6px;
+    overflow: hidden;
   }
   .mm-col-left,
   .mm-col-right {
-    flex: 1 1 0;
+    flex: 0 0 clamp(250px, 31vw, 390px);
     max-width: none;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
   }
-  .mm-col-center { display: none; }
+  .mm-col-center {
+    flex: 1 1 0;
+    min-width: 150px;
+  }
 
   /* Generic card chrome — thinner padding, smaller titles. The 3D
      drop-shadow is preserved so the menu still reads as the same
@@ -9787,16 +9766,14 @@ body {
      card is pushed below the fold on a 576-tall viewport. */
   .mm-col-left .mm-shop-card,
   .mm-col-left .mm-lab-card {
-    min-height: 96px;
+    min-height: 0;
     flex: 1 1 0;
   }
-  .mm-col-left .mm-lab-card {
-    overflow: hidden;
-  }
+  .mm-col-left .mm-lab-card { overflow: hidden; }
 
   /* Shop slot row — 52px on desktop becomes 36px on phone. */
   .mm-col-left .mm-shop-card .mm-shop-slots { margin: 6px 0 4px; gap: 6px; }
-  .mm-col-left .mm-shop-card .mm-shop-slot  { height: 36px; }
+  .mm-col-left .mm-shop-card .mm-shop-slot  { height: clamp(28px, 6.2dvh, 36px); }
   .mm-shop-backdrop { inset: 28px 4px 4px 4px; }
 
   /* Lab card — shrink the diorama so the card body sits in
@@ -9807,8 +9784,9 @@ body {
     padding: 2px 4px;
     overflow: hidden;
   }
-  .mm-col-left .mm-lab-card .mm-lab-tree { width: 160px; height: 80px; margin: 0 auto; }
+  .mm-col-left .mm-lab-card .mm-lab-tree { width: 160px; height: clamp(54px, 13dvh, 80px); margin: 0 auto; }
   .mm-lab-tree-svg {
+    width: auto;
     max-width: min(210px, 92%);
     max-height: 100%;
   }
@@ -9816,7 +9794,7 @@ body {
   /* Loadout card — keep both slots on screen but compact. */
   .mm-loadout-card  {
     min-height: 0;
-    flex: 0 0 auto;
+    flex: 0.85 1 0;
     padding: 6px 10px;
   }
   .mm-loadout-slots { gap: 4px; }
@@ -9849,15 +9827,24 @@ body {
   /* Mannequin column — keep the silhouette visible but smaller so
      it doesn't push the side columns inward. */
   .mm-mannequin-display {
-    width: min(100%, 240px);
-    transform: scale(0.85);
+    width: min(100%, 180px);
+    max-height: 35dvh;
+    transform: scale(0.82);
     transform-origin: center;
   }
 
   /* Bottom row — В БОЙ stays the player's primary action and is
      kept comfortably tappable, but with trimmed padding so the
      row sits above the home-bar / browser chrome on phones. */
-  .mm-bottom-row { padding-top: 4px; gap: 6px; }
+  .mm-bottom-row {
+    position: absolute;
+    left: 50%;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 3;
+    padding-top: 0;
+    gap: 0;
+  }
   .mm-battle-btn {
     padding: 11px 36px 13px;
     font-size: clamp(14px, 2.2vw, 22px);
@@ -9867,9 +9854,7 @@ body {
 }
 
 @media (orientation: landscape) and (max-height: 700px) and (pointer: coarse) {
-  .main-menu {
-    padding-bottom: calc(clamp(6px, 1vw, 14px) + 64px);
-  }
+  .main-menu { padding-bottom: 6px; }
 }
 
 /* Even shorter heights (≤540 CSS-px tall — 20:9 phones, foldables
@@ -9880,7 +9865,7 @@ body {
 @media (orientation: landscape) and (max-height: 540px) {
   .main-menu {
     gap: 4px;
-    padding: 4px clamp(4px, 1vw, 10px);
+    padding: 4px 8px;
   }
   .main-menu .mm-title-top    { font-size: clamp(12px, 1.5vw, 18px); }
   .main-menu .mm-title-bottom { font-size: clamp(14px, 1.8vw, 22px); margin-top: 1px; }
@@ -9888,26 +9873,31 @@ body {
   .mm-top-row     { padding: 0 4px 2px; gap: 4px; }
   .mm-currency    { padding: 3px 6px; font-size: 10px; }
   .mm-settings-gear { width: 28px; height: 28px; }
+  .mm-body { gap: 6px; }
+  .mm-col-left,
+  .mm-col-right {
+    flex-basis: clamp(250px, 31vw, 370px);
+  }
+  .mm-col-center { min-width: 120px; }
 
   .mm-col-left .mm-shop-card .mm-shop-slot  { height: 28px; }
   .mm-col-left .mm-shop-card .mm-shop-slots { margin: 4px 0; gap: 4px; }
-  .mm-col-left .mm-lab-card .mm-lab-tree    { width: 140px; height: 70px; }
+  .mm-col-left .mm-lab-card .mm-lab-tree    { width: 140px; height: 54px; }
+  .mm-col-right .mm-lb-card                 { min-height: 96px; max-height: 44dvh; }
 
   .mm-loadout-card      { padding: 4px 8px; }
   .mm-loadout-slot-icon { width: 22px; height: 22px; font-size: 14px; }
   .mm-loadout-slot-name { font-size: 12px; }
   .mm-loadout-slot-tag  { font-size: 8px; }
 
-  .mm-mannequin-display { display: none; }
+  .mm-mannequin-display { width: min(100%, 130px); transform: scale(0.75); }
 
-  .mm-battle-btn { padding: 9px 30px 11px; font-size: clamp(13px, 2vw, 19px); }
+  .mm-battle-btn { padding: 8px 28px 10px; font-size: clamp(13px, 2vw, 18px); }
   .mm-mode-btn   { padding: 4px 9px; font-size: 9px; }
 }
 
 @media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
-  .main-menu {
-    padding-bottom: 68px;
-  }
+  .main-menu { padding-bottom: 4px; }
 }
 
 /* ============================================================
@@ -10391,7 +10381,7 @@ body {
  *  Two breakpoints:
  *    - max-height: 700px → the everyday "phone in landscape" band.
  *      Trims chrome, font sizes and gaps so the panel + its actions
- *      fit on one screen; falls back to internal scrolling if not.
+ *      fit on one screen. Scroll remains only in list-like areas.
  *    - max-height: 540px → already partially handled by the legacy
  *      block at ~line 8495; this file extends it where needed.
  *
@@ -10515,7 +10505,7 @@ body {
   .difficulty-panel {
     max-height: 96dvh;
     padding: 12px 14px;
-    overflow-y: auto;
+    overflow: hidden;
   }
   .difficulty-header { margin-bottom: 8px; }
   .difficulty-header h2 { font-size: 14px; }
@@ -10546,6 +10536,14 @@ body {
   .mp-lines { font-size: 13px; padding-left: 14px; }
   .mp-warn { font-size: 12px; padding: 6px 10px; }
   .mp-btn { padding: 9px 18px; font-size: 10px; }
+  .mp-stage { min-height: 78px; margin: -6px 0 4px; }
+  .mp-sigil { width: 48px; height: 48px; }
+  .mp-mode-ancient .mp-sigil { width: 52px; height: 52px; }
+  .mp-mode-epic .mp-title,
+  .mp-mode-ancient .mp-title { font-size: 18px; }
+  .mp-mode-ancient .mp-title { font-size: 19px; }
+  .mp-tagline { font-size: 8px; margin: 3px 0 5px; }
+  .mp-subtitle { font-size: 13px; margin: 5px 0; }
 
   /* ── Endless-modifier popup ────────────────────────────────────── */
   .endless-modifier-panel {
@@ -10562,7 +10560,24 @@ body {
     max-height: 94dvh;
     padding: 14px 18px;
     width: min(96vw, 760px);
+    overflow: hidden;
   }
+  .blessing-panel > .mp-stage { min-height: 100px; margin: -2px 0 8px; }
+  .blessing-panel > .mp-stage .mp-sigil { width: 48px; height: 48px; }
+  .blessing-head { margin-bottom: 10px; }
+  .blessing-title { font-size: 17px; }
+  .blessing-title.curse { font-size: 18px; }
+  .blessing-subtitle { font-size: 14px; }
+  .blessing-tagline { font-size: 13px; margin: 4px 0 6px; }
+  .blessing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .blessing-card { min-height: 108px; padding: 10px 10px; gap: 4px; }
+  .blessing-icon { font-size: 32px; }
+  .blessing-name { font-size: 10px; }
+  .blessing-flavor { font-size: 12px; }
+  .blessing-effect { font-size: 14px; padding: 3px 7px; }
 
   /* ── Card draft (Roundhouse cards) ─────────────────────────────── */
   .cards-stage {
@@ -10581,23 +10596,23 @@ body {
   .law-announce-card { padding: 12px 16px; }
 
   /* ── Pause-stats overlay ───────────────────────────────────────── */
-  .pause-stats-group {
-    max-height: 94dvh;
-    overflow-y: auto;
-  }
+  .pause-stats-group { max-height: 94dvh; }
   .pause-stats-row { gap: 10px; }
   .pause-stats-inner,
   .pause-stats-side {
     padding: 14px 16px 12px;
-    max-height: none;
+    max-height: calc(94dvh - 48px);
   }
   .pause-stats-inner { width: min(640px, 50vw); }
   .pause-stats-side  { width: min(440px, 44vw); }
   .pause-stats-title { font-size: 16px; }
   .ps-section { margin-bottom: 10px; }
+  .ps-section.ps-unique { padding: 7px 10px 6px; }
   .ps-section-title { font-size: 11px; margin-bottom: 5px; }
   .ps-row { font-size: 14px; gap: 10px; padding: 2px 0; }
   .ps-value { min-width: 56px; }
+  .ps-empty { font-size: 13px; }
+  .ps-row.ps-unique-desc { font-size: 12px; padding-left: 66px; }
 
   /* ── Revive overlay ────────────────────────────────────────────── */
   .revive-panel {
@@ -10675,7 +10690,18 @@ body {
   .lo-cta { padding: 7px 18px; font-size: 11px; }
 
   .dev-panel { padding: 12px 14px; }
-  .blessing-panel { padding: 12px 14px; }
+  .blessing-panel { padding: 10px 12px; }
+  .blessing-panel > .mp-stage { min-height: 70px; margin: -4px 0 4px; }
+  .blessing-panel > .mp-stage .mp-sigil { width: 40px; height: 40px; }
+  .blessing-title { font-size: 14px; }
+  .blessing-title.curse { font-size: 15px; }
+  .blessing-subtitle { font-size: 12px; }
+  .blessing-tagline { font-size: 12px; }
+  .blessing-card { min-height: 86px; padding: 8px; }
+  .blessing-icon { font-size: 26px; }
+  .blessing-name { font-size: 9px; }
+  .blessing-flavor { font-size: 11px; }
+  .blessing-effect { font-size: 12px; }
 
   .cards-stage { gap: 8px; padding: 8px 14px; }
   .cards-stage-title { font-size: 14px; padding: 3px 14px; letter-spacing: 2px; }
@@ -10684,6 +10710,11 @@ body {
 
   .pause-stats-inner { width: min(560px, 50vw); }
   .pause-stats-side  { width: min(380px, 42vw); }
+  .pause-stats-inner,
+  .pause-stats-side { max-height: calc(94dvh - 44px); }
+  .pause-stats-title { font-size: 14px; }
+  .ps-row { font-size: 13px; }
+  .ps-section-title { font-size: 10px; }
 
   .revive-panel { padding: 14px 16px; }
   .lb-panel:not(.lb-panel-compact) .lb-body { max-height: 44dvh; }
