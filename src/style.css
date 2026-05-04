@@ -9835,6 +9835,7 @@ body {
   /* Mannequin column — keep the silhouette visible but smaller so
      it doesn't push the side columns inward. */
   .mm-mannequin-display {
+    display: flex;
     width: min(100%, 180px);
     max-height: 35dvh;
     transform: scale(0.82);
@@ -9867,9 +9868,7 @@ body {
 
 /* Even shorter heights (≤540 CSS-px tall — 20:9 phones, foldables
    in book mode, etc.). Additional compression so the menu still
-   fits without scroll on these devices. The mannequin silhouette
-   is hidden entirely — the centre column collapses to just the
-   battle CTA, which is what the player actually needs. */
+   fits without scroll on these devices. */
 @media (orientation: landscape) and (max-height: 540px) {
   .main-menu {
     gap: 4px;
@@ -9898,7 +9897,11 @@ body {
   .mm-loadout-slot-name { font-size: 12px; }
   .mm-loadout-slot-tag  { font-size: 8px; }
 
-  .mm-mannequin-display { width: min(100%, 130px); transform: scale(0.75); }
+  .mm-mannequin-display {
+    display: flex;
+    width: min(100%, 130px);
+    transform: scale(0.75);
+  }
 
   .mm-battle-btn { padding: 8px 28px 10px; font-size: clamp(13px, 2vw, 18px); }
   .mm-mode-btn   { padding: 4px 9px; font-size: 9px; }
@@ -9922,7 +9925,8 @@ body {
   .mm-loadout-card { flex: 0.72 1 0; }
   .mm-col-right .mm-lb-card {
     min-height: 92px;
-    max-height: 230px;
+    flex: 1 1 0;
+    max-height: none;
   }
   .mm-daily-calendar { padding: 6px 8px; }
   .mm-daily-header-text { font-size: 7px; }
@@ -9938,7 +9942,7 @@ body {
   .mm-card { padding: 6px 8px; }
   .mm-card-title { font-size: 9px; }
   .mm-loadout-slot { padding: 3px 5px; }
-  .mm-col-right .mm-lb-card { max-height: 220px; }
+  .mm-col-right .mm-lb-card { max-height: none; }
 }
 
 @supports not (zoom: 0.9) {
