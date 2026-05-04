@@ -9796,13 +9796,14 @@ body {
     min-height: 0;
     flex: 0.85 1 0;
     padding: 6px 10px;
+    gap: 4px;
   }
-  .mm-loadout-slots { gap: 4px; }
+  .mm-loadout-slots { gap: 4px; margin: 2px 0 0; }
   .mm-loadout-slot  { padding: 4px 6px; gap: 6px; }
   .mm-loadout-slot-icon { width: 26px; height: 26px; font-size: 16px; }
   .mm-loadout-slot-tag  { font-size: 9px; }
   .mm-loadout-slot-name { font-size: 13px; }
-  .mm-loadout-hint      { font-size: 11px; }
+  .mm-loadout-hint      { display: none; }
 
   /* Right column — leaderboard + daily-rewards calendar share the
      remaining height. The leaderboard is the focal panel; the
@@ -9811,10 +9812,13 @@ body {
   .mm-col-right .mm-lb-card             { min-height: 100px; max-height: 280px; }
   .mm-col-right.daily-open .mm-lb-card  { min-height: 100px; max-height: 200px; }
   .mm-lb-card .lb-panel-compact .lb-body { min-height: 0; }
-  .lb-panel-compact            { font-size: 12px; }
-  .lb-panel-compact .lb-row    { padding: 4px 6px; }
-  .lb-panel-compact .lb-tabs   { margin-bottom: 6px; }
-  .lb-panel-compact .lb-tab    { padding: 6px 10px; font-size: 11px; }
+  .lb-panel-compact             { font-size: 12px; padding: 10px 12px 12px; }
+  .lb-panel-compact .lb-title   { font-size: 10px; margin-bottom: 6px; }
+  .lb-panel-compact .lb-row     { padding: 4px 6px; }
+  .lb-panel-compact .lb-tabs    { margin-bottom: 6px; }
+  .lb-panel-compact .lb-tab     { padding: 5px 6px; font-size: 11px; }
+  .lb-panel-compact .lb-loading,
+  .lb-panel-compact .lb-empty   { padding: 36px 0; }
 
   /* Daily rewards — denser grid + smaller cells. */
   .mm-daily-grid       { gap: 4px; margin: 4px 0 6px; }
@@ -9823,6 +9827,10 @@ body {
   .mm-daily-day-label  { font-size: 7px; }
   .mm-daily-reward-label { font-size: 10px; }
   .mm-daily-claim      { padding: 8px 12px; font-size: 11px; }
+  .mm-daily-header      { gap: 5px; }
+  .mm-daily-header-text { font-size: 8px; letter-spacing: 0; }
+  .mm-daily-week-badge  { font-size: 8px; padding: 2px 4px; margin-left: 2px; }
+  .mm-daily-indicator   { width: 18px; height: 18px; font-size: 10px; }
 
   /* Mannequin column — keep the silhouette visible but smaller so
      it doesn't push the side columns inward. */
@@ -9898,6 +9906,50 @@ body {
 
 @media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
   .main-menu { padding-bottom: 4px; }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  .mm-col-left,
+  .mm-col-right {
+    flex-basis: clamp(278px, 35vw, 430px);
+    zoom: 0.9;
+  }
+  .mm-col-left .mm-shop-card,
+  .mm-col-left .mm-lab-card {
+    flex: 0.78 1 0;
+  }
+  .mm-col-left .mm-lab-card .mm-lab-tree { height: 50px; }
+  .mm-loadout-card { flex: 0.72 1 0; }
+  .mm-col-right .mm-lb-card {
+    min-height: 92px;
+    max-height: 230px;
+  }
+  .mm-daily-calendar { padding: 6px 8px; }
+  .mm-daily-header-text { font-size: 7px; }
+  .mm-daily-week-badge { font-size: 7px; }
+}
+
+@media (orientation: landscape) and (max-height: 440px) {
+  .mm-col-left,
+  .mm-col-right {
+    flex-basis: clamp(292px, 36vw, 455px);
+    zoom: 0.86;
+  }
+  .mm-card { padding: 6px 8px; }
+  .mm-card-title { font-size: 9px; }
+  .mm-loadout-slot { padding: 3px 5px; }
+  .mm-col-right .mm-lb-card { max-height: 220px; }
+}
+
+@supports not (zoom: 0.9) {
+  @media (orientation: landscape) and (max-height: 480px) {
+    .mm-col-left { transform: scale(0.9); transform-origin: top left; }
+    .mm-col-right { transform: scale(0.9); transform-origin: top right; }
+  }
+  @media (orientation: landscape) and (max-height: 440px) {
+    .mm-col-left { transform: scale(0.86); transform-origin: top left; }
+    .mm-col-right { transform: scale(0.86); transform-origin: top right; }
+  }
 }
 
 /* ============================================================
