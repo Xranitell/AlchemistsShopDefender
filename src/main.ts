@@ -344,18 +344,18 @@ tutorial.attach(canvas, {
 
 void (async () => {
   await yandex.init();
-  // Yandex Games console flags any submission that doesn't read the
-  // player's preferred language through their SDK as "i18n не
-  // используется". Pull the lang now and forward it to our own engine
-  // — but only when the player has not already picked a locale via the
-  // in-game switcher, so a manual choice always wins over the SDK.
-  if (!meta.localeUserChoice) {
-    const sdkLocale = normalizeToLocale(yandex.getLang());
-    if (sdkLocale !== meta.locale) {
-      setLocale(sdkLocale);
-      meta.locale = sdkLocale;
-      saveMeta(meta);
-    }
+  // Yandex Games requirement 2.14: every game must read the player's
+  // preferred language from `environment.i18n.lang` on each launch, or
+  // the publishing console flags it as "i18n не используется" / "I18N
+  // is not used" (red indicator in debug-mode=16). We therefore always
+  // pull the SDK language at startup, even for returning players who
+  // have explicitly picked a locale — we just don't apply it in that
+  // case so a manual choice still wins over the SDK.
+  const sdkLocale = normalizeToLocale(yandex.getLang());
+  if (!meta.localeUserChoice && sdkLocale !== meta.locale) {
+    setLocale(sdkLocale);
+    meta.locale = sdkLocale;
+    saveMeta(meta);
   }
   yandex.loadingReady();
   hideAppLoader();
