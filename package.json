@@ -1,5 +1,5 @@
 {
-  "name": "alchemists-shop-defender",
+  "name": "alchemists-shop-rune-defense",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc -b --noEmit",
     "lint": "tsc -b --noEmit",
-    "package": "npm run build && cd dist && zip -r ../alchemists-shop-defender.zip ."
+    "package": "npm run build && cd dist && zip -r ../alchemists-shop-rune-defense.zip ."
   },
   "devDependencies": {
     "typescript": "^5.6.3",

@@ -15,8 +15,8 @@ export const RU: Record<string, string> = {
   'ui.lang.tooltip': 'Язык',
 
   // ── Main menu ────────────────────────────────────────────────────────
-  'ui.menu.title.top': 'Лавка Алхимика',
-  'ui.menu.title.bottom': 'Защитник',
+  'ui.menu.title.top': 'Лавка алхимика',
+  'ui.menu.title.bottom': 'Рунная оборона',
   'ui.menu.toBattle': 'В БОЙ',
   'ui.menu.shop': 'ЗЕЛЬЕВАРКА',
   'ui.menu.craftingLevel': 'УРОВЕНЬ ЗЕЛЬЕВАРКИ {level}',

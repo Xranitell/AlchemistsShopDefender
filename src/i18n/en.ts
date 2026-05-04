@@ -15,7 +15,7 @@ export const EN: Record<string, string> = {
 
   // ── Main menu ────────────────────────────────────────────────────────
   'ui.menu.title.top': "Alchemist's Shop",
-  'ui.menu.title.bottom': 'Defender',
+  'ui.menu.title.bottom': 'Rune Defense',
   'ui.menu.toBattle': 'TO BATTLE',
   'ui.menu.shop': 'BREWERY',
   'ui.menu.craftingLevel': 'CRAFTING LEVEL {level}',
