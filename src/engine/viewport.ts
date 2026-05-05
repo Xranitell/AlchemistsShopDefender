@@ -20,6 +20,8 @@
  *      --vp-dpr    : device pixel ratio, capped at MAX_DPR.
  *      --ui-scale  : uniform scale that fits a 1280×720 reference design
  *                    into the current viewport (clamped to [0.5, 1]).
+ *      --hud-scale : same as `--ui-scale` but floored at MIN_HUD_SCALE so
+ *                    in-battle buttons keep a 36+ CSS px tap target.
  *      --safe-top  : top safe-area inset (notch / status-bar cutout).
  *      --safe-bottom : bottom safe-area inset (home indicator / chrome).
  *
@@ -76,6 +78,13 @@ export const DESIGN_HEIGHT = DESIGN_HEIGHT_WIDE;
  *  we'd rather let some content overflow than shrink to a blur. */
 export const MIN_UI_SCALE = 0.5;
 
+/** Lower bound on `--hud-scale`. The in-battle HUD has tappable
+ *  buttons (pause / overload / ability) whose hit area shrinks with
+ *  `transform: scale(...)`. We floor the HUD-only scale so a 44 CSS
+ *  px button never falls below ~37 px on the smallest phone — still
+ *  comfortably above the 36 px touch-target Material guideline. */
+export const MIN_HUD_SCALE = 0.85;
+
 /** Cap the backing-store multiplier used by HiDPI-aware canvases. A
  *  3× backing store on a 2400×1080 phone would allocate 7.4 MP per
  *  frame, which is overkill for pixel-art and tanks low-end GPUs. */
@@ -98,6 +107,11 @@ export interface ViewportSnapshot {
   /** Uniform scale factor that fits the chosen design rectangle into
    *  width × height. Clamped to [MIN_UI_SCALE, 1]. */
   uiScale: number;
+  /** Tap-target-friendly scale used by the in-battle HUD. Same as
+   *  `uiScale` on most viewports, but floored at MIN_HUD_SCALE so
+   *  the smallest phones never shrink the pause/overload buttons
+   *  below the 36 px touch-target guideline. */
+  hudScale: number;
   /** Safe-area insets, in CSS pixels. */
   safeTop: number;
   safeBottom: number;
@@ -141,6 +155,12 @@ function readViewport(): ViewportSnapshot {
 
   const uiScaleRaw = Math.min(width / designWidth, height / designHeight);
   const uiScale = Math.max(MIN_UI_SCALE, Math.min(1, uiScaleRaw));
+  // The HUD has tappable buttons whose hit area shrinks linearly with
+  // CSS `transform: scale()`. We floor the HUD-only scale so a 44 CSS
+  // px button never lands below ~37 px on the smallest phone, but we
+  // still let `uiScale` itself dip lower for non-interactive content
+  // (badges, hint labels, etc.) that benefits from a tighter fit.
+  const hudScale = Math.max(MIN_HUD_SCALE, uiScale);
 
   const safe = readSafeAreaInsets();
 
@@ -151,6 +171,7 @@ function readViewport(): ViewportSnapshot {
     designWidth,
     designHeight,
     uiScale,
+    hudScale,
     safeTop: safe.top,
     safeBottom: safe.bottom,
     safeLeft: safe.left,
@@ -204,6 +225,10 @@ function applySnapshotToCss(snap: ViewportSnapshot): void {
   root.style.setProperty('--design-w', `${snap.designWidth}px`);
   root.style.setProperty('--design-h', `${snap.designHeight}px`);
   root.style.setProperty('--ui-scale', `${snap.uiScale}`);
+  // HUD-only scale, floored so tap targets stay usable on phones.
+  // CSS reads this through `transform: scale(var(--hud-scale))` on
+  // the in-battle HUD rows in `:root.viewport-fitted` mode.
+  root.style.setProperty('--hud-scale', `${snap.hudScale}`);
   root.style.setProperty('--safe-top', `${snap.safeTop}px`);
   root.style.setProperty('--safe-bottom', `${snap.safeBottom}px`);
   root.style.setProperty('--safe-left', `${snap.safeLeft}px`);
