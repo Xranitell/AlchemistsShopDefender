@@ -4597,6 +4597,13 @@ body {
   gap: 16px;
   overflow-y: auto;
   padding-right: 2px;
+  /* Take up the remaining vertical space inside the panel so the
+     scroll fires on `.lo-body` instead of letting content escape past
+     the panel's `overflow: hidden`. Without this, on tall content
+     (all 6 active + 6 aura modules) the second aura row was clipped
+     behind the panel's gold border. */
+  flex: 1;
+  min-height: 0;
 }
 .lo-section {
   --section-edge: #ffd166;
@@ -11578,4 +11585,134 @@ body {
 :root.viewport-fitted .modifier-preview-panel .mp-warn {
   margin-bottom: 8px;
   padding: 6px 10px;
+}
+||||||| constructed merge base
+
+/* ════════════════════════════════════════════════════════════════════════
+   Loadout overlay (Снаряжение манекена) — fit-mode adaptation.
+
+   The legacy implementation set `width: min(96vw, 920px)` and
+   `max-height: 94dvh` on the panel, but `.lo-body` lacked the
+   `flex: 1; min-height: 0` pair needed for proper scroll inside a
+   constrained flex column. So on phone-sized landscape viewports
+   (768×398, 934×437, 1280×570) the body grew to its content height
+   (~530 design-px) and the panel's `overflow: hidden` clipped the
+   second (aura) section *and* the ГОТОВО button — they rendered
+   underneath / behind the gold border.
+
+   Approach mirrors the crafting and modifier-preview fit-mode
+   adaptations: pin the panel to a fixed design rectangle sized as a
+   fraction of `--design-w` / `--design-h` and apply a uniform
+   `transform: scale()` via the global `--ui-scale`. Inside, make
+   `.lo-body` actually scroll (`flex: 1; min-height: 0`), drop the grid
+   to two columns on narrow design, and tighten chrome so most cases
+   fit without scrolling.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root.viewport-fitted .lo-overlay {
+  /* Drop the centring flexbox padding — the panel positions itself
+     from its own `top: 50% / left: 50%` once the transform is set. */
+  padding: 0;
+}
+
+:root.viewport-fitted .lo-panel {
+  position: fixed;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: min(920px, calc(var(--design-w, 1280px) * 0.86));
+  height: calc(var(--design-h, 720px) * 0.94);
+  max-width: none;
+  max-height: none;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+
+  padding: 14px 18px 12px;
+}
+
+:root.viewport-fitted .lo-head {
+  margin-bottom: 8px;
+}
+:root.viewport-fitted .lo-title {
+  font-size: 18px;
+  margin: 0 0 2px;
+}
+:root.viewport-fitted .lo-tagline {
+  font-size: 9px;
+  margin: 2px 0 4px;
+}
+:root.viewport-fitted .lo-subtitle {
+  font-size: 14px;
+  margin: 4px auto 0;
+}
+
+/* Make the body the flex-grow region so it actually scrolls when
+   total content exceeds panel height (was the bug: no `flex: 1`,
+   so body grew to its content height and the panel `overflow: hidden`
+   clipped the lo-cta + aura section). */
+:root.viewport-fitted .lo-body {
+  flex: 1;
+  min-height: 0;
+  gap: 10px;
+}
+
+:root.viewport-fitted .lo-section {
+  gap: 6px;
+}
+:root.viewport-fitted .lo-section-title {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+:root.viewport-fitted .lo-grid {
+  gap: 8px;
+}
+:root.viewport-fitted .lo-card {
+  padding: 6px 6px 6px;
+  gap: 2px;
+}
+:root.viewport-fitted .lo-card-icon {
+  font-size: 18px;
+}
+:root.viewport-fitted .lo-card-name {
+  font-size: 9px;
+}
+:root.viewport-fitted .lo-card-desc {
+  font-size: 11px;
+  line-height: 1.1;
+}
+:root.viewport-fitted .lo-card-badge {
+  font-size: 7px;
+  padding: 1px 4px;
+  top: 4px;
+  right: 4px;
+}
+
+:root.viewport-fitted .lo-cta {
+  margin-top: 8px;
+  font-size: 11px;
+  padding: 9px 22px;
+}
+
+/* Override the legacy `@media (max-width: 600px)` rule so it doesn't
+   re-trigger 2-col grid + downsize on top of the fit-mode rules.
+   In fit-mode the global scale handles fitting; the discrete 600 px
+   breakpoint is unnecessary. Wide designs keep the 3-col module
+   layout; the narrow design (1024×576 → phones / narrow tablets)
+   drops to 2 columns and hides the long description text — the title
+   attribute on each `.lo-card` still surfaces the description on
+   hover/long-press. */
+:root.viewport-fitted .lo-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+:root.viewport-fitted-narrow .lo-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+:root.viewport-fitted-narrow .lo-card-desc {
+  display: none;
+}
+:root.viewport-fitted-narrow .lo-card {
+  padding: 8px 6px 8px;
+}
+:root.viewport-fitted-narrow .lo-card-icon {
+  font-size: 20px;
 }
