@@ -22,3 +22,4 @@ dist-tsc/
 /repro.mjs
 /repro-multi.mjs
 /repro-craft.mjs
+/repro-modifier.mjs
