@@ -11447,3 +11447,97 @@ body {
   font-size: 16px;
   padding-left: 70px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   CHEST overlay — fit-mode adapter (mobile phase 4, overlay #2).
+
+   Same template as the pause-stats overlay above:
+     1. Restore desktop-baseline panel sizing + typography via higher-
+        specificity rules so the layered media-query crutches (gap: 10→8,
+        font-size: 18→14, chest-sprite scaled to 0.78 / 0.7, reward tiles
+        re-tuned per breakpoint) don't compound with the new transform.
+     2. `transform: scale(var(--ui-scale))` on the panel itself so the
+        whole victory surface shrinks uniformly to fit the real viewport.
+     3. `transform-origin: center center` keeps it centred on the
+        backdrop's flex centring.
+
+   Legacy `@media` rules are kept as a fallback for the no-JS case. */
+
+:root.viewport-fitted .chest-overlay {
+  /* Reset to desktop baseline so we scale a known layout. The legacy
+     ladder narrowed `max-width` to 640px / 96vw — here we let the panel
+     reach its full design width and rely on the transform to fit.
+     `max-height: none` is critical: the parent `.panel` caps height at
+     95vh, which (combined with `overflow-y: auto`) clips the chest panel
+     mid-content and stuffs the reward tiles + footer behind a scroll bar.
+     We let the panel grow to its natural ~500px height and rely on the
+     scale transform to fit it inside the viewport. */
+  max-width: 760px;
+  max-height: none;
+  padding: 28px 28px 24px;
+  gap: 14px;
+  overflow-y: visible;
+
+  /* The chest panel's natural height (~490 px) exceeds the smallest
+     phone viewport (398 px), so #overlay's grid centring would shift
+     the panel and trigger a scrollbar. Pin it absolutely to the
+     viewport centre and scale around the centre — `translate(-50%, -50%)`
+     uses the pre-transform border-box, so the visual centre always
+     lands at (50%, 50%) of #overlay regardless of pre-scale overflow. */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Reset sub-element sizing so the parent transform owns the scale. */
+:root.viewport-fitted .chest-overlay .chest-stage {
+  min-height: 160px;
+  padding: 18px 0 6px;
+}
+:root.viewport-fitted .chest-overlay .chest-rays {
+  width: 380px;
+  height: 380px;
+}
+/* The legacy ladder shrank `.chest-sprite` via `transform: scale(0.7)` —
+   that compounded with the parent transform we're now adding. Drop the
+   sprite-level scale in fit-mode so the only scale step is the parent. */
+:root.viewport-fitted .chest-overlay .chest-button .chest-sprite,
+:root.viewport-fitted .chest-overlay .chest-sprite {
+  transform: none;
+}
+:root.viewport-fitted .chest-overlay .chest-summary {
+  font-size: 18px;
+  margin-top: -2px;
+}
+:root.viewport-fitted .chest-overlay .chest-hint {
+  font-size: 11px;
+}
+:root.viewport-fitted .chest-overlay .chest-progress {
+  width: 200px;
+  height: 12px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-container {
+  gap: 14px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-grid {
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 10px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-tile {
+  padding: 10px 6px 8px;
+  gap: 4px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-tile-icon {
+  height: 32px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-tile-icon canvas {
+  transform: none;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-tile-amount {
+  font-size: 14px;
+}
+:root.viewport-fitted .chest-overlay .chest-reward-tile-label {
+  font-size: 12px;
+}
