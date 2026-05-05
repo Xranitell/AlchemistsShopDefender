@@ -7,3 +7,11 @@ dist-tsc/
 .vscode/
 *.log
 .cache/
+
+# Playwright (Phase 6 viewport regression suite). The expected
+# baselines under tests/viewport/__screenshots__/ ARE committed; only
+# the per-run report + failure traces are ignored.
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/

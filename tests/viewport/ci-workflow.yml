@@ -1,0 +1,66 @@
+name: Viewport regression
+
+# Phase 6 of the mobile-viewport refactor: catch any layout regression
+# on the seven viewports we manually validated through Phase 2–5 before
+# it reaches `main`. Runs the production build through `vite preview`,
+# then drives Chromium via Playwright at each viewport and compares the
+# result to the stored baseline (`> 1%` pixel diff fails the job).
+#
+# When a UI change is *intentional* and the diff is expected, regenerate
+# the baselines locally with `npm run test:viewport:update` and commit
+# the updated PNGs from `tests/viewport/__screenshots__/`.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  viewport-regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Pre-build the production bundle so `vite preview` (started by
+      # Playwright's `webServer`) has artefacts to serve. The bundle
+      # itself is also what the regular CI job validates, so this step
+      # mirrors local-development behaviour and surfaces any TypeScript
+      # error before we get to the slower Playwright step.
+      - name: Build production bundle
+        run: npm run build
+
+      # Pin the browser binary version against the @playwright/test
+      # version in package-lock.json. `--with-deps` installs the system
+      # libs Chromium needs (libnss3, libasound2, etc.) on the runner.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # CI=1 disables `reuseExistingServer` in playwright.config.ts so
+      # the run owns its preview server end-to-end.
+      - name: Run viewport-regression suite
+        env:
+          CI: '1'
+        run: npm run test:viewport
+
+      # Upload the HTML report + any failure traces / diff images so the
+      # human reviewer can inspect a regression without re-running CI
+      # locally.
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
