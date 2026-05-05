@@ -1935,6 +1935,15 @@ body {
   stroke-width: 3;
   filter: drop-shadow(0 0 3px rgba(244, 209, 102, 0.5));
 }
+.meta-node {
+  /* The whole `<g>` is the tap target — moving `cursor: pointer` up here
+     (in addition to the inner `circle` rule below) lets iOS Safari treat
+     the glyph `<text>` and any sub-elements as clickable, so a tap on
+     the icon triggers the synthetic click instead of being swallowed by
+     `body { touch-action: none }`. */
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .meta-node circle {
   stroke-width: 2;
   cursor: pointer;
@@ -8473,7 +8482,10 @@ body {
   .hud-potion-slot,
   .menu-buttons button,
   .panel button,
-  .mm-battle-btn {
+  .mm-battle-btn,
+  .meta-tree-tab,
+  .meta-side-learn,
+  .meta-side-refund {
     touch-action: manipulation;
   }
 }

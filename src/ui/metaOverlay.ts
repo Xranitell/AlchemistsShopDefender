@@ -31,7 +31,7 @@ import {
   branchName,
   type MetaBranch,
 } from '../data/metaTree';
-import { t } from '../i18n';
+import { t, tWithFallback } from '../i18n';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
 import {
@@ -335,7 +335,7 @@ export class MetaOverlay {
       text.className = 'meta-tree-tab-text';
       const name = document.createElement('span');
       name.className = 'meta-tree-tab-name';
-      name.textContent = branchName(branch);
+      name.textContent = tWithFallback(`ui.meta.branch.${branch}`, branchName(branch));
       text.appendChild(name);
       const tag = document.createElement('span');
       tag.className = 'meta-tree-tab-sub';
