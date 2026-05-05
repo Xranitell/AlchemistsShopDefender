@@ -11497,3 +11497,85 @@ body {
 :root.viewport-fitted .craft-panel .craft-body {
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Modifier-preview panel — fit-mode adaptation.
+
+   The previous Phase 5 implementation used discrete `transform: scale()`
+   media-query steps tuned for tall-but-not-quite-desktop viewports
+   (819 / 749 / 679 px steps). Combined with the legacy
+   `@media (orientation: landscape) and (max-height: 540px) { .panel {
+   max-height: 94dvh } }` rule, it left the panel with `max-height` set
+   *and* `overflow: visible` simultaneously — so on phone-sized
+   landscape viewports (768×398, 934×437, 1280×540) the lower bullets,
+   warning ribbon and action buttons rendered *outside* the gold border
+   on the dimmed backdrop. Reproduces with the Ancient-mode preview
+   which has the most bullets (10+ in en locale).
+
+   Approach mirrors the main-menu and crafting fit-mode adaptations:
+   pin the panel to a fixed design rectangle sized as a fraction of
+   `--design-w / --design-h` and apply a uniform `transform: scale()`
+   via the global `--ui-scale`. Internal scrolling stays as a fallback
+   for the rare overflow case (Ancient mode in en locale on the
+   narrowest design).
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root.viewport-fitted .modifier-preview-panel {
+  /* Pin to viewport centre so the modal escapes the grid centring of
+     `#overlay { place-items: center }` (which does layout-box-based
+     centring and therefore mis-centred the transformed panel). */
+  position: fixed;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+
+  /* Pin to a ~480 px-wide design rectangle (capped at the legacy
+     520 px maximum). Height fills the design rectangle minus a small
+     gutter so the modal still reads as a modal — content longer than
+     this scrolls inside the panel rather than spilling onto the
+     backdrop (the bug being fixed here). */
+  width: min(520px, calc(var(--design-w, 1280px) * 0.46));
+  max-width: none;
+  max-height: calc(var(--design-h, 720px) - 16px);
+  /* Re-enable scroll: with `overflow: visible` (set on the base
+     `.modifier-preview-panel` rule) any content past `max-height`
+     drew on the backdrop, which is exactly the bug we're fixing. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Tighten internal chrome in fit-mode so most modes (Epic, Ancient in
+   ru locale) fit without triggering the scrollbar. Targets ~110 px of
+   savings vs. the desktop spacing — enough for the longest currently-
+   shipped Ancient line list at the narrow design (576 px design
+   height). */
+:root.viewport-fitted .modifier-preview-panel {
+  padding: 12px 16px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-stage {
+  min-height: 60px;
+  margin: -4px 0 0;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-title {
+  margin: 0 0 2px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-tagline {
+  margin: 0 0 4px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-subtitle {
+  margin: 4px 0 8px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-stats {
+  gap: 4px;
+  margin-bottom: 8px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-lines {
+  margin: 0 0 8px 0;
+  line-height: 1.35;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-warn {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+}
