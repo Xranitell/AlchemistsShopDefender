@@ -1,5 +1,18 @@
 import type { Vec2 } from './math';
 
+/**
+ * Returns true when `target` (or any of its ancestors) is the visible
+ * `#overlay` container. UI overlays (main menu, brewery, talent tree,
+ * settings, …) all live inside `#overlay` and toggle `.visible` while
+ * shown — when one of them is up, every touch starting inside its DOM
+ * subtree is a UI gesture (tap a button, drag a slider, scroll a list)
+ * and should NOT be forwarded to the game canvas behind it.
+ */
+function isInsideOverlay(target: HTMLElement | null): boolean {
+  if (!target || !target.closest) return false;
+  return !!target.closest('#overlay.visible');
+}
+
 export interface InputState {
   mouse: Vec2;
   mouseDown: boolean;
@@ -129,6 +142,13 @@ export class Input {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      // When a fullscreen overlay is open the canvas is hidden behind it
+      // (see `#app:has(#overlay.visible) #hud { display: none }` rule).
+      // Forwarding the touch as a game press while also preventing default
+      // would (a) trigger a phantom potion throw in the obscured arena and
+      // (b) block native vertical pan inside scrollable overlay panels
+      // such as the brewery recipe list. Bail out of both behaviours.
+      if (isInsideOverlay(e.target as HTMLElement | null)) return;
       e.preventDefault();
       this.state.mouse = this.toGame(t.clientX, t.clientY);
       this.state.mouseDown = true;
@@ -138,6 +158,11 @@ export class Input {
     window.addEventListener('touchmove', (e) => {
       const t = e.touches[0];
       if (!t) return;
+      // Same overlay carve-out as the touchstart fallback above. Without
+      // this, dragging inside an overlay (recipe list, mannequin loadout,
+      // talent tree side rail, etc.) ate the gesture before the browser
+      // could turn it into a native vertical pan.
+      if (isInsideOverlay(e.target as HTMLElement | null)) return;
       if (this.isInsideCanvas(t.clientX, t.clientY)) {
         e.preventDefault();
         this.state.mouse = this.toGame(t.clientX, t.clientY);

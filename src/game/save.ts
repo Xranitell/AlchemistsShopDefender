@@ -14,6 +14,13 @@ import { META_BY_ID } from '../data/metaTree';
 
 const SAVE_KEY = 'asd_meta_v2';
 
+/** UI animation preference. `'auto'` follows the OS
+ *  `prefers-reduced-motion` media query (iOS sets it via Low-Power-Mode
+ *  / Reduce Motion). `'minimal'` is the default on touch devices so
+ *  Android phones — which don't expose the OS query — still get a calm
+ *  default. `'full'` is the "force animations" override. */
+export type MotionMode = 'auto' | 'minimal' | 'full';
+
 export interface MetaSave {
   blueEssence: number;
   ancientEssence: number;
@@ -45,6 +52,10 @@ export interface MetaSave {
   /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
   sfxVolume: number;
   musicVolume: number;
+  /** Animation strength (see {@link MotionMode}). Defaults to
+   *  `'minimal'` on touch devices and `'auto'` everywhere else; the
+   *  player can override either default via the settings overlay. */
+  motionMode: MotionMode;
   /** First-time-user-experience flag (GDD §18). True once the player has
    *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
   tutorialDone: boolean;
@@ -104,6 +115,7 @@ export function newMetaSave(): MetaSave {
     selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
     musicVolume: 0.4,
+    motionMode: defaultMotionModeForNewSave(),
     tutorialDone: false,
     pauseTutorialDone: false,
     menuTutorialDone: false,
@@ -201,6 +213,11 @@ export function loadMeta(): MetaSave {
         : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
       musicVolume: clampVolume(data.musicVolume, 0.4),
+      // Migration: pre-motion-mode saves had no setting. Carry over the
+      // platform default so existing Android players who had been
+      // suffering through the full animation set quietly fall to
+      // `'minimal'` — they can re-enable via the settings toggle.
+      motionMode: sanitizeMotionMode(data.motionMode),
       // Migration: pre-FTUE saves had no tutorial flag. Treat any returning
       // player who has at least one finished run as having seen the
       // tutorial — we don't want to nag veterans with the wave-1 hint.
@@ -253,6 +270,16 @@ export function resetMeta(): void {
   } catch {
     // ignore
   }
+}
+
+function defaultMotionModeForNewSave(): MotionMode {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'auto';
+  return window.matchMedia('(pointer: coarse)').matches ? 'minimal' : 'auto';
+}
+
+function sanitizeMotionMode(v: unknown): MotionMode {
+  if (v === 'auto' || v === 'minimal' || v === 'full') return v;
+  return defaultMotionModeForNewSave();
 }
 
 function clampVolume(v: unknown, fallback: number): number {

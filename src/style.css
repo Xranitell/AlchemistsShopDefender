@@ -210,9 +210,7 @@ body {
       drop-shadow(1px 1px 0 #07080e);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .pixel-icon.glow-gold { animation: none; }
-}
+:root.motion-reduced .pixel-icon.glow-gold { animation: none; }
 
 /* WAVE widget */
 .hud-wave-badge { min-width: 130px; }
@@ -748,9 +746,7 @@ body {
   0%, 100% { transform: scale(1); filter: brightness(0.78) saturate(0.85); }
   50%      { transform: scale(1.012); filter: brightness(0.92) saturate(0.95); }
 }
-@media (prefers-reduced-motion: reduce) {
-  #overlay.cards-mode.cards-pre-lock .card-rh { animation: none; }
-}
+:root.motion-reduced #overlay.cards-mode.cards-pre-lock .card-rh { animation: none; }
 
 /* Countdown hint — text + linear progress bar that depletes over the
  * lock duration. The bar's keyframe duration matches the 2 s timeout in
@@ -812,14 +808,12 @@ body {
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .cards-lock-hint-label { animation: none; }
-  .cards-lock-hint-bar-fill {
-    /* Skip the depleting animation for reduced-motion users; the
-     * countdown is still implicit via the JS timeout. */
-    transform: scaleX(0);
-    animation: none;
-  }
+:root.motion-reduced .cards-lock-hint-label { animation: none; }
+:root.motion-reduced .cards-lock-hint-bar-fill {
+  /* Skip the depleting animation for reduced-motion users; the
+   * countdown is still implicit via the JS timeout. */
+  transform: scaleX(0);
+  animation: none;
 }
 
 .cards-stage {
@@ -993,10 +987,8 @@ body {
  * non-interactive (see the `cards-pre-lock` rule above) and the
  * countdown hint communicates the wait. */
 /* Honour reduced-motion preferences — drop the rotation entirely. */
-@media (prefers-reduced-motion: reduce) {
-  .card-rh::before,
-  .card-rh::after { animation: none; }
-}
+:root.motion-reduced .card-rh::before,
+:root.motion-reduced .card-rh::after { animation: none; }
 
 .card-rh-frame {
   position: absolute;
@@ -1537,9 +1529,7 @@ body {
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tower-shop { animation: none; }
-}
+:root.motion-reduced .tower-shop { animation: none; }
 
 /* Meta-progression overlay */
 .meta-panel {
@@ -2559,15 +2549,13 @@ body {
 }
 
 /* Reduced-motion users get instant snaps instead of size animations. */
-@media (prefers-reduced-motion: reduce) {
-  .mm-daily-content,
-  .mm-daily-chev,
-  .mm-lb-chev,
-  .mm-col-right .mm-lb-card,
-  .mm-daily-indicator-claimable {
-    transition: none;
-    animation: none;
-  }
+:root.motion-reduced .mm-daily-content,
+:root.motion-reduced .mm-daily-chev,
+:root.motion-reduced .mm-lb-chev,
+:root.motion-reduced .mm-col-right .mm-lb-card,
+:root.motion-reduced .mm-daily-indicator-claimable {
+  transition: none;
+  animation: none;
 }
 
 .mm-daily-week-badge {
@@ -3913,20 +3901,18 @@ body {
       0 0 32px color-mix(in srgb, var(--mp-edge) 95%, transparent); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mp-rays,
-  .mp-spark,
-  .mp-sigil,
-  .mp-tagline,
-  .mp-title-char,
-  .mp-warn-icon,
-  .mp-mode-epic .mp-btn.mp-confirm,
-  .mp-mode-ancient .mp-btn.mp-confirm {
-    animation: none;
-  }
-  .mp-spark { opacity: 0; }
-  .mp-title-char::before { animation: none; opacity: 0.5; }
+:root.motion-reduced .mp-rays,
+:root.motion-reduced .mp-spark,
+:root.motion-reduced .mp-sigil,
+:root.motion-reduced .mp-tagline,
+:root.motion-reduced .mp-title-char,
+:root.motion-reduced .mp-warn-icon,
+:root.motion-reduced .mp-mode-epic .mp-btn.mp-confirm,
+:root.motion-reduced .mp-mode-ancient .mp-btn.mp-confirm {
+  animation: none;
 }
+:root.motion-reduced .mp-spark { opacity: 0; }
+:root.motion-reduced .mp-title-char::before { animation: none; opacity: 0.5; }
 
 /* ============ Endless modifier overlay ============ */
 .endless-modifier-panel {
@@ -4490,12 +4476,10 @@ body {
     0 0 6px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .blessing-icon,
-  .blessing-tagline,
-  .blessing-card-shimmer { animation: none; transition: none; }
-  .blessing-card-shimmer { display: none; }
-}
+:root.motion-reduced .blessing-icon,
+:root.motion-reduced .blessing-tagline,
+:root.motion-reduced .blessing-card-shimmer { animation: none; transition: none; }
+:root.motion-reduced .blessing-card-shimmer { display: none; }
 
 @media (max-width: 600px) {
   .blessing-grid { grid-template-columns: 1fr; }
@@ -4812,12 +4796,10 @@ body {
 .lo-cta:active { transform: translateY(2px) scale(0.99); }
 .lo-cta:focus-visible { outline: 3px solid #fff2c2; outline-offset: 4px; }
 
-@media (prefers-reduced-motion: reduce) {
-  .lo-tagline,
-  .lo-card-shimmer,
-  .lo-cta { animation: none; transition: none; }
-  .lo-card-shimmer { display: none; }
-}
+:root.motion-reduced .lo-tagline,
+:root.motion-reduced .lo-card-shimmer,
+:root.motion-reduced .lo-cta { animation: none; transition: none; }
+:root.motion-reduced .lo-card-shimmer { display: none; }
 
 @media (max-width: 600px) {
   .lo-grid { grid-template-columns: repeat(2, 1fr); }
@@ -5168,6 +5150,38 @@ body {
   background: var(--accent, #f5c453);
   color: #1a1a22;
   border-color: var(--accent, #f5c453);
+}
+
+/* Motion / animation toggle — same visual language as the language picker
+ * so the settings panel reads as a column of paired controls. */
+.settings-motion-row {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.settings-motion-btn {
+  background: transparent;
+  border: 1px solid var(--border-soft, #3a3a4a);
+  color: var(--fg-dim, #a0a0b0);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.settings-motion-btn:hover { color: var(--fg, #e6e6f0); border-color: var(--accent, #f5c453); }
+.settings-motion-btn.active {
+  background: var(--accent, #f5c453);
+  color: #1a1a22;
+  border-color: var(--accent, #f5c453);
+}
+.settings-motion-hint {
+  font-size: 11px;
+  color: var(--fg-dim, #a0a0b0);
+  margin-top: 6px;
+  line-height: 1.35;
 }
 
 /* ============ Leaderboard panel (used inline + in overlays) ============ */
@@ -6185,14 +6199,12 @@ body {
   cursor: not-allowed;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .craft-tagline,
-  .craft-inv-glow,
-  .craft-recipe-shimmer,
-  .craft-recipe.is-ready .craft-brew-btn,
-  .craft-recipe.is-ready .craft-recipe-shimmer { animation: none; transition: none; }
-  .craft-recipe-shimmer { display: none; }
-}
+:root.motion-reduced .craft-tagline,
+:root.motion-reduced .craft-inv-glow,
+:root.motion-reduced .craft-recipe-shimmer,
+:root.motion-reduced .craft-recipe.is-ready .craft-brew-btn,
+:root.motion-reduced .craft-recipe.is-ready .craft-recipe-shimmer { animation: none; transition: none; }
+:root.motion-reduced .craft-recipe-shimmer { display: none; }
 @media (max-width: 600px) {
   .craft-recipe {
     grid-template-columns: 1fr;
@@ -6567,12 +6579,10 @@ body {
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .chest-rays { animation: none; }
-  .chest-rays.blasting { animation: none; opacity: 0.85; }
-  .chest-button.shake { animation: none; }
-  .chest-fly-out { animation-duration: 1ms !important; }
-}
+:root.motion-reduced .chest-rays { animation: none; }
+:root.motion-reduced .chest-rays.blasting { animation: none; opacity: 0.85; }
+:root.motion-reduced .chest-button.shake { animation: none; }
+:root.motion-reduced .chest-fly-out { animation-duration: 1ms !important; }
 
 /* ============ Defeat ("Mannequin has fallen") overlay ============ */
 /* Mirrors the chest-overlay layout (panel + corner ornaments + stage)
@@ -6953,16 +6963,14 @@ body {
     0 0 12px rgba(255, 209, 102, 0.35);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .defeat-rays { animation: none; }
-  .defeat-mannequin { animation: none; }
-  .defeat-mannequin::after { animation: none; }
-  .defeat-title-char { animation: none; }
-  .defeat-title-char::before { animation: none; opacity: 0.5; }
-  .defeat-tagline { animation: none; }
-  .defeat-cta-primary { animation: none; }
-  .defeat-spark { animation: none; opacity: 0; }
-}
+:root.motion-reduced .defeat-rays { animation: none; }
+:root.motion-reduced .defeat-mannequin { animation: none; }
+:root.motion-reduced .defeat-mannequin::after { animation: none; }
+:root.motion-reduced .defeat-title-char { animation: none; }
+:root.motion-reduced .defeat-title-char::before { animation: none; opacity: 0.5; }
+:root.motion-reduced .defeat-tagline { animation: none; }
+:root.motion-reduced .defeat-cta-primary { animation: none; }
+:root.motion-reduced .defeat-spark { animation: none; opacity: 0; }
 
 /* ---------- Reward-doubled celebratory variant ----------
  * The rewarded-ad reward-doubled sub-panel reuses the defeat-overlay
@@ -7031,11 +7039,9 @@ body {
   0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.35)); }
   50%      { filter: drop-shadow(0 0 14px rgba(255, 209, 102, 0.7)); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .defeat-doubled-icon { animation: none; }
-  .defeat-doubled .defeat-title-char { animation: none; opacity: 1; transform: none; }
-  .defeat-doubled .defeat-title { animation: none; }
-}
+:root.motion-reduced .defeat-doubled-icon { animation: none; }
+:root.motion-reduced .defeat-doubled .defeat-title-char { animation: none; opacity: 1; transform: none; }
+:root.motion-reduced .defeat-doubled .defeat-title { animation: none; }
 
 .mm-slot-potion {
   font-size: 22px;
@@ -7910,16 +7916,14 @@ body {
 
 /* Reduced motion: drop the cascade + drift, keep only the gentle fade
  * so motion-sensitive players still see the message. */
-@media (prefers-reduced-motion: reduce) {
-  .law-announce,
-  .law-announce-card,
-  .law-announce-row {
-    transition-duration: 200ms;
-    transform: none !important;
-  }
-  .law-announce-row {
-    transition-delay: 0ms;
-  }
+:root.motion-reduced .law-announce,
+:root.motion-reduced .law-announce-card,
+:root.motion-reduced .law-announce-row {
+  transition-duration: 200ms;
+  transform: none !important;
+}
+:root.motion-reduced .law-announce-row {
+  transition-delay: 0ms;
 }
 
 /* Phone-landscape compression. The desktop card is min(360, 88vw) wide
@@ -8086,6 +8090,20 @@ body {
   color: var(--fg);
 }
 .settings-panel .settings-lang-btn.active {
+  background: linear-gradient(180deg, rgba(255, 140, 50, 0.25), rgba(210, 79, 28, 0.15));
+  border-color: #ff8c3a;
+  color: #ffd166;
+}
+.settings-panel .settings-motion-btn {
+  border-color: #3a2018;
+  background: rgba(26, 12, 16, 0.8);
+  color: var(--fg-dim);
+}
+.settings-panel .settings-motion-btn:hover {
+  border-color: #ff8c3a;
+  color: var(--fg);
+}
+.settings-panel .settings-motion-btn.active {
   background: linear-gradient(180deg, rgba(255, 140, 50, 0.25), rgba(210, 79, 28, 0.15));
   border-color: #ff8c3a;
   color: #ffd166;
@@ -8490,13 +8508,11 @@ body {
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */
-@media (prefers-reduced-motion: reduce) {
-  .meta-tree-tagline,
-  .meta-tree-tab.active::after,
-  .meta-tree-svg.entering,
-  .meta-tree-svg.leaving {
-    animation: none;
-  }
+:root.motion-reduced .meta-tree-tagline,
+:root.motion-reduced .meta-tree-tab.active::after,
+:root.motion-reduced .meta-tree-svg.entering,
+:root.motion-reduced .meta-tree-svg.leaving {
+  animation: none;
 }
 
 /* ── Narrow-viewport stack ──────────────────────────────────────── */
@@ -8524,12 +8540,14 @@ body {
   .lb-tab,
   .mm-lang-btn,
   .settings-lang-btn,
+  .settings-motion-btn,
   .overlay-close,
   .meta-loadout-btn {
     min-height: 44px;
   }
   .mm-lang-btn,
-  .settings-lang-btn {
+  .settings-lang-btn,
+  .settings-motion-btn {
     min-width: 44px;
   }
   /* Daily / weekly cells double as buttons on this overlay */
@@ -8998,23 +9016,21 @@ body {
  *  Reduced-motion safety — disable all decorative animations
  *  for users who request reduced motion.
  * ============================================================ */
-@media (prefers-reduced-motion: reduce) {
-  .mm-spark,
-  .main-menu .mm-title,
-  .main-menu .mm-title-top,
-  .main-menu .mm-title-bottom,
-  .mm-battle-btn,
-  .mm-battle-btn::before,
-  .mm-card,
-  .mm-mannequin-display::before,
-  .daily-panel,
-  .lb-panel,
-  .meta-tree-panel,
-  .craft-panel,
-  .lo-panel,
-  .blessing-panel {
-    animation: none !important;
-  }
+:root.motion-reduced .mm-spark,
+:root.motion-reduced .main-menu .mm-title,
+:root.motion-reduced .main-menu .mm-title-top,
+:root.motion-reduced .main-menu .mm-title-bottom,
+:root.motion-reduced .mm-battle-btn,
+:root.motion-reduced .mm-battle-btn::before,
+:root.motion-reduced .mm-card,
+:root.motion-reduced .mm-mannequin-display::before,
+:root.motion-reduced .daily-panel,
+:root.motion-reduced .lb-panel,
+:root.motion-reduced .meta-tree-panel,
+:root.motion-reduced .craft-panel,
+:root.motion-reduced .lo-panel,
+:root.motion-reduced .blessing-panel {
+  animation: none !important;
 }
 
 /* ============================================================
@@ -9239,16 +9255,14 @@ body {
 .mm-shop-card .mm-craft-level { display: none; }
 
 /* Reduced-motion safety for the new animations. */
-@media (prefers-reduced-motion: reduce) {
-  .mm-lab-edges line,
-  .mm-lab-nodes .node-halo,
-  .mm-lab-nodes .node.root,
-  .mm-lab-nodes .node.avail,
-  .mm-shop-backdrop .mm-shop-steam ellipse,
-  .mm-shop-backdrop .mm-shop-sparkles circle,
-  .mm-slot-silhouette {
-    animation: none !important;
-  }
+:root.motion-reduced .mm-lab-edges line,
+:root.motion-reduced .mm-lab-nodes .node-halo,
+:root.motion-reduced .mm-lab-nodes .node.root,
+:root.motion-reduced .mm-lab-nodes .node.avail,
+:root.motion-reduced .mm-shop-backdrop .mm-shop-steam ellipse,
+:root.motion-reduced .mm-shop-backdrop .mm-shop-sparkles circle,
+:root.motion-reduced .mm-slot-silhouette {
+  animation: none !important;
 }
 
 /* ============================================================
@@ -9594,17 +9608,15 @@ body {
 }
 
 /* ---- Reduced motion safety ------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  .difficulty-spark,
-  .difficulty-header h2,
-  .difficulty-card,
-  .difficulty-card::after,
-  .difficulty-icon-halo,
-  .difficulty-glyph,
-  .difficulty-orb,
-  .difficulty-lock {
-    animation: none !important;
-  }
+:root.motion-reduced .difficulty-spark,
+:root.motion-reduced .difficulty-header h2,
+:root.motion-reduced .difficulty-card,
+:root.motion-reduced .difficulty-card::after,
+:root.motion-reduced .difficulty-icon-halo,
+:root.motion-reduced .difficulty-glyph,
+:root.motion-reduced .difficulty-orb,
+:root.motion-reduced .difficulty-lock {
+  animation: none !important;
 }
 
 /* ============================================================

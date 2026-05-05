@@ -91,6 +91,7 @@ import { setLocale, t, onLocaleChange, normalizeToLocale } from './i18n';
 // `:root` so UI code can react to them; the canvas / arena code below
 // reads them directly via `getViewport()`.
 import { installViewportManager, getViewport, onViewportChange } from './engine/viewport';
+import { applyMotionModeFromMeta } from './engine/motion';
 
 const MOBILE_BREAKPOINT = 1024;
 
@@ -178,6 +179,10 @@ let meta: MetaSave = loadMeta();
 // Apply the saved locale before any UI is rendered so the very first
 // frames already show the player's language preference.
 setLocale(meta.locale);
+// Apply the saved motion mode (toggles `:root.motion-reduced` for the
+// reduced-motion CSS rules) before the first paint so we never flash
+// the full animation set on a phone that should be on `'minimal'`.
+applyMotionModeFromMeta(meta);
 let state: GameState = buildInitialState();
 
 // Initialise the audio engine on the first user gesture (click / keydown).
@@ -1578,6 +1583,7 @@ function showRewardDoubledOverlay(opts: {
 function showMainMenu(): void {
   meta = loadMeta();
   audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
+  applyMotionModeFromMeta(meta);
   audio.playMusic('menu');
   // Closing one of the menu cards always tears down the walkthrough
   // (the targeted card disappears with the menu, so the spotlight

@@ -150,6 +150,11 @@ export const RU: Record<string, string> = {
   'ui.settings.sfx': 'Эффекты',
   'ui.settings.music': 'Музыка',
   'ui.settings.language': 'Язык',
+  'ui.settings.motion': 'Анимации',
+  'ui.settings.motion.auto': 'Авто',
+  'ui.settings.motion.minimal': 'Минимум',
+  'ui.settings.motion.full': 'Полные',
+  'ui.settings.motion.hint': 'На телефоне рекомендуется «Минимум».',
 
   // ── Difficulty overlay ───────────────────────────────────────────────
   'ui.difficulty.title': 'Выбери подземелье',
