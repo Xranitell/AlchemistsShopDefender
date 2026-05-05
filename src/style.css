@@ -11315,3 +11315,62 @@ body {
 :root.viewport-fitted .main-menu {
   overflow: hidden;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   IN-BATTLE HUD — fit-mode adapter (mobile phase 3).
+
+   Phase 1 introduced a viewport manager that publishes `--ui-scale`,
+   `--hud-scale`, and the four `--safe-*` insets. Phase 2 wired the
+   reference design size (`--design-w/h`) into the main menu. Phase 3
+   does the same for the in-battle HUD:
+
+     1. `transform: scale(var(--hud-scale))` on `.hud-top` and
+        `.hud-bottom-row` so HUD chrome shrinks in lock-step with the
+        rest of the UI on phones. `--hud-scale` is floored at 0.85
+        (see MIN_HUD_SCALE in viewport.ts) so a 48 CSS-px pause button
+        never falls below ~40 px on the smallest phone.
+     2. Safe-area wiring: HUD edges respect notch / home-indicator
+        cutouts via `max(legacy-px, var(--safe-*))` clamps. Pre-Phase 3
+        the HUD only consulted `env(safe-area-inset-*)` inside one
+        narrow `@media (max-height: 420px)` block; here we make it
+        unconditional whenever fit-mode is active.
+     3. Transform origin: top row scales toward the right edge so the
+        pause button stays anchored where the player's thumb expects
+        it. Bottom row scales toward the right edge too, anchoring the
+        ABILITY/OVERLOAD round buttons. The (less critical) wave badge
+        and centre potion belt absorb the extra empty space.
+
+   Legacy `@media (orientation: landscape) and (max-height: 540px)` HUD
+   rules are intentionally kept as a fallback for the (rare) case where
+   the JS viewport manager doesn't run (e.g. a script load failure).
+   They have lower specificity than the `:root.viewport-fitted` block
+   below, so fit-mode always wins when it's on. */
+
+:root.viewport-fitted .hud-top {
+  /* Edge insets — keep the 4/18 px legacy gutter as a floor so the HUD
+     doesn't visually creep into the world view on viewports without a
+     real safe-area, and grow to env() values on devices with a notch.
+     Note: --safe-* may be 0px on desktop; max(...) reduces to the
+     legacy literal in that case. */
+  top: max(4px, var(--safe-top, 0px));
+  left: max(18px, var(--safe-left, 0px));
+  right: max(18px, var(--safe-right, 0px));
+  /* Visual scaling. transform-origin: top right anchors the right
+     side (resources + pause button) at the screen edge — those are
+     the elements the player tends to look for under their thumb on
+     mobile. The wave badge on the left absorbs the visual shift. */
+  transform-origin: top right;
+  transform: scale(var(--hud-scale, 1));
+}
+
+:root.viewport-fitted .hud-bottom-row {
+  bottom: max(18px, var(--safe-bottom, 0px));
+  left: max(22px, var(--safe-left, 0px));
+  right: max(22px, var(--safe-right, 0px));
+  /* Anchor right so the round ABILITY / OVERLOAD buttons stay glued
+     to the right edge. The centre column (yellow CTA + potion belt)
+     drifts slightly inward, which is fine — it sits on a flexible
+     1fr | auto | 1fr grid that absorbs the offset. */
+  transform-origin: bottom right;
+  transform: scale(var(--hud-scale, 1));
+}
