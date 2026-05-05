@@ -15,3 +15,9 @@ dist-tsc/
 /test-results/
 /blob-report/
 /playwright/.cache/
+
+# Local repro scripts used to inspect main-menu layout at custom
+# viewport sizes (see tests/viewport/ for the committed regression
+# suite). These are session-scratch and shouldn't enter the repo.
+/repro.mjs
+/repro-multi.mjs

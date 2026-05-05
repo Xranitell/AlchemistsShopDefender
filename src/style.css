@@ -10709,30 +10709,40 @@ body {
   padding: 4px 6px;
 }
 
-/* Loadout card — restore comfortable padding + slot dimensions. */
+/* Loadout card — compact padding + slot dimensions. The default
+   `flex: 0.85 1 0` stretched the card to ~190 design-px tall on the
+   wide-short tier, pushing the AURA row past the body's bottom edge.
+   With `flex: 0 0 auto` (set in the polish block at the end of the
+   file) the card sizes to its content; we just need its content to be
+   compact enough to fit alongside the Brewery + Lab cards. */
 :root.viewport-fitted .main-menu .mm-loadout-card {
-  flex: 0.85 1 0;
-  padding: 10px 14px;
-  gap: 6px;
+  padding: 8px 14px 10px;
+  gap: 4px;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slots {
-  gap: 6px;
-  margin: 4px 0 0;
+  gap: 4px;
+  margin: 2px 0 0;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slot {
-  padding: 6px 10px;
+  padding: 4px 10px;
   gap: 8px;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slot-icon {
-  width: 32px;
-  height: 32px;
-  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slot-tag {
   font-size: 10px;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slot-name {
-  font-size: 14px;
+  font-size: 13px;
+}
+/* Click-to-open hint is redundant in fit-mode (the whole card is the
+   click target and the slots already have a yellow / cyan glow that
+   reads as "interactive"); hide it to free ~24 design-px. */
+:root.viewport-fitted .main-menu .mm-loadout-hint {
+  display: none;
 }
 
 /* Mannequin — landscape-mobile rules at line 8671 / 9846 either hide
@@ -10850,6 +10860,125 @@ body {
    user scroll inside the menu rather than clipping silently. */
 :root.viewport-fitted .main-menu {
   overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Main-menu adaptation polish — short / wide-short viewports.
+
+   On 1280×570 (typical Yandex Games WebView) the original fit-mode
+   centred a 1024×576 narrow design inside the viewport, leaving ~130px
+   horizontal gutters on each side and stacking three full-height left-
+   column cards (Brewery + Lab + Mannequin Loadout) that overflowed the
+   ~400-px design body. The viewport manager now picks a 1280×576 wide-
+   short design for that tier — the rules below tighten cards so all
+   three fit comfortably in the column and let the right column scroll
+   the daily-rewards calendar without pushing the leaderboard offscreen.
+
+   1. Brewery card sizes to its slot row + chrome (~120 design-px) so
+      it doesn't stretch to a third of the column when there's only one
+      slot row to show.
+   2. Lab + Loadout cards size to their natural content; the column
+      becomes vertically scrollable as a fallback if cumulative card
+      height still exceeds the body.
+   3. While the daily-rewards calendar is open the leaderboard fully
+      collapses to a clickable header strip — the calendar grid then
+      claims the whole column instead of fighting for ~200px.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Left column: scroll instead of clipping if cards still exceed the
+   column. Cards shrink to their content size rather than stretching to
+   fill (the previous default `flex: 1 1 0` distribution made the
+   single-slot Brewery as tall as the multi-card Lab). */
+:root.viewport-fitted .main-menu .mm-col-left {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card,
+:root.viewport-fitted .main-menu .mm-col-left .mm-lab-card,
+:root.viewport-fitted .main-menu .mm-col-left .mm-loadout-card {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* Brewery: tighten chrome so the card is barely taller than its slot
+   row. Padding and slot-margin were tuned for a stretched card sized
+   ~190 design-px tall; shrunk versions need less internal breathing. */
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card {
+  padding: 10px 14px 12px;
+  gap: 4px;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slots {
+  margin: 4px 0 0;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-craft-level {
+  margin-top: 4px;
+}
+
+/* Lab card: drop the diorama's internal 120-px desc minimum so the
+   card matches its tree height when there's no description below. */
+:root.viewport-fitted .main-menu .mm-col-left .mm-lab-card {
+  padding: 10px 14px;
+  gap: 4px;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-lab-card .mm-lab-desc {
+  min-height: 0;
+}
+
+/* Right column: allow its single calendar child to fill remaining
+   height when the leaderboard is collapsed. */
+:root.viewport-fitted .main-menu .mm-col-right {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Daily-rewards open ⇒ leaderboard collapses to its header. Override
+   the previous "shrink-but-still-visible" rule (220–440 px) since on a
+   570-tall viewport that left only ~150 design-px for the calendar
+   grid + claim button, well below their natural ~280 px. */
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-lb-card {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-lb-card
+  .lb-panel-compact {
+  display: none;
+}
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-lb-card
+  .mm-card-title {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+/* Surface the chevron next to the leaderboard title so it visually
+   reads as a tappable accordion when the panel is collapsed. The
+   `.mm-lb-chev` element exists but defaults to `display: none`; show
+   it only when daily is open AND we're in fit-mode (i.e. the panel
+   actually became collapsible because of space pressure). */
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-lb-chev {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
+/* Daily calendar: claim the column body when its sibling collapses.
+   `mm-daily-content-inner` becomes the scroll surface so the Day-1..9
+   grid plus claim button stay reachable on the shortest viewports
+   (e.g. 1280×540 design-h is 576 → calendar gets 576 − title − header
+   − padding ≈ 470 px which is still tight when 9 cells span 3 rows). */
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-daily-calendar {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+:root.viewport-fitted .main-menu .mm-col-right.daily-open .mm-daily-content {
+  min-height: 0;
+}
+:root.viewport-fitted .main-menu .mm-col-right.daily-open
+  .mm-daily-content-inner {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 /* ════════════════════════════════════════════════════════════════════════

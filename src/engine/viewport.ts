@@ -57,14 +57,20 @@ export const DESIGN_HEIGHT_WIDE = 720;
 export const DESIGN_WIDTH_NARROW = 1024;
 export const DESIGN_HEIGHT_NARROW = 576;
 
-/** Viewport must be at least this wide *and* this tall for the wide
- *  desktop design to be picked. Below either threshold we switch to
- *  the narrow design. The thresholds intentionally sit a bit below
- *  the wide design size (1100 < 1280, 620 < 720) so that already-
- *  small landscape laptops (e.g. 1280×640) still get the desktop
- *  visual identity, only switching to the narrow design when the
- *  device is meaningfully phone-shaped. */
+/** Viewport-width threshold below which we switch to the narrow
+ *  (1024-wide) design. Phones in landscape (768×398, 934×437) are
+ *  well below this; tablets (1024×600) hover at the threshold and
+ *  also use narrow because their width is < 1100. */
 export const NARROW_DESIGN_BREAKPOINT_WIDTH = 1100;
+
+/** Viewport-height threshold below which we switch off the wide-tall
+ *  720-px design. Wide-but-short laptops (e.g. a Yandex Games WebView
+ *  at 1280×570) fall under this height threshold but stay above the
+ *  width threshold — they get the *wide-short* design (1280×576)
+ *  rather than the phone narrow design. The thresholds intentionally
+ *  sit a bit below the wide design size (1100 < 1280, 620 < 720) so
+ *  that already-small landscape laptops (e.g. 1280×640) still get
+ *  the desktop visual identity. */
 export const NARROW_DESIGN_BREAKPOINT_HEIGHT = 620;
 
 /** Backwards-compatible aliases — the wide design is still considered
@@ -142,16 +148,38 @@ function readViewport(): ViewportSnapshot {
   const rawDpr = Number.isFinite(window.devicePixelRatio) ? window.devicePixelRatio : 1;
   const dpr = Math.max(1, Math.min(MAX_DPR, rawDpr));
 
-  // Pick the reference design rectangle. We deliberately use a single
-  // hard threshold rather than a continuous formula so the menu
-  // doesn't subtly redesign itself across a 50px resize range — the
-  // player either gets the wide desktop frame or the narrow phone
-  // frame, with no in-between blends.
-  const isNarrow =
-    width < NARROW_DESIGN_BREAKPOINT_WIDTH ||
-    height < NARROW_DESIGN_BREAKPOINT_HEIGHT;
-  const designWidth = isNarrow ? DESIGN_WIDTH_NARROW : DESIGN_WIDTH_WIDE;
-  const designHeight = isNarrow ? DESIGN_HEIGHT_NARROW : DESIGN_HEIGHT_WIDE;
+  // Pick the reference design rectangle. We deliberately use hard
+  // thresholds rather than a continuous formula so the menu doesn't
+  // subtly redesign itself across a 50 px resize range — the player
+  // either gets the wide-tall desktop frame, the wide-short laptop
+  // frame, or the narrow phone frame, with no in-between blends.
+  //
+  // Three tiers (instead of the original two) because a 1280×570 Yandex
+  // Games WebView is wide enough to use the desktop 1280-px column
+  // layout but too short to fit the 720-px desktop chrome — the previous
+  // two-tier code mapped it to the narrow 1024-px design and left a
+  // ~260-px horizontal gap on each side of the menu. The new
+  // *wide-short* tier picks 1280×576 so the menu fills the viewport
+  // horizontally and only the vertical axis needs scaling.
+  const isNarrowWidth = width < NARROW_DESIGN_BREAKPOINT_WIDTH;
+  const isShort = height < NARROW_DESIGN_BREAKPOINT_HEIGHT;
+  let designWidth: number;
+  let designHeight: number;
+  if (isNarrowWidth) {
+    // Phone-shaped viewport — narrow design on both axes.
+    designWidth = DESIGN_WIDTH_NARROW;
+    designHeight = DESIGN_HEIGHT_NARROW;
+  } else if (isShort) {
+    // Wide-short laptop / WebView — wide design horizontally, short
+    // design vertically. Lets the menu fill the viewport horizontally
+    // (no 260-px gutters) while still scaling down to fit the height.
+    designWidth = DESIGN_WIDTH_WIDE;
+    designHeight = DESIGN_HEIGHT_NARROW;
+  } else {
+    // Desktop — both axes use the canonical wide reference.
+    designWidth = DESIGN_WIDTH_WIDE;
+    designHeight = DESIGN_HEIGHT_WIDE;
+  }
 
   const uiScaleRaw = Math.min(width / designWidth, height / designHeight);
   const uiScale = Math.max(MIN_UI_SCALE, Math.min(1, uiScaleRaw));
@@ -249,14 +277,20 @@ function applySnapshotToCss(snap: ViewportSnapshot): void {
   const fitted = snap.uiScale < 0.999 || isNarrowDesign;
   root.classList.toggle('viewport-fitted', fitted);
   // A second, more specific marker class. Some fit-mode rules (e.g.
-  // title font-size) need different values on the narrow design vs
-  // the wide design because the same `clamp(min, vw, max)` rule
-  // resolves to a different pixel size depending on the *real*
+  // title font-size) need different values on the narrow-WIDTH design
+  // vs the wide-width designs because the same `clamp(min, vw, max)`
+  // rule resolves to a different pixel size depending on the *real*
   // viewport, which can be wider than the narrow design (e.g.
-  // 1280×540 viewport rendering the 960-wide design — vw=12.8 px
+  // 1280×540 viewport rendering the 1024-wide design — vw=12.8 px
   // clamps to the desktop-intended 36 px title that doesn't fit in
-  // 960 design pixels).
-  root.classList.toggle('viewport-fitted-narrow', isNarrowDesign);
+  // 1024 design pixels).
+  //
+  // Note: the wide-short tier (1280×576) does NOT trigger
+  // `viewport-fitted-narrow` — its 1280-px horizontal canvas can host
+  // the desktop chip / title sizes without re-tightening, so we only
+  // flag a narrow design when the *width* is the narrow reference.
+  const isNarrowWidthDesign = snap.designWidth < DESIGN_WIDTH_WIDE;
+  root.classList.toggle('viewport-fitted-narrow', isNarrowWidthDesign);
 }
 
 let scheduled = false;
