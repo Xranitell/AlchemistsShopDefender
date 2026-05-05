@@ -547,8 +547,18 @@ export class MetaOverlay {
       text.textContent = glyph;
       g.appendChild(text);
 
-      // Click: select (and on already-selected available node, allocate).
-      g.addEventListener('click', () => {
+      // Tap / click: select (and on already-selected available node, allocate).
+      // We use `pointerup` instead of `click` because iOS Safari swallows the
+      // synthetic click on SVG `<g>` elements when their ancestor has
+      // `touch-action: none` (here `body`). `pointerup` is dispatched
+      // directly by the OS for both mouse and touch input, which sidesteps
+      // the broken click-synthesis path entirely while still firing on
+      // every desktop click.
+      g.addEventListener('pointerup', (ev) => {
+        // Only react to primary input (left mouse button / first touch). A
+        // long-press → context menu workflow on iOS would otherwise trigger
+        // an unwanted allocate on the same tap.
+        if (ev.button !== undefined && ev.button !== 0) return;
         if (this.selectedId === node.id && !owned && canAllocate(opts.meta, node)) {
           if (buyMetaUpgrade(opts.meta, node)) {
             opts.onSave();
