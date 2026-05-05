@@ -692,9 +692,14 @@ class TutorialController {
     }
     if (!world) return null;
     const screen = worldToScreen(world.x, world.y, camera);
-    // Convert canvas-space pixels into viewport-space pixels.
-    const sx = rect.left + screen.x * (rect.width / this.canvas.width);
-    const sy = rect.top + screen.y * (rect.height / this.canvas.height);
+    // `screen` is already in CSS-pixel space (the renderer applies an
+    // HiDPI base transform so all logical units match CSS px), and so is
+    // `rect`. The historical division by `canvas.width / rect.width` was
+    // needed when the canvas backing-store size matched the CSS size —
+    // now that the canvas runs at a DPR multiplier, that ratio would
+    // shrink the spotlight by 1/dpr.
+    const sx = rect.left + screen.x;
+    const sy = rect.top + screen.y;
     return { cx: sx, cy: sy, radius };
   }
 }

@@ -78,31 +78,36 @@ import { tutorial } from './ui/tutorial';
 import { hideAppLoader } from './ui/appLoader';
 import { setLocale, t, onLocaleChange, normalizeToLocale } from './i18n';
 
-// ── Mobile viewport scaling ──────────────────────────────────────────
-// On small screens (phones / small tablets) we override the viewport
-// width to 1280 CSS-px so the browser renders the page at the same scale
-// as a 1280-wide PC window and then CSS-scales it down to fit. This
-// preserves the exact same look as the desktop version.
-const DESIGN_WIDTH = 1280;
+// ── Mobile viewport ──────────────────────────────────────────────────
+// We let the meta viewport stay at `width=device-width` so the game
+// sees the *real* CSS viewport (e.g. ≈768×398 CSS px on a typical
+// 19.5:9 phone in WebView). Earlier revisions pinned the viewport to a
+// hard-coded 1280-wide layout that the browser then CSS-scaled down,
+// which preserved the PC visual identity but produced fragile sub-pixel
+// text and broken touch targets on anything that wasn't a 16:9 phone.
+//
+// The viewport manager (src/engine/viewport.ts) publishes the real
+// viewport size + DPR + safe-area insets as CSS custom properties on
+// `:root` so UI code can react to them; the canvas / arena code below
+// reads them directly via `getViewport()`.
+import { installViewportManager, getViewport, onViewportChange } from './engine/viewport';
+
 const MOBILE_BREAKPOINT = 1024;
 
-function applyMobileViewport(): void {
-  const vpMeta = document.querySelector('meta[name="viewport"]');
-  if (!vpMeta) return;
+installViewportManager();
+
+// Try to lock orientation to landscape on mobile. The Screen Orientation
+// API is best-effort — Yandex WebView and most desktop browsers reject
+// the call; that's fine, the portrait warning overlay catches the rest.
+function lockOrientationOnMobile(): void {
   const physSmall = Math.min(screen.width, screen.height);
-  if (physSmall < MOBILE_BREAKPOINT) {
-    vpMeta.setAttribute(
-      'content',
-      `width=${DESIGN_WIDTH}, viewport-fit=cover, user-scalable=no`,
-    );
-  }
-  // Try to lock orientation to landscape on mobile.
+  if (physSmall >= MOBILE_BREAKPOINT) return;
   try {
     const orient = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
     if (orient?.lock) orient.lock('landscape').catch(() => {});
   } catch { /* not supported — no-op */ }
 }
-applyMobileViewport();
+lockOrientationOnMobile();
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
 const hudRoot = document.getElementById('hud') as HTMLDivElement | null;
@@ -116,30 +121,57 @@ const ctx = canvas.getContext('2d');
 if (!ctx) throw new Error('Canvas 2D context not available');
 ctx.imageSmoothingEnabled = true;
 
+/** Current backing-store DPR multiplier. Read by `tick()` so we can
+ *  reset the canvas transform every frame (Canvas resets state when the
+ *  backing store is resized) before the renderer runs. */
+let canvasDpr = 1;
+
 /** Resize the canvas + game arena to fully cover the current viewport.
- *  The canvas internal resolution matches the CSS viewport (no DPR
- *  multiplication; existing render code is not HiDPI-aware). The world is
- *  separately sized in `setArenaSize` to a 1080-tall reference and is
- *  scaled-to-fit by `getRenderCamera()` — so on a 1280×576 mobile viewport
- *  the world is 2400×1080 and is rendered at scale 0.533, giving the same
- *  dais-to-canvas ratio the player sees on PC. */
+ *
+ *  CSS size:    canvas.style.{width,height} = real CSS-pixel viewport.
+ *  Backing:     canvas.{width,height}       = CSS × min(devicePixelRatio, 2).
+ *  Logical:     ctx.setTransform(dpr,…)     applied per frame so all
+ *               rendering math stays in CSS-pixel space.
+ *
+ *  The world is separately sized in `setArenaSize` to a 1080-tall
+ *  reference and is scaled-to-fit by `getRenderCamera()` — so on a
+ *  ~768×398 phone viewport the world is 2400×1080 and is rendered at
+ *  scale ≈0.37, giving the same dais-to-canvas ratio the player sees
+ *  on PC. The HiDPI backing store keeps the resulting raster crisp. */
 function syncArenaToViewport(): void {
   const c = canvas!;
-  const w = Math.max(640, Math.floor(window.innerWidth));
-  const h = Math.max(360, Math.floor(window.innerHeight));
-  if (c.width !== w) c.width = w;
-  if (c.height !== h) c.height = h;
+  const vp = getViewport();
+  const w = Math.max(640, vp.width);
+  const h = Math.max(360, vp.height);
+  canvasDpr = vp.dpr;
+  // CSS size — what `getBoundingClientRect()` reports and what input
+  // mapping uses to translate clientX/Y into game coords.
+  c.style.width = `${w}px`;
+  c.style.height = `${h}px`;
+  // Backing-store size — what the renderer actually rasterises into.
+  // Capped DPR (see viewport.ts MAX_DPR) keeps memory bounded on very
+  // high-density phones.
+  const backingW = Math.max(1, Math.round(w * canvasDpr));
+  const backingH = Math.max(1, Math.round(h * canvasDpr));
+  if (c.width !== backingW) c.width = backingW;
+  if (c.height !== backingH) c.height = backingH;
   setArenaSize(w, h);
   // Re-enable smoothing every resize (Canvas resets context state when
   // the backing store size changes).
-  if (ctx) ctx.imageSmoothingEnabled = true;
+  if (ctx) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.setTransform(canvasDpr, 0, 0, canvasDpr, 0, 0);
+  }
 }
 syncArenaToViewport();
-window.addEventListener('resize', () => {
+onViewportChange(() => {
   syncArenaToViewport();
   // The first call inside `state` setup already used the right size, but
   // subsequent runtime resizes need to reposition the mannequin / runes.
-  if (state) resizeArena(state, window.innerWidth, window.innerHeight);
+  if (state) {
+    const vp = getViewport();
+    resizeArena(state, vp.width, vp.height);
+  }
 });
 
 let meta: MetaSave = loadMeta();

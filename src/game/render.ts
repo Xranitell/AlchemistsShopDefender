@@ -41,9 +41,32 @@ const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
 let lastRenderTime = -1;
 
+/** Derive the canvas's HiDPI multiplier (backing-store px : CSS px).
+ *  We read it directly from the canvas rather than importing the
+ *  viewport manager so this module stays free of UI-layer deps. */
+function getCanvasDpr(ctx: CanvasRenderingContext2D): number {
+  const c = ctx.canvas;
+  // `clientWidth` is the CSS-pixel size of the canvas element; `c.width`
+  // is the backing-store size. Their ratio is the DPR multiplier
+  // applied by syncArenaToViewport in main.ts (capped at MAX_DPR).
+  // `clientWidth` is 0 for detached canvases — fall back to 1.
+  if (c.clientWidth > 0 && c.width > 0) {
+    return c.width / c.clientWidth;
+  }
+  return 1;
+}
+
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { width, height } = state.arena;
   const { width: canvasW, height: canvasH } = getViewportSize();
+  // Reset to the HiDPI-aware base transform every frame. The canvas
+  // backing store is sized to CSS-px × dpr (see syncArenaToViewport in
+  // main.ts), and rendering math throughout this module assumes the
+  // logical units match CSS pixels — so we re-pin the transform to
+  // (dpr,0,0,dpr,0,0) before any drawing. Cheap (single matrix set);
+  // also paves over any accidental transform drift from upstream code.
+  const dpr = getCanvasDpr(ctx);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvasW, canvasH);
 
@@ -1125,12 +1148,16 @@ function drawOverloadVfx(ctx: CanvasRenderingContext2D): void {
   if (!eff) return;
   const alpha = Math.max(0, 1 - eff.age / 0.45);
 
-  // Screen flash on initial overload
+  // Screen flash on initial overload. Fill the visible viewport in
+  // CSS-pixel space — `ctx.canvas.{width,height}` are backing-store
+  // dimensions (CSS × dpr) and would over-fill on HiDPI canvases now
+  // that the renderer pre-applies an (dpr,0,0,dpr) base transform.
   if (eff.age < 0.1) {
+    const { width: vpW, height: vpH } = getViewportSize();
     ctx.save();
     ctx.globalAlpha = (0.1 - eff.age) * 3;
     ctx.fillStyle = 'rgba(189, 246, 255, 0.15)';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, vpW, vpH);
     ctx.restore();
   }
 

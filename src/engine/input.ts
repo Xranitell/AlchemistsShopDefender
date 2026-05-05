@@ -18,8 +18,6 @@ export class Input {
   };
 
   private canvas: HTMLCanvasElement;
-  private cssToGameX = 1;
-  private cssToGameY = 1;
   // Cached canvas-rect numbers. We only refresh on resize / scroll
   // instead of per pointer event — `getBoundingClientRect` forces a
   // synchronous layout each call, which on mobile can dominate the
@@ -47,18 +45,23 @@ export class Input {
     this.rectTop = r.top;
     this.rectRight = r.right;
     this.rectBottom = r.bottom;
-    if (r.width > 0 && r.height > 0) {
-      this.cssToGameX = this.canvas.width / r.width;
-      this.cssToGameY = this.canvas.height / r.height;
-    }
     this.rectDirty = false;
   }
 
+  /** Translate a CSS-pixel client coord into a CSS-pixel canvas-relative
+   *  coord. The renderer applies an HiDPI base transform so all game/
+   *  world math runs in CSS pixels — pointer events come in CSS pixels
+   *  too (`clientX` / `clientY`), so a simple subtract-the-origin is the
+   *  whole conversion. The previous implementation also divided by
+   *  `canvas.width / rect.width`, which collapsed to 1 when the backing
+   *  store matched the CSS size; with the new DPR-aware backing store
+   *  that ratio is no longer 1 and the multiplication would push every
+   *  hit-test off by `dpr`. */
   private toGame(clientX: number, clientY: number): Vec2 {
     this.syncRect();
     return {
-      x: (clientX - this.rectLeft) * this.cssToGameX,
-      y: (clientY - this.rectTop) * this.cssToGameY,
+      x: clientX - this.rectLeft,
+      y: clientY - this.rectTop,
     };
   }
 

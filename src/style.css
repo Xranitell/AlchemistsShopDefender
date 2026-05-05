@@ -74,9 +74,9 @@ body {
 }
 
 /* ============ Portrait orientation warning (mobile only) ============ */
-/* Shown on touch devices held in portrait mode. The viewport-width
-   override in main.ts keeps PC scale, but portrait aspect ratio makes
-   the game nearly unplayable — prompt the user to rotate. */
+/* Shown on touch devices held in portrait mode. The game is laid out
+   for landscape; portrait aspect ratio makes it nearly unplayable —
+   prompt the user to rotate before any of the menu / canvas appears. */
 #portrait-warning {
   display: none;
   position: fixed;
@@ -104,9 +104,7 @@ body {
 
 /* On mobile touch devices in portrait: show the warning, hide the game.
    `pointer: coarse` limits this to touch devices (phones/tablets) so
-   desktop windows resized to portrait are not affected. The viewport
-   override in main.ts sets CSS width=1280 on mobile, so a max-width
-   guard would never match — `pointer: coarse` alone is sufficient. */
+   desktop windows resized to portrait are not affected. */
 @media (orientation: portrait) and (pointer: coarse) {
   #portrait-warning { display: flex; }
   #app { display: none; }
@@ -11004,4 +11002,282 @@ body {
   .defeat-cta-primary,
   .defeat-cta-secondary,
   .pause-exit-btn { min-height: 36px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   VIEWPORT-FITTED MAIN MENU (mobile / small landscape — phase 1)
+   ──────────────────────────────────────────────────────────────────────
+   When the real CSS viewport is smaller than the 1280×720 reference
+   design, src/engine/viewport.ts publishes:
+
+     :root { --ui-scale: <0..1> }
+     :root.viewport-fitted        (only when --ui-scale < 1)
+
+   The legacy approach forced `meta viewport=1280` so phones rendered
+   the entire page at desktop scale and the browser CSS-scaled it down.
+   That broke text crispness, touch hit-tests and DPR-aware rendering.
+
+   The new approach lets the page see the *real* viewport in CSS pixels,
+   then renders the main menu as a 1280×720 design and applies a uniform
+   `transform: scale(var(--ui-scale))`. Visual identity matches desktop;
+   the canvas separately uses a HiDPI backing store so pixel art is
+   crisp regardless of the menu's transform.
+
+   These rules use higher specificity (:root.viewport-fitted .main-menu)
+   so they override the landscape-mobile media-query tweaks above
+   without us having to gate every legacy rule. They are scoped to
+   .main-menu only — the in-game HUD / overlays still use their own
+   media-query tuning until phase 2 migrates them.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Body background fills the viewport behind the (possibly smaller-than-
+   viewport) scaled menu so areas outside the design rect blend with
+   the menu's own gradient instead of showing the document body. */
+:root.viewport-fitted body {
+  background:
+    radial-gradient(ellipse at 50% 22%, rgba(255, 209, 102, 0.18) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 100%, rgba(170, 30, 30, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
+}
+
+:root.viewport-fitted .main-menu {
+  /* Render at design size; the transform handles fitting to viewport. */
+  position: fixed;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 1280px;
+  height: 720px;
+  min-height: 720px;
+  max-width: none;
+  /* Cancel the landscape-mobile clamp() compressions that targeted the
+     real viewport — inside fit-mode we always paint a 1280-wide layout. */
+  padding: clamp(8px, 1.5vw, 24px);
+  gap: clamp(4px, 0.7vw, 10px);
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+  /* The transform is applied around the menu's centre; the
+     translate(-50%, -50%) keeps it centred even when the design is
+     larger than the visible viewport. */
+}
+
+/* Title — restore desktop sizes so they read correctly after the
+   global scale is applied. */
+:root.viewport-fitted .main-menu .mm-title-top {
+  font-size: clamp(20px, 2.4vw, 30px);
+}
+:root.viewport-fitted .main-menu .mm-title-bottom {
+  font-size: clamp(24px, 3vw, 36px);
+  margin-top: 4px;
+}
+
+/* Top row currencies / settings / language — restore desktop chip
+   density. The landscape-mobile rules trimmed paddings to 3px which,
+   combined with the global scale, produced unreadable chips. */
+:root.viewport-fitted .main-menu .mm-top-row {
+  padding: 0 4px 6px;
+  gap: 8px;
+}
+:root.viewport-fitted .main-menu .mm-currency {
+  padding: 8px 10px;
+  font-size: 12px;
+  gap: 7px;
+}
+:root.viewport-fitted .main-menu .mm-currency .pixel-icon {
+  transform: none;
+}
+:root.viewport-fitted .main-menu .mm-settings-gear {
+  width: 36px;
+  height: 36px;
+}
+
+/* Body — three columns each get a sane share of the 1280-wide design. */
+:root.viewport-fitted .main-menu .mm-body {
+  gap: clamp(8px, 1.2vw, 18px);
+  overflow: visible;
+}
+:root.viewport-fitted .main-menu .mm-col {
+  gap: clamp(6px, 0.8vw, 12px);
+  overflow: visible;
+}
+:root.viewport-fitted .main-menu .mm-col-left,
+:root.viewport-fitted .main-menu .mm-col-right {
+  flex: 0 0 28%;
+  max-width: none;
+  zoom: 1;
+}
+:root.viewport-fitted .main-menu .mm-col-center {
+  flex: 1 1 0;
+  min-width: 200px;
+}
+
+/* Cards — restore desktop chrome. */
+:root.viewport-fitted .main-menu .mm-card {
+  padding: 12px 16px;
+}
+:root.viewport-fitted .main-menu .mm-card-title {
+  font-size: 12px;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+/* Shop slots — desktop height so the row reads as a real shelf. */
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slot {
+  height: 52px;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slots {
+  margin: 8px 0;
+  gap: 8px;
+}
+
+/* Lab card diorama — restore desktop dimensions. */
+:root.viewport-fitted .main-menu .mm-col-left .mm-lab-card .mm-lab-tree {
+  width: 200px;
+  height: 100px;
+}
+:root.viewport-fitted .main-menu .mm-col-left .mm-lab-card .mm-lab-desc {
+  padding: 4px 6px;
+}
+
+/* Loadout card — restore comfortable padding + slot dimensions. */
+:root.viewport-fitted .main-menu .mm-loadout-card {
+  flex: 0.85 1 0;
+  padding: 10px 14px;
+  gap: 6px;
+}
+:root.viewport-fitted .main-menu .mm-loadout-slots {
+  gap: 6px;
+  margin: 4px 0 0;
+}
+:root.viewport-fitted .main-menu .mm-loadout-slot {
+  padding: 6px 10px;
+  gap: 8px;
+}
+:root.viewport-fitted .main-menu .mm-loadout-slot-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+}
+:root.viewport-fitted .main-menu .mm-loadout-slot-tag {
+  font-size: 10px;
+}
+:root.viewport-fitted .main-menu .mm-loadout-slot-name {
+  font-size: 14px;
+}
+
+/* Mannequin — landscape-mobile rules at line 8671 / 9846 either hide
+   or aggressively shrink the silhouette. In fit-mode we always show
+   it at design size; the global transform scales it down with the
+   rest of the menu. */
+:root.viewport-fitted .main-menu .mm-mannequin-display {
+  display: flex;
+  width: auto;
+  max-height: none;
+  transform: none;
+}
+
+/* Leaderboard — landscape-mobile rules cap the body to ~30dvh, which
+   pre-fit-mode was needed to keep the battle CTA on screen. After
+   fit-mode that's no longer needed: the whole 1280×720 design fits
+   together, so the leaderboard reverts to its desktop sizes. */
+:root.viewport-fitted .main-menu .mm-col-right .mm-lb-card {
+  min-height: 180px;
+  max-height: none;
+  flex: 1 1 0;
+}
+:root.viewport-fitted .main-menu .lb-panel-compact {
+  font-size: 14px;
+  padding: 14px 16px;
+}
+:root.viewport-fitted .main-menu .lb-panel-compact .lb-title {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+:root.viewport-fitted .main-menu .lb-panel-compact .lb-body {
+  min-height: 240px;
+  max-height: none;
+}
+:root.viewport-fitted .main-menu .lb-panel-compact .lb-row {
+  padding: 6px 8px;
+}
+
+/* If the legacy "leaderboard collapsible" mode is active it hides the
+   body via grid-template-rows: 0fr — undo that in fit-mode so the
+   board stays readable. The collapse was only meaningful when the
+   menu had to fight for vertical room. */
+:root.viewport-fitted .main-menu .mm-col-right.leaderboard-collapsible
+  .mm-lb-card .lb-panel-compact {
+  display: flex;
+  grid-template-rows: none;
+  opacity: 1;
+  padding-block: 14px 16px;
+  pointer-events: auto;
+  min-height: 240px;
+}
+
+/* Daily-rewards calendar — restore comfortable spacing. */
+:root.viewport-fitted .main-menu .mm-daily-grid {
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+:root.viewport-fitted .main-menu .mm-daily-cell {
+  padding: 6px 4px;
+}
+:root.viewport-fitted .main-menu .mm-daily-icon {
+  font-size: 22px;
+}
+:root.viewport-fitted .main-menu .mm-daily-day-label {
+  font-size: 8px;
+}
+:root.viewport-fitted .main-menu .mm-daily-reward-label {
+  font-size: 12px;
+}
+:root.viewport-fitted .main-menu .mm-daily-claim {
+  padding: 10px 16px;
+  font-size: 12px;
+}
+:root.viewport-fitted .main-menu .mm-daily-header {
+  gap: 8px;
+}
+:root.viewport-fitted .main-menu .mm-daily-header-text {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+:root.viewport-fitted .main-menu .mm-daily-week-badge {
+  font-size: 9px;
+  padding: 2px 5px;
+}
+
+/* Battle CTA — bottom row pinned to the design's bottom edge. The
+   landscape-mobile rules absolutely-positioned it relative to the
+   real viewport; in fit-mode we want it relative to the design rect. */
+:root.viewport-fitted .main-menu .mm-bottom-row {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding-top: 0;
+  gap: 0;
+  z-index: 3;
+}
+:root.viewport-fitted .main-menu .mm-battle-btn {
+  padding: 14px 56px 16px;
+  font-size: clamp(20px, 2.5vw, 28px);
+}
+:root.viewport-fitted .main-menu .mm-mode-btns {
+  gap: 8px;
+  margin-top: 4px;
+}
+:root.viewport-fitted .main-menu .mm-mode-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+/* The `transform: scale()` applied to the .main-menu changes its visual
+   bounding box but not its content size — overflow inside it (e.g. a
+   long leaderboard list) still has the design's 720px to work with.
+   When the design is too tall to fit even at MIN_UI_SCALE we let the
+   user scroll inside the menu rather than clipping silently. */
+:root.viewport-fitted .main-menu {
+  overflow: hidden;
 }
