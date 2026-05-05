@@ -21,3 +21,4 @@ dist-tsc/
 # suite). These are session-scratch and shouldn't enter the repo.
 /repro.mjs
 /repro-multi.mjs
+/repro-craft.mjs
