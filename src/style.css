@@ -3372,52 +3372,34 @@ body {
   isolation: isolate;
   /* Scale the entire confirmation panel down on short viewports so the
    * full content (stage, stats, bullets, warning, buttons) fits without
-   * any scrollbar. Uses `zoom` rather than `transform: scale` because
-   * zoom actually shrinks the layout box — and combined with disabling
-   * the parent `.panel` rule's `max-height: 95dvh` + internal overflow,
-   * this produces a panel that just *renders smaller* on short
-   * viewports instead of clipping or showing a scrollbar.
+   * any scrollbar. We use discrete `transform: scale()` breakpoints
+   * tuned so that at the 700–820 px range — where the original bug
+   * reproduced on mid-size laptop windows — the panel scales down
+   * enough to fit without losing readability.
    *
-   * Discrete breakpoints (see media queries below) tuned so that at
-   * the 700–820 px range — where the original bug reproduced on
-   * mid-size laptop windows — the panel scales down enough to fit
-   * without losing readability. We use media queries rather than
-   * calc(100dvh / 820px) because cross-browser support for that
-   * length-division-as-ratio pattern is patchy in 2025.
-   *
-   * Default (≥ 820 px tall): 1.0 zoom (no scaling). */
-  zoom: 1;
+   * Phase 5 (mobile-viewport refactor) note: the previous implementation
+   * used the non-standard `zoom:` property with a `transform: scale`
+   * fallback inside `@supports not (zoom: 0.5)`. zoom shrinks the layout
+   * box (so overflow doesn't kick in) while transform does not, but with
+   * the panel-internal `max-height: none; overflow: visible` overrides
+   * below the transform-only path is visually equivalent for our content
+   * and removes the standard/non-standard fork. */
+  transform-origin: center top;
   /* Override the generic `.panel { max-height: 95dvh; overflow: auto }`
-   * rule — once we apply zoom-based scaling we never want a panel-
-   * internal scrollbar (the panel either fits at this zoom, or it
+   * rule — once we apply transform-based scaling we never want a panel-
+   * internal scrollbar (the panel either fits at this scale, or it
    * doesn't and the parent overlay still scrolls as a last-resort
    * fallback). */
   max-height: none;
   overflow: visible;
 }
-@media (max-height: 819px) { .modifier-preview-panel { zoom: 0.92; } }
-@media (max-height: 749px) { .modifier-preview-panel { zoom: 0.84; } }
-@media (max-height: 679px) { .modifier-preview-panel { zoom: 0.76; } }
-@media (max-height: 619px) { .modifier-preview-panel { zoom: 0.68; } }
-@media (max-height: 579px) { .modifier-preview-panel { zoom: 0.62; } }
-@media (max-height: 549px) { .modifier-preview-panel { zoom: 0.56; } }
-@media (max-height: 499px) { .modifier-preview-panel { zoom: 0.5; } }
-
-/* Browsers without `zoom` support (older Firefox builds) get a
- * transform-based fallback. transform doesn't shrink the layout box, so
- * the overlay's overflow:auto may still kick in — but visually the
- * panel is smaller, which is closer to the intended look than a clipped
- * full-size panel. */
-@supports not (zoom: 0.5) {
-  .modifier-preview-panel { zoom: unset; transform-origin: center top; }
-  @media (max-height: 819px) { .modifier-preview-panel { transform: scale(0.92); } }
-  @media (max-height: 749px) { .modifier-preview-panel { transform: scale(0.84); } }
-  @media (max-height: 679px) { .modifier-preview-panel { transform: scale(0.76); } }
-  @media (max-height: 619px) { .modifier-preview-panel { transform: scale(0.68); } }
-  @media (max-height: 579px) { .modifier-preview-panel { transform: scale(0.62); } }
-  @media (max-height: 549px) { .modifier-preview-panel { transform: scale(0.56); } }
-  @media (max-height: 499px) { .modifier-preview-panel { transform: scale(0.5); } }
-}
+@media (max-height: 819px) { .modifier-preview-panel { transform: scale(0.92); } }
+@media (max-height: 749px) { .modifier-preview-panel { transform: scale(0.84); } }
+@media (max-height: 679px) { .modifier-preview-panel { transform: scale(0.76); } }
+@media (max-height: 619px) { .modifier-preview-panel { transform: scale(0.68); } }
+@media (max-height: 579px) { .modifier-preview-panel { transform: scale(0.62); } }
+@media (max-height: 549px) { .modifier-preview-panel { transform: scale(0.56); } }
+@media (max-height: 499px) { .modifier-preview-panel { transform: scale(0.5); } }
 
 /* Mode-specific colourways — overrides the panel background, border, and
  * shadows so each run mode has its own emotional tone. Custom CSS
@@ -5162,17 +5144,6 @@ body {
   background: var(--accent, #f5c453);
   color: #1a1a22;
   border-color: var(--accent, #f5c453);
-}
-
-/* ============ Inline leaderboard slot in main menu ============ */
-/* The leaderboards panel sits directly between the logo and the "TO BATTLE"
-   button. It's a compact variant of the full overlay (top 5 entries, three
-   tabs, no close button) so the player sees their rank without opening a
-   modal. The wrapper exists so we can centre the panel and bound its
-   width independently of the surrounding column. */
-.mm-mid-lb {
-  align-self: center;
-  width: min(420px, 92%);
 }
 
 /* ============ Leaderboard panel (used inline + in overlays) ============ */
@@ -7037,13 +7008,6 @@ body {
   .defeat-doubled .defeat-title { animation: none; }
 }
 
-/* Crafting entry point — shop card on the main menu */
-.mm-shop-btn {
-  width: 100%;
-  font: inherit;
-  appearance: none;
-  outline: none;
-}
 .mm-slot-potion {
   font-size: 22px;
   line-height: 1;
@@ -8502,13 +8466,7 @@ body {
   .hud-potion-slot,
   .menu-buttons button,
   .panel button,
-  .mm-section,
-  .mm-lab-btn,
-  .mm-settings-btn,
-  .mm-bp-btn,
-  .mm-daily-btn,
-  .mm-battle-btn,
-  .mm-shop-btn {
+  .mm-battle-btn {
     touch-action: manipulation;
   }
 }
@@ -8524,51 +8482,14 @@ body {
   .panel h2 { font-size: 15px; margin-bottom: 4px; }
   .panel .subtitle { font-size: 14px; margin-bottom: 12px; }
 
-  /* HUD top row — keep badges close to desktop sizes (the camera is now
-     scaled-to-fit so the world doesn't compete with HUD chrome for room).
-     We only trim padding/gap a bit to keep everything on a single row at
-     1280-wide CSS, and bump the pause button to a comfortable thumb size. */
-  .hud-top { gap: 12px; }
-  .hud-badge { padding: 9px 14px 11px; gap: 9px; }
-  .hud-wave-badge { min-width: 124px; }
-  .hud-wave-value { font-size: 22px; }
-  .hud-hp-badge { flex-basis: 400px; padding: 8px 14px 10px; }
-  .hud-hp-bar { height: 20px; }
-  .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
-  .hud-resource-value { font-size: 20px; }
-  .hud-pause-btn { width: 60px; height: 60px; font-size: 18px; }
+  /* HUD scaling moved to `:root.viewport-fitted .hud-top / .hud-bottom-row`
+     (Phase 3) which applies a single `transform: scale(var(--hud-scale))`
+     to each row and lets sub-elements keep their desktop sizes. The
+     legacy per-element font/padding tweaks compounded with that
+     transform and were dropped in Phase 5. */
 
-  /* HUD bottom row — the previous translateY(-72px) lift was tuned for
-     720px desktop. On landscape mobile it forces the potion bar above
-     the visible viewport. Drop it and let the row sit at the bottom. */
-  .hud-bottom-row { gap: 10px; }
-  .hud-center-bottom { transform: none; gap: 6px; }
-  .hud-hint { font-size: 14px; max-width: 60vw; }
-  /* Yellow CTA + circular OVERLOAD/ABILITY: bumped a bit larger than
-     desktop so the thumb has a comfortable target on mobile. */
-  .hud-skip-btn { padding: 14px 36px 16px; font-size: 16px; letter-spacing: 2px; }
-  .hud-bottom-right { gap: 12px; }
-  .hud-round-btn { width: 84px; height: 84px; }
-  .hud-round-btn .sprite { transform: scale(0.95); transform-origin: center; }
-  .hud-icon-label { font-size: 8px; }
-  .hud-overload-module { bottom: -10px; font-size: 11px; }
-  .hud-potion-bar { gap: 8px; margin-top: 0; }
-  .hud-potion-slot { width: 52px; height: 52px; font-size: 24px; }
-  .hud-potion-key { font-size: 11px; }
-  .hud-effect-chip { padding: 3px 8px; font-size: 14px; }
-  .hud-timer-bar { width: 180px; height: 16px; }
-  .hud-timer-label { font-size: 12px; }
-  .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
-  .hud-run-sidebar { left: 8px; top: 170px; max-width: 200px; max-height: calc(100vh - 260px); }
-  .hud-run-card { padding: 3px 5px; min-height: 28px; }
-  .hud-run-card-name { font-size: 8px; }
-  .hud-run-card-desc { font-size: 11px; }
-  .hud-run-card-icon { width: 18px; font-size: 14px; }
-
-  /* Card draft — keep 3 columns but slimmer. */
-  .cards { gap: 8px; }
-  .card { min-height: 0; padding: 10px; }
-  .cards-rh { gap: 10px; }
+  /* Card-draft scaling moved to `:root.viewport-fitted .cards-stage`
+     (Phase 4 overlay #5) which scales the whole stage uniformly. */
 
   /* Daily / battle pass — make the grids and chips fit. */
   .daily-grid { gap: 5px; }
@@ -8600,40 +8521,23 @@ body {
   .difficulty-subtitle { font-size: 14px; }
   .difficulty-panel { padding: 12px 16px; }
 
-  /* Modifier preview popup — used in the difficulty flow. */
-  .mp-stat { font-size: 13px; grid-template-columns: 24px 80px 1fr 56px; }
-  .mp-stat-icon { font-size: 16px; }
-  .mp-lines { font-size: 14px; padding-left: 16px; }
-  .mp-warn { font-size: 13px; padding: 6px 10px; }
-  .mp-btn { padding: 9px 18px; font-size: 10px; }
+  /* Modifier-preview scaling moved to `:root.viewport-fitted
+     .modifier-preview-panel` (Phase 5) which scales the whole panel
+     uniformly with `--ui-scale`. */
 
   /* Endless modifier popup. */
   .em-card { padding: 10px 14px; margin-bottom: 10px; }
   .em-confirm { padding: 9px 24px; font-size: 10px; }
 
-  /* Settings overlay — small panel becomes an internal-scroller. */
-  .settings-section { padding: 10px; }
-  .settings-section h3 { font-size: 13px; }
-  .settings-stat,
-  .settings-volume-label,
-  .settings-volume-value { font-size: 13px; }
+  /* Settings overlay scaling moved to `:root.viewport-fitted
+     .settings-panel` (Phase 4 overlay #4). */
 
   /* Crafting overlay — wide panel, force scrolling below 410px tall. */
   .craft-panel { padding: 14px 16px; max-height: 94dvh; }
   .craft-header h2 { font-size: 14px; }
 
-  /* Victory chest. */
-  .chest-overlay { padding: 18px 14px 16px; gap: 10px; }
-  .chest-stage { min-height: 130px; padding: 8px 0 4px; }
-  .chest-rays { width: 280px; height: 280px; }
-  .chest-button .chest-sprite { transform: scale(0.78); transform-origin: center; }
-  .chest-summary { font-size: 14px; }
-  .chest-hint { font-size: 9px; }
-  .chest-progress { width: 160px; }
-  .chest-reward-grid { grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; }
-  .chest-reward-tile { padding: 10px 6px 8px; }
-  .chest-reward-tile-amount { font-size: 13px; }
-  .chest-reward-tile-label { font-size: 11px; }
+  /* Victory-chest scaling moved to `:root.viewport-fitted .chest-overlay`
+     (Phase 4 overlay #2). */
 
   /* Leaderboard. */
   .lb-panel { padding: 14px 16px; }
@@ -8652,32 +8556,12 @@ body {
     padding: 10px 12px 8px;
   }
 
-  /* Main menu — collapse the side columns and the title so battle CTA
-     stays on-screen on a 410px tall phone. */
-  .main-menu { padding: clamp(6px, 1vw, 14px); gap: 8px; }
-  .mm-top-bar { padding: 0 4px 6px; font-size: 10px; gap: 6px; }
-  .mm-currency { padding: 5px 8px; }
-  .mm-center { gap: 8px; }
-  .mm-left, .mm-right { flex: 0 0 clamp(150px, 18vw, 200px); }
-  .mm-section,
-  .mm-lab-btn,
-  .mm-settings-btn,
-  .mm-bp-btn,
-  .mm-daily-btn { padding: 8px 10px; }
-  .mm-section-title { font-size: 9px; margin-bottom: 4px; }
-  .mm-mid { gap: 10px; }
-  .mm-mannequin-display { display: none; }
-  .mm-battle-btn { padding: 10px 32px 12px; font-size: clamp(15px, 2.2vw, 22px); }
-
-  /* The inline leaderboard in the main menu has a ~330px-tall body on PC
-     so the player sees the top of the table without scrolling. On a
-     phone in landscape (≤540 CSS px tall) the full title + body + battle
-     button must fit inside ~440 usable px, so we cap the body to 50vh
-     and let it scroll when the list is longer. */
-  .lb-panel-compact .lb-body {
-    min-height: 0;
-    max-height: 50dvh;
-  }
+  /* Main-menu scaling moved to `:root.viewport-fitted .main-menu`
+     (Phase 2) which renders the menu at the chosen design rectangle
+     (1280×720 wide / 1024×576 narrow) and scales it uniformly with
+     `--ui-scale`. The legacy per-element rules above used the now-
+     removed `.mm-top-bar / .mm-section / .mm-left / .mm-right / .mm-mid`
+     class names from the pre-Phase-2 menu DOM. */
 
   /* Skill tree — already viewport-fill, just make the side panel
      scroll instead of cropping. */
@@ -8697,95 +8581,41 @@ body {
   }
   .tower-shop button { padding: 8px 9px; font-size: 13px; }
 
-  /* Pause-stats overlay — keep two readable columns on mobile landscape. */
-  .pause-stats-group {
-    max-height: 92dvh;
-    overflow: hidden;
-  }
-  .pause-stats-row {
-    flex-direction: row;
-    align-items: center;
-  }
-  .pause-stats-inner {
-    width: min(560px, 50vw);
-    max-height: calc(92dvh - 44px);
-    padding: 18px 16px 14px;
-  }
-  .pause-stats-side {
-    width: min(420px, 42vw);
-    max-height: calc(92dvh - 44px);
-    padding: 18px 16px 14px;
-  }
-  .pause-stats-title { font-size: 16px; }
-  .ps-section { margin-bottom: 12px; }
-  .ps-section-title { font-size: 12px; margin-bottom: 6px; }
-  .ps-row { font-size: 16px; gap: 10px; padding: 2px 0; }
-  .ps-value { min-width: 60px; }
-  .ps-row.ps-unique-desc { font-size: 13px; padding-left: 64px; }
+  /* Pause-stats scaling moved to `:root.viewport-fitted .pause-stats-group`
+     (Phase 4 overlay #1). */
 }
 
 /* ─── Narrow landscape (≤900 CSS px wide) — phones in landscape ──── */
 @media (orientation: landscape) and (max-width: 900px) {
-  .hud-top { left: 12px; right: 12px; }
-  .hud-bottom-row { left: 12px; right: 12px; }
-  .hud-hint { max-width: 50vw; }
+  /* HUD edge insets moved to `:root.viewport-fitted .hud-top /
+     .hud-bottom-row` (Phase 3) which clamps `left/right` against
+     `--safe-left/right`. */
 
   /* Stack the leaderboard / battle pass header more compactly. */
   .bp-header h2,
   .daily-header h2,
   .difficulty-header h2 { font-size: 13px; }
 
-  /* Card draft — drop to 2 columns, the third card scrolls. */
-  .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Card-draft column count handled by `:root.viewport-fitted .cards-rh`
+     (Phase 4 overlay #5). */
 
-  /* Main menu side columns shrink further. */
-  .mm-left, .mm-right { flex: 0 0 clamp(140px, 22vw, 180px); }
+  /* Main-menu column sizing handled by `:root.viewport-fitted .main-menu
+     .mm-col-left / .mm-col-right` (Phase 2). */
 }
 
-/* ─── Very short (<420px tall) — common on 19.5:9 / 20:9 phones ──── */
-@media (orientation: landscape) and (max-height: 420px) {
-  /* Last-resort tightening: the overload conic ring and badges sit on
-     edge of the visible row. Pull every interactive control inward, but
-     keep pause / overload / "В БОЙ" comfortably tappable. */
-  .hud-bottom-row { bottom: max(8px, env(safe-area-inset-bottom)); }
-  .hud-top { top: max(2px, env(safe-area-inset-top)); }
-  .hud-badge { font-size: 10px; padding: 4px 8px 6px; }
-  .hud-wave-value { font-size: 16px; }
-  .hud-resource-value { font-size: 14px; }
-  .hud-hp-label-num { font-size: 8px; }
-  .hud-pause-btn { width: 52px; height: 52px; }
-  .hud-round-btn { width: 68px; height: 68px; }
-  .hud-icon-label { display: none; }
-  .hud-potion-slot { width: 40px; height: 40px; font-size: 20px; }
-  .hud-skip-btn { padding: 10px 26px; font-size: 13px; }
-}
+/* HUD scaling for very-short viewports is handled by `:root.viewport-fitted
+   .hud-top / .hud-bottom-row` (Phase 3). The legacy
+   `@media (orientation: landscape) and (max-height: 420px) .hud-*` block
+   was removed in Phase 5. */
 
 /* ══════════════════════════════════════════════════════════════════════
    MOBILE LANDSCAPE REFINEMENTS — additional fixes for overlays and the
    main menu on short phones (≤540px CSS height in landscape).
    ══════════════════════════════════════════════════════════════════════ */
 @media (orientation: landscape) and (max-height: 540px) {
-  .main-menu { min-height: 0; }
-  /* Shrink the lab description box which pushes content down. */
-  .mm-lab-desc { min-height: 0; }
-  /* Reduce shop slot height. */
-  .mm-shop-slot { height: 28px; }
-  .mm-shop-slots { margin: 6px 0; gap: 4px; }
-  .mm-craft-level { gap: 3px; font-size: 8px; }
-  .mm-craft-bar, .mm-mini-progress { height: 10px; }
-  .mm-stats { font-size: 12px; gap: 1px; margin-top: 4px; }
-  /* Leaderboard: shrink further so the battle button fits. */
-  .lb-panel-compact .lb-body {
-    min-height: 0;
-    max-height: 30dvh;
-  }
-  .lb-panel-compact .lb-loading,
-  .lb-panel-compact .lb-empty { padding: 40px 0; }
-
-  /* ── Card draft: compress cards on very short screens ─────────── */
-  .cards-stage { padding: 14px 18px; gap: 12px; }
-  .cards-stage-title { font-size: 18px; padding: 2px 16px; }
-  .cards-stage-subtitle { font-size: 16px; }
+  /* Main-menu compaction moved to `:root.viewport-fitted .main-menu`
+     (Phase 2). Card-draft compaction handled by
+     `:root.viewport-fitted .cards-stage` (Phase 4 overlay #5). */
 
   /* ── Blessing overlay: smaller grid cells ─────────────────────── */
   .blessing-panel { padding: 14px; max-height: 94dvh; }
@@ -8813,9 +8643,6 @@ body {
   /* ── Endless modifier: cap height ─────────────────────────────── */
   .endless-modifier-panel { max-height: 94dvh; }
 
-  /* ── Modifier preview: cap height ─────────────────────────────── */
-  .modifier-preview-panel { max-height: none; overflow: visible; }
-
   /* ── Mannequin / tower shop: ensure fit ────────────────────────── */
   .mannequin-shop { max-height: 88vh; overflow-y: auto; }
 }
@@ -8828,20 +8655,9 @@ body {
   .meta-branches { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ── Ultra-short (<380px tall) — very tall aspect ratio phones ───────── */
-@media (orientation: landscape) and (max-height: 380px) {
-  .main-menu { gap: 4px; padding: 4px clamp(4px, 1vw, 10px); }
-  .mm-top-bar { padding: 0 2px 4px; font-size: 9px; gap: 4px; }
-  .mm-currency { padding: 3px 6px; font-size: 9px; }
-  .mm-left, .mm-right { flex: 0 0 clamp(120px, 16vw, 160px); }
-  .mm-section { padding: 6px 8px; }
-  .mm-section-title { font-size: 8px; margin-bottom: 2px; }
-  .mm-battle-btn { padding: 8px 24px 10px; font-size: clamp(12px, 2vw, 16px); }
-  .mm-mid-lb { width: min(360px, 85%); }
-  /* Title becomes too large. */
-  .mm-title-top { font-size: clamp(14px, 3vw, 24px); }
-  .mm-title-bottom { font-size: clamp(16px, 3.2vw, 26px); margin-top: 2px; }
-}
+/* Ultra-short main-menu scaling handled by `:root.viewport-fitted
+   .main-menu` (Phase 2). The legacy `@media (max-height: 380px)` block
+   was removed in Phase 5. */
 
 /* ============================================================
  *  Main Menu — Visual Polish Layer
@@ -9706,285 +9522,6 @@ body {
   .difficulty-orb,
   .difficulty-lock {
     animation: none !important;
-  }
-}
-
-/* ============================================================
- *  Main menu — landscape-mobile adaptation
- *  ============================================================
- *
- *  `applyMobileViewport()` in main.ts pins CSS width to 1280 on
- *  phones, so menu widths stay desktop-sized. The CSS *height*,
- *  however, is dictated by the device aspect ratio: a typical
- *  19.5:9 phone in landscape ends up at ≈576 CSS-px tall — well
- *  short of the 720 px the desktop layout was tuned for. Three
- *  stacked cards in the left column (shop + lab + loadout) plus
- *  the right column's leaderboard + daily-rewards calendar plus
- *  the big «В БОЙ» CTA simply do not fit, and the bottom of the
- *  menu is cropped behind the browser chrome.
- */
-@media (orientation: landscape) and (max-height: 700px) {
-  .main-menu {
-    padding: 6px 10px;
-    gap: 4px;
-  }
-
-  /* Title — scaled down so the top row doesn't dominate. */
-  .main-menu .mm-title-top    { font-size: clamp(13px, 1.7vw, 22px); }
-  .main-menu .mm-title-bottom { font-size: clamp(15px, 2.0vw, 26px); margin-top: 2px; }
-
-  /* Top row: smaller chips + gear so the title clears them. */
-  .mm-top-row { padding: 0 4px 4px; gap: 6px; }
-  .mm-top-left, .mm-top-right { gap: 6px; }
-  .mm-currency { padding: 4px 7px; font-size: 11px; gap: 6px; }
-  .mm-currency .pixel-icon { transform: scale(0.85); transform-origin: center; }
-  .mm-settings-gear { width: 32px; height: 32px; }
-  .mm-mastery-line { padding: 0 4px 4px; font-size: 9px; gap: 6px; }
-  .mm-mastery-chip { padding: 3px 6px; }
-
-  .mm-body {
-    min-height: 0;
-    overflow: hidden;
-    gap: 8px;
-  }
-  .mm-col {
-    min-height: 0;
-    gap: 6px;
-    overflow: hidden;
-  }
-  .mm-col-left,
-  .mm-col-right {
-    flex: 0 0 clamp(250px, 31vw, 390px);
-    max-width: none;
-  }
-  .mm-col-center {
-    flex: 1 1 0;
-    min-width: 150px;
-  }
-
-  /* Generic card chrome — thinner padding, smaller titles. The 3D
-     drop-shadow is preserved so the menu still reads as the same
-     pixel-art frame. */
-  .mm-card { padding: 8px 10px; }
-  .mm-card-title { font-size: 10px; margin-bottom: 4px; gap: 6px; }
-
-  /* Left column: shop + lab + loadout share the available height
-     instead of each demanding 160 px min — otherwise the loadout
-     card is pushed below the fold on a 576-tall viewport. */
-  .mm-col-left .mm-shop-card,
-  .mm-col-left .mm-lab-card {
-    min-height: 0;
-    flex: 1 1 0;
-  }
-  .mm-col-left .mm-lab-card { overflow: hidden; }
-
-  /* Shop slot row — 52px on desktop becomes 36px on phone. */
-  .mm-col-left .mm-shop-card .mm-shop-slots { margin: 6px 0 4px; gap: 6px; }
-  .mm-col-left .mm-shop-card .mm-shop-slot  { height: clamp(28px, 6.2dvh, 36px); }
-  .mm-shop-backdrop { inset: 28px 4px 4px 4px; }
-
-  /* Lab card — shrink the diorama so the card body sits in
-     ~80 px instead of ~120 px. */
-  .mm-col-left .mm-lab-card .mm-lab-desc {
-    min-height: 0;
-    flex: 1 1 auto;
-    padding: 2px 4px;
-    overflow: hidden;
-  }
-  .mm-col-left .mm-lab-card .mm-lab-tree { width: 160px; height: clamp(54px, 13dvh, 80px); margin: 0 auto; }
-  .mm-lab-tree-svg {
-    width: auto;
-    max-width: min(210px, 92%);
-    max-height: 100%;
-  }
-
-  /* Loadout card — keep both slots on screen but compact. */
-  .mm-loadout-card  {
-    min-height: 0;
-    flex: 0.85 1 0;
-    padding: 6px 10px;
-    gap: 4px;
-  }
-  .mm-loadout-slots { gap: 4px; margin: 2px 0 0; }
-  .mm-loadout-slot  { padding: 4px 6px; gap: 6px; }
-  .mm-loadout-slot-icon { width: 26px; height: 26px; font-size: 16px; }
-  .mm-loadout-slot-tag  { font-size: 9px; }
-  .mm-loadout-slot-name { font-size: 13px; }
-  .mm-loadout-hint      { display: none; }
-
-  /* Right column — leaderboard + daily-rewards calendar share the
-     remaining height. The leaderboard is the focal panel; the
-     daily-rewards calendar collapses to its header strip until
-     tapped. */
-  .mm-col-right .mm-lb-card             { min-height: 100px; max-height: 280px; }
-  .mm-col-right.daily-open .mm-lb-card  { min-height: 100px; max-height: 200px; }
-  .mm-lb-card .lb-panel-compact .lb-body { min-height: 0; }
-  .lb-panel-compact             { font-size: 12px; padding: 10px 12px 12px; }
-  .lb-panel-compact .lb-title   { font-size: 10px; margin-bottom: 6px; }
-  .lb-panel-compact .lb-row     { padding: 4px 6px; }
-  .lb-panel-compact .lb-tabs    { margin-bottom: 6px; }
-  .lb-panel-compact .lb-tab     { padding: 5px 6px; font-size: 11px; }
-  .lb-panel-compact .lb-loading,
-  .lb-panel-compact .lb-empty   { padding: 36px 0; }
-
-  /* Daily rewards — denser grid + smaller cells. */
-  .mm-daily-grid       { gap: 4px; margin: 4px 0 6px; }
-  .mm-daily-cell       { padding: 4px 3px; min-height: 0; }
-  .mm-daily-icon       { font-size: 16px; }
-  .mm-daily-day-label  { font-size: 7px; }
-  .mm-daily-reward-label { font-size: 10px; }
-  .mm-daily-claim      { padding: 8px 12px; font-size: 11px; }
-  .mm-daily-header      { gap: 5px; }
-  .mm-daily-header-text { font-size: 8px; letter-spacing: 0; }
-  .mm-daily-week-badge  { font-size: 8px; padding: 2px 4px; margin-left: 2px; }
-  .mm-daily-indicator   { width: 18px; height: 18px; font-size: 10px; }
-
-  /* Mannequin column — keep the silhouette visible but smaller so
-     it doesn't push the side columns inward. */
-  .mm-mannequin-display {
-    display: flex;
-    width: min(100%, 180px);
-    max-height: 35dvh;
-    transform: scale(0.82);
-    transform-origin: center;
-  }
-
-  /* Bottom row — В БОЙ stays the player's primary action and is
-     kept comfortably tappable, but with trimmed padding so the
-     row sits above the home-bar / browser chrome on phones. */
-  .mm-bottom-row {
-    position: absolute;
-    left: 50%;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    z-index: 3;
-    padding-top: 0;
-    gap: 0;
-  }
-  .mm-battle-btn {
-    padding: 11px 36px 13px;
-    font-size: clamp(14px, 2.2vw, 22px);
-  }
-  .mm-mode-btns { gap: 6px; margin-top: 2px; }
-  .mm-mode-btn  { padding: 5px 10px; font-size: 9px; }
-}
-
-@media (orientation: landscape) and (max-height: 700px) and (pointer: coarse) {
-  .main-menu { padding-bottom: 6px; }
-}
-
-/* Even shorter heights (≤540 CSS-px tall — 20:9 phones, foldables
-   in book mode, etc.). Additional compression so the menu still
-   fits without scroll on these devices. */
-@media (orientation: landscape) and (max-height: 540px) {
-  .main-menu {
-    gap: 4px;
-    padding: 4px 8px;
-  }
-  .main-menu .mm-title-top    { font-size: clamp(12px, 1.5vw, 18px); }
-  .main-menu .mm-title-bottom { font-size: clamp(14px, 1.8vw, 22px); margin-top: 1px; }
-
-  .mm-top-row     { padding: 0 4px 2px; gap: 4px; }
-  .mm-currency    { padding: 3px 6px; font-size: 10px; }
-  .mm-settings-gear { width: 28px; height: 28px; }
-  .mm-body { gap: 6px; }
-  .mm-col-left,
-  .mm-col-right {
-    flex-basis: clamp(250px, 31vw, 370px);
-  }
-  .mm-col-center { min-width: 120px; }
-
-  .mm-col-left .mm-shop-card .mm-shop-slot  { height: 28px; }
-  .mm-col-left .mm-shop-card .mm-shop-slots { margin: 4px 0; gap: 4px; }
-  .mm-col-left .mm-lab-card .mm-lab-tree    { width: 140px; height: 54px; }
-  .mm-col-right .mm-lb-card                 { min-height: 96px; max-height: 44dvh; }
-  .mm-col-right.leaderboard-collapsible .mm-lb-card {
-    flex: 0 0 auto;
-    min-height: 0;
-    max-height: none;
-  }
-  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-card {
-    flex: 1 1 0;
-  }
-  .mm-col-right.leaderboard-collapsible .mm-lb-card .lb-panel-compact {
-    display: grid;
-    grid-template-rows: 0fr;
-    min-height: 0;
-    opacity: 0;
-    overflow: hidden;
-    padding-block: 0;
-    pointer-events: none;
-  }
-  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-card .lb-panel-compact {
-    display: flex;
-    opacity: 1;
-    padding-block: 10px 12px;
-    pointer-events: auto;
-  }
-  .mm-col-right.leaderboard-collapsible .mm-lb-chev { display: inline-block; }
-  .mm-col-right.leaderboard-collapsible.leaderboard-open .mm-lb-chev { transform: rotate(180deg); }
-
-  .mm-loadout-card      { padding: 4px 8px; }
-  .mm-loadout-slot-icon { width: 22px; height: 22px; font-size: 14px; }
-  .mm-loadout-slot-name { font-size: 12px; }
-  .mm-loadout-slot-tag  { font-size: 8px; }
-
-  .mm-mannequin-display {
-    display: flex;
-    width: min(100%, 130px);
-    transform: scale(0.75);
-  }
-
-  .mm-battle-btn { padding: 8px 28px 10px; font-size: clamp(13px, 2vw, 18px); }
-  .mm-mode-btn   { padding: 4px 9px; font-size: 9px; }
-}
-
-@media (orientation: landscape) and (max-height: 540px) and (pointer: coarse) {
-  .main-menu { padding-bottom: 4px; }
-}
-
-@media (orientation: landscape) and (max-height: 480px) {
-  .mm-col-left,
-  .mm-col-right {
-    flex-basis: clamp(278px, 35vw, 430px);
-    zoom: 0.9;
-  }
-  .mm-col-left .mm-shop-card,
-  .mm-col-left .mm-lab-card {
-    flex: 0.78 1 0;
-  }
-  .mm-col-left .mm-lab-card .mm-lab-tree { height: 50px; }
-  .mm-loadout-card { flex: 0.72 1 0; }
-  .mm-col-right .mm-lb-card {
-    min-height: 92px;
-    flex: 1 1 0;
-    max-height: none;
-  }
-  .mm-daily-calendar { padding: 6px 8px; }
-  .mm-daily-header-text { font-size: 7px; }
-  .mm-daily-week-badge { font-size: 7px; }
-}
-
-@media (orientation: landscape) and (max-height: 440px) {
-  .mm-col-left,
-  .mm-col-right {
-    flex-basis: clamp(292px, 36vw, 455px);
-    zoom: 0.86;
-  }
-  .mm-card { padding: 6px 8px; }
-  .mm-card-title { font-size: 9px; }
-  .mm-loadout-slot { padding: 3px 5px; }
-  .mm-col-right .mm-lb-card { max-height: none; }
-}
-
-@supports not (zoom: 0.9) {
-  @media (orientation: landscape) and (max-height: 480px) {
-    .mm-col-left { transform: scale(0.9); transform-origin: top left; }
-    .mm-col-right { transform: scale(0.9); transform-origin: top right; }
-  }
-  @media (orientation: landscape) and (max-height: 440px) {
-    .mm-col-left { transform: scale(0.86); transform-origin: top left; }
-    .mm-col-right { transform: scale(0.86); transform-origin: top right; }
   }
 }
 
@@ -11138,7 +10675,6 @@ body {
 :root.viewport-fitted .main-menu .mm-col-right {
   flex: 0 0 28%;
   max-width: none;
-  zoom: 1;
 }
 :root.viewport-fitted .main-menu .mm-col-center {
   flex: 1 1 0;
