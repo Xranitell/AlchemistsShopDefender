@@ -11374,3 +11374,76 @@ body {
   transform-origin: bottom right;
   transform: scale(var(--hud-scale, 1));
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   PAUSE-STATS overlay — fit-mode adapter (mobile phase 4).
+
+   Phase 4 starts migrating run-time overlays off the legacy `@media
+   (max-height: …)` ladder onto the single `--ui-scale` source of truth.
+   Pause-stats is overlay #1.
+
+   Strategy:
+     1. Restore desktop-baseline panel widths and typography via higher-
+        specificity rules so the layered media-query crutches (panels
+        scaling with 50vw / 42vw, font-size: 20→14, etc.) don't compound
+        with the new transform.
+     2. Apply `transform: scale(var(--ui-scale))` on the centred group so
+        the entire panel shrinks uniformly to fit the real viewport.
+     3. `transform-origin: center center` keeps it visually centred — the
+        backdrop's flex centring already places the group at the viewport
+        midpoint, so scale-toward-centre doesn't move it.
+
+   Legacy `@media` rules are intentionally kept as fallbacks (same pattern
+   as Phase 3 HUD): they have lower specificity, so the fit-mode block
+   below always wins when the JS viewport manager is alive. */
+
+:root.viewport-fitted .pause-stats-overlay {
+  /* Honour notch / home-indicator cutouts. The pre-Phase-4 styles ignored
+     env() entirely on this overlay. On desktop every --safe-* resolves to
+     0px and the padding collapses. */
+  padding: var(--safe-top, 0px)
+           var(--safe-right, 0px)
+           var(--safe-bottom, 0px)
+           var(--safe-left, 0px);
+}
+
+:root.viewport-fitted .pause-stats-group {
+  /* Reset to desktop baseline so we scale a known layout. The 92dvh /
+     94dvh caps from the media-query ladder become a single 92vh here —
+     after the transform that lands at ~92vh × ui-scale visual height,
+     which on the smallest phone (398 px tall) is ~250 px and still
+     leaves room for the title + close row. */
+  max-width: none;
+  max-height: 92vh;
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+:root.viewport-fitted .pause-stats-inner {
+  /* Pin to desktop widths so the parent transform is the only scaler. */
+  width: 640px;
+  max-height: 80vh;
+}
+:root.viewport-fitted .pause-stats-side {
+  width: 480px;
+  max-height: 80vh;
+}
+
+/* Restore typography — all visual scaling is now done by the parent
+   transform, so each row reads at the *same* visual ratio as the rest of
+   the panel (instead of the media-query ladder picking different sizes
+   for ps-section-title vs ps-row vs ps-empty). */
+:root.viewport-fitted .pause-stats-title { font-size: 20px; }
+:root.viewport-fitted .ps-section-title { font-size: 14px; }
+:root.viewport-fitted .ps-section { margin-bottom: 18px; }
+:root.viewport-fitted .ps-row {
+  font-size: 20px;
+  gap: 12px;
+  padding: 3px 0;
+}
+:root.viewport-fitted .ps-value { min-width: 72px; }
+:root.viewport-fitted .ps-empty { font-size: 18px; }
+:root.viewport-fitted .ps-row.ps-unique-desc {
+  font-size: 16px;
+  padding-left: 70px;
+}
