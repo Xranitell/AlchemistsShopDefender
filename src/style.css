@@ -11719,3 +11719,72 @@ body {
   padding: 8px 20px;
   font-size: 14px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   CARD-DRAFT overlay (Roundhouse cards) — fit-mode adapter
+   (mobile phase 4, overlay #5).
+
+   Unlike chest/defeat/settings, the card-draft container is `.cards-stage`
+   (a flex column with title + subtitle + lock-hint + 3-column card grid +
+   action row) hosted directly inside `#overlay.cards-mode`. The natural
+   pre-scale stage is large — at desktop baseline (320 px columns,
+   3 :4.4 aspect ratio) the stage is ~1076 × 670, taller than even the
+   1024 × 600 design canvas.
+
+   Strategy:
+     1. Cap card columns at 240 px in fit-mode (smaller than the
+        desktop baseline of 320 px and the legacy 200 px ladder rule —
+        240 is the largest that keeps the stage under design height
+        once the parent transform applies). 240 × 4.4/3 = 352 px tall
+        cards → stage ~ 555 px tall pre-scale.
+     2. Keep desktop baseline padding/gap on the stage (28 36, gap 22)
+        and restore typography to baseline so only the parent transform
+        scales — no compounding with the legacy ladder's compressed
+        font-sizes.
+     3. Pin `.cards-stage` absolutely to the centre of `#overlay` and
+        apply `translate(-50%, -50%) scale(var(--ui-scale))`. Same
+        reasoning as chest/defeat: pre-scale natural height (~555 px)
+        approaches viewport height on the smallest phone (398 px), so
+        without absolute pinning the grid centring on `#overlay` would
+        push the stage into a scroll container.
+
+   Inner card transforms (`.card-rh:hover { translateY + scale }` and
+   the pre-lock breathing `asd-cards-locked-breath`) compose naturally
+   with the parent transform — they're animation transforms that should
+   stack with the global UI scale, so we leave them alone.
+
+   Legacy `@media (max-height: 540|700)` rules are kept as a no-JS
+   fallback. */
+
+:root.viewport-fitted #overlay.cards-mode .cards-stage,
+:root.viewport-fitted .cards-stage {
+  padding: 28px 36px;
+  gap: 22px;
+  max-width: 1100px;
+  width: 100%;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Restore typography baseline. */
+:root.viewport-fitted .cards-stage-title {
+  font-size: 28px;
+  letter-spacing: 6px;
+  padding: 6px 28px;
+}
+:root.viewport-fitted .cards-stage-subtitle {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+/* Card columns: cap at 220 px in fit-mode so the natural stage height
+   stays under the 576 px narrow-design canvas (DESIGN_HEIGHT_NARROW).
+   220 × 4.4/3 = 322.6 px tall cards → stage ~ 556 px tall pre-scale. */
+:root.viewport-fitted .cards-rh {
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: 22px;
+}
