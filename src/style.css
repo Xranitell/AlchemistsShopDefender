@@ -11541,3 +11541,114 @@ body {
 :root.viewport-fitted .chest-overlay .chest-reward-tile-label {
   font-size: 12px;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   DEFEAT overlay — fit-mode adapter (mobile phase 4, overlay #3).
+
+   Mirror of the chest-overlay block above — same DOM family (panel +
+   corner ornaments + stage with rays + content stack + CTA), same scale
+   strategy:
+
+     1. Restore desktop-baseline panel sizing (`max-width: 760px`, full
+        padding/gap, `defeat-rays: 360px`, `defeat-stage: 168px min-height`)
+        and typography (`defeat-title: 28px`, `defeat-summary: 18px`,
+        `defeat-cta-primary: 16px`, etc.) via higher-specificity rules.
+     2. Drop the legacy `.defeat-mannequin { transform: ... scale(0.7) }`
+        and `.defeat-chip canvas { transform: scale(0.75) }` overrides so
+        they don't compound with the parent transform.
+     3. Pin the panel absolutely to the centre of `#overlay` and apply
+        `transform: translate(-50%, -50%) scale(var(--ui-scale))` — same
+        reasoning as the chest overlay: pre-scale natural height (~520 px)
+        exceeds the smallest phone viewport (398 px), so without absolute
+        pinning the grid centring on `#overlay` would push the panel into
+        a scroll container.
+
+   Legacy `@media (max-height: 540|700)` rules are kept as a no-JS
+   fallback. */
+
+:root.viewport-fitted .defeat-overlay {
+  max-width: 760px;
+  max-height: none;
+  padding: 28px 28px 22px;
+  gap: 12px;
+  overflow-y: visible;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Reset sub-element sizing so the parent transform is the only scaler. */
+:root.viewport-fitted .defeat-overlay .defeat-stage {
+  min-height: 168px;
+  padding: 12px 0 6px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-rays {
+  width: 360px;
+  height: 360px;
+}
+/* The legacy ladder appended `scale(0.7)` / `scale(0.6)` to the mannequin's
+   own rotate+translate transform. The animation `defeat-mannequin-sway`
+   already reapplies just rotate+translate, so dropping scale here matches
+   the animated state and lets the parent transform own the size step. */
+:root.viewport-fitted .defeat-overlay .defeat-mannequin {
+  transform: rotate(-14deg) translateY(6px);
+}
+:root.viewport-fitted .defeat-overlay .defeat-chip {
+  padding: 6px 10px;
+  gap: 6px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-chip canvas {
+  transform: none;
+}
+:root.viewport-fitted .defeat-overlay .defeat-chip span {
+  font-size: 12px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-chips {
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-title {
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-tagline {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: -4px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-summary {
+  font-size: 18px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-tip {
+  font-size: 16px;
+  padding: 8px 12px;
+  max-width: 420px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-cta-wrap {
+  gap: 10px;
+  margin-top: 6px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-cta-primary {
+  font-size: 16px;
+  letter-spacing: 1.5px;
+  padding: 16px 20px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-secondary-row {
+  gap: 10px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-cta-secondary {
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 10px 14px;
+}
+/* Reward-doubled sub-state — keep its mannequin/sprite scaling under
+   the parent transform too. */
+:root.viewport-fitted .defeat-overlay .defeat-doubled .defeat-stage {
+  min-height: 168px;
+}
+:root.viewport-fitted .defeat-overlay .defeat-doubled-icon {
+  transform: none;
+}
