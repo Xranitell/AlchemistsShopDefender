@@ -11652,3 +11652,70 @@ body {
 :root.viewport-fitted .defeat-overlay .defeat-doubled-icon {
   transform: none;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   SETTINGS overlay — fit-mode adapter (mobile phase 4, overlay #4).
+
+   The settings panel is much smaller than chest/defeat (400 px wide vs
+   760 px) but the natural height (~480 px with all four sections
+   expanded) still exceeds the smallest phone viewport (398 px), so we
+   apply the same pattern: pin absolutely + translate(-50%, -50%) +
+   scale.
+
+   Steps:
+     1. Restore desktop-baseline panel sizing (`max-width: 400px`,
+        `width: min(90vw, 400px)`, full padding/gap) and section
+        typography (h3: 14px, stat: 14px, volume row: 70px label column,
+        reset btn: 14px) via higher-specificity rules.
+     2. The settings panel has no nested `transform: scale()` overrides
+        in the legacy ladder — only sizing/padding shrinks — so no
+        explicit `transform: none` resets are needed.
+     3. Pin and scale the panel.
+
+   Legacy `@media (max-height: 700)` rules are kept as a no-JS
+   fallback. */
+
+:root.viewport-fitted .settings-panel {
+  max-width: 400px;
+  width: min(90vw, 400px);
+  max-height: none;
+  padding: 24px 28px;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Restore desktop baseline for header + body. */
+:root.viewport-fitted .settings-panel .settings-header {
+  margin-bottom: 16px;
+}
+:root.viewport-fitted .settings-panel .settings-header h2 {
+  font-size: 14px;
+}
+:root.viewport-fitted .settings-panel .settings-body {
+  gap: 16px;
+}
+:root.viewport-fitted .settings-panel .settings-section {
+  padding: 12px;
+}
+:root.viewport-fitted .settings-panel .settings-section h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+:root.viewport-fitted .settings-panel .settings-stat,
+:root.viewport-fitted .settings-panel .settings-volume-label,
+:root.viewport-fitted .settings-panel .settings-volume-value {
+  font-size: 14px;
+}
+:root.viewport-fitted .settings-panel .settings-volume-row {
+  margin: 8px 0;
+  gap: 10px;
+  grid-template-columns: 70px 1fr 48px;
+}
+:root.viewport-fitted .settings-panel .settings-reset-btn {
+  padding: 8px 20px;
+  font-size: 14px;
+}
