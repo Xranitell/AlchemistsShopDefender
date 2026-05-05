@@ -11005,29 +11005,34 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   VIEWPORT-FITTED MAIN MENU (mobile / small landscape — phase 1)
+   VIEWPORT-FITTED MAIN MENU (mobile / small landscape — phase 1+2)
    ──────────────────────────────────────────────────────────────────────
-   When the real CSS viewport is smaller than the 1280×720 reference
+   When the real CSS viewport is smaller than the chosen reference
    design, src/engine/viewport.ts publishes:
 
      :root { --ui-scale: <0..1> }
+     :root { --design-w: 1280px | 960px }
+     :root { --design-h: 720px  | 540px }
      :root.viewport-fitted        (only when --ui-scale < 1)
+
+   Phase 1 used a single 1280×720 reference design for every viewport.
+   On a 768×398 phone WebView that produced --ui-scale ≈ 0.55, which
+   shrank 12px text to ~6–7px — unreadable. Phase 2 introduces a
+   second, smaller reference rectangle (960×540) that is picked when
+   width < 1100 OR height < 620 (see NARROW_DESIGN_BREAKPOINT_* in
+   viewport.ts). On the same 768×398 viewport that now gives --ui-scale
+   ≈ 0.74 and 12px text stays at a readable ~9px. Desktop sizes are
+   unaffected — the wide rectangle still fits at scale 1.
 
    The legacy approach forced `meta viewport=1280` so phones rendered
    the entire page at desktop scale and the browser CSS-scaled it down.
    That broke text crispness, touch hit-tests and DPR-aware rendering.
 
-   The new approach lets the page see the *real* viewport in CSS pixels,
-   then renders the main menu as a 1280×720 design and applies a uniform
-   `transform: scale(var(--ui-scale))`. Visual identity matches desktop;
-   the canvas separately uses a HiDPI backing store so pixel art is
-   crisp regardless of the menu's transform.
-
    These rules use higher specificity (:root.viewport-fitted .main-menu)
    so they override the landscape-mobile media-query tweaks above
    without us having to gate every legacy rule. They are scoped to
    .main-menu only — the in-game HUD / overlays still use their own
-   media-query tuning until phase 2 migrates them.
+   media-query tuning until phase 3+ migrates them.
    ══════════════════════════════════════════════════════════════════════ */
 
 /* Body background fills the viewport behind the (possibly smaller-than-
@@ -11041,17 +11046,22 @@ body {
 }
 
 :root.viewport-fitted .main-menu {
-  /* Render at design size; the transform handles fitting to viewport. */
+  /* Render at the chosen design size; the transform handles fitting to
+     the real viewport. The design dimensions come from --design-w /
+     --design-h published by viewport.ts (1280×720 on desktop-class
+     viewports, 960×540 on narrow phones / short laptops) so this rule
+     doesn't need to know which one is active. */
   position: fixed;
   inset: auto;
   top: 50%;
   left: 50%;
-  width: 1280px;
-  height: 720px;
-  min-height: 720px;
+  width: var(--design-w, 1280px);
+  height: var(--design-h, 720px);
+  min-height: var(--design-h, 720px);
   max-width: none;
   /* Cancel the landscape-mobile clamp() compressions that targeted the
-     real viewport — inside fit-mode we always paint a 1280-wide layout. */
+     real viewport — inside fit-mode we always paint at the design's
+     own pixel grid. */
   padding: clamp(8px, 1.5vw, 24px);
   gap: clamp(4px, 0.7vw, 10px);
   transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
@@ -11069,6 +11079,21 @@ body {
 :root.viewport-fitted .main-menu .mm-title-bottom {
   font-size: clamp(24px, 3vw, 36px);
   margin-top: 4px;
+}
+
+/* On the narrow (960-wide) design the same `clamp(…vw, 36px)` rule
+   above resolves to the full 36 px on a 1280-wide-but-short viewport
+   (e.g. 1280×540), and a 36 px "РУННАЯ ОБОРОНА" doesn't fit inside
+   the narrower title cell — it wraps to two or three lines. Scale the
+   title down proportionally to the narrow design (~960/1280 ≈ 0.75)
+   so it stays on a single line regardless of how wide the actual
+   viewport is. */
+:root.viewport-fitted-narrow .main-menu .mm-title-top {
+  font-size: clamp(16px, 1.9vw, 22px);
+}
+:root.viewport-fitted-narrow .main-menu .mm-title-bottom {
+  font-size: clamp(20px, 2.4vw, 28px);
+  margin-top: 3px;
 }
 
 /* Top row currencies / settings / language — restore desktop chip
@@ -11089,6 +11114,15 @@ body {
 :root.viewport-fitted .main-menu .mm-settings-gear {
   width: 36px;
   height: 36px;
+}
+
+/* Narrow design only: bump the chip font size by 1 px so that on the
+   smallest target phone (768×398, scaling the 1024×576 design down by
+   ~0.69) the 13 px chip text still renders at ~9 px on screen — the
+   floor we set in the Phase 2 acceptance for "readable on phone".
+   Wide-design viewports keep the 12 px chips untouched. */
+:root.viewport-fitted-narrow .main-menu .mm-currency {
+  font-size: 13px;
 }
 
 /* Body — three columns each get a sane share of the 1280-wide design. */
