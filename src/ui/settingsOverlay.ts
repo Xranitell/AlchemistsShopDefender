@@ -1,6 +1,7 @@
-import type { MetaSave } from '../game/save';
+import type { MetaSave, MotionMode } from '../game/save';
 import { resetMeta, saveMeta } from '../game/save';
 import { audio } from '../audio/audio';
+import { applyMotionMode } from '../engine/motion';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 
 export class SettingsOverlay {
@@ -40,6 +41,12 @@ export class SettingsOverlay {
 
     // Language section (PR-9 i18n).
     body.appendChild(buildLanguageSection(opts.meta));
+
+    // Motion / animation section. Lets the player override the OS
+    // `prefers-reduced-motion` query in either direction. Default for new
+    // saves is `'minimal'` on touch devices (Android phones never set
+    // the OS query) and `'auto'` on desktop / iOS.
+    body.appendChild(buildMotionSection(opts.meta));
 
     // Stats section
     const stats = document.createElement('div');
@@ -84,6 +91,47 @@ export class SettingsOverlay {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
+}
+
+/** Animation strength picker: 3-button segmented control (Auto / Minimal /
+ *  Full). Edits flow through `applyMotionMode()` so the UI reacts on the
+ *  next paint, then persist via `saveMeta()`. */
+function buildMotionSection(meta: MetaSave): HTMLElement {
+  const section = document.createElement('div');
+  section.className = 'settings-section';
+  const title = document.createElement('h3');
+  title.textContent = t('ui.settings.motion');
+  section.appendChild(title);
+
+  const row = document.createElement('div');
+  row.className = 'settings-motion-row';
+  const modes: MotionMode[] = ['auto', 'minimal', 'full'];
+  const buttons: HTMLButtonElement[] = [];
+  for (const mode of modes) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'settings-motion-btn' + (meta.motionMode === mode ? ' active' : '');
+    btn.textContent = t(`ui.settings.motion.${mode}`);
+    btn.addEventListener('click', () => {
+      audio.playSfx('uiClick');
+      if (meta.motionMode === mode) return;
+      meta.motionMode = mode;
+      saveMeta(meta);
+      applyMotionMode(mode);
+      for (const b of buttons) b.classList.remove('active');
+      btn.classList.add('active');
+    });
+    buttons.push(btn);
+    row.appendChild(btn);
+  }
+  section.appendChild(row);
+
+  const hint = document.createElement('div');
+  hint.className = 'settings-motion-hint';
+  hint.textContent = t('ui.settings.motion.hint');
+  section.appendChild(hint);
+
+  return section;
 }
 
 /** Language picker: small RU/EN button row. Updates the locale immediately

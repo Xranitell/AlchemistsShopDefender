@@ -149,6 +149,11 @@ export const EN: Record<string, string> = {
   'ui.settings.sfx': 'Sound effects',
   'ui.settings.music': 'Music',
   'ui.settings.language': 'Language',
+  'ui.settings.motion': 'Animations',
+  'ui.settings.motion.auto': 'Auto',
+  'ui.settings.motion.minimal': 'Minimal',
+  'ui.settings.motion.full': 'Full',
+  'ui.settings.motion.hint': '“Minimal” is recommended on phones.',
 
   // ── Difficulty overlay ───────────────────────────────────────────────
   'ui.difficulty.title': 'Pick a dungeon',
