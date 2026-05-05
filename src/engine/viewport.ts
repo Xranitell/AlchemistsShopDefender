@@ -32,10 +32,45 @@
  * chrome (Yandex address bar, iOS Safari toolbar) collapses / expands.
  */
 
-/** Reference design size for the desktop layout. UI scaling is computed
- *  to fit this rectangle into the real viewport. */
-export const DESIGN_WIDTH = 1280;
-export const DESIGN_HEIGHT = 720;
+/** Reference design size for the *desktop* layout. UI scaling is
+ *  computed to fit this rectangle into the real viewport when the
+ *  player is on a viewport big enough to host it comfortably. */
+export const DESIGN_WIDTH_WIDE = 1280;
+export const DESIGN_HEIGHT_WIDE = 720;
+
+/** Reference design size for *narrow / short* viewports (typical phone
+ *  WebViews in landscape — e.g. 768×398, 934×437). Picking a smaller
+ *  reference rectangle directly lifts every CSS pixel inside the menu
+ *  so 12 px chips render at ~9–10 px on a 768×398 phone instead of the
+ *  unreadable 6–7 px Phase 1 produced when the whole 1280×720 frame
+ *  had to fit into 768 CSS px.
+ *
+ *  Sized at 1024×576 (16:9, same aspect ratio as the wide design) so
+ *  the existing 3-column / 3-card-stack layout keeps the same shape
+ *  and only changes scale. Going smaller (e.g. 960×540) gave a few
+ *  extra pixels of font but caused the bottom rows of the side panels
+ *  to overflow the design rectangle on 540-tall viewports — the cards
+ *  use mostly absolute pixel sizes internally and need ~570 design px
+ *  to stack comfortably above the absolute-positioned battle CTA. */
+export const DESIGN_WIDTH_NARROW = 1024;
+export const DESIGN_HEIGHT_NARROW = 576;
+
+/** Viewport must be at least this wide *and* this tall for the wide
+ *  desktop design to be picked. Below either threshold we switch to
+ *  the narrow design. The thresholds intentionally sit a bit below
+ *  the wide design size (1100 < 1280, 620 < 720) so that already-
+ *  small landscape laptops (e.g. 1280×640) still get the desktop
+ *  visual identity, only switching to the narrow design when the
+ *  device is meaningfully phone-shaped. */
+export const NARROW_DESIGN_BREAKPOINT_WIDTH = 1100;
+export const NARROW_DESIGN_BREAKPOINT_HEIGHT = 620;
+
+/** Backwards-compatible aliases — the wide design is still considered
+ *  the canonical reference for any non-fit-mode code (e.g. canvas /
+ *  arena math) that sized itself against DESIGN_WIDTH × DESIGN_HEIGHT
+ *  before phase 2 introduced the dual-design switch. */
+export const DESIGN_WIDTH = DESIGN_WIDTH_WIDE;
+export const DESIGN_HEIGHT = DESIGN_HEIGHT_WIDE;
 
 /** Lower bound on `--ui-scale`. Below this, text becomes unreadable —
  *  we'd rather let some content overflow than shrink to a blur. */
@@ -54,7 +89,13 @@ export interface ViewportSnapshot {
   height: number;
   /** Physical:CSS pixel ratio, clamped to MAX_DPR. */
   dpr: number;
-  /** Uniform scale factor that fits DESIGN_WIDTH×DESIGN_HEIGHT into
+  /** Reference design width chosen for the current viewport (wide on
+   *  desktop, narrow on phone). Published to CSS as `--design-w`. */
+  designWidth: number;
+  /** Reference design height chosen for the current viewport. Published
+   *  to CSS as `--design-h`. */
+  designHeight: number;
+  /** Uniform scale factor that fits the chosen design rectangle into
    *  width × height. Clamped to [MIN_UI_SCALE, 1]. */
   uiScale: number;
   /** Safe-area insets, in CSS pixels. */
@@ -87,7 +128,18 @@ function readViewport(): ViewportSnapshot {
   const rawDpr = Number.isFinite(window.devicePixelRatio) ? window.devicePixelRatio : 1;
   const dpr = Math.max(1, Math.min(MAX_DPR, rawDpr));
 
-  const uiScaleRaw = Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT);
+  // Pick the reference design rectangle. We deliberately use a single
+  // hard threshold rather than a continuous formula so the menu
+  // doesn't subtly redesign itself across a 50px resize range — the
+  // player either gets the wide desktop frame or the narrow phone
+  // frame, with no in-between blends.
+  const isNarrow =
+    width < NARROW_DESIGN_BREAKPOINT_WIDTH ||
+    height < NARROW_DESIGN_BREAKPOINT_HEIGHT;
+  const designWidth = isNarrow ? DESIGN_WIDTH_NARROW : DESIGN_WIDTH_WIDE;
+  const designHeight = isNarrow ? DESIGN_HEIGHT_NARROW : DESIGN_HEIGHT_WIDE;
+
+  const uiScaleRaw = Math.min(width / designWidth, height / designHeight);
   const uiScale = Math.max(MIN_UI_SCALE, Math.min(1, uiScaleRaw));
 
   const safe = readSafeAreaInsets();
@@ -96,6 +148,8 @@ function readViewport(): ViewportSnapshot {
     width,
     height,
     dpr,
+    designWidth,
+    designHeight,
     uiScale,
     safeTop: safe.top,
     safeBottom: safe.bottom,
@@ -143,17 +197,41 @@ function applySnapshotToCss(snap: ViewportSnapshot): void {
   root.style.setProperty('--vp-width', `${snap.width}px`);
   root.style.setProperty('--vp-height', `${snap.height}px`);
   root.style.setProperty('--vp-dpr', `${snap.dpr}`);
+  // Publish the chosen design rectangle so fit-mode CSS can render
+  // itself at the right reference size without re-doing the breakpoint
+  // logic in the stylesheet (where it would have to live as a media
+  // query duplicate of the one in readViewport()).
+  root.style.setProperty('--design-w', `${snap.designWidth}px`);
+  root.style.setProperty('--design-h', `${snap.designHeight}px`);
   root.style.setProperty('--ui-scale', `${snap.uiScale}`);
   root.style.setProperty('--safe-top', `${snap.safeTop}px`);
   root.style.setProperty('--safe-bottom', `${snap.safeBottom}px`);
   root.style.setProperty('--safe-left', `${snap.safeLeft}px`);
   root.style.setProperty('--safe-right', `${snap.safeRight}px`);
 
-  // Toggle a marker class so CSS rules can branch on "we are scaled
-  // down" without re-doing the min(width/720, height/720) math. The
-  // 0.999 threshold avoids float-rounding flicker at exactly 1.0.
-  const fitted = snap.uiScale < 0.999;
+  // Toggle a marker class so CSS rules can branch on "we are in
+  // fit-mode" without re-doing the breakpoint math. We treat the
+  // narrow design selection itself as a fit-mode signal — even when
+  // uiScale lands at exactly 1.0 (e.g. 1280×540 viewport with the
+  // 960×540 narrow design), we still want the menu to render at the
+  // narrow reference rectangle and centre inside the real viewport
+  // rather than fall back to the pre-Phase-1 landscape-mobile media
+  // queries. The 0.999 threshold avoids float-rounding flicker at
+  // exactly 1.0 for the wide-design path.
+  const isNarrowDesign =
+    snap.designWidth !== DESIGN_WIDTH_WIDE ||
+    snap.designHeight !== DESIGN_HEIGHT_WIDE;
+  const fitted = snap.uiScale < 0.999 || isNarrowDesign;
   root.classList.toggle('viewport-fitted', fitted);
+  // A second, more specific marker class. Some fit-mode rules (e.g.
+  // title font-size) need different values on the narrow design vs
+  // the wide design because the same `clamp(min, vw, max)` rule
+  // resolves to a different pixel size depending on the *real*
+  // viewport, which can be wider than the narrow design (e.g.
+  // 1280×540 viewport rendering the 960-wide design — vw=12.8 px
+  // clamps to the desktop-intended 36 px title that doesn't fit in
+  // 960 design pixels).
+  root.classList.toggle('viewport-fitted-narrow', isNarrowDesign);
 }
 
 let scheduled = false;
@@ -177,6 +255,8 @@ function refresh(): void {
     next.width === current.width &&
     next.height === current.height &&
     next.dpr === current.dpr &&
+    next.designWidth === current.designWidth &&
+    next.designHeight === current.designHeight &&
     next.uiScale === current.uiScale &&
     next.safeTop === current.safeTop &&
     next.safeBottom === current.safeBottom &&
