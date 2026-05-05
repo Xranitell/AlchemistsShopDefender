@@ -11,7 +11,7 @@ import {
   POTION_INVENTORY_SIZE,
   type PotionRecipe,
 } from '../data/potions';
-import { t } from '../i18n';
+import { t, onLocaleChange } from '../i18n';
 
 export interface HudHandlers {
   onPause(): void;
@@ -34,6 +34,9 @@ export class Hud {
   private handlers: HudHandlers;
 
   // Top-left WAVE widget
+  /** Held so we can re-translate the "ВОЛНА" / "WAVE" caption when the
+   *  player switches locale mid-run via the language toggle. */
+  private waveLabel!: HTMLDivElement;
   private waveValue!: HTMLSpanElement;
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
@@ -74,6 +77,12 @@ export class Hud {
   // доступно" tooltip — it had no functionality, so it was removed to
   // declutter the HUD.
   private overloadButton!: HTMLButtonElement;
+  /** Held so we can re-translate the "ПЕРЕГРУЗКА" / "OVERLOAD" caption
+   *  when the player switches locale mid-run. The label text is set
+   *  once at construction; without a re-application path the EN string
+   *  would stick on a RU button after the player taps the language
+   *  toggle. */
+  private overloadLabel!: HTMLSpanElement;
   private overloadFill!: HTMLDivElement;
   private overloadModule!: HTMLSpanElement;
 
@@ -128,6 +137,38 @@ export class Hud {
     this.root = root;
     this.handlers = handlers;
     this.build();
+    // The HUD is built once at boot but the player can flip the locale
+    // mid-run via the in-game settings. Without a re-translation hook
+    // every static label set by `build()` (WAVE caption, OVERLOAD
+    // caption, boss-incoming banner, pause button title, …) sticks at
+    // whatever locale was active when the widget was first created. We
+    // subscribe here and re-apply the labels — values that already get
+    // re-rendered every frame inside `update()` (HP / gold / hint /
+    // skip-button / module name / etc.) need no special handling.
+    onLocaleChange(() => this.relabelStatic());
+  }
+
+  /** Re-apply every label whose source key isn't read again inside the
+   *  per-frame `update()` path. Called once at boot and again whenever
+   *  the i18n layer fires `onLocaleChange`. */
+  private relabelStatic(): void {
+    if (this.waveLabel) {
+      this.waveLabel.textContent = t('ui.hud.wave');
+    }
+    if (this.bossIndicator) {
+      this.bossIndicator.textContent = t('ui.hud.bossIncoming');
+    }
+    if (this.overloadLabel) {
+      this.overloadLabel.textContent = t('ui.hud.overload');
+    }
+    if (this.pauseButton) {
+      // `setPaused` re-applies these on a state change but if the player
+      // flips the locale while paused / unpaused without toggling the
+      // run state, we still need to refresh the active-state label.
+      const key = this.isPaused ? 'ui.hud.resume' : 'ui.hud.pause';
+      this.pauseButton.setAttribute('aria-label', t(key));
+      this.pauseButton.title = t(key);
+    }
   }
 
   private build(): void {
@@ -139,15 +180,15 @@ export class Hud {
 
     // Top-left: WAVE widget
     const waveBadge = badgeFrame('hud-wave-badge');
-    const waveLabel = document.createElement('div');
-    waveLabel.className = 'hud-tag-label';
-    waveLabel.textContent = t('ui.hud.wave');
+    this.waveLabel = document.createElement('div');
+    this.waveLabel.className = 'hud-tag-label';
+    this.waveLabel.textContent = t('ui.hud.wave');
     this.waveValue = document.createElement('span');
     this.waveValue.className = 'hud-wave-value';
     this.waveValue.textContent = '1 / 5';
     const waveCol = document.createElement('div');
     waveCol.className = 'hud-wave-col';
-    waveCol.appendChild(waveLabel);
+    waveCol.appendChild(this.waveLabel);
     waveCol.appendChild(this.waveValue);
     waveBadge.appendChild(waveCol);
     waveBadge.appendChild(spriteEl(getSprites().iconWavePip, 4));
@@ -337,10 +378,10 @@ export class Hud {
     this.overloadButton.className = 'hud-round-btn hud-round-overload';
     this.overloadButton.dataset.tutorialTarget = 'overload';
     this.overloadButton.appendChild(spriteEl(getSprites().iconLightning, 4));
-    const olLabel = document.createElement('span');
-    olLabel.className = 'hud-icon-label';
-    olLabel.textContent = t('ui.hud.overload');
-    this.overloadButton.appendChild(olLabel);
+    this.overloadLabel = document.createElement('span');
+    this.overloadLabel.className = 'hud-icon-label';
+    this.overloadLabel.textContent = t('ui.hud.overload');
+    this.overloadButton.appendChild(this.overloadLabel);
     this.overloadModule = document.createElement('span');
     this.overloadModule.className = 'hud-overload-module';
     this.overloadButton.appendChild(this.overloadModule);

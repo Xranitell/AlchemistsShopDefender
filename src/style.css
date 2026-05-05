@@ -1843,6 +1843,10 @@ body {
      forcing the parent to grow a horizontal scrollbar. */
   overflow-wrap: anywhere;
   word-break: break-word;
+  /* Allow vertical touch-scroll on phones; the global
+     `body { touch-action: none }` would otherwise eat the gesture. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .meta-side-hint {
   color: var(--fg-dim);
@@ -4613,6 +4617,10 @@ body {
      behind the panel's gold border. */
   flex: 1;
   min-height: 0;
+  /* Allow vertical touch-scroll on phones; the global
+     `body { touch-action: none }` would otherwise eat the gesture. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .lo-section {
   --section-edge: #ffd166;
@@ -5932,6 +5940,11 @@ body {
   scrollbar-gutter: stable;
   scrollbar-color: #ffae3a rgba(26, 14, 18, 0.7);
   scrollbar-width: thin;
+  /* `body { touch-action: none }` blocks every touch gesture, including
+     vertical scroll. Re-enable native vertical panning on the recipe
+     list so the brewery list is scrollable on phones / tablets. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .craft-recipes::-webkit-scrollbar { width: 10px; }
 .craft-recipes::-webkit-scrollbar-track {
@@ -7095,6 +7108,10 @@ body {
   isolation: isolate;
   max-height: 80vh;
   overflow-y: auto;
+  /* Allow vertical touch-scroll on phones; the global
+     `body { touch-action: none }` would otherwise eat the gesture. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   padding: 22px 24px 18px;
   background:
     radial-gradient(ellipse at top, rgba(255, 209, 102, 0.10) 0%, transparent 55%),
@@ -7902,6 +7919,52 @@ body {
   }
   .law-announce-row {
     transition-delay: 0ms;
+  }
+}
+
+/* Phone-landscape compression. The desktop card is min(360, 88vw) wide
+ * and easily 220–320 CSS-px tall on a 1–2-row announce — on a 430-tall
+ * phone in landscape that lands as ~70 % of the viewport, which the
+ * player reads as "the dungeon-law popup ate the whole screen". The
+ * `max-height: 540` guard scopes this to actual phones-in-landscape;
+ * desktop and tablet keep the dramatic 18-px title untouched. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .law-announce { padding-top: 6vh; }
+  .law-announce-card {
+    min-width: min(280px, 78vw);
+    max-width: min(420px, 80vw);
+    padding: 10px 14px 10px;
+  }
+  .law-announce-eyebrow {
+    font-size: 8px;
+    letter-spacing: 2.5px;
+    margin-bottom: 4px;
+  }
+  .law-announce-title {
+    font-size: 13px;
+    letter-spacing: 1px;
+    line-height: 1.25;
+    margin-bottom: 2px;
+  }
+  .law-announce-subtitle {
+    font-size: 13px;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .law-announce-list { gap: 6px; }
+  .law-announce-row {
+    gap: 8px;
+    padding: 6px 8px;
+  }
+  .law-announce-icon { font-size: 18px; }
+  .law-announce-name {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .law-announce-line {
+    font-size: 12px;
+    line-height: 1.2;
   }
 }
 
@@ -11039,11 +11102,16 @@ body {
   top: max(4px, var(--safe-top, 0px));
   left: max(18px, var(--safe-left, 0px));
   right: max(18px, var(--safe-right, 0px));
-  /* Visual scaling. transform-origin: top right anchors the right
-     side (resources + pause button) at the screen edge — those are
-     the elements the player tends to look for under their thumb on
-     mobile. The wave badge on the left absorbs the visual shift. */
-  transform-origin: top right;
+  /* Visual scaling. We previously anchored to `top right` so the
+     pause button stayed glued to the right edge, but on phones with
+     `--hud-scale: 0.85` that left a ~130 CSS-px gap between the wave
+     badge and the left edge — the player saw the entire HUD pushed
+     into the right half of the screen. Anchoring to `top center`
+     spreads the visual shrink symmetrically: both the wave badge and
+     the right-side cluster move inward by half as much, which reads
+     as "the HUD is centred on this row" instead of "everything is
+     pushed right". */
+  transform-origin: top center;
   transform: scale(var(--hud-scale, 1));
 }
 
@@ -11051,11 +11119,12 @@ body {
   bottom: max(18px, var(--safe-bottom, 0px));
   left: max(22px, var(--safe-left, 0px));
   right: max(22px, var(--safe-right, 0px));
-  /* Anchor right so the round ABILITY / OVERLOAD buttons stay glued
-     to the right edge. The centre column (yellow CTA + potion belt)
-     drifts slightly inward, which is fine — it sits on a flexible
-     1fr | auto | 1fr grid that absorbs the offset. */
-  transform-origin: bottom right;
+  /* Anchor centre so the bottom-row cluster (potion belt + battle CTA
+     + ABILITY/OVERLOAD on the right) shrinks symmetrically. Same
+     rationale as `.hud-top` above — the previous `bottom right`
+     origin pushed the centre BATTLE CTA to the right edge of the
+     screen on phones, leaving a wide empty gutter on the left. */
+  transform-origin: bottom center;
   transform: scale(var(--hud-scale, 1));
 }
 
