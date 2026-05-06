@@ -778,6 +778,10 @@ Object.assign(RU, {
   'ui.lb.empty': 'Пока записей нет.',
   'ui.lb.signInPrompt': 'Войдите в Яндекс, чтобы попасть в таблицу лидеров.',
   'ui.lb.signInBtn': 'Войти',
+  'ui.lb.diag.title': 'Диагностика',
+  'ui.lb.diag.probes': 'Доски Яндекс:',
+  'ui.lb.diag.submits': 'Последние попытки:',
+  'ui.lb.diag.noSubmits': 'Сабмитов ещё не было.',
 
   // ── Endless modifiers ────────────────────────────────────────────────
   'ui.endless.cycleTitle': 'Бесконечный цикл {loop}',

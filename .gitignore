@@ -24,3 +24,6 @@ dist-tsc/
 /repro-craft.mjs
 /repro-modifier.mjs
 /repro-loadout.mjs
+/scripts/probe-*.mjs
+/scripts/inspect-*.mjs
+/tmp-screenshots/

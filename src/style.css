@@ -5375,6 +5375,146 @@ body {
   font-size: 12px;
   color: var(--gold, #f5c453);
 }
+
+/* ── Leaderboard diagnostics block (collapsed-by-default `<details>`)
+ *
+ *  Renders SDK status, per-board probe results, and a rolling tail of
+ *  the last few setLeaderboardScore attempts. See the matching block
+ *  in `leaderboardOverlay.ts`. The visual treatment is intentionally
+ *  utilitarian — small monospace text, thin borders, no warm
+ *  ornamentation — because this is a diagnostic surface, not part of
+ *  the player-facing decoration. */
+.lb-diag {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 209, 102, 0.18);
+  padding-top: 8px;
+  font-family: 'VT323', 'Trebuchet MS', monospace;
+  color: #c8c2b0;
+}
+.lb-diag-summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  color: #f5c453;
+  letter-spacing: 0.5px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 209, 102, 0.18);
+  border-radius: 4px;
+  user-select: none;
+}
+.lb-diag-summary::-webkit-details-marker { display: none; }
+.lb-diag-summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 120ms ease;
+}
+.lb-diag[open] .lb-diag-summary::before { transform: rotate(90deg); }
+.lb-diag-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.lb-diag-status {
+  font-size: 12px;
+  color: #f0e8c8;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+.lb-diag-section-title {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 8px;
+  color: #f5c453;
+  letter-spacing: 0.5px;
+  margin: 4px 0 2px;
+  opacity: 0.75;
+}
+.lb-diag-probe,
+.lb-diag-submit {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-diag-probe {
+  grid-template-columns: auto auto 1fr;
+}
+.lb-diag-board {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 9px;
+  color: #f5c453;
+}
+.lb-diag-board-title {
+  color: #c8c2b0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-diag-time {
+  color: #8a8676;
+  font-size: 11px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 0;
+}
+.lb-diag-score {
+  color: #e6e6f0;
+}
+.lb-diag-verdict {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.lb-diag-probe.ok .lb-diag-verdict,
+.lb-diag-submit.status-sent .lb-diag-verdict,
+.lb-diag-submit.status-mock .lb-diag-verdict {
+  color: #b6f0a0;
+  background: rgba(110, 220, 110, 0.15);
+}
+.lb-diag-probe.fail .lb-diag-verdict,
+.lb-diag-submit.status-failed .lb-diag-verdict {
+  color: #ffb1bd;
+  background: rgba(255, 100, 120, 0.18);
+}
+.lb-diag-submit.status-skipped .lb-diag-verdict {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.14);
+}
+.lb-diag-err {
+  color: #ffb1bd;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-diag-empty {
+  color: #8a8676;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Compact (main-menu) variant: tighter chrome so the diag panel
+   doesn't blow out the embedded card. */
+.lb-panel-compact .lb-diag-body { font-size: 11px; }
+.lb-panel-compact .lb-diag-probe,
+.lb-panel-compact .lb-diag-submit {
+  font-size: 10px;
+  padding: 1px 4px;
+}
+
 /* ============ Daily Event preview overlay ============ */
 .dev-overlay {
   position: fixed;
@@ -11221,26 +11361,43 @@ body {
 }
 
 :root.viewport-fitted .pause-stats-group {
-  /* Reset to desktop baseline so we scale a known layout. The 92dvh /
-     94dvh caps from the media-query ladder become a single 92vh here —
-     after the transform that lands at ~92vh × ui-scale visual height,
-     which on the smallest phone (398 px tall) is ~250 px and still
-     leaves room for the title + close row. */
+  /* Reset to desktop baseline so we scale a known layout. Pre-scale
+     max-height tracks the design height (720) — the parent
+     `transform: scale(--ui-scale)` then shrinks it to fit the actual
+     viewport. Using `vh` here (e.g. 92vh) was wrong: on a 432-px-tall
+     landscape phone with `--ui-scale ≈ 0.75`, 92vh = 397 px pre-scale,
+     which clipped the inner panel's last "Доп. волна" row before the
+     parent transform got a chance to scale the panel down to fit. */
   max-width: none;
-  max-height: 92vh;
+  max-height: 720px;
   transform: scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
 
 :root.viewport-fitted .pause-stats-inner {
-  /* Pin to desktop widths so the parent transform is the only scaler. */
+  /* Pin to desktop widths so the parent transform is the only scaler.
+     Pre-scale max-height tracks the design height (720) instead of the
+     viewport (which would clip in pre-scale before the parent's
+     `transform: scale()` got a chance to shrink the panel down). The
+     parent group caps at 720 px max-height, so we only need to stop
+     the pre-scale layout box from ballooning past the desktop panel
+     size. */
   width: 640px;
-  max-height: 80vh;
+  max-height: 720px;
 }
 :root.viewport-fitted .pause-stats-side {
   width: 480px;
-  max-height: 80vh;
+  max-height: 720px;
 }
+
+/* Narrow-width design (1024 × 576) — the desktop pair of 640 + 480 px
+   panels (1 136 total + 16 px gap) overflows the 1 024-px design
+   canvas at `--ui-scale = 1`, so the pause overlay leaks off both
+   edges on tablets / mid-tier landscape phones whose viewport happens
+   to land exactly on the narrow design. Tighten the widths so the
+   pair lands within the narrow canvas. */
+:root.viewport-fitted-narrow .pause-stats-inner { width: 540px; }
+:root.viewport-fitted-narrow .pause-stats-side  { width: 360px; }
 
 /* Restore typography — all visual scaling is now done by the parent
    transform, so each row reads at the *same* visual ratio as the rest of
@@ -11873,17 +12030,28 @@ body {
    In fit-mode the global scale handles fitting; the discrete 600 px
    breakpoint is unnecessary. Wide designs keep the 3-col module
    layout; the narrow design (1024×576 → phones / narrow tablets)
-   drops to 2 columns and hides the long description text — the title
-   attribute on each `.lo-card` still surfaces the description on
-   hover/long-press. */
+   drops to 2 columns. */
 :root.viewport-fitted .lo-grid {
   grid-template-columns: repeat(3, 1fr);
 }
 :root.viewport-fitted-narrow .lo-grid {
   grid-template-columns: repeat(2, 1fr);
 }
+
+/* Restore the module description text on the narrow design. The
+   previous `display: none` was meant to keep cards from growing too
+   tall when the grid dropped to 2 columns, but it left mobile players
+   with an icon + 2-word name and no idea what Lightning Rod / Chronos
+   actually do. Show the description in a smaller font with a
+   2-line clamp instead — the surface stays compact and the player
+   gets the same information as on desktop. */
 :root.viewport-fitted-narrow .lo-card-desc {
-  display: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.15;
 }
 :root.viewport-fitted-narrow .lo-card {
   padding: 8px 6px 8px;
@@ -12015,8 +12183,22 @@ body {
     line-height: 1.25;
     max-width: 720px;
   }
+  /* Cursed cards on coarse-pointer devices: keep the column max-width
+     in sync with the *fitted* non-cursed grid (220 px) so the stage's
+     natural pre-scale height stays under the 576-px design height
+     floor. The previous 420-px value made the cards-stage taller than
+     576 px (322 → 484 px tall card faces), and on a 1278 × 432
+     landscape viewport that translated to ~545-px-tall scaled stage
+     overflowing the viewport vertically — the cards rendered, but
+     they extended above and below the visible band, leaving the
+     player with only the title + action row.
+
+     The cursed-only typography overrides above (smaller title /
+     subtitle / effect rows) still apply so the cards still read as a
+     distinct cursed variant — they just aren't 50 % wider for no
+     reason. */
   #overlay.cards-mode.cursed-mode .cards-rh {
-    grid-template-columns: repeat(3, minmax(0, 420px));
+    grid-template-columns: repeat(3, minmax(0, 220px));
     gap: 14px;
   }
   .card-rh.cursed .card-rh-effects {
@@ -12034,17 +12216,29 @@ body {
   .card-rh.cursed .card-rh-title {
     font-size: 12px;
   }
-}
 
-/* Narrow viewport additionally — when the wider 360px cursed grid
-   wouldn't fit, allow it to shrink down again by 1fr columns. Same
-   approach as the existing `.cards-rh` 1024 px breakpoint. */
-@media (pointer: coarse) and (max-width: 1024px) {
-  #overlay.cards-mode.cursed-mode .cards-rh {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+  /* Pin the action-row chip used as the gold/reroll counter so it can
+     never float free of its host pill on touch devices. The pixel-art
+     skewX(-12deg) chip relies on its containing flex item for
+     positioning — when the parent pill clips its overflow at all (e.g.
+     on small landscape phones where action-pill padding compresses)
+     the chip's skewed corners can briefly render unparented and look
+     like a stray red badge floating over the middle pill. The
+     `position: relative` here keeps the chip's skewed-stacking-context
+     anchored to its pill instead of the cards-stage. */
+  .cards-action-pill .cards-action-counter {
+    position: relative;
+    z-index: 0;
   }
 }
+
+/* No `(max-width: 1024px)` cursed-mode override is needed any more.
+   `minmax(0, 220px)` already lets the columns shrink proportionally
+   when the cards-stage container is narrower than 660 + 28 = 688 px
+   (which is the case on every coarse-pointer phone the game runs
+   on), so going to 1fr at <= 1024 px would only *grow* the cards
+   wider — which is what produced the 932 × 430 overflow that hid
+   them behind the action row. */
 
 /* ════════════════════════════════════════════════════════════════════════
    MOBILE REFINEMENTS — round 2
@@ -12173,23 +12367,51 @@ body {
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
   }
+}
 
-  /* Keep the header tightly framed around the visible content even
-     when the right side panel is missing. `align-self: center` lets
-     the header take its natural width (title + close + gap) instead
-     of stretching across a wide row that may not exist this run. */
-  :root.viewport-fitted .pause-stats-group {
-    align-items: center;
-  }
-  :root.viewport-fitted .pause-stats-header {
-    width: 100%;
-    max-width: 640px;
-    padding: 0 8px 10px;
-  }
-  :root.viewport-fitted .pause-stats-row {
-    align-self: center;
-  }
-  :root.viewport-fitted .pause-stats-footer {
-    align-self: center;
-  }
+/* Pause stats — touch-device polish. Promoted out of `@media (pointer:
+   coarse)` and gated only on `:root.viewport-fitted` so the same rules
+   apply on every browser whose `pointer:coarse` heuristic is unreliable
+   (Yandex WebView, Chrome's "responsive design" mode, Firefox on
+   Android in some flag combos). The previous coarse-only block left
+   the close-X visually orphaned ~640 px from the row's right edge on
+   ~1280 × 432 landscape phones because the header capped at 640 px
+   while the panel row spanned ~1136 px.
+
+   The fix is twofold:
+     1. Size the group to its widest child (`width: max-content`) so
+        the header naturally stretches across the full row width — the
+        `space-between` flex layout then pins the close-X flush to the
+        right edge of the right panel.
+     2. Drop the `max-width: 640px` on the header so it can grow with
+        the row.
+
+   `align-items: center` is intentional so a single-panel pause (no
+   blessings/laws/contracts) keeps the panel + header centred in the
+   group's box rather than left-aligned. */
+:root.viewport-fitted .pause-stats-group {
+  align-items: center;
+  width: max-content;
+  max-width: 100vw;
+}
+:root.viewport-fitted .pause-stats-header {
+  width: 100%;
+  padding: 0 8px 10px;
+}
+:root.viewport-fitted .pause-stats-row {
+  align-self: stretch;
+  justify-content: center;
+}
+:root.viewport-fitted .pause-stats-footer {
+  align-self: center;
+}
+
+/* When neither side-panel content nor a footer is present (single
+   `pause-stats-inner` panel only), pin the header to the inner
+   panel's left/right edges instead of stretching it across the whole
+   group's max-content width — the title + X otherwise float far
+   to the sides on a wide-but-thin landscape viewport. */
+:root.viewport-fitted .pause-stats-group:not(:has(.pause-stats-side)) .pause-stats-header {
+  max-width: 640px;
+  margin: 0 auto;
 }
