@@ -713,6 +713,7 @@ function showCardOverlay(): void {
         { label: t('ui.cards.next'), primary: true, onClick: () => {
           overlay.hide();
           const prevMutators = [...state.activeMutatorIds];
+          submitWaveLeaderboards();
           startPause(state);
           announceNewDungeonLawIfChanged(prevMutators);
           yandex.gameplayStart();
@@ -760,6 +761,7 @@ function renderCardOverlay(): void {
       tutorial.notify('cardPicked');
       overlay.hide();
       const prevMutators = [...state.activeMutatorIds];
+      submitWaveLeaderboards();
       startPause(state);
       announceNewDungeonLawIfChanged(prevMutators);
       yandex.gameplayStart();
@@ -771,6 +773,7 @@ function renderCardOverlay(): void {
       state.contractStats.cardSkipUsed = true;
       overlay.hide();
       const prevMutators = [...state.activeMutatorIds];
+      submitWaveLeaderboards();
       startPause(state);
       announceNewDungeonLawIfChanged(prevMutators);
       yandex.gameplayStart();
@@ -863,14 +866,44 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   // Submit scores to the two Yandex Games leaderboards. `endlessWaves`
   // tracks the highest wave reached across any run; `dailyWaves` is a
   // permanent board for daily-event runs (no per-day rollover — the same
-  // table is reused every weekday).
+  // table is reused every weekday). Same submit logic also runs after
+  // every cleared wave (`submitWaveLeaderboards`) so abandon-mid-run
+  // flows are still reflected — but we keep the run-end submit as a
+  // safety net in case the wave-clear hook didn't fire (e.g. defeat
+  // happens partway through a wave with no preceding clear).
+  submitWaveLeaderboards();
+
+  return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp, contractBlue, contractAncient, completedContracts };
+}
+
+/** Cumulative wave count for the current run including endless / daily
+ *  loops. Used as the leaderboard score input so a player who loops
+ *  past the wave list keeps moving up the board instead of getting
+ *  reset to a low number when `currentIndex` rolls back to 0. */
+function cumulativeWaveCount(): number {
+  return state.endlessLoop * totalWaves(state) + state.waveState.currentIndex + 1;
+}
+
+/** Push the current run's progress to the relevant Yandex leaderboards.
+ *  Yandex `setLeaderboardScore` only persists the player's all-time
+ *  best, so it's safe to call after every cleared wave: scores are
+ *  monotonically increasing across the run, so back-to-back submits
+ *  keep the player at their high-water mark.
+ *
+ *  Why this exists separately from `awardRunEssence`: previously the
+ *  leaderboard was only updated on victory or defeat. A player who
+ *  played several waves of a Daily Event and then exited via the
+ *  pause-menu "Exit to menu" never submitted, so the daily board
+ *  silently dropped their progress. Calling this from the wave-cleared
+ *  hooks ensures the board reflects the run as it happens. */
+function submitWaveLeaderboards(): void {
+  const wave = cumulativeWaveCount();
+  if (wave < 1) return;
   void yandex.setLeaderboardScore('endlessWaves', wave);
   if (state.difficulty === 'daily') {
     const score = wave * 1000 + state.totalKills;
     void yandex.setLeaderboardScore(dailyBoardId(), score);
   }
-
-  return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp, contractBlue, contractAncient, completedContracts };
 }
 
 /** Build the per-currency reward grid that replaces the old single-line
