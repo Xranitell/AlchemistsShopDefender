@@ -501,7 +501,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   // followed by 40% release. We reuse it to pick the baked fallback
   // sprite AND to map the painted throw row's 4 frames over the throw
   // duration (frames 0–1 during wind-up, frames 2–3 during release).
-  const THROW_DURATION = 0.22;
+  const THROW_DURATION = 0.44;
   const THROW_RELEASE_FRACTION = 0.4;
   const windupCutoff = THROW_DURATION * THROW_RELEASE_FRACTION;
   if (m.throwAnim > 0) {
@@ -528,8 +528,11 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   const drawX = m.pos.x + lunge.x;
   const drawY = m.pos.y + bob + lunge.y;
 
+  // Flip the mannequin to face the throw direction (mirror when throwing left).
+  const mannequinFlip = m.throwAnim > 0 && m.throwDir.x < 0;
+
   if (useAnim) {
-    drawAnimFrame(ctx, animRow, animFrame, drawX, drawY);
+    drawAnimFrame(ctx, animRow, animFrame, drawX, drawY, { flipX: mannequinFlip });
     if (m.damageFlash > 0) {
       // Tint via offscreen mask so the salmon overlay clips to the
       // mannequin's painted pixels — a `source-atop fillRect` on the
@@ -544,6 +547,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
         drawY,
         COLORS.fireC,
         Math.min(0.7, m.damageFlash * 1.5),
+        { flipX: mannequinFlip },
       );
     }
   } else if (m.damageFlash > 0) {

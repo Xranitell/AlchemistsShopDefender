@@ -27,7 +27,7 @@ export function updateMannequin(state: GameState, dt: number): void {
     const dy = aim.y - m.pos.y;
     const len = Math.hypot(dx, dy) || 1;
     m.throwDir = { x: dx / len, y: dy / len };
-    m.throwAnim = 0.22;
+    m.throwAnim = 0.44;
   }
 
   // Triple Throw card (GDD §8.2): every `tripleThrowInterval` seconds the
