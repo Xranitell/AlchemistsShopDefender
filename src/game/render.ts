@@ -16,6 +16,7 @@ import {
 } from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
+import { drawTurret, getTurretFootprint } from '../render/turretSheet';
 import {
   drawFirePool,
   drawPixelFloatingText,
@@ -49,6 +50,12 @@ function difficultyAuraColor(mode: DifficultyMode): string | null {
 const SPRITE_SCALE = 3;
 const HERO_SCALE = 4.5;
 const TOWER_SCALE = 3;
+// Painted turret sprite scale. Source frames are ~280 × 370 px; at 0.25
+// they render ~70 × 92 on screen — about 0.55 m wide given the new 1 m
+// floor tile (TILE_W = 128 px), which keeps the painted pedestals
+// proportional to the rune-circle / mannequin and roughly matches the
+// previous 30-px-wide pixel-art tower silhouette in visual weight.
+const TOWER_PAINTED_SCALE = 0.25;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
 let lastRenderTime = -1;
@@ -363,8 +370,11 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
-    // Drop shadow under base.
-    drawShadow(ctx, t.pos.x, t.pos.y + 22, 24, 7, 0.42);
+    // Drop shadow under base. The painted turret stands have wider
+    // pedestals than the old pixel-art bases, so size the shadow off
+    // the painted footprint when the painted sheet is in use.
+    const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
+    drawShadow(ctx, t.pos.x, t.pos.y + 4, painted.width * 0.42, 7, 0.42);
 
     // Base glow (cached halo to avoid per-frame gradient allocation).
     drawRadialGlow(
@@ -375,22 +385,49 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       0.08,
     );
 
-    // Base sprite
-    let base = s.towerNeedler;
-    let barrel = s.towerNeedlerBarrel;
-    if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
-    else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
-    else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
-    else if (t.kind.id === 'ether_coil') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
-    else if (t.kind.id === 'watch_tower') { base = s.towerNeedler; barrel = s.towerNeedlerBarrel; }
-    drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
+    // Painted turret stand — replaces the previous baked pixel-art
+    // base + rotating barrel pair. The painted sprite includes its
+    // own machinery on top so the rotating-barrel pass is dropped;
+    // aim direction is still readable through projectile spawn
+    // direction + the muzzle flash below.
+    //
+    // Falls back to the baked sprite while the painted sheet PNG is
+    // still loading so towers don't pop in invisibly on the first
+    // frame after placement.
+    const usingPainted = drawTurret(
+      ctx,
+      t.pos.x,
+      t.pos.y,
+      t.kind.id,
+      { scale: TOWER_PAINTED_SCALE },
+    );
+    if (!usingPainted) {
+      let base: BakedSprite = s.towerNeedler;
+      let barrel: BakedSprite = s.towerNeedlerBarrel;
+      if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
+      else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+      else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
+      else if (t.kind.id === 'ether_coil') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+      else if (t.kind.id === 'watch_tower') { base = s.towerNeedler; barrel = s.towerNeedlerBarrel; }
+      drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
+      drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
+    }
 
-    // Rotating barrel sprite
-    drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
+    // Painted-mode "tower top" anchor — the painted stand is drawn
+    // bottom-anchored at (pos.x, pos.y), so the machinery on top lands
+    // at roughly y - painted.height. Procedural sparkles / flames /
+    // muzzle flashes that previously sat on top of the small pixel-art
+    // sprite need to be lifted by the same amount when the painted
+    // sheet is in use; baked-fallback frames keep the original offsets.
+    const topY = usingPainted ? t.pos.y - painted.height + 12 : t.pos.y - 6;
+    const muzzleReach = usingPainted ? Math.max(28, painted.width * 0.55) : 24;
 
     // Эфирная катушка: pulsing arcane halo above the coil to read it as
-    // distinct from the mercury sprayer it visually re-uses.
-    if (t.kind.id === 'ether_coil') {
+    // distinct from the mercury sprayer it visually re-uses. The
+    // painted Tesla coil already paints its own electricity, so the
+    // procedural sparks are skipped in painted mode (they'd crowd the
+    // top of the coil with double sparkles).
+    if (t.kind.id === 'ether_coil' && !usingPainted) {
       const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
       ctx.save();
       ctx.globalAlpha = 0.55 + pulse * 0.35;
@@ -403,6 +440,9 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     // Сторожевой фонарь: lantern halo + slow aura pulse on the floor so the
     // player can see who's being buffed. Color matches the tower hue.
+    // The painted lantern already has its own flame in the spritesheet
+    // so the procedural pixel flame is skipped in painted mode; the
+    // floor aura ring (a gameplay buff indicator) is always drawn.
     if (t.kind.id === 'watch_tower') {
       const auraR = t.kind.range * state.modifiers.towerRangeMult;
       const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 1.5);
@@ -412,19 +452,23 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.beginPath();
       ctx.ellipse(t.pos.x, t.pos.y, auraR, auraR * 0.5, 0, 0, Math.PI * 2);
       ctx.stroke();
-      // Lantern flame on top.
-      ctx.fillStyle = '#ffd166';
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 30 - pulse * 2), 4, 5);
-      ctx.fillStyle = '#ffe6a3';
-      ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 2), 2, 3);
+      if (!usingPainted) {
+        // Lantern flame on top of the small pixel-art lantern.
+        ctx.fillStyle = '#ffd166';
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 30 - pulse * 2), 4, 5);
+        ctx.fillStyle = '#ffe6a3';
+        ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 2), 2, 3);
+      }
       ctx.restore();
     }
 
-    // Muzzle flash when recently fired
+    // Muzzle flash when recently fired. Anchored to the painted-tower
+    // top (where the barrel / spout actually sits) when painted, or
+    // the pixel-art barrel y when falling back.
     if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura') {
-      const flashX = t.pos.x + Math.cos(t.aimAngle) * 24;
-      const flashY = t.pos.y - 6 + Math.sin(t.aimAngle) * 24;
+      const flashX = t.pos.x + Math.cos(t.aimAngle) * muzzleReach;
+      const flashY = topY + Math.sin(t.aimAngle) * muzzleReach;
       ctx.save();
       ctx.globalAlpha = 0.6;
       ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
@@ -435,12 +479,15 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
-    // Level pips: small brass dots beneath the base
+    // Level pips: small brass dots beneath the base. Painted pedestals
+    // have a wider footprint, so the pips are spread proportionally;
+    // baked-fallback rendering uses the original tight 8 px spacing.
+    const pipY = usingPainted ? Math.round(t.pos.y + 6) : t.pos.y + 29;
     for (let i = 0; i < t.level; i++) {
       ctx.fillStyle = COLORS.brassHi;
-      ctx.fillRect(t.pos.x - 10 + i * 8, t.pos.y + 29, 4, 4);
+      ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);
       ctx.fillStyle = COLORS.brass;
-      ctx.fillRect(t.pos.x - 10 + i * 8, t.pos.y + 33, 4, 1);
+      ctx.fillRect(t.pos.x - 10 + i * 8, pipY + 4, 4, 1);
     }
   }
 }
