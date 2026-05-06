@@ -2418,9 +2418,27 @@ body {
   height: 100%;
   display: block;
 }
-/* The painted-mannequin idle canvas sits on top of the floor SVG so
-   the dais reads behind the figure. Both elements share the host
-   box's centred flex layout via absolute positioning. */
+/* In-game stone dais (baked via `getDais` in `mainMenu.ts`). Stretched
+   to fill the host box; the host's own `aspect-ratio: 5/6` matches the
+   canvas's intrinsic 360×432 so the dais isn't squashed on resize.
+   `image-rendering: pixelated` matches the in-game scene which paints
+   the dais one CSS pixel per source pixel and keeps the chunky stone
+   blocks crisp instead of bilinear-blurred. */
+.mm-mannequin-display .mm-mannequin-dais {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  z-index: 0;
+}
+/* The painted-mannequin idle canvas sits on top of the dais so the
+   stone reads behind the figure. Both elements share the host box's
+   centred flex layout via absolute positioning. */
 .mm-mannequin-display .mm-mannequin-anim {
   position: absolute;
   inset: 0;
