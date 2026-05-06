@@ -8,6 +8,7 @@ import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
 import { animatedSpriteIcon } from '../render/animatedSpriteIcon';
 import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
+import { getDais } from '../render/dais';
 import { masteryEssenceMult } from '../game/meta';
 import {
   ACTIVE_MODULES,
@@ -190,22 +191,48 @@ export class MainMenu {
     //   The painted spritesheet supplies a 4-frame idle breathing loop;
     //   we render it via `animatedSpriteIcon` so the menu portrait moves
     //   in sync with the in-game mannequin (same sheet, same frames).
-    //   The pixel-art SVG illustration below is kept as a fallback for
-    //   the moments before the PNG finishes loading.
+    //
+    //   The backdrop is now the same baked stone dais the in-game scene
+    //   uses (`getDais`), so the menu portrait reads as "the same
+    //   alchemist on the same platform you'll fight on" instead of a
+    //   bespoke SVG floor that diverges from the gameplay scene.
     const centerCol = document.createElement('div');
     centerCol.className = 'mm-col mm-col-center';
     const illu = document.createElement('div');
     illu.className = 'mm-mannequin-display';
-    illu.innerHTML = mannequinIllustrationFloorSVG();
+
+    // In-game dais — rendered once into a baked canvas, then placed
+    // behind the painted mannequin. Box matches the host's 5:6 aspect
+    // (width:height) so CSS scales it cleanly on resize.
+    const DAIS_HOST_W = 360;
+    const DAIS_HOST_H = 432;
+    const daisCanvas = document.createElement('canvas');
+    daisCanvas.className = 'mm-mannequin-dais';
+    daisCanvas.width = DAIS_HOST_W;
+    daisCanvas.height = DAIS_HOST_H;
+    const daisCtx = daisCanvas.getContext('2d');
+    if (daisCtx) {
+      daisCtx.imageSmoothingEnabled = false;
+      const baked = getDais(DAIS_HOST_W, DAIS_HOST_H);
+      daisCtx.drawImage(baked, 0, 0);
+    }
+    illu.appendChild(daisCanvas);
+
+    // Painted mannequin overlay — sized + positioned so the figure
+    // matches the in-game silhouette (same sheet, same row, same
+    // ~100 px-tall body). `floorOffset` plants the painted feet on
+    // the dais centre line (canvas-y = canvas-h / 2) which the parent
+    // box anchors at the dais's visual centre.
     illu.appendChild(animatedSpriteIcon(MANNEQUIN_IDLE_ANIM, {
       width: 200,
       height: 240,
       fps: 3.3,
       extraClass: 'mm-mannequin-anim',
-      // Lift the sprite up so the painted feet sit on the SVG dais
-      // instead of clipping through the bottom of the host box.
-      floorOffset: 32,
-      fitScale: 0.78,
+      // 240 / 2 = 120: figure feet sit on the dais centre.
+      floorOffset: 120,
+      // 240 × 0.42 ≈ 101 px tall — same body height as the in-game
+      // mannequin (336 × 0.30) so the menu silhouette matches.
+      fitScale: 0.42,
     }));
     centerCol.appendChild(illu);
     body.appendChild(centerCol);
@@ -634,36 +661,11 @@ function shopBackdropSVG(): string {
   </svg>`;
 }
 
-/** Background dais + warm glow that sit *behind* the painted-mannequin
- *  canvas in the main menu's centre slot. The painted sprite (loaded
- *  from `mannequin.png` and animated via {@link animatedSpriteIcon})
- *  takes over the actual figure; this SVG only paints the floor,
- *  pixelated drop-shadow bands, and the warm radial glow so the
- *  centrepiece reads as standing on a chunky stone dais. */
-function mannequinIllustrationFloorSVG(): string {
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges" class="mm-mannequin-floor">
-    <defs>
-      <radialGradient id="mm-glow" cx="50%" cy="55%" r="55%">
-        <stop offset="0%" stop-color="#ffb84a" stop-opacity="0.30"/>
-        <stop offset="60%" stop-color="#d27a2a" stop-opacity="0.10"/>
-        <stop offset="100%" stop-color="#d27a2a" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="mm-floor" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#454a60"/>
-        <stop offset="80%" stop-color="#1a1d28"/>
-        <stop offset="100%" stop-color="transparent"/>
-      </radialGradient>
-    </defs>
-    <ellipse cx="100" cy="120" rx="80" ry="80" fill="url(#mm-glow)"/>
-    <ellipse cx="100" cy="195" rx="55" ry="18" fill="url(#mm-floor)"/>
-    <polygon points="60,184 100,170 140,184 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
-    <polygon points="60,184 100,200 100,208 56,192" fill="#2a2c3a"/>
-    <polygon points="140,184 100,200 100,208 144,192" fill="#1a1d28"/>
-    <rect x="80" y="178" width="40" height="2" fill="#000" opacity="0.45"/>
-    <rect x="76" y="180" width="48" height="2" fill="#000" opacity="0.30"/>
-    <rect x="84" y="176" width="32" height="2" fill="#000" opacity="0.25"/>
-  </svg>`;
-}
+/* The previous bespoke `mannequinIllustrationFloorSVG()` SVG dais that
+ * used to sit behind the painted mannequin in the main menu was removed
+ * in favour of rendering the in-game `getDais()` baked canvas directly,
+ * so the menu portrait reads as the same alchemist on the same platform
+ * the player will fight on. See the `centerCol` block above. */
 
 
 /** Builds the «Снаряжение Манекена» card on the main menu — a compact
