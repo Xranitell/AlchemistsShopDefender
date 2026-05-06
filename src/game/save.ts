@@ -114,7 +114,7 @@ export function newMetaSave(): MetaSave {
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
     selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
-    musicVolume: 0.4,
+    musicVolume: 0.28,
     motionMode: defaultMotionModeForNewSave(),
     tutorialDone: false,
     pauseTutorialDone: false,
@@ -212,7 +212,7 @@ export function loadMeta(): MetaSave {
         ? (data.selectedAuraModule as string)
         : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
-      musicVolume: clampVolume(data.musicVolume, 0.4),
+      musicVolume: clampVolume(data.musicVolume, 0.28),
       // Migration: pre-motion-mode saves had no setting. Carry over the
       // platform default so existing Android players who had been
       // suffering through the full animation set quietly fall to

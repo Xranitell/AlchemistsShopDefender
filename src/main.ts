@@ -31,6 +31,8 @@ import { render, getRenderCamera } from './game/render';
 import { screenToWorld, worldToScreen } from './render/camera';
 import { getSprites } from './render/sprites';
 import { spriteIcon } from './render/spriteIcon';
+import { animatedSpriteIcon } from './render/animatedSpriteIcon';
+import { MANNEQUIN_IDLE_ANIM } from './render/creatureAnims';
 import type { BakedSprite } from './render/sprite';
 import { Hud } from './ui/hud';
 import { CardOverlay } from './ui/cardOverlay';
@@ -401,7 +403,29 @@ void (async () => {
   loop.start();
 })();
 
+/** Last cursor style applied to the game canvas. Cached so we only touch
+ *  the DOM when the gameplay/menu boundary changes (avoids layout thrash
+ *  every frame). */
+let lastCanvasCursor = '';
+
+/** Hide the OS cursor while the player is actively engaged in a wave or
+ *  prep stage so the alchemist's aim reticle (drawn on canvas) isn't
+ *  doubled by the system arrow. The cursor reappears for menus, card
+ *  drafts, the pause panel, etc. — anywhere the player needs to click on
+ *  HTML overlays. */
+function syncCanvasCursor(): void {
+  if (!canvas) return;
+  const inGameplay = (state.phase === 'wave' || state.phase === 'preparing')
+    && !userPaused;
+  const desired = inGameplay ? 'none' : '';
+  if (desired !== lastCanvasCursor) {
+    canvas.style.cursor = desired;
+    lastCanvasCursor = desired;
+  }
+}
+
 function tick(dt: number): void {
+  syncCanvasCursor();
   // Convert screen mouse position to world coordinates through inverse iso transform
   const cam = getRenderCamera(state.arena.width, state.arena.height);
   state.aim = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
@@ -1337,7 +1361,18 @@ function showGameOver(): void {
   // the wrapper paints a chest-fracture line over the chest plate.
   const mannequinWrap = document.createElement('div');
   mannequinWrap.className = 'defeat-mannequin';
-  const fallen = spriteIcon(sprites.mannequin, { scale: 4, extraClass: 'defeat-mannequin-sprite' });
+  // Painted-mannequin defeat portrait: render the same idle frame the
+  // main menu uses so the silhouette matches the in-game sprite (the
+  // baked pixel-art mannequin no longer appears anywhere else in the
+  // shipped build). The CSS rotate/saturation filters above turn the
+  // upright pose into the "fallen" look the panel is named after.
+  const fallen = animatedSpriteIcon(MANNEQUIN_IDLE_ANIM, {
+    width: 220,
+    height: 260,
+    extraClass: 'defeat-mannequin-sprite',
+    staticFrameIndex: 0,
+    fitScale: 0.95,
+  });
   mannequinWrap.appendChild(fallen);
   stage.appendChild(mannequinWrap);
 

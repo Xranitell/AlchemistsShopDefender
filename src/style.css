@@ -2418,6 +2418,18 @@ body {
   height: 100%;
   display: block;
 }
+/* The painted-mannequin idle canvas sits on top of the floor SVG so
+   the dais reads behind the figure. Both elements share the host
+   box's centred flex layout via absolute positioning. */
+.mm-mannequin-display .mm-mannequin-anim {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
 
 /* ── Inline daily rewards calendar ──────────────────────────── */
 .mm-daily-calendar {
@@ -6732,7 +6744,10 @@ body {
 }
 .defeat-mannequin-sprite {
   display: block;
-  image-rendering: pixelated;
+  /* Painted spritesheet — let the browser smooth the downscale; the
+     pixel-art `image-rendering: pixelated` mode used by baked sprites
+     turns bilinear-blended edges into jagged staircases. */
+  image-rendering: auto;
   filter: hue-rotate(-25deg) saturate(0.55) brightness(0.7) contrast(1.05);
 }
 .defeat-mannequin::after {

@@ -55,9 +55,11 @@ export class AudioEngine {
   private sfxGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
 
-  /** Persisted user volumes (0..1). Apply on top of the per-channel gain. */
+  /** Persisted user volumes (0..1). Apply on top of the per-channel gain.
+   *  Music defaults to 0.7× the previous baseline so the menu loop and
+   *  battle ambient track no longer drown out SFX on a fresh save. */
   private sfxVolume = 0.6;
-  private musicVolume = 0.4;
+  private musicVolume = 0.28;
   private muted = false;
 
   /** Currently scheduled music: source nodes + the track id. Switching a

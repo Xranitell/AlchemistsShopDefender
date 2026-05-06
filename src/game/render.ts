@@ -459,8 +459,14 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.stroke();
   ctx.restore();
 
-  // Drop shadow (sized to match the 1.5×-scaled mannequin sprite).
-  drawShadow(ctx, m.pos.x, m.pos.y + 42, 48, 13, 0.52);
+  // Drop shadow — sit it directly under the painted mannequin's feet
+  // (the sprite anchor is at `m.pos.y`, so an offset would float the
+  // shadow below the floor). Width/height scale with the painted idle
+  // frame so the shadow stays in proportion as the sprite scale changes.
+  const mannequinFeetY = m.pos.y;
+  const mannequinShadowW = Math.round(MANNEQUIN_IDLE_ANIM.sh * MANNEQUIN_IDLE_ANIM.scale * 0.32);
+  const mannequinShadowH = Math.max(6, Math.round(mannequinShadowW * 0.28));
+  drawShadow(ctx, m.pos.x, mannequinFeetY, mannequinShadowW, mannequinShadowH, 0.52);
 
   // Core glow pulse (cached halo).
   const corePulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2);
