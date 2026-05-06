@@ -328,6 +328,7 @@ const hud = new Hud(hudRoot, {
   onSkipPause: () => {
     if (state.phase === 'preparing') {
       towerShop.close();
+      mannequinShop.close();
       startNextWave(state);
     }
   },
@@ -438,6 +439,15 @@ function tick(dt: number): void {
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
+
+  // Auto-close panels that are only valid during preparation as soon as
+  // the phase moves on. The repair / shield popup explicitly opens only
+  // when `phase === 'preparing'`, so once a wave kicks off (or a card
+  // draft / victory screen takes over) we sweep it away — otherwise the
+  // popup would sit on top of the HUD until the player clicked it shut.
+  if (mannequinShop.isOpen() && state.phase !== 'preparing') {
+    mannequinShop.close();
+  }
 
   // Click handling. The first frame of a press handles UI: rune points,
   // mannequin popup, etc. Subsequent held frames during a wave keep firing
@@ -636,8 +646,16 @@ function handleClick(at: { x: number; y: number }): void {
     }
   }
 
-  // Mannequin click → repair / shield popup. Only useful between waves.
-  if (dist(at, state.mannequin.pos) < mannequinHitRadius()) {
+  // Mannequin click → repair / shield popup. The repair/shield panel is
+  // only available during the preparation phase — repairing or buying a
+  // shield mid-wave was never a designed loop and made the popup pop
+  // open every time the player tapped near the centre of the arena to
+  // throw a potion. During a wave, fall through so the click becomes a
+  // potion throw / shop close as usual.
+  if (
+    state.phase === 'preparing'
+    && dist(at, state.mannequin.pos) < mannequinHitRadius()
+  ) {
     const screen = canvasToScreen(canvas!, state.mannequin.pos);
     towerShop.close();
     mannequinShop.open(screen);

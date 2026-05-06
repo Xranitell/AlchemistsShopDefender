@@ -15,7 +15,8 @@ export type TutorialEventKind =
   | 'cardPicked'
   | 'towerPlaced'
   | 'towerUpgraded'
-  | 'overloadActivated';
+  | 'overloadActivated'
+  | 'mannequinShopOpened';
 
 /** Trigger kinds that map to panel-bound walkthroughs (non-wave). */
 type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen';
@@ -165,7 +166,8 @@ class TutorialController {
       (kind === 'cardPicked' && d.kind === 'cardPicked') ||
       (kind === 'towerPlaced' && d.kind === 'towerPlaced') ||
       (kind === 'towerUpgraded' && d.kind === 'towerUpgraded') ||
-      (kind === 'overloadActivated' && d.kind === 'overloadActivated')
+      (kind === 'overloadActivated' && d.kind === 'overloadActivated') ||
+      (kind === 'mannequinShopOpened' && d.kind === 'mannequinShopOpened')
     ) {
       this.completeStep();
     }

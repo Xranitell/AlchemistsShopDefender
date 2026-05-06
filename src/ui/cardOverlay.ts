@@ -49,13 +49,22 @@ export class CardOverlay {
       stage.appendChild(sub);
     }
 
+    // The cards row is wrapped in a positioned container so the
+    // pre-lock countdown hint can float above it on its own layer
+    // (`position: absolute`) instead of being a flex sibling that
+    // pushes the cards down by ~50 px while it's visible. With the
+    // wrapper, inserting / removing the hint doesn't shift the
+    // cards row position at all.
+    const cardsWrap = document.createElement('div');
+    cardsWrap.className = 'cards-row-wrap';
     const cards = document.createElement('div');
     cards.className = 'cards-rh';
     const picked = options.pickedIds ?? [];
     for (const card of options.cards) {
       cards.appendChild(buildCardElement(card, picked, options.onPick));
     }
-    stage.appendChild(cards);
+    cardsWrap.appendChild(cards);
+    stage.appendChild(cardsWrap);
 
     if (options.cards.length === 0) {
       const empty = document.createElement('div');
@@ -123,7 +132,7 @@ export class CardOverlay {
     // The hint is removed in `hide()` and when the timeout fires.
     this.root.classList.add('cards-pre-lock');
     const lockHint = buildLockHint();
-    stage.insertBefore(lockHint, cards);
+    cardsWrap.appendChild(lockHint);
     if (this.preLockTimeout != null) {
       window.clearTimeout(this.preLockTimeout);
     }
