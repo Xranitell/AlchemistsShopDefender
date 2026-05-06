@@ -1,5 +1,6 @@
 import { COLORS } from './palette';
 import { BIOMES, type BiomeId, type BiomePalette } from '../data/biomes';
+import { drawProp, onPropsSheetLoad, PROP_COUNT } from './propSprites';
 
 // Room backdrop — walls and door frames have been removed so enemies can walk
 // in from off-screen. The backdrop is now purely an iso-rhombic floor that
@@ -51,12 +52,11 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   // enough to read the room as the alchemist's lab.
   drawFloor(ctx, width, height, pal);
   // Walls removed per design request — open arena feel.
-  if (activeBiome === 'workshop') {
-    drawWorkshopDecor(ctx, width, height);
-  } else {
-    drawScatteredDecor(ctx, width, height);
-  }
-  drawBiomeDecor(ctx, width, height, activeBiome);
+  // All previous biome / workshop decor (programmatic potion bottles,
+  // books, scrolls, candles, mortar, ink, herb bundles, crates, plus
+  // the per-biome ember / bone scatter) has been replaced by the new
+  // painted props spritesheet — see `drawSpritesheetProps` below.
+  drawSpritesheetProps(ctx, width, height);
 
   cached = c;
   cachedSize = { w: width, h: height };
@@ -64,47 +64,85 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   return c;
 }
 
-/* Walls removed per design request — kept for potential re-use. */
-export function drawWorkshopWalls(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
-  const wall = 70;
-  const side = 46;
-  ctx.fillStyle = pal.wallDark;
-  ctx.fillRect(0, 0, w, wall);
-  ctx.fillRect(0, 0, side, h);
-  ctx.fillRect(w - side, 0, side, h);
+// When the painted props sheet finishes loading, invalidate the cached
+// backdrop so the next call to `getRoomBackdrop` re-bakes with the
+// props now visible. Without this, the first room render happens
+// before the PNG resolves and the props stay invisible until the
+// player triggers a biome / size change.
+onPropsSheetLoad(() => {
+  cached = null;
+  cachedSize = null;
+  cachedBiome = null;
+});
 
-  for (let x = 0; x < w; x += 40) {
-    const shade = (x / 40) % 2 === 0 ? COLORS.stoneDark : COLORS.mortar;
-    ctx.fillStyle = shade;
-    ctx.fillRect(x, 0, 38, 28);
-    ctx.fillStyle = COLORS.stoneMid;
-    ctx.fillRect(x + 2, 29, 36, 28);
-    ctx.fillStyle = COLORS.tileCrack;
-    ctx.fillRect(x, 27, 40, 2);
+/**
+ * Scatters painted props randomly across the floor.
+ *
+ * Each prop is:
+ *   - placed at a deterministic position (hash-driven so the layout
+ *     stays stable between renders, but reads as random),
+ *   - kept clear of the central rune ring (`excludeRX × excludeRY`
+ *     ellipse) so the gameplay area around the dais stays readable,
+ *   - sometimes mirrored horizontally (50% chance, drawn around the
+ *     prop's anchor x — gives variety without re-baking sprites),
+ *   - tilted by ±10° around its base anchor so the floor doesn't
+ *     read like a tidy product shelf,
+ *   - rendered with a soft elliptical shadow on the floor first so the
+ *     prop stays visually grounded even when tilted.
+ *
+ * Caller (`getRoomBackdrop`) bakes this into the cached canvas; the
+ * `onPropsSheetLoad` hook above invalidates the cache the moment the
+ * PNG finishes loading so the props become visible without waiting
+ * for a biome / size change.
+ */
+function drawSpritesheetProps(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  // Same exclusion ellipse the previous decor passes used so props
+  // never land on top of the rune ring / dais.
+  const excludeRX = 280;
+  const excludeRY = 150;
+  const PROPS = 28;
+
+  for (let i = 0; i < PROPS; i++) {
+    // Two independent hashes so position and prop-pick don't correlate.
+    const r1 = hash2(i * 73 + 19, 41 + i * 5);
+    const r2 = hash2(i * 31 + 211, 7 + i * 11);
+    const x = ((r1 >>> 5) & 0xffff) / 0xffff * (w - 120) + 60;
+    const y = ((r1 >>> 13) & 0xffff) / 0xffff * (h - 140) + 70;
+
+    const dx = (x - cx) / excludeRX;
+    const dy = (y - cy) / excludeRY;
+    if (dx * dx + dy * dy < 1) continue;
+
+    const id = (r2 >>> 1) % PROP_COUNT;
+    // ±10° tilt. (r2 >>> 9) gives independent randomness from id.
+    const tiltSeed = ((r2 >>> 9) & 0xffff) / 0xffff;
+    const rotation = (tiltSeed - 0.5) * (Math.PI / 9);
+    // 50% mirror flip.
+    const flipX = ((r2 >>> 25) & 1) === 1;
+    // Slight scale variance keeps the floor from reading too uniform.
+    const scaleSeed = ((r2 >>> 17) & 0xff) / 255;
+    const scale = 0.20 + scaleSeed * 0.06; // 0.20..0.26
+
+    // Soft elliptical shadow under the prop, drawn flat on the floor
+    // (not rotated with the prop) so the shadow always reads as ground
+    // contact even for tilted bodies.
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 22 * scale * 4, 6 * scale * 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    drawProp(ctx, x, y, id, { scale, flipX, rotation });
   }
-
-  for (let y = 22; y < h; y += 38) {
-    ctx.fillStyle = (y / 38) % 2 === 0 ? COLORS.stoneDark : COLORS.mortar;
-    ctx.fillRect(0, y, side - 8, 34);
-    ctx.fillRect(w - side + 8, y, side - 8, 34);
-    ctx.fillStyle = COLORS.stoneMid;
-    ctx.fillRect(4, y + 2, side - 16, 6);
-    ctx.fillRect(w - side + 12, y + 2, side - 16, 6);
-  }
-
-  drawBackShelf(ctx, 76, 22);
-  drawBackShelf(ctx, w - 192, 22);
-  drawCandleCluster(ctx, 63, 158);
-  drawCandleCluster(ctx, w - 72, 160);
-  drawBarrels(ctx, 182, 40);
-  drawBarrels(ctx, w - 245, 38);
-
-  const vignette = ctx.createLinearGradient(0, 0, 0, wall + 90);
-  vignette.addColorStop(0, 'rgba(0,0,0,0.5)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, w, wall + 90);
 }
+
 
 // `drawPlankFloor` and `addPlankDetails` (the wooden plank renderer
 // used by the workshop biome) used to live here. They were removed
@@ -228,350 +266,10 @@ function addTileDetails(
   }
 }
 
-/**
- * Workshop-specific scattered decor: an alchemy lab inventory dropped on
- * the floor. Replaces the generic broken-potion / dust pile clutter with
- * intact glass flasks, stacked + open books, rolled scrolls, candle
- * stubs, mortar & pestle, ink + quill, small crates, and herb bundles.
- *
- * Placement is deterministic (hash-driven) and avoids the central iso
- * ring around the dais so the gameplay area stays clean.
- */
-function drawWorkshopDecor(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-): void {
-  const cx = w / 2;
-  const cy = h / 2;
-  const excludeRX = 280;
-  const excludeRY = 150;
-
-  // We drive prop selection from `i` (uniform) but pull every other
-  // random — position, orientation, internal variant — from `r`. The
-  // earlier `r % 16` selector clustered visibly because hash2's low
-  // bits land on similar values for adjacent indices.
-  const PROPS = 60;
-  for (let i = 0; i < PROPS; i++) {
-    const r = hash2(i * 53 + 11, 23 + i * 3);
-    // Use bit-21+ for x and bit-5+ for y to avoid the low-bit clustering
-    // artefacts the original `& 0xffff` mask exposed.
-    const x = ((r >>> 5) & 0xffff) / 0xffff * (w - 80) + 40;
-    const y = ((r >>> 13) & 0xffff) / 0xffff * (h - 80) + 40;
-    const dx = (x - cx) / excludeRX;
-    const dy = (y - cy) / excludeRY;
-    if (dx * dx + dy * dy < 1) continue;
-
-    const pick = i % 16;
-    // Each prop gets its own deterministic rotation so the floor stops
-    // reading like a tidy product shelf. `kind` controls the *amount*
-    // of rotation: tall props (bottles, candles, mortar, ink, herbs)
-    // get a gentle ±18° tilt, flat props (scrolls, open books) can lie
-    // at any angle, stacks stay near upright. The drawer applies the
-    // tilt internally via withTilt() so the floor shadow stays flat
-    // even for arbitrarily-rotated bodies.
-    const kind = pick <= 3 || pick === 9 || pick === 10 || pick === 11 || pick === 12 || pick === 14
-      ? 'tall'
-      : pick === 6 || pick === 13
-        ? 'stack'
-        : 'flat';
-    const rotSeed = ((r >>> 19) & 0xff) / 255; // 0..1
-    let tilt: number;
-    if (kind === 'tall') {
-      tilt = (rotSeed - 0.5) * (Math.PI / 5); // ±18°
-    } else if (kind === 'stack') {
-      tilt = (rotSeed - 0.5) * (Math.PI / 9); // ±10°
-    } else {
-      tilt = (rotSeed - 0.5) * (Math.PI * 2); // any angle
-    }
-
-    switch (pick) {
-      case 0: drawPotionBottle(ctx, x, y, 'green', r, tilt); break;
-      case 1: drawPotionBottle(ctx, x, y, 'blue',  r, tilt); break;
-      case 2: drawPotionBottle(ctx, x, y, 'red',   r, tilt); break;
-      case 3: drawPotionBottle(ctx, x, y, 'amber', r, tilt); break;
-      case 4: drawClosedBook(ctx, x, y, r, tilt); break;
-      case 5: drawClosedBook(ctx, x, y, r ^ 0x2a, tilt); break;
-      case 6: drawBookStack(ctx, x, y, r, tilt); break;
-      case 7: drawOpenBookCosy(ctx, x, y, r, tilt); break;
-      case 8: drawScroll(ctx, x, y, r, tilt); break;
-      case 9: drawCandleStub(ctx, x, y, tilt); break;
-      case 10: drawMortarPestle(ctx, x, y, tilt); break;
-      case 11: drawInkAndQuill(ctx, x, y, tilt); break;
-      case 12: drawHerbBundle(ctx, x, y, r, tilt); break;
-      case 13: drawSmallCrate(ctx, x, y, tilt); break;
-      case 14: drawPotionBottle(ctx, x, y, 'green', r ^ 0x55, tilt); break;
-      default: drawScroll(ctx, x, y, r ^ 0x77, tilt); break;
-    }
-  }
-}
-
-// Decorative junk scattered across the floor: broken potions, books, papers,
-// and shards. Deterministic placement so it doesn't re-shuffle on refresh.
-function drawScatteredDecor(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-): void {
-  // Avoid the mannequin's dais + tower rune ring. Exclusion is an ellipse
-  // matching the iso rune ring (wide × short) so decor fills the outer area.
-  const cx = w / 2;
-  const cy = h / 2;
-  const excludeRX = 280;
-  const excludeRY = 150;
-
-  const PROPS = 42;
-  for (let i = 0; i < PROPS; i++) {
-    const r = hash2(i * 31 + 7, 13 + i);
-    const x = (r & 0xffff) % (w - 60) + 30;
-    const y = ((r >> 16) & 0xffff) % (h - 60) + 30;
-    const dx = (x - cx) / excludeRX;
-    const dy = (y - cy) / excludeRY;
-    if (dx * dx + dy * dy < 1) continue;
-
-    const pick = r % 6;
-    switch (pick) {
-      case 0: drawBrokenPotion(ctx, x, y, 'cyan'); break;
-      case 1: drawBrokenPotion(ctx, x, y, 'green'); break;
-      case 2: drawBrokenPotion(ctx, x, y, 'purple'); break;
-      case 3: drawBook(ctx, x, y, (r >> 3) & 1); break;
-      case 4: drawPaperSheet(ctx, x, y, (r >> 5) & 3); break;
-      default: drawDustPile(ctx, x, y); break;
-    }
-  }
-}
-
-function drawBackShelf(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = COLORS.woodDark;
-  ctx.fillRect(x, y, 120, 44);
-  ctx.fillStyle = COLORS.woodLight;
-  ctx.fillRect(x + 4, y + 4, 112, 6);
-  ctx.fillRect(x + 4, y + 25, 112, 6);
-  ctx.fillStyle = COLORS.woodMid;
-  ctx.fillRect(x + 8, y + 11, 104, 4);
-  ctx.fillRect(x + 8, y + 32, 104, 4);
-  const colors = [COLORS.aetherB, COLORS.fireB, COLORS.acidA, COLORS.essenceB, COLORS.mercA];
-  for (let i = 0; i < 12; i++) {
-    const bx = x + 12 + i * 8;
-    const by = y + (i % 2 === 0 ? 16 : 36);
-    ctx.fillStyle = colors[i % colors.length]!;
-    ctx.fillRect(bx, by - 6, 5, 7);
-    ctx.fillStyle = COLORS.whiteSoft;
-    ctx.fillRect(bx + 1, by - 5, 1, 1);
-  }
-}
-
-function drawCandleCluster(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.beginPath();
-  ctx.ellipse(x + 9, y + 18, 18, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  for (let i = 0; i < 3; i++) {
-    const cx = x + i * 8;
-    const h = 16 - i * 3;
-    ctx.fillStyle = COLORS.parchment;
-    ctx.fillRect(cx, y + 12 - h, 5, h);
-    ctx.fillStyle = COLORS.fireB;
-    ctx.fillRect(cx + 1, y + 8 - h, 3, 4);
-    ctx.fillStyle = COLORS.fireA;
-    ctx.fillRect(cx + 2, y + 7 - h, 1, 2);
-  }
-}
-
-function drawBarrels(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  for (let i = 0; i < 2; i++) {
-    const bx = x + i * 28;
-    ctx.fillStyle = COLORS.woodDark;
-    ctx.fillRect(bx, y, 22, 34);
-    ctx.fillStyle = COLORS.woodMid;
-    ctx.fillRect(bx + 3, y + 2, 16, 30);
-    ctx.fillStyle = COLORS.woodLight;
-    ctx.fillRect(bx + 5, y + 4, 4, 26);
-    ctx.fillStyle = COLORS.mortar;
-    ctx.fillRect(bx, y + 8, 22, 3);
-    ctx.fillRect(bx, y + 24, 22, 3);
-  }
-}
 
 // Pixel helper: 1 "cell" is 3 screen px. Props end up roughly 24×12 which
 // reads clearly next to the 34-px-wide alchemist sprite.
-const P = 3;
 
-function px(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  cw: number,
-  ch: number,
-  color: string,
-): void {
-  ctx.fillStyle = color;
-  ctx.fillRect(Math.round(x), Math.round(y), cw * P, ch * P);
-}
-
-// Broken potion: a clear bottle silhouette lying on its side with a spilled
-// puddle, a cracked neck, and 3-4 chunky glass shards radiating outwards.
-function drawBrokenPotion(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tint: 'cyan' | 'green' | 'purple',
-): void {
-  const liquidA = tint === 'cyan' ? COLORS.shardA : tint === 'green' ? COLORS.shardGreenA : COLORS.shardPurpleA;
-  const liquidB = tint === 'cyan' ? COLORS.shardB : tint === 'green' ? COLORS.shardGreenB : COLORS.shardPurpleB;
-  const liquidHi = '#ffffff';
-  const glass = COLORS.shardC;
-
-  // Ground shadow (spilled puddle outline).
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.beginPath();
-  ctx.ellipse(x + P, y + 2 * P, 8 * P, 3 * P, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Liquid splash (2:1 blob in liquid colour).
-  ctx.fillStyle = liquidA;
-  ctx.beginPath();
-  ctx.ellipse(x + P, y + P, 7 * P, 2.5 * P, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = liquidB;
-  ctx.beginPath();
-  ctx.ellipse(x - P, y + P, 3 * P, 1.2 * P, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Specular highlight dot on the puddle.
-  px(ctx, x - P, y, 1, 1, liquidHi);
-
-  // Bottle body (round base + narrowing shoulder + neck lying to the left).
-  // Base (3x2):
-  px(ctx, x + P, y - P, 3, 2, glass);
-  // Shoulder (narrower):
-  px(ctx, x, y - 2 * P, 2, 1, glass);
-  // Neck (1 cell tall) lying flat to the left with a cracked tip.
-  px(ctx, x - 2 * P, y - 2 * P, 2, 1, glass);
-  // Cork popped off.
-  px(ctx, x - 3 * P, y - 2 * P, 1, 1, COLORS.woodMid);
-
-  // Rim highlight on the body.
-  px(ctx, x + 2 * P, y - P, 2, 1, liquidA);
-
-  // Shards radiating out.
-  px(ctx, x + 4 * P, y - 2 * P, 1, 1, glass);
-  px(ctx, x + 4 * P, y, 1, 1, glass);
-  px(ctx, x - 4 * P, y + 2 * P, 1, 1, glass);
-  px(ctx, x + 2 * P, y + 3 * P, 1, 1, glass);
-}
-
-// Book with a clear spine, cover, and visible page edges. Optionally drawn
-// lying open so the pages are legible.
-function drawBook(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  variant: number,
-): void {
-  if (variant === 0) {
-    // Closed book seen from a 3/4 angle. 8x4 cells + shadow.
-    const w = 8 * P;
-    const h = 4 * P;
-    // Shadow.
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(x - w / 2 + P, y - h / 2 + P, w, h);
-    // Cover.
-    px(ctx, x - w / 2, y - h / 2, 8, 4, COLORS.bookA);
-    // Spine band (top edge).
-    px(ctx, x - w / 2, y - h / 2, 8, 1, COLORS.bookB);
-    // Cover detail: embossed rectangle.
-    px(ctx, x - w / 2 + 2 * P, y - h / 2 + 2 * P, 4, 1, COLORS.bookB);
-    // Page edges on the right side.
-    px(ctx, x + w / 2 - P, y - h / 2 + P, 1, 3, COLORS.paperA);
-    // Bottom shadow line.
-    px(ctx, x - w / 2, y + h / 2 - P, 8, 1, COLORS.bookC);
-  } else {
-    // Open book with two pages and a spine down the middle.
-    const w = 10 * P;
-    const h = 5 * P;
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(x - w / 2 + P, y - h / 2 + P, w, h);
-    // Pages (paper colour).
-    px(ctx, x - w / 2, y - h / 2, 10, 5, COLORS.paperA);
-    // Spine shadow down the middle.
-    px(ctx, x - P / 2, y - h / 2, 1, 5, COLORS.bookC);
-    // Page wrinkle / text lines.
-    px(ctx, x - w / 2 + P, y - h / 2 + P, 3, 1, COLORS.paperB);
-    px(ctx, x - w / 2 + P, y - h / 2 + 2 * P, 3, 1, COLORS.paperB);
-    px(ctx, x + P, y - h / 2 + P, 3, 1, COLORS.paperB);
-    px(ctx, x + P, y - h / 2 + 3 * P, 3, 1, COLORS.paperB);
-    // Cover poking out behind the open pages.
-    px(ctx, x - w / 2 - P, y - h / 2, 1, 5, COLORS.bookA);
-    px(ctx, x + w / 2, y - h / 2, 1, 5, COLORS.bookA);
-  }
-}
-
-// Paper variants: flat sheet w/ text, scroll with rolled ends, torn piece.
-function drawPaperSheet(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  variant: number,
-): void {
-  if (variant === 0) {
-    // Flat sheet with 3 lines of "text".
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(x - 4 * P + P, y - 3 * P + P, 8 * P, 6 * P);
-    px(ctx, x - 4 * P, y - 3 * P, 8, 6, COLORS.paperA);
-    // Corners folded (shading).
-    px(ctx, x - 4 * P, y - 3 * P, 1, 1, COLORS.paperB);
-    px(ctx, x + 3 * P, y + 2 * P, 1, 1, COLORS.paperB);
-    // Text lines.
-    px(ctx, x - 3 * P, y - 2 * P, 5, 1, COLORS.paperB);
-    px(ctx, x - 3 * P, y, 6, 1, COLORS.paperB);
-    px(ctx, x - 3 * P, y + 2 * P, 4, 1, COLORS.paperB);
-  } else if (variant === 1) {
-    // Scroll seen from above: tan tube with darker rolled ends.
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(x - 6 * P + P, y - P + P, 12 * P, 3 * P);
-    // Main paper body.
-    px(ctx, x - 5 * P, y - P, 10, 3, COLORS.paperA);
-    // Text strip.
-    px(ctx, x - 4 * P, y, 8, 1, COLORS.paperB);
-    // Rolled ends — darker, rounded.
-    px(ctx, x - 6 * P, y - 2 * P, 2, 5, COLORS.paperB);
-    px(ctx, x + 4 * P, y - 2 * P, 2, 5, COLORS.paperB);
-    // End highlight (inside of roll).
-    px(ctx, x - 6 * P + P, y - P, 1, 1, COLORS.paperA);
-    px(ctx, x + 4 * P + P, y - P, 1, 1, COLORS.paperA);
-  } else {
-    // Torn page — jagged edges.
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(x - 3 * P + P, y - 2 * P + P, 6 * P, 4 * P);
-    px(ctx, x - 3 * P, y - 2 * P, 6, 4, COLORS.paperA);
-    // Jagged top.
-    px(ctx, x - 2 * P, y - 3 * P, 1, 1, COLORS.paperA);
-    px(ctx, x, y - 3 * P, 1, 1, COLORS.paperA);
-    px(ctx, x + 2 * P, y - 3 * P, 1, 1, COLORS.paperA);
-    // Jagged bottom.
-    px(ctx, x - 2 * P, y + 2 * P, 1, 1, COLORS.paperA);
-    px(ctx, x + P, y + 2 * P, 1, 1, COLORS.paperA);
-    // Text line.
-    px(ctx, x - 2 * P, y, 4, 1, COLORS.paperB);
-  }
-}
-
-function drawDustPile(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  // Fluffy dust bunny: soft ellipse body with a few specks sticking out.
-  ctx.fillStyle = COLORS.dustB;
-  ctx.beginPath();
-  ctx.ellipse(x, y, 7 * P / P, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = COLORS.dustA;
-  ctx.beginPath();
-  ctx.ellipse(x - 1, y - 1, 5, 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Specks.
-  px(ctx, x - 4 * P, y, 1, 1, COLORS.dustB);
-  px(ctx, x + 3 * P, y - P, 1, 1, COLORS.dustB);
-  px(ctx, x + P, y + P, 1, 1, COLORS.dustA);
-}
 
 /* ============================================================
  *  Workshop alchemy decor — intact props that lean into the cosy
@@ -591,401 +289,7 @@ function drawDustPile(ctx: CanvasRenderingContext2D, x: number, y: number): void
 /** Liquid-tint pairs for `drawPotionBottle` — `body` is the saturated
  *  fill, `shine` is a brighter tone used for the glass highlight, and
  *  `cap` is the cork / stopper colour drawn on top. */
-const POTION_TINTS = {
-  green:  { body: COLORS.acidB,    shine: COLORS.acidA,    cap: COLORS.woodMid },
-  blue:   { body: COLORS.aetherC,  shine: COLORS.aetherB,  cap: COLORS.woodMid },
-  red:    { body: COLORS.fireC,    shine: COLORS.fireB,    cap: COLORS.woodMid },
-  amber:  { body: COLORS.goldB,    shine: COLORS.goldA,    cap: COLORS.woodDark },
-} as const;
-type PotionTint = keyof typeof POTION_TINTS;
 
-/** Soft floor shadow under a workshop prop. The tint is a warm dark
- *  brown (instead of pure black) so the shadow integrates with the
- *  warm-toned workshop floor rather than reading as a cool-blue oval
- *  pasted under the prop. */
-function softShadow(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  rx: number,
-  ry: number,
-): void {
-  // Two-stop falloff: a darker contact ring fading into a softer
-  // ambient shadow. Keeps the prop visually grounded without a hard
-  // black edge.
-  ctx.fillStyle = 'rgba(28, 16, 8, 0.42)';
-  ctx.beginPath();
-  ctx.ellipse(x, y, rx + 1, ry + 1, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(18, 10, 6, 0.55)';
-  ctx.beginPath();
-  ctx.ellipse(x, y, rx * 0.75, ry * 0.7, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/** Wrap a body-only draw callback in a rotation transform around
- *  (x, y). The shadow should be drawn BEFORE this so it stays flat
- *  on the floor regardless of prop tilt. */
-function withTilt(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tilt: number,
-  draw: () => void,
-): void {
-  if (tilt === 0) {
-    draw();
-    return;
-  }
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(tilt);
-  ctx.translate(-x, -y);
-  draw();
-  ctx.restore();
-}
-
-/** Intact alchemy bottle — round body + neck + cork, with a vertical
- *  shine line on the glass. Width ~12 cells, height ~6 cells. */
-function drawPotionBottle(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tint: PotionTint,
-  seed: number,
-  tilt: number = 0,
-): void {
-  const t = POTION_TINTS[tint];
-  const corkLean = (seed >> 9) & 1; // half the bottles tip the cork
-
-  softShadow(ctx, x + 1, y + 4 * P, 7 * P, 2 * P);
-
-  withTilt(ctx, x, y, tilt, () => {
-    // Bottle body (rounded shoulders → wider base).
-    px(ctx, x - 3 * P, y - P,    6, 4, t.body);   // body
-    px(ctx, x - 2 * P, y - 2 * P, 4, 1, t.body);   // shoulder
-
-    // Neck.
-    px(ctx, x - P, y - 3 * P, 2, 1, t.body);
-
-    // Cork.
-    px(ctx, x - P, y - 4 * P, 2, 1, t.cap);
-    px(ctx, x - P, y - 5 * P, 2, 1, COLORS.woodDark);
-
-    // Glass shine — single column of brighter tone on the upper-left,
-    // with a small white spec at the shoulder so the bottle reads as
-    // glass instead of solid plastic.
-    px(ctx, x - 2 * P, y - P, 1, 3, t.shine);
-    px(ctx, x - 2 * P, y - 2 * P, 1, 1, COLORS.whiteSoft);
-
-    // Bottom rim — warm dark brown instead of cool shardC. Reads as
-    // contact shadow on the wooden floor rather than a pasted-on
-    // cool-blue outline.
-    px(ctx, x - 3 * P, y + 2 * P, 6, 1, COLORS.woodDark);
-
-    // Optional tilt — tip the cork sideways with one stray pixel.
-    if (corkLean) {
-      px(ctx, x - 2 * P, y - 5 * P, 1, 1, t.cap);
-    }
-  });
-}
-
-/** Single closed leather-bound tome with gilded spine. Variant chooses
- *  cover colour from a small set of warm leather tones. */
-function drawClosedBook(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  seed: number,
-  tilt: number = 0,
-): void {
-  const variant = (seed >> 4) & 0b11;
-  // Cover palette — burgundy / forest / wine / mustard. The third slot
-  // used to be a cool steel-blue (`#2a3a5e`) which clashed with the
-  // warm wooden floor — swapped to a deeper wine tone that still reads
-  // as "different leather" without breaking the warm palette.
-  const COVERS = [
-    { a: COLORS.bookA,  b: COLORS.bookC, gilt: COLORS.brassHi },
-    { a: '#3a5a3a',     b: '#1a2818',    gilt: COLORS.brassHi },
-    { a: '#5a2438',     b: '#2a1018',    gilt: COLORS.brassHi },
-    { a: '#7a5a14',     b: '#3a2a08',    gilt: COLORS.fireA },
-  ] as const;
-  const c = COVERS[variant]!;
-  const w = 9 * P;
-  const h = 4 * P;
-
-  softShadow(ctx, x + 1, y + h / 2 + 2, w / 2, 3);
-
-  withTilt(ctx, x, y, tilt, () => {
-    // Cover.
-    px(ctx, x - w / 2, y - h / 2, 9, 4, c.a);
-    // Spine (top ribbon).
-    px(ctx, x - w / 2, y - h / 2, 9, 1, c.b);
-    // Gilded centre crest.
-    px(ctx, x - w / 2 + 3 * P, y - h / 2 + 2 * P, 3, 1, c.gilt);
-    // Page edges (right side).
-    px(ctx, x + w / 2 - P, y - h / 2 + P, 1, 3, COLORS.paperA);
-    // Bottom shadow line.
-    px(ctx, x - w / 2, y + h / 2 - P, 9, 1, c.b);
-    // Bookmark ribbon — a thin red strip dangling off the bottom.
-    if ((seed >> 11) & 1) {
-      px(ctx, x + w / 2 - 3 * P, y + h / 2, 1, 2, COLORS.fireC);
-    }
-  });
-}
-
-/** Three stacked books with offset spines — the "stack of tomes on the
- *  floor" silhouette from the reference. */
-function drawBookStack(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  seed: number,
-  tilt: number = 0,
-): void {
-  // Warm-leaning leather covers — same swap as drawClosedBook: drop
-  // the cool steel-blue, prefer a deeper wine tone.
-  const COVERS = [COLORS.bookA, '#3a5a3a', '#5a2438', '#7a5a14'];
-  softShadow(ctx, x + 1, y + 4 * P, 8 * P, 2 * P);
-  withTilt(ctx, x, y, tilt, () => {
-    // Bottom book — widest.
-    const w0 = 10 * P;
-    px(ctx, x - w0 / 2, y + P, 10, 3, COVERS[seed & 0b11]!);
-    px(ctx, x - w0 / 2, y + P, 10, 1, COLORS.bookC);
-    px(ctx, x + w0 / 2 - P, y + 2 * P, 1, 1, COLORS.paperA);
-    // Middle book — slightly offset.
-    const w1 = 8 * P;
-    const off = ((seed >> 3) & 1) ? P : -P;
-    px(ctx, x - w1 / 2 + off, y - 2 * P, 8, 3, COVERS[(seed >> 4) & 0b11]!);
-    px(ctx, x - w1 / 2 + off, y - 2 * P, 8, 1, COLORS.bookC);
-    // Top book — angled, smallest.
-    const w2 = 6 * P;
-    const off2 = ((seed >> 5) & 1) ? -P : P;
-    px(ctx, x - w2 / 2 + off2, y - 5 * P, 6, 2, COVERS[(seed >> 6) & 0b11]!);
-    px(ctx, x - w2 / 2 + off2, y - 5 * P, 6, 1, COLORS.bookC);
-    // Glint of brass on the top spine.
-    px(ctx, x - w2 / 2 + off2 + 2 * P, y - 5 * P, 2, 1, COLORS.brassHi);
-  });
-}
-
-/** Open book lying flat — pages with a few text lines and a leather
- *  cover poking out at the edges. Cosy reading-table beat. */
-function drawOpenBookCosy(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  seed: number,
-  tilt: number = 0,
-): void {
-  const w = 12 * P;
-  const h = 5 * P;
-  softShadow(ctx, x + 1, y + h / 2 + 2, w / 2, 3);
-
-  withTilt(ctx, x, y, tilt, () => {
-    // Cover poking out behind the pages.
-    px(ctx, x - w / 2 - P, y - h / 2, 1, 5, COLORS.bookA);
-    px(ctx, x + w / 2,     y - h / 2, 1, 5, COLORS.bookA);
-
-    // Pages.
-    px(ctx, x - w / 2, y - h / 2, 12, 5, COLORS.paperA);
-    // Spine shadow.
-    px(ctx, x - P / 2, y - h / 2, 1, 5, COLORS.bookC);
-
-    // Text lines (alternating density per page).
-    const seed2 = seed >> 2;
-    const linesL = 2 + (seed2 & 0b1);
-    const linesR = 2 + ((seed2 >> 1) & 0b1);
-    for (let i = 0; i < linesL; i++) {
-      px(ctx, x - w / 2 + P, y - h / 2 + (i + 1) * P, 4, 1, COLORS.paperB);
-    }
-    for (let i = 0; i < linesR; i++) {
-      px(ctx, x + P, y - h / 2 + (i + 1) * P, 4, 1, COLORS.paperB);
-    }
-
-    // Bookmark — sticking out the top.
-    if ((seed >> 8) & 1) {
-      px(ctx, x + 2 * P, y - h / 2 - P, 1, 2, COLORS.fireC);
-    }
-  });
-}
-
-/** Rolled scroll — tan body with darker rolled ends + a wax seal. */
-function drawScroll(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  seed: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x + 1, y + 2, 6 * P, 2);
-  withTilt(ctx, x, y, tilt, () => {
-    // Body.
-    px(ctx, x - 5 * P, y - P, 10, 3, COLORS.paperA);
-    // Center text.
-    px(ctx, x - 4 * P, y, 8, 1, COLORS.paperB);
-    // Rolled ends.
-    px(ctx, x - 6 * P, y - 2 * P, 2, 5, COLORS.paperB);
-    px(ctx, x + 4 * P, y - 2 * P, 2, 5, COLORS.paperB);
-    // Inside-of-roll highlight.
-    px(ctx, x - 6 * P + P, y - P, 1, 1, COLORS.paperA);
-    px(ctx, x + 4 * P + P, y - P, 1, 1, COLORS.paperA);
-    // Wax seal — small red disc on top of the body, ~half the time.
-    if ((seed >> 6) & 1) {
-      px(ctx, x - P, y - 2 * P, 2, 1, COLORS.fireC);
-      px(ctx, x - P, y - P,     2, 1, COLORS.fireD);
-    }
-  });
-}
-
-/** Half-melted candle stub on the floor — wax body with a wick + flame
- *  tip + small puddle of wax around the base. */
-function drawCandleStub(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x, y + 2 * P, 4 * P, P);
-  // Wax puddle stays axis-aligned (it spreads on the floor).
-  ctx.fillStyle = COLORS.parchment;
-  ctx.beginPath();
-  ctx.ellipse(x, y + 2 * P, 4 * P, P, 0, 0, Math.PI * 2);
-  ctx.fill();
-  withTilt(ctx, x, y, tilt, () => {
-    // Candle body.
-    px(ctx, x - P, y - 3 * P, 2, 5, COLORS.parchment);
-    px(ctx, x - P, y - 3 * P, 2, 1, COLORS.brassHi);
-    // Wick.
-    px(ctx, x, y - 4 * P, 1, 1, COLORS.bookC);
-    // Flame.
-    px(ctx, x, y - 5 * P, 1, 1, COLORS.fireA);
-    px(ctx, x - 1, y - 5 * P + P / 2, 2, 1, COLORS.fireB);
-  });
-}
-
-/** Stone mortar bowl with a wooden pestle leaning out of it. */
-function drawMortarPestle(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x + 1, y + 3 * P, 5 * P, P);
-  withTilt(ctx, x, y, tilt, () => {
-    // Bowl base (rounded).
-    ctx.fillStyle = COLORS.stoneDark;
-    ctx.beginPath();
-    ctx.ellipse(x, y + P, 4 * P, 2 * P, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = COLORS.stoneMid;
-    ctx.beginPath();
-    ctx.ellipse(x, y, 4 * P, 1.4 * P, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Inner bowl shadow.
-    ctx.fillStyle = COLORS.stoneLight;
-    ctx.beginPath();
-    ctx.ellipse(x, y - P, 3 * P, P, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Pestle — leaning out the back.
-    ctx.save();
-    ctx.translate(x + P, y - P);
-    ctx.rotate(-0.6);
-    px(ctx, -P, -3 * P, 1, 5, COLORS.woodMid);
-    px(ctx, -P, -3 * P, 1, 1, COLORS.woodHi);
-    px(ctx, -P, -4 * P, 2, 1, COLORS.woodLight);
-    ctx.restore();
-  });
-}
-
-/** Ink pot with a feathered quill leaning out. */
-function drawInkAndQuill(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x + 1, y + 3 * P, 4 * P, P);
-  withTilt(ctx, x, y, tilt, () => {
-    // Pot body — warm dark stone instead of the cool shardC blue, so it
-    // doesn't look like a chunk of metal stuck on the wooden floor.
-    px(ctx, x - 2 * P, y, 4, 3, COLORS.stoneDark);
-    // Pot rim.
-    px(ctx, x - 2 * P, y, 4, 1, COLORS.stoneMid);
-    // Ink surface — kept dark so it reads as ink, not as glass.
-    px(ctx, x - P, y + P, 2, 1, '#100806');
-    // Quill body.
-    ctx.save();
-    ctx.translate(x + P, y);
-    ctx.rotate(-0.45);
-    px(ctx, -P, -7 * P, 1, 7, COLORS.parchment);
-    px(ctx, -P, -7 * P, 1, 1, COLORS.brassHi);
-    // Feather plume.
-    px(ctx, 0, -7 * P, 2, 1, COLORS.whiteSoft);
-    px(ctx, 0, -6 * P, 2, 1, COLORS.parchment);
-    px(ctx, 0, -5 * P, 1, 1, COLORS.parchment);
-    ctx.restore();
-  });
-}
-
-/** Bound bunch of dried herbs — green/brown stalks tied with twine. */
-function drawHerbBundle(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  seed: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x + 1, y + 2 * P, 4 * P, P);
-  withTilt(ctx, x, y, tilt, () => {
-    const tint = (seed >> 4) & 1 ? COLORS.acidB : COLORS.slimeC;
-    // Stalks fanning out.
-    for (let i = -3; i <= 3; i++) {
-      const sx = x + i * (P / 2);
-      const top = y - 4 * P + Math.abs(i) * P;
-      px(ctx, sx, top, 1, 4, tint);
-    }
-    // Leaf blobs.
-    for (let i = -2; i <= 2; i += 2) {
-      const sx = x + i * P;
-      const top = y - 5 * P + Math.abs(i);
-      px(ctx, sx, top, 2, 1, COLORS.acidA);
-    }
-    // Twine band.
-    px(ctx, x - 2 * P, y - P, 4, 1, COLORS.brassDark);
-  });
-}
-
-/** Small wooden crate / box. Square silhouette with diagonal slats. */
-function drawSmallCrate(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  tilt: number = 0,
-): void {
-  softShadow(ctx, x + 1, y + 3 * P, 5 * P, P);
-  withTilt(ctx, x, y, tilt, () => {
-    // Body.
-    px(ctx, x - 3 * P, y - 2 * P, 6, 5, COLORS.woodMid);
-    // Top edge highlight.
-    px(ctx, x - 3 * P, y - 2 * P, 6, 1, COLORS.woodHi);
-    // Bottom shadow.
-    px(ctx, x - 3 * P, y + 2 * P, 6, 1, COLORS.woodDark);
-    // Side seams.
-    px(ctx, x - 3 * P, y - 2 * P, 1, 5, COLORS.woodDark);
-    px(ctx, x + 3 * P - P, y - 2 * P, 1, 5, COLORS.woodDark);
-    // Vertical plank seams — pixel-art slats instead of a 1-px diagonal
-    // stroke. The previous diagonal `ctx.stroke()` produced an
-    // anti-aliased line that fought the chunky pixel style of every
-    // other prop on the floor.
-    px(ctx, x - P, y - 2 * P, 1, 5, COLORS.woodDark);
-    px(ctx, x + P, y - 2 * P, 1, 5, COLORS.woodDark);
-    // Brass nail heads on the corners.
-    px(ctx, x - 3 * P + P, y - P, 1, 1, COLORS.brassDark);
-    px(ctx, x + 3 * P - 2 * P, y - P, 1, 1, COLORS.brassDark);
-    px(ctx, x - 3 * P + P, y + P, 1, 1, COLORS.brassDark);
-    px(ctx, x + 3 * P - 2 * P, y + P, 1, 1, COLORS.brassDark);
-  });
-}
 
 // Filled 2:1 diamond (rhombus) centred at (cx, cy).
 function fillRhombus(
@@ -1035,68 +339,6 @@ function hash2(x: number, y: number): number {
   return h * 2654435761 >>> 0;
 }
 
-// Biome-specific small decorations drawn on the backdrop canvas.
-function drawBiomeDecor(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  biome: BiomeId,
-): void {
-  if (biome === 'workshop') return; // workshop uses only the standard decor
-
-  const cx = w / 2;
-  const cy = h / 2;
-  const excludeRX = 280;
-  const excludeRY = 150;
-  const COUNT = 14;
-
-  for (let i = 0; i < COUNT; i++) {
-    const r = hash2(i * 47 + 113, 29 + i * 7);
-    const x = (r & 0xffff) % (w - 80) + 40;
-    const y = ((r >> 16) & 0xffff) % (h - 80) + 40;
-    const dx = (x - cx) / excludeRX;
-    const dy = (y - cy) / excludeRY;
-    if (dx * dx + dy * dy < 1) continue;
-
-    if (biome === 'crypt') {
-      // Small skull / bone scatter
-      if (i % 3 === 0) {
-        // Skull
-        ctx.fillStyle = '#6a6470';
-        ctx.beginPath();
-        ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#3a3440';
-        ctx.fillRect(x - 1, y + 1, 1, 1);
-        ctx.fillRect(x + 1, y + 1, 1, 1);
-      } else {
-        // Bone shard
-        ctx.fillStyle = '#5a5460';
-        ctx.fillRect(x, y, 6, 2);
-        ctx.fillStyle = '#7a7480';
-        ctx.fillRect(x + 1, y, 4, 1);
-      }
-    } else if (biome === 'foundry') {
-      // Embers / slag lumps
-      if (i % 3 === 0) {
-        // Glowing ember
-        ctx.save();
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = '#ff6030';
-        ctx.fillRect(x, y, 3, 3);
-        ctx.fillStyle = '#ffa050';
-        ctx.fillRect(x + 1, y + 1, 1, 1);
-        ctx.restore();
-      } else {
-        // Slag lump
-        ctx.fillStyle = '#3a2220';
-        ctx.fillRect(x, y, 5, 3);
-        ctx.fillStyle = '#5a3230';
-        ctx.fillRect(x + 1, y + 1, 3, 1);
-      }
-    }
-  }
-}
 
 // Walls have been removed, so there are no door overlays. Kept as a no-op so
 // existing call-sites compile; the active entrance is still communicated via
