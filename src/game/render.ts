@@ -649,7 +649,20 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
   // enemy whose mannequin sits to its LEFT should be drawn flipped (the
   // painted spritesheets all face right by default).
   const targetX = state.mannequin.pos.x;
-  for (const e of state.enemies) {
+  // Painter's-algorithm depth sort: enemies whose feet (sprite bottom
+  // edge) sit further down the screen render on top of enemies whose
+  // feet sit higher up. This keeps a small slime that's standing in
+  // front of a boss visually in front of it instead of getting buried
+  // under the boss's silhouette. We use the same `pos.y + radius * 0.65`
+  // offset that drawShadow uses as each enemy's foot position, and
+  // tie-break with the spawn id so equal-y enemies don't flicker.
+  const sorted = state.enemies.slice().sort((a, b) => {
+    const aBottom = a.pos.y + a.kind.radius * 0.65;
+    const bBottom = b.pos.y + b.kind.radius * 0.65;
+    if (aBottom !== bBottom) return aBottom - bBottom;
+    return a.id - b.id;
+  });
+  for (const e of sorted) {
     // Drop shadow
     drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
 

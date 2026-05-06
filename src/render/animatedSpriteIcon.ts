@@ -12,7 +12,7 @@
 // moment it leaves the DOM (a MutationObserver on `<body>` watches for
 // detachment), so callers don't need to handle teardown manually.
 
-import { isSheetReady, type AnimRow } from './animatedSprite';
+import { FRAME_PADDING, getPaddedFrame, isSheetReady, type AnimRow } from './animatedSprite';
 
 export interface AnimatedSpriteIconOptions {
   /** Output canvas size in CSS pixels. The painted sprite is centred
@@ -76,6 +76,8 @@ export function animatedSpriteIcon(
     if (!frames.length) return;
     const f = ((frameIdx % frames.length) + frames.length) % frames.length;
     const frame = frames[f]!;
+    const padded = getPaddedFrame(row.sheet, frame.sx, row.sy, frame.sw, row.sh);
+    if (!padded) return;
     const renderedW = frame.sw * scale;
     // Anchor the body centre at canvas mid-x and bottom-align onto the
     // canvas floor (with optional `floorOffset` for callers that paint
@@ -83,9 +85,13 @@ export function animatedSpriteIcon(
     const dx = Math.round(width / 2 - frame.ax * scale);
     const dy = Math.round(height - renderedH - floorOffset);
     ctx.clearRect(0, 0, width, height);
+    // Source skips the 1-px transparent border so bilinear sampling at
+    // the body edges hits transparent padding, not the next frame on
+    // the sheet (which previously appeared as thin coloured strips
+    // beside the body in the menu portrait).
     ctx.drawImage(
-      row.sheet.image,
-      frame.sx, row.sy, frame.sw, row.sh,
+      padded,
+      FRAME_PADDING, FRAME_PADDING, frame.sw, row.sh,
       dx, dy, renderedW, renderedH,
     );
   };

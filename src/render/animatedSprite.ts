@@ -27,7 +27,20 @@ export interface AnimSheet {
   image: HTMLImageElement;
   loaded: boolean;
   url: string;
+  /** Per-frame pre-baked canvases keyed by `sx_sy_sw_sh`. Each canvas
+   *  is `sw+2 × sh+2` in size, with the source frame copied into the
+   *  (1, 1) inset and a 1-pixel transparent border on every side. We
+   *  draw from these padded canvases so that bilinear-interpolated
+   *  scaling at the frame edges samples the transparent border instead
+   *  of pulling the next frame's pixels in (which would manifest as
+   *  thin coloured strips next to the body). */
+  paddedFrames: Map<string, HTMLCanvasElement>;
 }
+
+/** 1-pixel transparent border around every padded frame. Anything ≥1
+ *  is enough to keep bilinear interpolation from reaching across into
+ *  the next frame; we use exactly 1 to keep memory minimal. */
+export const FRAME_PADDING = 1;
 
 export interface AnimFrame {
   /** Source rect in spritesheet pixels — left edge. */
@@ -63,7 +76,7 @@ export function loadSheet(url: string): AnimSheet {
   const cached = sheetCache.get(url);
   if (cached) return cached;
   const img = new Image();
-  const sheet: AnimSheet = { image: img, loaded: false, url };
+  const sheet: AnimSheet = { image: img, loaded: false, url, paddedFrames: new Map() };
   img.addEventListener('load', () => {
     sheet.loaded = true;
   });
@@ -86,6 +99,35 @@ function pickFrame(row: AnimRow, frameIndex: number): AnimFrame {
   const f = ((frameIndex % n) + n) % n;
   // Non-null assertion: f is a valid index into a non-empty frames[].
   return row.frames[f]!;
+}
+
+/** Lazily extract a frame from the sheet into its own offscreen canvas
+ *  with a 1-pixel transparent border. Cached on the sheet so each frame
+ *  is baked at most once. Caller must ensure `isSheetReady(sheet)`. */
+export function getPaddedFrame(
+  sheet: AnimSheet,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+): HTMLCanvasElement | null {
+  const key = `${sx}_${sy}_${sw}_${sh}`;
+  const cached = sheet.paddedFrames.get(key);
+  if (cached) return cached;
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = sw + FRAME_PADDING * 2;
+  canvas.height = sh + FRAME_PADDING * 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    sheet.image,
+    sx, sy, sw, sh,
+    FRAME_PADDING, FRAME_PADDING, sw, sh,
+  );
+  sheet.paddedFrames.set(key, canvas);
+  return canvas;
 }
 
 /** Returns the screen-space rect of a frame drawn at (x,y). Mirrors
@@ -117,6 +159,8 @@ export function drawAnimFrame(
 ): boolean {
   if (!isSheetReady(row.sheet)) return false;
   const frame = pickFrame(row, frameIndex);
+  const padded = getPaddedFrame(row.sheet, frame.sx, row.sy, frame.sw, row.sh);
+  if (!padded) return false;
   const scale = opts?.scale ?? row.scale;
   const drawW = Math.round(frame.sw * scale);
   const drawH = Math.round(row.sh * scale);
@@ -137,10 +181,13 @@ export function drawAnimFrame(
     ctx.scale(-1, 1);
     ctx.translate(-x, 0);
   }
+  // Source rect skips the 1-px transparent border so the rendered body
+  // is identical, but bilinear sampling at the edge picks up the border
+  // (alpha=0) instead of leaking into neighbouring frames on the sheet.
   ctx.drawImage(
-    row.sheet.image,
-    frame.sx,
-    row.sy,
+    padded,
+    FRAME_PADDING,
+    FRAME_PADDING,
     frame.sw,
     row.sh,
     drawX,
@@ -190,6 +237,8 @@ export function paintAnimFrameTint(
 ): boolean {
   if (!isSheetReady(row.sheet)) return false;
   const frame = pickFrame(row, frameIndex);
+  const padded = getPaddedFrame(row.sheet, frame.sx, row.sy, frame.sw, row.sh);
+  if (!padded) return false;
   const scale = opts?.scale ?? row.scale;
   const drawW = Math.round(frame.sw * scale);
   const drawH = Math.round(row.sh * scale);
@@ -209,12 +258,15 @@ export function paintAnimFrameTint(
   sCtx.clearRect(0, 0, drawW, drawH);
   // 2. Paint the sprite frame at (0,0) with the same bilinear settings
   //    drawAnimFrame uses, so the tint mask matches the rendered shape.
+  //    Source comes from the per-frame padded canvas so bilinear
+  //    sampling at the edges hits the transparent border, not the next
+  //    frame on the sheet.
   sCtx.imageSmoothingEnabled = true;
   sCtx.imageSmoothingQuality = 'medium';
   sCtx.drawImage(
-    row.sheet.image,
-    frame.sx,
-    row.sy,
+    padded,
+    FRAME_PADDING,
+    FRAME_PADDING,
     frame.sw,
     row.sh,
     0,
