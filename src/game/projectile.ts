@@ -12,6 +12,14 @@ import {
   potionDamageMultiplier,
   consumeStormCharge,
 } from './potions';
+import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
+
+/** Frost is a "finisher" element: it never one-shots a healthy target.
+ *  If a frost hit would drop an enemy below this fraction of max HP, the
+ *  damage is clamped at the threshold; only a *follow-up* frost hit on
+ *  an already-weakened (<25 % HP) target executes them outright. Bosses
+ *  are exempt to keep phase transitions intact. */
+const FROST_EXECUTE_THRESHOLD = 0.25;
 
 /** Pick the element of a thrown potion based on currently-active recipe
  *  modifiers. Cards can layer multiple flags on the same potion — we resolve
@@ -74,7 +82,13 @@ export function throwPotion(
   // Parabolic arc: potion follows a ballistic curve from the alchemist to the
   // aim point, landing in `duration` seconds. Flight time scales mildly with
   // distance so short tosses feel snappy and long ones feel hefty.
-  const start: Vec2 = { ...m.pos };
+  //
+  // Launch the flask from the mannequin's chest (≈ half the rendered
+  // sprite height above the feet anchor) instead of straight from the
+  // ground, so the throw visually leaves from the hand rather than
+  // teleporting up out of the floor.
+  const mannequinDisplayHeight = MANNEQUIN_IDLE_ANIM.sh * MANNEQUIN_IDLE_ANIM.scale;
+  const start: Vec2 = { x: m.pos.x, y: m.pos.y - mannequinDisplayHeight / 2 };
   const target: Vec2 = { ...to };
   const d = dist(start, target);
   const duration = Math.min(0.85, Math.max(0.32, d / 900));
@@ -365,7 +379,23 @@ export function applyDamageToEnemy(
     }
   }
 
+  // Frost finisher rule: the ice flask never one-shots a healthy target.
+  // If pre-hit HP is already below the execute threshold, frost shatters
+  // the enemy outright; otherwise damage is clamped so frost can never
+  // bring HP below the threshold in a single tick. Bosses are exempt so
+  // their phase transitions stay intact.
+  let frostExecute = false;
+  if (element === 'frost' && !e.kind.isBoss) {
+    const executeThreshold = e.maxHp * FROST_EXECUTE_THRESHOLD;
+    if (e.hp <= executeThreshold) {
+      frostExecute = true;
+    } else {
+      dmg = Math.min(dmg, e.hp - executeThreshold);
+    }
+  }
+
   e.hp -= dmg;
+  if (frostExecute) e.hp = 0;
   e.hitFlash = 0.12;
   // Stamp the element so on-death attribution (run contracts) can count
   // this hit's element as the killing blow if hp reaches 0 below.

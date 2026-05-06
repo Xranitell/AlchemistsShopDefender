@@ -143,6 +143,15 @@ function doStartWave(state: GameState): void {
   }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
 
+  // Side-only spawn rule: collapse legacy top/bottom (entrances 0, 2)
+  // onto the matching horizontal half so the actual spawn position
+  // and the entrance-marker UI stay in sync. Wave authoring still uses
+  // four entrance ids for spawn-timing variety; we just project them
+  // onto the two horizontal sides at activation time.
+  ws.pendingSpawns.forEach((s) => {
+    s.entrance = (s.entrance % 2 === 0) ? 3 : 1;
+  });
+
   // Boss waves swap to the dedicated boss music track and play a stinger;
   // otherwise we just bump the regular waveStart fanfare.
   if (def.isBoss) {
@@ -215,12 +224,16 @@ export function updateWave(state: GameState, dt: number): void {
     const kind = ENEMIES[spawn.kind];
     if (!kind) continue;
 
-    // Cardinal base angles: 0=top, 1=right, 2=bottom, 3=left.
-    // Top = -π/2, right = 0, bottom = π/2, left = π (on canvas y-down).
-    const baseAngles = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
-    const baseAngle = baseAngles[spawn.entrance % 4]!;
-    // Wide ±60° jitter so a single wave direction still spans a full side.
-    const angle = baseAngle + state.rng.range(-Math.PI / 3, Math.PI / 3);
+    // Side-facing creature sprites read awkwardly when an enemy walks in
+    // from straight above or below the mannequin (the painted body is
+    // always east-/west-facing, so a north/south spawn shows the back of
+    // the creature). Wave activation already collapsed every spawn's
+    // entrance index onto a horizontal side (1 = right, 3 = left), so
+    // here we just rotate that into a base angle and add ±50° jitter
+    // — never reaching the forbidden top/bottom 80° wedge.
+    const HORIZONTAL_JITTER = (50 * Math.PI) / 180;
+    const baseAngle = spawn.entrance === 3 ? Math.PI : 0;
+    const angle = baseAngle + state.rng.range(-HORIZONTAL_JITTER, HORIZONTAL_JITTER);
     const pos = pickOffscreenPoint(state, angle);
     spawnEnemy(state, kind, pos);
     ws.spawnedCount += 1;

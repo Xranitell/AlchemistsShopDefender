@@ -97,13 +97,15 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
 
 /** Mannequin idle animation — bottom row of the painted sheet. 4 frames
  *  of subtle breathing/sway; cycle continuously when the mannequin
- *  isn't mid-throw. */
+ *  isn't mid-throw. Scale shrunk 1.5× from the previous 0.45 so the
+ *  mannequin reads as roughly one tile high — same visual proportion
+ *  the rest of the (newly halved) creature roster sits at. */
 export const MANNEQUIN_IDLE_ANIM: AnimRow = row(sheetMannequin, 515, 336, [
   { sx: 48, sw: 200, ax: 97 },
   { sx: 318, sw: 222, ax: 108 },
   { sx: 603, sw: 228, ax: 111 },
   { sx: 914, sw: 200, ax: 97 },
-], 0.45);
+], 0.30);
 
 /** Mannequin throw animation — top row of the painted sheet. Played
  *  once per fire (see `throwAnim` countdown in mannequin.ts):
@@ -114,7 +116,7 @@ export const MANNEQUIN_THROW_ANIM: AnimRow = row(sheetMannequin, 97, 330, [
   { sx: 308, sw: 242, ax: 123 },
   { sx: 600, sw: 300, ax: 126 },
   { sx: 900, sw: 283, ax: 111 },
-], 0.45);
+], 0.30);
 
 /** Frame layout of the *baked* mannequin pixel-art fallback. Painted
  *  frames live on dedicated rows now (see *_IDLE_ANIM / *_THROW_ANIM). */

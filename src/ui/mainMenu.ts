@@ -6,6 +6,8 @@ import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/d
 import { buildLeaderboardPanel } from './leaderboardOverlay';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
+import { animatedSpriteIcon } from '../render/animatedSpriteIcon';
+import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
 import { masteryEssenceMult } from '../game/meta';
 import {
   ACTIVE_MODULES,
@@ -185,11 +187,26 @@ export class MainMenu {
     body.appendChild(leftCol);
 
     // ─ Center column: Animated mannequin ─
+    //   The painted spritesheet supplies a 4-frame idle breathing loop;
+    //   we render it via `animatedSpriteIcon` so the menu portrait moves
+    //   in sync with the in-game mannequin (same sheet, same frames).
+    //   The pixel-art SVG illustration below is kept as a fallback for
+    //   the moments before the PNG finishes loading.
     const centerCol = document.createElement('div');
     centerCol.className = 'mm-col mm-col-center';
     const illu = document.createElement('div');
     illu.className = 'mm-mannequin-display';
-    illu.innerHTML = mannequinIllustrationSVG();
+    illu.innerHTML = mannequinIllustrationFloorSVG();
+    illu.appendChild(animatedSpriteIcon(MANNEQUIN_IDLE_ANIM, {
+      width: 200,
+      height: 240,
+      fps: 3.3,
+      extraClass: 'mm-mannequin-anim',
+      // Lift the sprite up so the painted feet sit on the SVG dais
+      // instead of clipping through the bottom of the host box.
+      floorOffset: 32,
+      fitScale: 0.78,
+    }));
     centerCol.appendChild(illu);
     body.appendChild(centerCol);
 
@@ -617,57 +634,14 @@ function shopBackdropSVG(): string {
   </svg>`;
 }
 
-/** Pixel-art wooden artist's mannequin (centre of the main menu).
- *
- *  Chunky pixel-art wooden artist's mannequin — every shape is built
- *  from rectangles snapped to a 2-unit pixel grid, joints are octagonal
- *  (square with 1-pixel chamfered corners), and the SVG renders with
- *  `shape-rendering="crispEdges"` so the silhouette has hard pixel
- *  borders matching the rest of the game's pixel-art UI. */
-function mannequinIllustrationSVG(): string {
-  // Palette — wooden mannequin: near-black outline, mid sienna body,
-  // light tan highlight, mid-shadow used for seams.
-  const O = '#2a1208';
-  const S = '#7a4424';
-  const M = '#b97a3f';
-  const L = '#d49157';
-
-  // 3-layer pixel block: outline border (2px), mid fill, top-left
-  // 2-pixel highlight stripe. All coords assume a 2-svu pixel grid.
-  const block = (x: number, y: number, w: number, h: number) => `
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${O}"/>
-    <rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="${M}"/>
-    <rect x="${x + 2}" y="${y + 2}" width="2" height="${h - 4}" fill="${L}"/>
-  `;
-
-  // Octagonal "ball" joint: a square with the four 2x2 corners
-  // chamfered out so the silhouette reads as a chunky pixel circle.
-  // `size` must be an even number ≥ 8 and divisible by 2; cx/cy must
-  // be chosen so cx-size/2 and cy-size/2 are even.
-  const joint = (cx: number, cy: number, size: number) => {
-    const x = cx - size / 2;
-    const y = cy - size / 2;
-    return `
-      <!-- top / bottom outline edges (inset by 2 each side for chamfer) -->
-      <rect x="${x + 2}" y="${y}" width="${size - 4}" height="2" fill="${O}"/>
-      <rect x="${x + 2}" y="${y + size - 2}" width="${size - 4}" height="2" fill="${O}"/>
-      <!-- left / right outline edges (inset top/bottom by 2) -->
-      <rect x="${x}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
-      <rect x="${x + size - 2}" y="${y + 2}" width="2" height="${size - 4}" fill="${O}"/>
-      <!-- corner chamfer outline pixels -->
-      <rect x="${x + 2}" y="${y + 2}" width="2" height="2" fill="${O}"/>
-      <rect x="${x + size - 4}" y="${y + 2}" width="2" height="2" fill="${O}"/>
-      <rect x="${x + 2}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
-      <rect x="${x + size - 4}" y="${y + size - 4}" width="2" height="2" fill="${O}"/>
-      <!-- mid fill (octagonal interior) -->
-      <rect x="${x + 4}" y="${y + 2}" width="${size - 8}" height="${size - 4}" fill="${M}"/>
-      <rect x="${x + 2}" y="${y + 4}" width="${size - 4}" height="${size - 8}" fill="${M}"/>
-      <!-- top-left highlight pixel -->
-      <rect x="${x + 4}" y="${y + 4}" width="2" height="2" fill="${L}"/>
-    `;
-  };
-
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges">
+/** Background dais + warm glow that sit *behind* the painted-mannequin
+ *  canvas in the main menu's centre slot. The painted sprite (loaded
+ *  from `mannequin.png` and animated via {@link animatedSpriteIcon})
+ *  takes over the actual figure; this SVG only paints the floor,
+ *  pixelated drop-shadow bands, and the warm radial glow so the
+ *  centrepiece reads as standing on a chunky stone dais. */
+function mannequinIllustrationFloorSVG(): string {
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges" class="mm-mannequin-floor">
     <defs>
       <radialGradient id="mm-glow" cx="50%" cy="55%" r="55%">
         <stop offset="0%" stop-color="#ffb84a" stop-opacity="0.30"/>
@@ -680,121 +654,17 @@ function mannequinIllustrationSVG(): string {
         <stop offset="100%" stop-color="transparent"/>
       </radialGradient>
     </defs>
-
-    <!-- Background warm glow (kept smooth — pure ambient light, behind
-         everything; pixel-art rules apply only to the figure itself). -->
     <ellipse cx="100" cy="120" rx="80" ry="80" fill="url(#mm-glow)"/>
-
-    <!-- Floor / dais — kept faceted-pixel style; matches the menu art. -->
     <ellipse cx="100" cy="195" rx="55" ry="18" fill="url(#mm-floor)"/>
     <polygon points="60,184 100,170 140,184 100,200" fill="#454a60" stroke="#2a2c3a" stroke-width="2"/>
     <polygon points="60,184 100,200 100,208 56,192" fill="#2a2c3a"/>
     <polygon points="140,184 100,200 100,208 144,192" fill="#1a1d28"/>
-
-    <!-- Pixelated drop shadow (3 hard rect bands instead of an ellipse) -->
     <rect x="80" y="178" width="40" height="2" fill="#000" opacity="0.45"/>
     <rect x="76" y="180" width="48" height="2" fill="#000" opacity="0.30"/>
     <rect x="84" y="176" width="32" height="2" fill="#000" opacity="0.25"/>
-
-    <g id="mm-figure">
-      <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0" dur="2.5s" repeatCount="indefinite"/>
-
-      <!-- ====== Feet ====== -->
-      ${block(80, 168, 18, 10)}
-      ${block(102, 168, 18, 10)}
-
-      <!-- ====== Calves ====== -->
-      ${block(86, 152, 12, 16)}
-      ${block(102, 152, 12, 16)}
-
-      <!-- ====== Knee joints ====== -->
-      ${joint(92, 152, 12)}
-      ${joint(108, 152, 12)}
-
-      <!-- ====== Thighs ====== -->
-      ${block(86, 134, 12, 18)}
-      ${block(102, 134, 12, 18)}
-
-      <!-- ====== Hip joints ====== -->
-      ${joint(92, 132, 12)}
-      ${joint(108, 132, 12)}
-
-      <!-- ====== Pelvis (wider waist) ====== -->
-      ${block(84, 122, 32, 8)}
-
-      <!-- ====== Abdomen (narrower) ====== -->
-      ${block(94, 114, 12, 8)}
-
-      <!-- ====== Chest (octagonal silhouette: chamfered corners) ====== -->
-      <!-- Outline ring -->
-      <rect x="88" y="86" width="24" height="2" fill="${O}"/>
-      <rect x="86" y="88" width="2" height="2" fill="${O}"/>
-      <rect x="112" y="88" width="2" height="2" fill="${O}"/>
-      <rect x="84" y="90" width="2" height="20" fill="${O}"/>
-      <rect x="114" y="90" width="2" height="20" fill="${O}"/>
-      <rect x="86" y="110" width="2" height="2" fill="${O}"/>
-      <rect x="112" y="110" width="2" height="2" fill="${O}"/>
-      <rect x="88" y="112" width="24" height="2" fill="${O}"/>
-      <!-- Mid fill -->
-      <rect x="88" y="88" width="24" height="2" fill="${M}"/>
-      <rect x="86" y="90" width="28" height="20" fill="${M}"/>
-      <rect x="88" y="110" width="24" height="2" fill="${M}"/>
-      <!-- Highlight (top-left corner block + thin vertical stripe) -->
-      <rect x="88" y="90" width="4" height="2" fill="${L}"/>
-      <rect x="86" y="92" width="2" height="14" fill="${L}"/>
-      <!-- Centre seam -->
-      <rect x="100" y="90" width="2" height="20" fill="${S}"/>
-
-      <!-- ====== Arms — upper ====== -->
-      ${block(74, 96, 12, 20)}
-      ${block(114, 96, 12, 20)}
-
-      <!-- ====== Elbow joints ====== -->
-      ${joint(80, 116, 12)}
-      ${joint(120, 116, 12)}
-
-      <!-- ====== Forearms ====== -->
-      ${block(74, 118, 12, 20)}
-      ${block(114, 118, 12, 20)}
-
-      <!-- ====== Hand joints ====== -->
-      ${joint(80, 140, 10)}
-      ${joint(120, 140, 10)}
-
-      <!-- ====== Shoulder joints (overlap chest top sides) ====== -->
-      ${joint(80, 94, 14)}
-      ${joint(120, 94, 14)}
-
-      <!-- ====== Neck ====== -->
-      ${block(96, 80, 8, 8)}
-
-      <!-- ====== Head (octagonal, 24x22 px) ====== -->
-      <!-- Outline ring -->
-      <rect x="92" y="56" width="16" height="2" fill="${O}"/>
-      <rect x="90" y="58" width="2" height="2" fill="${O}"/>
-      <rect x="106" y="58" width="2" height="2" fill="${O}"/>
-      <rect x="88" y="60" width="2" height="2" fill="${O}"/>
-      <rect x="110" y="60" width="2" height="2" fill="${O}"/>
-      <rect x="86" y="62" width="2" height="14" fill="${O}"/>
-      <rect x="112" y="62" width="2" height="14" fill="${O}"/>
-      <rect x="88" y="76" width="2" height="2" fill="${O}"/>
-      <rect x="110" y="76" width="2" height="2" fill="${O}"/>
-      <rect x="90" y="78" width="2" height="2" fill="${O}"/>
-      <rect x="106" y="78" width="2" height="2" fill="${O}"/>
-      <rect x="92" y="80" width="16" height="2" fill="${O}"/>
-      <!-- Mid fill -->
-      <rect x="92" y="58" width="16" height="2" fill="${M}"/>
-      <rect x="90" y="60" width="20" height="2" fill="${M}"/>
-      <rect x="88" y="62" width="24" height="14" fill="${M}"/>
-      <rect x="90" y="76" width="20" height="2" fill="${M}"/>
-      <rect x="92" y="78" width="16" height="2" fill="${M}"/>
-      <!-- Top-left highlight cluster -->
-      <rect x="92" y="60" width="4" height="2" fill="${L}"/>
-      <rect x="90" y="62" width="2" height="6" fill="${L}"/>
-      <rect x="92" y="62" width="2" height="2" fill="${L}"/>
-    </g>
   </svg>`;
 }
+
 
 /** Builds the «Снаряжение Манекена» card on the main menu — a compact
  *  read-only widget that shows the currently-equipped active module and
