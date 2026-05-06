@@ -433,9 +433,16 @@ function tick(dt: number): void {
 
   if (!tutorialFrozen) {
     state.worldTime += dt;
-    tickShake(dt);
-    tickScreenFlash(dt);
   }
+  // Camera shake and screen-flash are purely visual decay timers — they
+  // don't interact with the simulation, and freezing them while a
+  // tutorial tooltip is up causes a stuck-shake bug: any shake that was
+  // already in flight (e.g. from the player's last potion impact right
+  // before the tutorial pop) keeps full envelope magnitude indefinitely
+  // because `timeLeft` never decrements. Tick them regardless of the
+  // tutorial freeze so they fade out on their normal schedule.
+  tickShake(dt);
+  tickScreenFlash(dt);
 
   // Pause input while UI overlays are visible (card_select, gameover, victory).
   const interactive = state.phase === 'wave' || state.phase === 'preparing';
