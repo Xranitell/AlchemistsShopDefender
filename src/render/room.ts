@@ -1,6 +1,7 @@
 import { COLORS } from './palette';
 import { BIOMES, type BiomeId, type BiomePalette } from '../data/biomes';
 import { drawProp, onPropsSheetLoad, PROP_COUNT } from './propSprites';
+import { getFloorTileRhombus, onFloorSheetLoad, FLOOR_TILE_COUNT } from './floorSheet';
 
 // Room backdrop — walls and door frames have been removed so enemies can walk
 // in from off-screen. The backdrop is now purely an iso-rhombic floor that
@@ -64,16 +65,19 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   return c;
 }
 
-// When the painted props sheet finishes loading, invalidate the cached
-// backdrop so the next call to `getRoomBackdrop` re-bakes with the
-// props now visible. Without this, the first room render happens
-// before the PNG resolves and the props stay invisible until the
-// player triggers a biome / size change.
-onPropsSheetLoad(() => {
+// When either the painted-props sheet or the floor-tiles sheet
+// finishes loading, invalidate the cached backdrop so the next call
+// to `getRoomBackdrop` re-bakes with the now-loaded artwork. Without
+// this, the first room render happens before the PNGs resolve and
+// the props / floor textures stay invisible until the player
+// triggers a biome / size change.
+const invalidateRoomCache = (): void => {
   cached = null;
   cachedSize = null;
   cachedBiome = null;
-});
+};
+onPropsSheetLoad(invalidateRoomCache);
+onFloorSheetLoad(invalidateRoomCache);
 
 /**
  * Scatters painted props randomly across the floor.
@@ -150,12 +154,31 @@ function drawSpritesheetProps(
 // iso-rhombus stone-tile floor; restore them from git history if a
 // future build wants to bring wooden floors back.
 
-// Iso rhombus tile floor covering the entire canvas.
+// Iso rhombus tile floor covering the entire canvas. Tiles are now
+// pre-baked from the painted spritesheet (`floor-tiles.png` → 6 tile
+// variants of a 1 m × 1 m top-down stone block, projected into the iso
+// rhombus shape by `getFloorTileRhombus`). Each cell deterministically
+// picks one of the 6 variants + a 50% mirror flip from its (col, row)
+// hash so the grid reads as varied tiled stone instead of a single
+// repeating motif. The 45° iso angle is preserved by the projection
+// (rhombus aspect 2:1, vertices on the cell axis, exactly the look the
+// previous procedural floor had).
+//
+// `TILE_W × TILE_H = 128 × 64`: a 1 m world tile becomes a 128-wide
+// rhombus on screen, so the painted detail (cracks, mortar, moss) is
+// readable. The mannequin is ~50 px wide → ~0.5 m, matching the 1 m
+// tile size called out in the design brief.
+//
+// Until the spritesheet PNG resolves, each cell falls back to a flat
+// biome-coloured rhombus drawn with `fillRhombus`; once `onFloorSheetLoad`
+// fires the room cache is invalidated and the next bake uses the
+// painted tiles.
 function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number, pal: BiomePalette): void {
-  const TILE_W = 64;
-  const TILE_H = 32;
+  const TILE_W = 128;
+  const TILE_H = 64;
 
-  // Base fill.
+  // Base fill (visible only behind transparent rhombus corners and as
+  // a fallback before the painted sheet loads).
   ctx.fillStyle = pal.tileA;
   ctx.fillRect(0, 0, w, h);
 
@@ -165,15 +188,22 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number, pal: Bio
     let col = 0;
     for (let cx = -TILE_W + rowOffset; cx <= w + TILE_W; cx += TILE_W) {
       const seed = hash2(col + (row << 8), row);
-      const checker = ((row >> 1) + col) & 1;
-      const base = checker === 0 ? pal.tileA : pal.tileB;
-      fillRhombus(ctx, cx, cy, TILE_W, TILE_H, base);
-      strokeRhombus(ctx, cx, cy, TILE_W, TILE_H, pal.tileCrack);
-
-      // Extra detail: each tile may pick up a number of small wear marks
-      // based on its deterministic seed. This keeps the grid lively without
-      // looking patterned.
-      addTileDetails(ctx, cx, cy, TILE_W, TILE_H, seed);
+      const tileIdx = (seed >>> 3) % FLOOR_TILE_COUNT;
+      const flipX = ((seed >>> 17) & 1) === 1;
+      const baked = getFloorTileRhombus(tileIdx, TILE_W, TILE_H, flipX);
+      if (baked) {
+        // Baked rhombus has its top vertex at (TILE_W/2, 0) within its
+        // own bbox, so we anchor the bbox top-left at (cx - TILE_W/2,
+        // cy - TILE_H/2) to land the rhombus centre at (cx, cy).
+        ctx.drawImage(baked, cx - TILE_W / 2, cy - TILE_H / 2);
+      } else {
+        // Sheet not loaded yet — fall back to a flat biome-colour
+        // rhombus so the floor isn't blank during the first paint.
+        const checker = ((row >> 1) + col) & 1;
+        const base = checker === 0 ? pal.tileA : pal.tileB;
+        fillRhombus(ctx, cx, cy, TILE_W, TILE_H, base);
+        strokeRhombus(ctx, cx, cy, TILE_W, TILE_H, pal.tileCrack);
+      }
 
       col++;
     }
@@ -202,96 +232,13 @@ function drawFloor(ctx: CanvasRenderingContext2D, w: number, h: number, pal: Bio
   ctx.fillRect(0, 0, w, h);
 }
 
-// Per-tile wear: small cracks, pock marks, dust smudges. Deterministic.
-function addTileDetails(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  tw: number,
-  th: number,
-  seed: number,
-): void {
-  const bits = seed;
+// `addTileDetails` (per-cell pebbles / cracks / scuffs / stains) used
+// to paint procedural wear on top of every flat-coloured rhombus.
+// It was removed when the floor switched to the painted spritesheet
+// tiles — the painted tiles already supply that level of detail.
 
-  // Stud / pebble (center).
-  if ((bits & 0b111) === 0b101) {
-    ctx.fillStyle = COLORS.tileC;
-    ctx.fillRect(cx - 1, cy - 1, 2, 2);
-  }
-
-  // Horizontal crack across the tile.
-  if ((bits & 0b11) === 0b11) {
-    ctx.fillStyle = COLORS.tileCrack;
-    ctx.fillRect(cx - 6, cy, 12, 1);
-  }
-
-  // Diagonal hairline cracks that follow the rhombus edges.
-  if (((bits >> 3) & 0b1111) === 0b1010) {
-    ctx.strokeStyle = COLORS.tileCrack;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx - tw * 0.25, cy - th * 0.12);
-    ctx.lineTo(cx + tw * 0.15, cy + th * 0.18);
-    ctx.stroke();
-  }
-  if (((bits >> 7) & 0b1111) === 0b0110) {
-    ctx.strokeStyle = COLORS.tileCrack;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx + tw * 0.25, cy - th * 0.18);
-    ctx.lineTo(cx - tw * 0.10, cy + th * 0.10);
-    ctx.stroke();
-  }
-
-  // Scuff smudge — a lighter blob suggesting worn stone.
-  if (((bits >> 11) & 0b111) === 0b001) {
-    ctx.fillStyle = 'rgba(160, 140, 150, 0.12)';
-    ctx.beginPath();
-    ctx.ellipse(cx + 4, cy - 3, 6, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Dark stain.
-  if (((bits >> 14) & 0b1111) === 0b0011) {
-    ctx.fillStyle = 'rgba(20, 10, 15, 0.35)';
-    ctx.beginPath();
-    ctx.ellipse(cx - 5, cy + 4, 5, 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Tiny highlight speck.
-  if (((bits >> 18) & 0b11111) === 0b10101) {
-    ctx.fillStyle = 'rgba(255, 240, 220, 0.10)';
-    ctx.fillRect(cx + 6, cy - 2, 1, 1);
-  }
-}
-
-
-// Pixel helper: 1 "cell" is 3 screen px. Props end up roughly 24×12 which
-// reads clearly next to the 34-px-wide alchemist sprite.
-
-
-/* ============================================================
- *  Workshop alchemy decor — intact props that lean into the cosy
- *  alchemist's-lab vibe (bottles full of glowing liquid, stacked
- *  books, scrolls, candle stubs, mortar & pestle, ink + quill,
- *  herb bundles, small wooden crates).
- *
- *  All props share these conventions:
- *   - drawn inside `applyIsoTransform`, so x/y are world coords
- *   - first paint a soft elliptical shadow under the prop
- *   - silhouette outline in pal `tileCrack` for a chunky readable
- *     pixel-art look against the warm wooden floor
- *   - colour pulled from the existing `COLORS` palette so the
- *     props stay visually coherent with the rest of the game
- * ============================================================ */
-
-/** Liquid-tint pairs for `drawPotionBottle` — `body` is the saturated
- *  fill, `shine` is a brighter tone used for the glass highlight, and
- *  `cap` is the cork / stopper colour drawn on top. */
-
-
-// Filled 2:1 diamond (rhombus) centred at (cx, cy).
+// Filled 2:1 diamond (rhombus) centred at (cx, cy). Used as a fallback
+// when the painted floor sheet hasn't loaded yet.
 function fillRhombus(
   ctx: CanvasRenderingContext2D,
   cx: number,
