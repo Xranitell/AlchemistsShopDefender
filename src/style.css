@@ -751,7 +751,22 @@ body {
 /* Countdown hint — text + linear progress bar that depletes over the
  * lock duration. The bar's keyframe duration matches the 2 s timeout in
  * `CardOverlay.show()`. */
+/* Wrapper that provides a positioning context for the lock-hint overlay.
+ * The wrapper occupies the exact same flex slot that `.cards-rh` used to
+ * occupy, and `.cards-lock-hint` is position:absolute inside it so
+ * inserting / removing the hint never shifts the cards row. */
+.cards-row-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .cards-lock-hint {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -768,7 +783,7 @@ body {
 }
 .cards-lock-hint.unlocked {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateX(-50%) translateY(-6px);
 }
 .cards-lock-hint-label {
   font-family: 'VT323', 'Trebuchet MS', monospace;
@@ -5029,12 +5044,14 @@ body {
 }
 .tutorial-root.step-visible .tutorial-dimmer { opacity: 1; }
 .tutorial-spotlight-ring {
+  /* Static spotlight ring — a soft glow draws the eye to the
+   * highlighted target without the previous opacity / stroke-width
+   * pulse animation. The pulse was readable on desktop but felt
+   * jittery on phones (the ring visibly "shook" against the player's
+   * thumb that was about to tap), so we keep the visual emphasis via
+   * the drop-shadow alone. */
   filter: drop-shadow(0 0 6px rgba(245, 196, 83, 0.85));
-  animation: tutorial-pulse 1.4s ease-in-out infinite;
-}
-@keyframes tutorial-pulse {
-  0%, 100% { opacity: 0.85; stroke-width: 3; }
-  50%      { opacity: 0.45; stroke-width: 5; }
+  opacity: 0.85;
 }
 .tutorial-tooltip {
   position: absolute;
@@ -5096,13 +5113,10 @@ body {
   color: #f5c453;
   text-shadow: 0 0 6px rgba(245, 196, 83, 0.75);
   pointer-events: none;
-  animation: tutorial-bob 1.2s ease-in-out infinite;
+  /* No bobbing animation — keeps the arrow rock-steady so the
+   * highlighted target feels framed rather than shaken. */
 }
 .tutorial-arrow.hidden { display: none; }
-@keyframes tutorial-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(4px); }
-}
 
 /* ── PR-9: RU/EN locale switcher ───────────────────────────────────── */
 .mm-lang-switcher {
@@ -11807,4 +11821,120 @@ body {
 }
 :root.viewport-fitted-narrow .lo-card-icon {
   font-size: 20px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   MOBILE REFINEMENTS — coarse-pointer adapter
+
+   Targets phones (and tablets in coarse-pointer mode) with a single
+   `@media (pointer: coarse)` block so the desktop reading experience
+   stays untouched while Android / iOS players get a tighter HUD,
+   smaller popups, and clearer affordability cues.
+
+   - Tower-shop popups (build / upgrade / mannequin repair-shield) are
+     scaled to 80% so they sit cleanly beside the rune anchor without
+     occupying half the visible play area.
+   - Disabled "can't afford" buttons get a much stronger contrast
+     treatment than the desktop default so the player can scan the row
+     and instantly see what's reachable with their current gold.
+   - The top HUD (wave / HP / gold / essence / pause + the run sidebar
+     with blessings + contracts) shrinks an extra 20% — but the prep
+     timer bar inside it is counter-scaled back to its current size so
+     the "Подготовка XXs" countdown stays readable. The bottom row
+     (potion belt + BATTLE CTA + OVERLOAD button) is intentionally not
+     shrunk so the primary combat actions keep their tap targets.
+   - Cursed cards are widened slightly and their effect-list font is
+     dropped a step so the longer downside lists ("проклятая" rolls)
+     don't overflow the card.
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (pointer: coarse) {
+  /* ── Tower / mannequin popup: 20% smaller via transform-only scale.
+       The popup is `position: absolute` so the transform reshapes the
+       visual without changing layout flow; the existing landscape /
+       narrow-viewport rules above still drive padding + font tweaks
+       so this block stays cosmetic. The desktop pop-in keyframe is
+       disabled because its `transform: none` final state would clobber
+       our static scale. */
+  .tower-shop {
+    transform: scale(0.8);
+    transform-origin: top left;
+    animation: none;
+  }
+
+  /* Stronger "can't afford" contrast. Desktop uses
+       `grayscale(0.55) brightness(0.7)` which on a phone in bright
+       daylight reads as "muted gold" rather than "disabled". Crank
+       saturation off, dim the surface, and tint the border crimson so
+       the button visibly drops out of the affordable set. */
+  .tower-shop button:disabled {
+    filter: grayscale(1) brightness(0.45);
+    opacity: 0.55;
+    border-color: #4a1010 !important;
+  }
+  .tower-shop button:disabled .cost {
+    color: #c08080;
+    border-color: #2a0a0a;
+    background: linear-gradient(180deg, rgba(50, 12, 14, 0.95), rgba(20, 4, 4, 0.95));
+  }
+
+  /* ── HUD top row: scale an extra 20% beyond the existing
+         `--hud-scale` (which is already floored at 0.85). Composing the
+         two yields ~0.68 on phones. */
+  :root.viewport-fitted .hud-top {
+    transform: scale(calc(var(--hud-scale, 1) * 0.8));
+  }
+  /* Counter-scale the prep / wave timer bar so it stays at the
+     original `--hud-scale` size (≈0.85 on phones) — the user
+     called out the prep indicator as one element that should NOT
+     shrink with the rest of the top HUD. */
+  :root.viewport-fitted .hud-top .hud-timer-bar {
+    transform: scale(1.25);
+    transform-origin: top center;
+    /* Compensate for the visual offset the inverse scale creates so
+       the bar still reads as "centred under the wave badge". */
+    margin-top: 4px;
+  }
+
+  /* Run sidebar (blessings / laws / contracts) — shrink in place
+     using its existing top-left anchor so the cards stay glued to
+     the left edge but read at ~80% of their desktop size. */
+  .hud-run-sidebar {
+    transform: scale(0.8);
+    transform-origin: top left;
+  }
+
+  /* ── Cursed cards: bigger faces + smaller effect text so the long
+         downside list always fits on screen instead of clipping at the
+         bottom of the card. Affects any draft that contains cursed
+         cards (cursed-only drafts and mixed drafts both qualify). */
+  #overlay.cards-mode.cursed-mode .cards-rh {
+    grid-template-columns: repeat(3, minmax(0, 360px));
+    gap: 16px;
+  }
+  .card-rh.cursed .card-rh-effects {
+    font-size: 15px;
+    gap: 4px;
+    padding: 0 2px;
+  }
+  .card-rh.cursed .card-rh-effects li {
+    line-height: 1.25;
+  }
+  .card-rh.cursed .card-rh-effects li.card-rh-unique {
+    padding: 3px 6px;
+    margin: 3px -2px;
+  }
+  .card-rh.cursed .card-rh-title {
+    font-size: 13px;
+  }
+}
+
+/* Narrow viewport additionally — when the wider 360px cursed grid
+   wouldn't fit, allow it to shrink down again by 1fr columns. Same
+   approach as the existing `.cards-rh` 1024 px breakpoint. */
+@media (pointer: coarse) and (max-width: 1024px) {
+  #overlay.cards-mode.cursed-mode .cards-rh {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
 }

@@ -49,6 +49,8 @@ export type TutorialDismiss =
   | { kind: 'towerUpgraded' }
   /** Activated Overload (any active module). */
   | { kind: 'overloadActivated' }
+  /** Opened the mannequin repair / shield popup at least once. */
+  | { kind: 'mannequinShopOpened' }
   /** Hard timeout — auto-dismiss after N ms even if untouched. */
   | { kind: 'auto'; afterMs: number }
   /** No timeout — dismiss only when the player clicks the "Next"/"Got
@@ -104,9 +106,21 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     dismiss: { kind: 'auto', afterMs: 4500 },
   },
   {
+    // Repair / shield panel — fires the first time the player has
+    // the prep window before wave 2, after the throw + manual-hit
+    // tutorials have introduced combat. Mannequin clicks only open
+    // the popup during prep, so the hint surfaces exactly when the
+    // action is reachable.
+    id: 'w2-mannequin-shop',
+    trigger: { kind: 'prepStart', wave: 2 },
+    text: 'В подготовке кликни по манекену, чтобы открыть панель ремонта и щита. Здесь восстанавливаешь HP за золото и ставишь временный щит на 10 сек.',
+    target: { kind: 'mannequin' },
+    dismiss: { kind: 'mannequinShopOpened' },
+  },
+  {
     id: 'w3-rune',
     trigger: { kind: 'prepStart', wave: 3 },
-    text: 'Кликни на руну рядом с манекеном, чтобы поставить туда автоматическую стойку. Стойки можно устанавливать только во время подготовки — между волнами.',
+    text: 'Кликни на руну рядом с манекеном, чтобы поставить туда автоматическую стойку. Стойки можно устанавливать и улучшать только во время подготовки — между волнами.',
     target: { kind: 'rune' },
     dismiss: { kind: 'towerPlaced' },
   },
