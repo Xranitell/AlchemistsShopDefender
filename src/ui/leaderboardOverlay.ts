@@ -104,6 +104,15 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   panel.appendChild(authPrompt);
   panel.appendChild(body);
 
+  // Diagnostics fold-out: renders the leaderboard probe results +
+  // last few submit attempts so a designer (or curious player) can
+  // tell at a glance whether scores are actually reaching Yandex.
+  // Hidden behind a `<details>` so it doesn't clutter the menu in
+  // the common case. The component subscribes to diag changes from
+  // the yandex wrapper and re-renders whenever a new submit lands.
+  const diag = buildDiagnosticsBlock();
+  panel.appendChild(diag);
+
   // Auth state is async — when SDK init resolves later, refresh the prompt.
   updateAuthPrompt();
   yandex.onAuthChange(() => updateAuthPrompt());
@@ -112,6 +121,133 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   loadTab('endlessWaves');
 
   return panel;
+}
+
+/** Collapsed-by-default diagnostics block shown at the bottom of the
+ *  leaderboard panel. Renders three sections:
+ *    1. SDK status: reachable / authorized / player mode (`'lite'`
+ *       vs signed-in).
+ *    2. Probe results: per-board outcome of the init-time
+ *       `getLeaderboardDescription` call. A board listed as "FAIL"
+ *       here means it isn't registered in Yandex Console — every
+ *       submit will silently fail.
+ *    3. Last submits: rolling tail of `setLeaderboardScore` attempts
+ *       with status (sent / skipped / failed / mock) and any error.
+ *
+ *  Subscribes to `yandex.onDiagnosticsChange` so the table refreshes
+ *  live as the player clears waves and submits land. */
+function buildDiagnosticsBlock(): HTMLElement {
+  const wrap = document.createElement('details');
+  wrap.className = 'lb-diag';
+
+  const summary = document.createElement('summary');
+  summary.className = 'lb-diag-summary';
+  summary.textContent = t('ui.lb.diag.title');
+  wrap.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'lb-diag-body';
+  wrap.appendChild(body);
+
+  const render = (): void => {
+    const d = yandex.getLeaderboardDiagnostics();
+    body.innerHTML = '';
+
+    // ── SDK status row ────────────────────────────────────────────
+    const status = document.createElement('div');
+    status.className = 'lb-diag-status';
+    const items: string[] = [];
+    items.push(`SDK: ${d.sdkReachable ? 'ok' : 'stub'}`);
+    items.push(`auth: ${d.authorized ? 'yes' : 'no'}`);
+    if (d.playerMode) items.push(`mode: ${d.playerMode}`);
+    status.textContent = items.join(' · ');
+    body.appendChild(status);
+
+    // ── Probes section ────────────────────────────────────────────
+    if (d.probes.length > 0) {
+      const probeHead = document.createElement('div');
+      probeHead.className = 'lb-diag-section-title';
+      probeHead.textContent = t('ui.lb.diag.probes');
+      body.appendChild(probeHead);
+
+      for (const p of d.probes) {
+        const row = document.createElement('div');
+        row.className = `lb-diag-probe ${p.ok ? 'ok' : 'fail'}`;
+        const id = document.createElement('span');
+        id.className = 'lb-diag-board';
+        id.textContent = p.boardId;
+        row.appendChild(id);
+        const verdict = document.createElement('span');
+        verdict.className = 'lb-diag-verdict';
+        verdict.textContent = p.ok ? 'ok' : 'FAIL';
+        row.appendChild(verdict);
+        if (!p.ok && p.error) {
+          const err = document.createElement('span');
+          err.className = 'lb-diag-err';
+          err.textContent = p.error;
+          row.appendChild(err);
+        } else if (p.ok && p.title) {
+          const title = document.createElement('span');
+          title.className = 'lb-diag-board-title';
+          title.textContent = p.title;
+          row.appendChild(title);
+        }
+        body.appendChild(row);
+      }
+    }
+
+    // ── Submits section ───────────────────────────────────────────
+    const submitHead = document.createElement('div');
+    submitHead.className = 'lb-diag-section-title';
+    submitHead.textContent = t('ui.lb.diag.submits');
+    body.appendChild(submitHead);
+
+    if (d.submits.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'lb-diag-empty';
+      empty.textContent = t('ui.lb.diag.noSubmits');
+      body.appendChild(empty);
+    } else {
+      for (const s of d.submits.slice(0, 8)) {
+        const row = document.createElement('div');
+        row.className = `lb-diag-submit status-${s.status}`;
+        const time = document.createElement('span');
+        time.className = 'lb-diag-time';
+        time.textContent = formatLogTime(s.ts);
+        row.appendChild(time);
+        const id = document.createElement('span');
+        id.className = 'lb-diag-board';
+        id.textContent = s.boardId;
+        row.appendChild(id);
+        const score = document.createElement('span');
+        score.className = 'lb-diag-score';
+        score.textContent = String(s.score);
+        row.appendChild(score);
+        const verdict = document.createElement('span');
+        verdict.className = 'lb-diag-verdict';
+        verdict.textContent = s.status;
+        row.appendChild(verdict);
+        if (s.error) {
+          const err = document.createElement('span');
+          err.className = 'lb-diag-err';
+          err.textContent = s.error;
+          row.appendChild(err);
+        }
+        body.appendChild(row);
+      }
+    }
+  };
+
+  render();
+  yandex.onDiagnosticsChange(render);
+
+  return wrap;
+}
+
+function formatLogTime(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number): string => n.toString().padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 function renderEntries(body: HTMLElement, entries: LeaderboardEntry[]): void {
