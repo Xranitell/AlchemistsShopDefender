@@ -4,11 +4,15 @@
 // the baked pixel-art sprites in `./sprites.ts` until the PNG finishes
 // loading.
 //
-// Cell rectangles below were derived from the spritesheets' actual content
-// bounds (see scripts/dev notes). Anchors are bottom-centre so a creature's
-// "feet" land on its entity position — same convention as the baked sprites.
+// Source rects + body-mass-centre anchors below were derived from the
+// spritesheets' actual content via per-frame connected-component analysis
+// (grouped by which 1/4-cell each component's centre-of-mass lands in,
+// then unioned per-cell). This is more robust than a uniform 300-pixel
+// grid because painted frames frequently overflow cell boundaries —
+// e.g. a running rat's tail trails into the previous cell, or a slime's
+// drips spill past the next.
 
-import { loadSheet, type AnimRow, type AnimSheet } from './animatedSprite';
+import { loadSheet, type AnimFrame, type AnimRow, type AnimSheet } from './animatedSprite';
 
 // Vite copies `public/` to the build root; with `base: './'` (vite.config.ts)
 // these relative URLs work both for the dev server and inside the YG zip.
@@ -17,41 +21,87 @@ const sheetMossy: AnimSheet = loadSheet('sprites/bosses-mossy.png');
 const sheetMech: AnimSheet = loadSheet('sprites/bosses-mech.png');
 const sheetMannequin: AnimSheet = loadSheet('sprites/mannequin.png');
 
-const CELL_W = 300;
-const FRAMES = 4;
-
-function row(sheet: AnimSheet, rowY: number, cellH: number, scale: number): AnimRow {
-  return {
-    sheet,
-    frames: FRAMES,
-    cellW: CELL_W,
-    cellH,
-    rowY,
-    anchor: { x: CELL_W / 2, y: cellH },
-    scale,
-  };
+function row(
+  sheet: AnimSheet,
+  sy: number,
+  sh: number,
+  frames: AnimFrame[],
+  scale: number,
+): AnimRow {
+  return { sheet, sy, sh, frames, scale };
 }
 
-/** Walk-cycle animation rows keyed by `EnemyKind.id`. */
+/** Walk-cycle animation rows keyed by `EnemyKind.id`. Generated from the
+ *  painted spritesheets; see top-of-file comment for the derivation. */
 export const ENEMY_ANIMS: Record<string, AnimRow> = {
-  // creatures.png — small mob row stack.
-  slime: row(sheetCreatures, 99, 110, 0.55),
-  rat: row(sheetCreatures, 285, 160, 0.40),
-  golem: row(sheetCreatures, 481, 232, 0.42),
+  // creatures.png
+  slime: row(sheetCreatures, 97, 115, [
+    { sx: 82, sw: 166, ax: 83 },
+    { sx: 313, sw: 260, ax: 157 },
+    { sx: 657, sw: 245, ax: 88 },
+    { sx: 895, sw: 226, ax: 127 },
+  ], 0.55),
+  rat: row(sheetCreatures, 283, 165, [
+    { sx: 38, sw: 234, ax: 127 },
+    { sx: 299, sw: 272, ax: 158 },
+    { sx: 603, sw: 230, ax: 123 },
+    { sx: 863, sw: 266, ax: 149 },
+  ], 0.40),
+  golem: row(sheetCreatures, 479, 236, [
+    { sx: 35, sw: 237, ax: 113 },
+    { sx: 316, sw: 259, ax: 123 },
+    { sx: 618, sw: 203, ax: 102 },
+    { sx: 879, sw: 254, ax: 118 },
+  ], 0.42),
 
-  // bosses-mossy.png — big slime / flying flask / shaman row stack.
-  miniboss_slime: row(sheetMossy, 34, 220, 0.55),
-  flying_flask: row(sheetMossy, 303, 204, 0.32),
-  shaman: row(sheetMossy, 540, 204, 0.45),
+  // bosses-mossy.png
+  miniboss_slime: row(sheetMossy, 33, 223, [
+    { sx: 20, sw: 245, ax: 122 },
+    { sx: 308, sw: 299, ax: 125 },
+    { sx: 584, sw: 292, ax: 161 },
+    { sx: 923, sw: 244, ax: 110 },
+  ], 0.55),
+  flying_flask: row(sheetMossy, 301, 206, [
+    { sx: 40, sw: 221, ax: 110 },
+    { sx: 298, sw: 289, ax: 145 },
+    { sx: 623, sw: 249, ax: 125 },
+    { sx: 908, sw: 280, ax: 140 },
+  ], 0.32),
+  shaman: row(sheetMossy, 538, 208, [
+    { sx: 43, sw: 220, ax: 102 },
+    { sx: 324, sw: 219, ax: 95 },
+    { sx: 622, sw: 217, ax: 94 },
+    { sx: 911, sw: 217, ax: 95 },
+  ], 0.45),
 
-  // bosses-mech.png — rat king / sapper / homunculus row stack.
-  boss_rat_king: row(sheetMech, 30, 202, 0.60),
-  sapper: row(sheetMech, 277, 166, 0.42),
-  boss_homunculus: row(sheetMech, 478, 255, 0.62),
+  // bosses-mech.png
+  boss_rat_king: row(sheetMech, 28, 206, [
+    { sx: 9, sw: 299, ax: 156 },
+    { sx: 314, sw: 266, ax: 138 },
+    { sx: 583, sw: 294, ax: 159 },
+    { sx: 881, sw: 301, ax: 162 },
+  ], 0.60),
+  sapper: row(sheetMech, 277, 168, [
+    { sx: 46, sw: 219, ax: 122 },
+    { sx: 336, sw: 203, ax: 114 },
+    { sx: 614, sw: 204, ax: 115 },
+    { sx: 905, sw: 199, ax: 107 },
+  ], 0.42),
+  boss_homunculus: row(sheetMech, 476, 259, [
+    { sx: 10, sw: 291, ax: 143 },
+    { sx: 321, sw: 264, ax: 125 },
+    { sx: 603, sw: 275, ax: 130 },
+    { sx: 902, sw: 269, ax: 122 },
+  ], 0.62),
 };
 
 /** Mannequin has a single row with 4 throw-cycle poses (see indices below). */
-export const MANNEQUIN_ANIM: AnimRow = row(sheetMannequin, 49, 294, 0.50);
+export const MANNEQUIN_ANIM: AnimRow = row(sheetMannequin, 47, 298, [
+  { sx: 49, sw: 179, ax: 89 },
+  { sx: 301, sw: 228, ax: 116 },
+  { sx: 606, sw: 266, ax: 97 },
+  { sx: 874, sw: 257, ax: 164 },
+], 0.50);
 
 /** Frame layout of the mannequin spritesheet: idle / windup / release / idle-alt. */
 export const MANNEQUIN_FRAMES = {
