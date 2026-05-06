@@ -52,7 +52,7 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
     { sx: 316, sw: 259, ax: 123 },
     { sx: 618, sw: 203, ax: 102 },
     { sx: 879, sw: 254, ax: 118 },
-  ], 0.42),
+  ], 0.21),
 
   // bosses-mossy.png
   miniboss_slime: row(sheetMossy, 33, 223, [
@@ -60,13 +60,13 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
     { sx: 308, sw: 299, ax: 125 },
     { sx: 584, sw: 292, ax: 161 },
     { sx: 923, sw: 244, ax: 110 },
-  ], 0.4125),
+  ], 0.275),
   flying_flask: row(sheetMossy, 301, 206, [
     { sx: 40, sw: 221, ax: 110 },
     { sx: 298, sw: 289, ax: 145 },
     { sx: 623, sw: 249, ax: 125 },
     { sx: 908, sw: 280, ax: 140 },
-  ], 0.32),
+  ], 0.16),
   shaman: row(sheetMossy, 538, 208, [
     { sx: 43, sw: 220, ax: 102 },
     { sx: 324, sw: 219, ax: 95 },
@@ -80,7 +80,7 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
     { sx: 314, sw: 266, ax: 138 },
     { sx: 583, sw: 294, ax: 159 },
     { sx: 881, sw: 301, ax: 162 },
-  ], 0.45),
+  ], 0.30),
   sapper: row(sheetMech, 277, 168, [
     { sx: 46, sw: 219, ax: 122 },
     { sx: 336, sw: 203, ax: 114 },
@@ -92,7 +92,7 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
     { sx: 321, sw: 264, ax: 125 },
     { sx: 603, sw: 275, ax: 130 },
     { sx: 902, sw: 269, ax: 122 },
-  ], 0.465),
+  ], 0.31),
 };
 
 /** Mannequin idle animation — bottom row of the painted sheet. 4 frames
@@ -100,23 +100,23 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
  *  isn't mid-throw. Scale shrunk 1.5× from the previous 0.45 so the
  *  mannequin reads as roughly one tile high — same visual proportion
  *  the rest of the (newly halved) creature roster sits at. */
-export const MANNEQUIN_IDLE_ANIM: AnimRow = row(sheetMannequin, 1030, 672, [
-  { sx: 96, sw: 400, ax: 194 },
-  { sx: 636, sw: 444, ax: 216 },
-  { sx: 1206, sw: 456, ax: 222 },
-  { sx: 1828, sw: 400, ax: 194 },
-], 0.15);
+export const MANNEQUIN_IDLE_ANIM: AnimRow = row(sheetMannequin, 515, 336, [
+  { sx: 48, sw: 200, ax: 97 },
+  { sx: 318, sw: 222, ax: 108 },
+  { sx: 603, sw: 228, ax: 111 },
+  { sx: 914, sw: 200, ax: 97 },
+], 0.30);
 
 /** Mannequin throw animation — top row of the painted sheet. Played
  *  once per fire (see `throwAnim` countdown in mannequin.ts):
  *  frame 0 = grip / wind-up start, frame 1 = raised flask,
  *  frame 2 = extended throw, frame 3 = follow-through. */
-export const MANNEQUIN_THROW_ANIM: AnimRow = row(sheetMannequin, 194, 660, [
-  { sx: 86, sw: 422, ax: 206 },
-  { sx: 616, sw: 484, ax: 246 },
-  { sx: 1200, sw: 600, ax: 252 },
-  { sx: 1800, sw: 566, ax: 222 },
-], 0.15);
+export const MANNEQUIN_THROW_ANIM: AnimRow = row(sheetMannequin, 97, 330, [
+  { sx: 43, sw: 211, ax: 103 },
+  { sx: 308, sw: 242, ax: 123 },
+  { sx: 600, sw: 300, ax: 126 },
+  { sx: 900, sw: 283, ax: 111 },
+], 0.30);
 
 /** Frame layout of the *baked* mannequin pixel-art fallback. Painted
  *  frames live on dedicated rows now (see *_IDLE_ANIM / *_THROW_ANIM). */
