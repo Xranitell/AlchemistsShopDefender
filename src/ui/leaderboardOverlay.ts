@@ -185,12 +185,20 @@ function buildDiagnosticsBlock(): HTMLElement {
           const err = document.createElement('span');
           err.className = 'lb-diag-err';
           err.textContent = p.error;
+          err.title = p.error;
           row.appendChild(err);
-        } else if (p.ok && p.title) {
-          const title = document.createElement('span');
-          title.className = 'lb-diag-board-title';
-          title.textContent = p.title;
-          row.appendChild(title);
+        } else if (p.ok) {
+          // Show "<title> · <scoreType>" so the panel clarifies the
+          // board's expected score format. When two boards have
+          // different `scoreType` it usually explains why our submit
+          // succeeds for one and fails for the other.
+          const meta = document.createElement('span');
+          meta.className = 'lb-diag-board-title';
+          const bits: string[] = [];
+          if (p.title) bits.push(p.title);
+          if (p.scoreType) bits.push(p.scoreType);
+          meta.textContent = bits.join(' · ');
+          row.appendChild(meta);
         }
         body.appendChild(row);
       }
@@ -209,31 +217,45 @@ function buildDiagnosticsBlock(): HTMLElement {
       body.appendChild(empty);
     } else {
       for (const s of d.submits.slice(0, 8)) {
-        const row = document.createElement('div');
-        row.className = `lb-diag-submit status-${s.status}`;
+        // Use a column-flex shell so the (potentially long) Yandex
+        // error wraps onto its own line instead of being clipped to
+        // ellipsis at the right edge of the row. The top header keeps
+        // the original 4-col grid (time / board / score / verdict).
+        const shell = document.createElement('div');
+        shell.className = `lb-diag-submit-shell status-${s.status}`;
+
+        const head = document.createElement('div');
+        head.className = `lb-diag-submit status-${s.status}`;
         const time = document.createElement('span');
         time.className = 'lb-diag-time';
         time.textContent = formatLogTime(s.ts);
-        row.appendChild(time);
+        head.appendChild(time);
         const id = document.createElement('span');
         id.className = 'lb-diag-board';
         id.textContent = s.boardId;
-        row.appendChild(id);
+        head.appendChild(id);
         const score = document.createElement('span');
         score.className = 'lb-diag-score';
         score.textContent = String(s.score);
-        row.appendChild(score);
+        head.appendChild(score);
         const verdict = document.createElement('span');
         verdict.className = 'lb-diag-verdict';
         verdict.textContent = s.status;
-        row.appendChild(verdict);
+        head.appendChild(verdict);
+        shell.appendChild(head);
+
         if (s.error) {
-          const err = document.createElement('span');
+          const err = document.createElement('div');
           err.className = 'lb-diag-err';
           err.textContent = s.error;
-          row.appendChild(err);
+          // Also stash the full error in a title so a designer with a
+          // mouse can hover-inspect even on platforms whose webview
+          // truncates long element heights.
+          err.title = s.error;
+          shell.appendChild(err);
         }
-        body.appendChild(row);
+
+        body.appendChild(shell);
       }
     }
   };

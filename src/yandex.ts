@@ -138,6 +138,11 @@ export interface LeaderboardProbeResult {
   error?: string;
   /** Display title returned by the SDK (preferred locale or `name`). */
   title?: string;
+  /** Score format hint reported by the SDK
+   *  (`description.type` — usually `'numeric'` or `'time'`). When
+   *  this differs between the boards we write to it usually explains
+   *  why one board accepts our score and another doesn't. */
+  scoreType?: string;
 }
 
 // localStorage-based mock for leaderboards during local development.
@@ -170,6 +175,39 @@ function mockSetScore(boardId: string, score: number): void {
  *  bloats memory in a long endless run. The most recent N submits are
  *  what's actionable anyway. */
 const SUBMIT_LOG_CAP = 24;
+
+/** Stringify an error / rejection value into a multi-line string that
+ *  preserves every diagnostic field the runtime exposed.
+ *
+ *  Why this exists: Yandex Games SDK rejections sometimes carry only a
+ *  vague `.message` ("The request to setLeaderboardScore is invalid")
+ *  while the *real* signal (HTTP status, error code, server-side
+ *  details) lives on enumerable own-properties or under a `.data`
+ *  object. The previous `err.message` extraction silently dropped all
+ *  of that, leaving the diagnostics panel unable to distinguish a
+ *  rate-limit from a malformed-payload from an unauthorized-write.
+ *  This helper joins `.message` with a JSON dump of any extra fields
+ *  so the panel shows the full picture. */
+function serializeError(err: unknown): string {
+  if (err == null) return 'null';
+  if (typeof err !== 'object') return String(err);
+  const e = err as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof e.message === 'string' && e.message) parts.push(e.message);
+  // Collect any non-standard fields ('code', 'statusCode',
+  // 'data', 'details', 'name' if non-trivial, etc.).
+  const extra: Record<string, unknown> = {};
+  for (const k of Object.keys(e)) {
+    if (k === 'message' || k === 'stack') continue;
+    if (k === 'name' && (e[k] === 'Error' || e[k] === '')) continue;
+    extra[k] = e[k];
+  }
+  if (Object.keys(extra).length > 0) {
+    try { parts.push(JSON.stringify(extra)); }
+    catch { parts.push(String(extra)); }
+  }
+  return parts.join(' · ') || String(err);
+}
 
 /** Boards we probe at init. Aligns with the technical ids used by
  *  `setLeaderboardScore` in main.ts (`submitWaveLeaderboards`). If the
@@ -240,12 +278,17 @@ class YandexGames {
         try {
           const desc = await lb.getLeaderboardDescription(boardId);
           const title = desc.title?.ru ?? desc.title?.en ?? desc.name ?? boardId;
-          return { boardId, ok: true, title };
+          return {
+            boardId,
+            ok: true,
+            title,
+            scoreType: desc.description?.type,
+          };
         } catch (err) {
           return {
             boardId,
             ok: false,
-            error: err instanceof Error ? err.message : String(err),
+            error: serializeError(err),
           };
         }
       }),
@@ -388,7 +431,13 @@ class YandexGames {
         await this.lb.setLeaderboardScore(boardId, score);
         this.recordSubmit({ ts: Date.now(), boardId, score, status: 'sent' });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        // Yandex SDK rejection objects sometimes carry rich context
+        // beyond `.message` — e.g. `{ code, statusCode, details }` —
+        // and the bare `.message` can be vague ("The request to
+        // setLeaderboardScore is invalid"). Stringify any extra
+        // own-properties so the diag panel surfaces the *full*
+        // diagnostic payload, not just a pre-mangled summary.
+        const msg = serializeError(err);
         console.warn('[YandexGames] setLeaderboardScore failed', err);
         this.recordSubmit({
           ts: Date.now(),
