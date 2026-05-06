@@ -2,6 +2,7 @@ import { COLORS } from './palette';
 import { BIOMES, type BiomeId, type BiomePalette } from '../data/biomes';
 import { drawProp, onPropsSheetLoad, PROP_COUNT } from './propSprites';
 import { getFloorTileRhombus, onFloorSheetLoad, FLOOR_TILE_COUNT } from './floorSheet';
+import { drawDecal, onDecalSheetLoad, DECAL_COUNT } from './decalSheet';
 
 // Room backdrop — walls and door frames have been removed so enemies can walk
 // in from off-screen. The backdrop is now purely an iso-rhombic floor that
@@ -52,6 +53,13 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   // amber palette + workshop decor (shelves, candles, props) are still
   // enough to read the room as the alchemist's lab.
   drawFloor(ctx, width, height, pal);
+  // Floor decals — 2-3 random painted decals scattered on the
+  // floor at the same iso angle as the tiles. Drawn between the
+  // floor and the props so they read as lying on the surface
+  // (above the painted floor tiles, below the painted props,
+  // and — since the whole backdrop is below per-frame gameplay
+  // objects — below towers / enemies / projectiles too).
+  drawSpritesheetDecals(ctx, width, height);
   // Walls removed per design request — open arena feel.
   // All previous biome / workshop decor (programmatic potion bottles,
   // books, scrolls, candles, mortar, ink, herb bundles, crates, plus
@@ -78,6 +86,7 @@ const invalidateRoomCache = (): void => {
 };
 onPropsSheetLoad(invalidateRoomCache);
 onFloorSheetLoad(invalidateRoomCache);
+onDecalSheetLoad(invalidateRoomCache);
 
 /**
  * Scatters painted props randomly across the floor.
@@ -144,6 +153,73 @@ function drawSpritesheetProps(
     ctx.restore();
 
     drawProp(ctx, x, y, id, { scale, flipX, rotation });
+  }
+}
+
+/**
+ * Scatters 2-3 painted floor decals (cracks, stains, dropped foliage,
+ * etc.) across the floor. Each decal is iso-projected so it lies on
+ * the surface at the same 45° camera angle as the painted floor tiles.
+ *
+ * Layout rules:
+ *   - 2 or 3 decals per session (deterministic from canvas size — same
+ *     size always yields the same decal set, but different sizes pick
+ *     different decals, so a viewport resize re-rolls without looking
+ *     "random per frame").
+ *   - Each decal is kept clear of the central rune ring / dais
+ *     (`excludeRX × excludeRY` ellipse) so the play area stays clean.
+ *   - 50% mirror flip per decal so adjacent rooms with the same source
+ *     decal don't read identically.
+ *   - Drawn at `alpha = 0.7-0.85` so the decals tint the floor tile
+ *     beneath them rather than fully painting over it — they look
+ *     scuffed-in instead of stickered-on.
+ *
+ * Caller (`getRoomBackdrop`) bakes this into the cached canvas;
+ * the `onDecalSheetLoad` hook above invalidates the cache the moment
+ * the PNG finishes loading so the decals appear without waiting for
+ * a biome / size change.
+ */
+function drawSpritesheetDecals(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  // Same exclusion ellipse the prop / decor passes use so decals
+  // never land on top of the rune ring / dais.
+  const excludeRX = 280;
+  const excludeRY = 150;
+  // Pick 2 or 3 decals based on a stable seed derived from the canvas
+  // size — same size always gives the same decal layout (consistent
+  // session feel), different sizes re-roll cleanly.
+  const sizeSeed = hash2(w | 0, h | 0);
+  const count = 2 + ((sizeSeed >>> 4) & 1); // 2 or 3
+  let placed = 0;
+  let attempt = 0;
+  while (placed < count && attempt < 30) {
+    const r1 = hash2(attempt * 47 + 31, sizeSeed ^ (attempt * 13));
+    const r2 = hash2(attempt * 91 + 17, sizeSeed ^ (attempt * 29 + 5));
+    // Bias positions away from the canvas edges so the iso rhombus
+    // footprint of each decal stays fully inside the canvas.
+    const x = ((r1 >>> 5) & 0xffff) / 0xffff * (w - 200) + 100;
+    const y = ((r1 >>> 13) & 0xffff) / 0xffff * (h - 200) + 100;
+    const dx = (x - cx) / excludeRX;
+    const dy = (y - cy) / excludeRY;
+    attempt++;
+    if (dx * dx + dy * dy < 1) continue;
+
+    const id = (r2 >>> 1) % DECAL_COUNT;
+    const flipX = ((r2 >>> 11) & 1) === 1;
+    // Decal half-width in screen px (rhombus footprint is 2·halfW
+    // wide). 70-100 keeps the decals readable but never larger than
+    // the central exclusion ellipse, so they don't visually fight the
+    // dais / rune ring.
+    const halfW = 70 + ((r2 >>> 17) & 0x1f);
+    const alpha = 0.70 + ((r2 >>> 23) & 0xff) / 255 * 0.15; // 0.70-0.85
+
+    drawDecal(ctx, x, y, id, { halfW, flipX, alpha });
+    placed++;
   }
 }
 
