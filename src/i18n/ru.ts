@@ -776,6 +776,8 @@ Object.assign(RU, {
   'ui.lb.tab.dailyWaves': 'Дневное событие',
   'ui.lb.loading': 'Загрузка…',
   'ui.lb.empty': 'Пока записей нет.',
+  'ui.lb.signInPrompt': 'Войдите в Яндекс, чтобы попасть в таблицу лидеров.',
+  'ui.lb.signInBtn': 'Войти',
 
   // ── Endless modifiers ────────────────────────────────────────────────
   'ui.endless.cycleTitle': 'Бесконечный цикл {loop}',

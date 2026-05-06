@@ -28,6 +28,18 @@ interface YaLeaderboards {
   }>;
 }
 
+/** Subset of the player object the SDK returns from getPlayer().
+ *  `getMode()` returns the string `'lite'` for anonymous (un-signed-in)
+ *  players — the leaderboard API rejects writes from those players. */
+interface YaPlayer {
+  getMode?(): string;
+  getUniqueID?(): string;
+}
+
+interface YaAuth {
+  openAuthDialog(): Promise<void>;
+}
+
 interface YGameSdk {
   features?: {
     LoadingAPI?: {
@@ -55,7 +67,8 @@ interface YGameSdk {
       };
     }): void;
   };
-  getPlayer?(opts?: { scopes?: boolean }): Promise<unknown>;
+  auth?: YaAuth;
+  getPlayer?(opts?: { scopes?: boolean }): Promise<YaPlayer>;
   getLeaderboards?(): Promise<YaLeaderboards>;
   /** Player environment — the Yandex SDK exposes the user's preferred
    *  interface language here. We forward this to our i18n engine so the
@@ -106,7 +119,10 @@ function mockSetScore(boardId: string, score: number): void {
 class YandexGames {
   private sdk: YGameSdk | null = null;
   private lb: YaLeaderboards | null = null;
+  private player: YaPlayer | null = null;
   private ready = false;
+  /** Listeners notified when the player auth state changes (init / sign-in). */
+  private authListeners: Array<() => void> = [];
 
   async init(): Promise<void> {
     if (typeof window === 'undefined' || !window.YaGames) {
@@ -118,9 +134,67 @@ class YandexGames {
       if (this.sdk.getLeaderboards) {
         this.lb = await this.sdk.getLeaderboards();
       }
+      // Probe the player so we know whether leaderboard writes will be
+      // accepted. Yandex rejects setLeaderboardScore from `'lite'`
+      // (anonymous) players, so we surface auth state to the UI.
+      await this.refreshPlayer();
     } catch (err) {
       console.warn('[YandexGames] init failed, running in stub mode', err);
     }
+  }
+
+  private async refreshPlayer(): Promise<void> {
+    if (!this.sdk?.getPlayer) return;
+    try {
+      this.player = await this.sdk.getPlayer({ scopes: false });
+    } catch (err) {
+      console.warn('[YandexGames] getPlayer failed', err);
+      this.player = null;
+    }
+    for (const cb of this.authListeners) cb();
+  }
+
+  /** Subscribe to player auth-state changes. The callback fires after
+   *  `init()` resolves and again whenever `signIn()` succeeds. */
+  onAuthChange(cb: () => void): () => void {
+    this.authListeners.push(cb);
+    return () => {
+      const i = this.authListeners.indexOf(cb);
+      if (i >= 0) this.authListeners.splice(i, 1);
+    };
+  }
+
+  /** True when the SDK reports the player is authorised to write to
+   *  leaderboards (i.e. signed into a Yandex account, not in `'lite'`
+   *  guest mode). On non-Yandex hosts (local dev) we return true so
+   *  the mock leaderboard works without a sign-in flow. */
+  isAuthorized(): boolean {
+    if (!this.sdk) return true; // local / non-Yandex: mock board accepts writes
+    const mode = this.player?.getMode?.();
+    return mode !== undefined && mode !== 'lite';
+  }
+
+  /** Open the Yandex auth dialog to upgrade a `'lite'` guest into a
+   *  signed-in account. Resolves true when the player is authorised
+   *  after the dialog closes. Bound to a UI button (Leaderboard panel)
+   *  so we never trigger it without a user gesture. */
+  async signIn(): Promise<boolean> {
+    if (!this.sdk?.auth) return this.isAuthorized();
+    try {
+      await this.sdk.auth.openAuthDialog();
+    } catch (err) {
+      console.warn('[YandexGames] auth dialog failed', err);
+      return this.isAuthorized();
+    }
+    await this.refreshPlayer();
+    // Re-fetch the leaderboards handle — Yandex docs note that the
+    // leaderboards object is bound to the player session at call time.
+    if (this.sdk.getLeaderboards) {
+      try {
+        this.lb = await this.sdk.getLeaderboards();
+      } catch { /* keep previous handle */ }
+    }
+    return this.isAuthorized();
   }
 
   /** Tell the platform that game assets have loaded. Hides the Yandex spinner. */
@@ -178,9 +252,18 @@ class YandexGames {
     return null;
   }
 
-  /** Submit a score to a leaderboard. Falls back to localStorage mock. */
+  /** Submit a score to a leaderboard. Falls back to localStorage mock.
+   *  Skips the SDK call when the player is in `'lite'` (anonymous)
+   *  mode — Yandex throws on those, and a noisy console warn after
+   *  every cleared wave isn't useful when the fix is "sign in" rather
+   *  than "retry". The Leaderboard panel surfaces a sign-in button
+   *  so the player can fix the auth state explicitly. */
   async setLeaderboardScore(boardId: string, score: number): Promise<void> {
     if (this.lb) {
+      if (!this.isAuthorized()) {
+        console.info('[YandexGames] skipping leaderboard write — player not signed in (lite mode)');
+        return;
+      }
       try {
         await this.lb.setLeaderboardScore(boardId, score);
       } catch (err) {

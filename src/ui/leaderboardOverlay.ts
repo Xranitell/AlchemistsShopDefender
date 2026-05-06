@@ -40,6 +40,45 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   const body = document.createElement('div');
   body.className = 'lb-body';
 
+  // Sign-in CTA. Only rendered when the SDK reports the player as
+  // unauthenticated ('lite' guest mode) — Yandex rejects leaderboard
+  // writes from those players, so showing them an empty board with
+  // no explanation looks like the feature is broken. A button gives
+  // the player the auth dialog with a clear user gesture.
+  const authPrompt = document.createElement('div');
+  authPrompt.className = 'lb-auth-prompt';
+
+  const updateAuthPrompt = (): void => {
+    if (yandex.isAuthorized()) {
+      authPrompt.style.display = 'none';
+      authPrompt.innerHTML = '';
+      return;
+    }
+    authPrompt.style.display = '';
+    authPrompt.innerHTML = '';
+    const text = document.createElement('div');
+    text.className = 'lb-auth-text';
+    text.textContent = t('ui.lb.signInPrompt');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lb-auth-btn';
+    btn.textContent = t('ui.lb.signInBtn');
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      void yandex.signIn().then(() => {
+        // Refresh the currently-active tab so the player's freshly-
+        // submitted score (if a previous run was already finished) shows
+        // up immediately.
+        const active = tabBar.querySelector<HTMLElement>('.lb-tab.active')?.dataset.tab as BoardTab | undefined;
+        if (active) loadTab(active);
+      }).catch(() => {
+        btn.disabled = false;
+      });
+    });
+    authPrompt.appendChild(text);
+    authPrompt.appendChild(btn);
+  };
+
   const loadTab = (tab: BoardTab) => {
     tabBar.querySelectorAll('.lb-tab').forEach((el) => el.classList.remove('active'));
     tabBar.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
@@ -62,7 +101,12 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   }
 
   panel.appendChild(tabBar);
+  panel.appendChild(authPrompt);
   panel.appendChild(body);
+
+  // Auth state is async — when SDK init resolves later, refresh the prompt.
+  updateAuthPrompt();
+  yandex.onAuthChange(() => updateAuthPrompt());
 
   // Initial tab
   loadTab('endlessWaves');

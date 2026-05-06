@@ -26,6 +26,12 @@ export class PauseStatsOverlay {
 
   show(state: GameState): void {
     this.hide();
+    // Mark the body so HUD elements can hide themselves while the
+    // pause panel is visible. Without this, the in-game pause / gold /
+    // essence chips bleed through the 88% overlay backdrop and the
+    // panel reads as cluttered on phones (see GH issue: pause overlay
+    // doesn't match desktop look).
+    document.body.classList.add('pause-stats-open');
     const wrap = document.createElement('div');
     wrap.className = 'pause-stats-overlay';
 
@@ -318,6 +324,7 @@ export class PauseStatsOverlay {
       this.panel.remove();
       this.panel = null;
     }
+    document.body.classList.remove('pause-stats-open');
   }
 
   isVisible(): boolean {
