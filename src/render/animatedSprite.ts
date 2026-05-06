@@ -151,3 +151,96 @@ export function drawAnimFrame(
   ctx.restore();
   return true;
 }
+
+// Scratch canvas reused across paintAnimFrameTint calls — sized to the
+// largest sprite seen so far. Module-scoped so allocation only happens
+// once per page lifetime.
+let scratchCanvas: HTMLCanvasElement | null = null;
+let scratchCtx: CanvasRenderingContext2D | null = null;
+
+function ensureScratch(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  if (typeof document === 'undefined') return null;
+  if (!scratchCanvas) {
+    scratchCanvas = document.createElement('canvas');
+    scratchCtx = scratchCanvas.getContext('2d');
+  }
+  if (!scratchCtx) return null;
+  if (scratchCanvas.width < w || scratchCanvas.height < h) {
+    scratchCanvas.width = Math.max(scratchCanvas.width, Math.ceil(w));
+    scratchCanvas.height = Math.max(scratchCanvas.height, Math.ceil(h));
+  }
+  return { canvas: scratchCanvas, ctx: scratchCtx };
+}
+
+/** Paint a translucent flat-colour tint over a frame, masked to the
+ *  frame's actual non-transparent pixels. Use for hit/damage flashes:
+ *  a naive `source-atop fillRect` on the main canvas tints the
+ *  surrounding floor as well (the floor already has alpha = 255), so
+ *  we composite via a scratch canvas instead. Returns false if the
+ *  sheet hasn't loaded — caller can skip the overlay in that case. */
+export function paintAnimFrameTint(
+  ctx: CanvasRenderingContext2D,
+  row: AnimRow,
+  frameIndex: number,
+  x: number,
+  y: number,
+  tintColor: string,
+  tintAlpha: number,
+  opts?: DrawAnimOptions,
+): boolean {
+  if (!isSheetReady(row.sheet)) return false;
+  const frame = pickFrame(row, frameIndex);
+  const scale = opts?.scale ?? row.scale;
+  const drawW = Math.round(frame.sw * scale);
+  const drawH = Math.round(row.sh * scale);
+  if (drawW <= 0 || drawH <= 0) return false;
+  const drawX = Math.round(x - frame.ax * scale);
+  const drawY = Math.round(y - row.sh * scale);
+
+  const scratch = ensureScratch(drawW, drawH);
+  if (!scratch) return false;
+  const { canvas: sCanvas, ctx: sCtx } = scratch;
+
+  // 1. Clear the region we'll use (only the top-left drawW x drawH).
+  sCtx.save();
+  sCtx.setTransform(1, 0, 0, 1, 0, 0);
+  sCtx.globalCompositeOperation = 'source-over';
+  sCtx.globalAlpha = 1;
+  sCtx.clearRect(0, 0, drawW, drawH);
+  // 2. Paint the sprite frame at (0,0) with the same bilinear settings
+  //    drawAnimFrame uses, so the tint mask matches the rendered shape.
+  sCtx.imageSmoothingEnabled = true;
+  sCtx.imageSmoothingQuality = 'medium';
+  sCtx.drawImage(
+    row.sheet.image,
+    frame.sx,
+    row.sy,
+    frame.sw,
+    row.sh,
+    0,
+    0,
+    drawW,
+    drawH,
+  );
+  // 3. source-atop now safely tints ONLY the sprite pixels (scratch
+  //    canvas has nothing else underneath).
+  sCtx.globalCompositeOperation = 'source-atop';
+  sCtx.globalAlpha = tintAlpha;
+  sCtx.fillStyle = tintColor;
+  sCtx.fillRect(0, 0, drawW, drawH);
+  sCtx.restore();
+
+  // 4. Blit the tinted sprite back into the main canvas, mirroring
+  //    flipX the same way drawAnimFrame does.
+  ctx.save();
+  if (opts?.flipX) {
+    ctx.translate(x, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-x, 0);
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'medium';
+  ctx.drawImage(sCanvas, 0, 0, drawW, drawH, drawX, drawY, drawW, drawH);
+  ctx.restore();
+  return true;
+}

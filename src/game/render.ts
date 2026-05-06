@@ -4,14 +4,14 @@ import { getSprites } from '../render/sprites';
 import { drawSprite, drawSpriteRotated, type BakedSprite } from '../render/sprite';
 import {
   drawAnimFrame,
-  getAnimDrawRect,
   isSheetReady,
+  paintAnimFrameTint,
   type AnimRow,
 } from '../render/animatedSprite';
 import {
   ENEMY_ANIMS,
-  MANNEQUIN_ANIM,
-  MANNEQUIN_FRAMES,
+  MANNEQUIN_IDLE_ANIM,
+  MANNEQUIN_THROW_ANIM,
   enemyAnimFps,
 } from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
@@ -483,48 +483,62 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
     ? { x: Math.round(m.throwDir.x * 2), y: Math.round(m.throwDir.y * 2) }
     : { x: 0, y: 0 };
 
-  // Choose the active pose. Prefer the painted 4-frame mannequin sheet when
-  // it has finished loading; otherwise fall back to the baked pixel-art
-  // poses. The four sheet frames map to: idle / windup / release / idle-alt
-  // (see render/creatureAnims.ts).
-  const useAnim = isSheetReady(MANNEQUIN_ANIM.sheet);
+  // Choose the active pose. Prefer the painted mannequin sheet when it
+  // has finished loading; otherwise fall back to the baked pixel-art
+  // poses. The painted sheet now has TWO 4-frame rows: idle (subtle
+  // breathing loop) and throw (grip → raise → extend → follow-through).
+  const useAnim = isSheetReady(MANNEQUIN_IDLE_ANIM.sheet);
   let bakedSprite: BakedSprite;
+  let animRow = MANNEQUIN_IDLE_ANIM;
   let animFrame: number;
+  // Same throw-window decomposition the baked path used: 60% wind-up
+  // followed by 40% release. We reuse it to pick the baked fallback
+  // sprite AND to map the painted throw row's 4 frames over the throw
+  // duration (frames 0–1 during wind-up, frames 2–3 during release).
+  const THROW_DURATION = 0.22;
+  const THROW_RELEASE_FRACTION = 0.4;
+  const windupCutoff = THROW_DURATION * THROW_RELEASE_FRACTION;
   if (m.throwAnim > 0) {
-    // Throw window lasts THROW_ANIM_DURATION (see mannequin.ts). Windup for
-    // the first portion, release for the rest. Using throwAnim as a count-
-    // down: high values = early in the throw (windup), low values = late
-    // (release).
-    const THROW_RELEASE_FRACTION = 0.4;
-    const windupCutoff = 0.22 * THROW_RELEASE_FRACTION;
+    // throwAnim counts DOWN from THROW_DURATION → 0; convert to a
+    // forward 0..1 progress so frame index moves forward with time.
+    const progress = Math.min(1, Math.max(0, 1 - m.throwAnim / THROW_DURATION));
     if (m.throwAnim > windupCutoff) {
       bakedSprite = s.mannequinThrowWindup;
-      animFrame = MANNEQUIN_FRAMES.windup;
     } else {
       bakedSprite = s.mannequinThrowRelease;
-      animFrame = MANNEQUIN_FRAMES.release;
     }
+    animRow = MANNEQUIN_THROW_ANIM;
+    animFrame = Math.min(3, Math.floor(progress * 4));
   } else {
-    // Two-frame idle loop. ~1.65 Hz alternation reads as a slow breath that
-    // pairs naturally with the bob amplitude above.
-    const idleFramePeriod = 0.6;
-    const isAlt = Math.floor(state.worldTime / idleFramePeriod) % 2 !== 0;
-    bakedSprite = isAlt ? s.mannequinIdleAlt : s.mannequin;
-    animFrame = isAlt ? MANNEQUIN_FRAMES.idleAlt : MANNEQUIN_FRAMES.idle;
+    // Idle: loop the 4 painted breathing frames at ~3.3 fps so a full
+    // cycle is ~1.2s, slow enough to read as breath without distracting.
+    const idleFps = 3.3;
+    animFrame = Math.floor(state.worldTime * idleFps) % 4;
+    // Baked fallback only has 2 idle poses; pair frames 0/1 with the
+    // base idle and 2/3 with the alt idle so the 2-pose flip still
+    // breathes when the sheet hasn't loaded.
+    bakedSprite = animFrame >= 2 ? s.mannequinIdleAlt : s.mannequin;
   }
   const drawX = m.pos.x + lunge.x;
   const drawY = m.pos.y + bob + lunge.y;
 
   if (useAnim) {
-    drawAnimFrame(ctx, MANNEQUIN_ANIM, animFrame, drawX, drawY);
+    drawAnimFrame(ctx, animRow, animFrame, drawX, drawY);
     if (m.damageFlash > 0) {
-      const rect = getAnimDrawRect(MANNEQUIN_ANIM, animFrame, drawX, drawY);
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
-      ctx.fillStyle = COLORS.fireC;
-      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-      ctx.restore();
+      // Tint via offscreen mask so the salmon overlay clips to the
+      // mannequin's painted pixels — a `source-atop fillRect` on the
+      // main canvas would also tint the floor inside the source rect
+      // (the floor is opaque) and read as a salmon rectangle behind
+      // the mannequin.
+      paintAnimFrameTint(
+        ctx,
+        animRow,
+        animFrame,
+        drawX,
+        drawY,
+        COLORS.fireC,
+        Math.min(0.7, m.damageFlash * 1.5),
+      );
     }
   } else if (m.damageFlash > 0) {
     drawSprite(ctx, bakedSprite, drawX, drawY, HERO_SCALE);
@@ -779,22 +793,34 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     // White hit flash + impact particles
     if (e.hitFlash > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.globalAlpha = Math.min(0.85, e.hitFlash * 4);
-      ctx.fillStyle = COLORS.whiteSoft;
+      const flashAlpha = Math.min(0.85, e.hitFlash * 4);
       if (drewAnim && anim) {
-        const rect = getAnimDrawRect(anim, frameIndex, e.pos.x, groundY + bob, { flipX });
-        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+        // Painted sprites need an offscreen-mask tint — see
+        // paintAnimFrameTint comment for why source-atop on the main
+        // canvas would leak across the floor.
+        paintAnimFrameTint(
+          ctx,
+          anim,
+          frameIndex,
+          e.pos.x,
+          groundY + bob,
+          COLORS.whiteSoft,
+          flashAlpha,
+          { flipX },
+        );
       } else {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = flashAlpha;
+        ctx.fillStyle = COLORS.whiteSoft;
         ctx.fillRect(
           e.pos.x - sprite.anchor.x * SPRITE_SCALE,
           e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
           sprite.width * SPRITE_SCALE,
           sprite.height * SPRITE_SCALE,
         );
+        ctx.restore();
       }
-      ctx.restore();
 
       // Spawn impact sparks on fresh hit
       if (e.hitFlash > 0.18) {
