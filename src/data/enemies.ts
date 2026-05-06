@@ -31,7 +31,9 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.45,
     goldDrop: [4, 8],
     damage: 18,
-    radius: 27,
+    // Visual silhouette doubled (see render scale 0.21→0.42); collision
+    // radius scales in lock-step so AOE / contact still match the body.
+    radius: 54,
     color: '#9aa5b1',
   },
   miniboss_slime: {
@@ -42,7 +44,9 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.15,
     goldDrop: [30, 50],
     damage: 22,
-    radius: 45,
+    // Boss silhouette upscaled 1.5× (render scale 0.275→0.4125); keep
+    // collision radius in lock-step.
+    radius: 68,
     color: '#39b54a',
     isBoss: true,
   },
@@ -54,7 +58,9 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0,
     goldDrop: [3, 5],
     damage: 10,
-    radius: 15,
+    // Visual silhouette doubled (render scale 0.16→0.32); collision
+    // radius scales to match.
+    radius: 30,
     color: '#c084fc',
   },
   shaman: {
@@ -76,7 +82,8 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.35,
     goldDrop: [60, 100],
     damage: 18,
-    radius: 42,
+    // Boss silhouette upscaled 1.5× (render scale 0.30→0.45).
+    radius: 63,
     color: '#c9a96b',
     isBoss: true,
   },
@@ -99,7 +106,8 @@ export const ENEMIES: Record<string, EnemyKind> = {
     armor: 0.20,
     goldDrop: [130, 200],
     damage: 28,
-    radius: 51,
+    // Boss silhouette upscaled 1.5× (render scale 0.31→0.465).
+    radius: 77,
     color: '#c084fc',
     isBoss: true,
   },

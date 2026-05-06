@@ -47,26 +47,32 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
     { sx: 603, sw: 230, ax: 123 },
     { sx: 863, sw: 266, ax: 149 },
   ], 0.20),
+  // Golem: scaled 2× from the baseline 0.21 so the brute reads as the
+  // heavyweight it is in combat.
   golem: row(sheetCreatures, 479, 236, [
     { sx: 35, sw: 237, ax: 113 },
     { sx: 316, sw: 259, ax: 123 },
     { sx: 618, sw: 203, ax: 102 },
     { sx: 879, sw: 254, ax: 118 },
-  ], 0.21),
+  ], 0.42),
 
   // bosses-mossy.png
+  // Mini-boss: scaled 1.5× from baseline 0.275 so the boss silhouette
+  // dominates the screen.
   miniboss_slime: row(sheetMossy, 33, 223, [
     { sx: 20, sw: 245, ax: 122 },
     { sx: 308, sw: 299, ax: 125 },
     { sx: 584, sw: 292, ax: 161 },
     { sx: 923, sw: 244, ax: 110 },
-  ], 0.275),
+  ], 0.4125),
+  // Flying flask: scaled 2× from baseline 0.16 so the airborne mob is
+  // unmistakable from the painted potions.
   flying_flask: row(sheetMossy, 301, 206, [
     { sx: 40, sw: 221, ax: 110 },
     { sx: 298, sw: 289, ax: 145 },
     { sx: 623, sw: 249, ax: 125 },
     { sx: 908, sw: 280, ax: 140 },
-  ], 0.16),
+  ], 0.32),
   shaman: row(sheetMossy, 538, 208, [
     { sx: 43, sw: 220, ax: 102 },
     { sx: 324, sw: 219, ax: 95 },
@@ -75,24 +81,26 @@ export const ENEMY_ANIMS: Record<string, AnimRow> = {
   ], 0.225),
 
   // bosses-mech.png
+  // Rat-King boss: scaled 1.5× from baseline 0.30.
   boss_rat_king: row(sheetMech, 28, 206, [
     { sx: 9, sw: 299, ax: 156 },
     { sx: 314, sw: 266, ax: 138 },
     { sx: 583, sw: 294, ax: 159 },
     { sx: 881, sw: 301, ax: 162 },
-  ], 0.30),
+  ], 0.45),
   sapper: row(sheetMech, 277, 168, [
     { sx: 46, sw: 219, ax: 122 },
     { sx: 336, sw: 203, ax: 114 },
     { sx: 614, sw: 204, ax: 115 },
     { sx: 905, sw: 199, ax: 107 },
   ], 0.21),
+  // Homunculus boss: scaled 1.5× from baseline 0.31.
   boss_homunculus: row(sheetMech, 476, 259, [
     { sx: 10, sw: 291, ax: 143 },
     { sx: 321, sw: 264, ax: 125 },
     { sx: 603, sw: 275, ax: 130 },
     { sx: 902, sw: 269, ax: 122 },
-  ], 0.31),
+  ], 0.465),
 };
 
 /** Mannequin idle animation — bottom row of the painted sheet. 4 frames
