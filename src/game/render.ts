@@ -2,6 +2,18 @@ import type { GameState } from './state';
 import { getActiveEffect } from './overload';
 import { getSprites } from '../render/sprites';
 import { drawSprite, drawSpriteRotated, type BakedSprite } from '../render/sprite';
+import {
+  drawAnimFrame,
+  getAnimDrawRect,
+  isSheetReady,
+  type AnimRow,
+} from '../render/animatedSprite';
+import {
+  ENEMY_ANIMS,
+  MANNEQUIN_ANIM,
+  MANNEQUIN_FRAMES,
+  enemyAnimFps,
+} from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
 import {
@@ -470,7 +482,14 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   const lunge = m.throwAnim > 0
     ? { x: Math.round(m.throwDir.x * 2), y: Math.round(m.throwDir.y * 2) }
     : { x: 0, y: 0 };
-  let sprite: BakedSprite;
+
+  // Choose the active pose. Prefer the painted 4-frame mannequin sheet when
+  // it has finished loading; otherwise fall back to the baked pixel-art
+  // poses. The four sheet frames map to: idle / windup / release / idle-alt
+  // (see render/creatureAnims.ts).
+  const useAnim = isSheetReady(MANNEQUIN_ANIM.sheet);
+  let bakedSprite: BakedSprite;
+  let animFrame: number;
   if (m.throwAnim > 0) {
     // Throw window lasts THROW_ANIM_DURATION (see mannequin.ts). Windup for
     // the first portion, release for the rest. Using throwAnim as a count-
@@ -478,33 +497,50 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
     // (release).
     const THROW_RELEASE_FRACTION = 0.4;
     const windupCutoff = 0.22 * THROW_RELEASE_FRACTION;
-    sprite = m.throwAnim > windupCutoff ? s.mannequinThrowWindup : s.mannequinThrowRelease;
+    if (m.throwAnim > windupCutoff) {
+      bakedSprite = s.mannequinThrowWindup;
+      animFrame = MANNEQUIN_FRAMES.windup;
+    } else {
+      bakedSprite = s.mannequinThrowRelease;
+      animFrame = MANNEQUIN_FRAMES.release;
+    }
   } else {
     // Two-frame idle loop. ~1.65 Hz alternation reads as a slow breath that
     // pairs naturally with the bob amplitude above.
     const idleFramePeriod = 0.6;
-    sprite = Math.floor(state.worldTime / idleFramePeriod) % 2 === 0
-      ? s.mannequin
-      : s.mannequinIdleAlt;
+    const isAlt = Math.floor(state.worldTime / idleFramePeriod) % 2 !== 0;
+    bakedSprite = isAlt ? s.mannequinIdleAlt : s.mannequin;
+    animFrame = isAlt ? MANNEQUIN_FRAMES.idleAlt : MANNEQUIN_FRAMES.idle;
   }
   const drawX = m.pos.x + lunge.x;
   const drawY = m.pos.y + bob + lunge.y;
 
-  if (m.damageFlash > 0) {
-    drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
+  if (useAnim) {
+    drawAnimFrame(ctx, MANNEQUIN_ANIM, animFrame, drawX, drawY);
+    if (m.damageFlash > 0) {
+      const rect = getAnimDrawRect(MANNEQUIN_ANIM, drawX, drawY);
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
+      ctx.fillStyle = COLORS.fireC;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.restore();
+    }
+  } else if (m.damageFlash > 0) {
+    drawSprite(ctx, bakedSprite, drawX, drawY, HERO_SCALE);
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
     ctx.fillStyle = COLORS.fireC;
     ctx.fillRect(
-      drawX - sprite.anchor.x * HERO_SCALE,
-      drawY - sprite.anchor.y * HERO_SCALE,
-      sprite.width * HERO_SCALE,
-      sprite.height * HERO_SCALE,
+      drawX - bakedSprite.anchor.x * HERO_SCALE,
+      drawY - bakedSprite.anchor.y * HERO_SCALE,
+      bakedSprite.width * HERO_SCALE,
+      bakedSprite.height * HERO_SCALE,
     );
     ctx.restore();
   } else {
-    drawSprite(ctx, sprite, drawX, drawY, HERO_SCALE);
+    drawSprite(ctx, bakedSprite, drawX, drawY, HERO_SCALE);
   }
 
   // Translucent blue shield bubble — shown whenever the mannequin has any
@@ -640,8 +676,11 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.globalAlpha = 0.35;
     }
 
-    // Choose sprite based on enemy kind.
+    // Choose baked-sprite fallback + matching animation row by enemy kind.
+    // The sheet-based row drives the 4-frame walk cycle when its image is
+    // ready; until then we drop back to the baked pixel-art `sprite`.
     let sprite = s.slime;
+    let anim: AnimRow | undefined = ENEMY_ANIMS[e.kind.id];
     let bob = 0;
     if (e.kind.id === 'rat') {
       sprite = e.id % 3 === 0 ? s.crystalSpider : s.spider;
@@ -666,6 +705,9 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
     } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
       sprite = s.slimeBoss;
+      // Boss kinds without a dedicated row (e.g. future bosses) reuse the
+      // miniboss slime row; if even that's missing the fallback path is fine.
+      if (!anim) anim = ENEMY_ANIMS['miniboss_slime'];
       bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
     } else if (e.kind.id === 'golem') {
       sprite = s.golem;
@@ -701,7 +743,21 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
-    drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
+    // Animation FPS scales with the enemy's base speed so a sprinter's walk
+    // cycle plays faster than a stomper's. The sapper's "armed" state spikes
+    // the rate to read as panicked sparking. A small per-enemy phase offset
+    // (`e.id * 0.137`) keeps clusters of the same kind from marching in
+    // perfect lock-step.
+    let fps = enemyAnimFps(e.kind.speed);
+    if (e.kind.id === 'sapper' && e.sapperFuse > 0) fps *= 2.2;
+    const frameIndex = Math.floor(state.worldTime * fps + e.id * 0.137);
+
+    const drewAnim = anim
+      ? drawAnimFrame(ctx, anim, frameIndex, e.pos.x, e.pos.y + bob)
+      : false;
+    if (!drewAnim) {
+      drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
+    }
 
     // Close ethereal phase-out transparency.
     if (e.elite === 'ethereal' && e.etherealActive) {
@@ -714,12 +770,17 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.globalCompositeOperation = 'source-atop';
       ctx.globalAlpha = Math.min(0.85, e.hitFlash * 4);
       ctx.fillStyle = COLORS.whiteSoft;
-      ctx.fillRect(
-        e.pos.x - sprite.anchor.x * SPRITE_SCALE,
-        e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
-        sprite.width * SPRITE_SCALE,
-        sprite.height * SPRITE_SCALE,
-      );
+      if (drewAnim && anim) {
+        const rect = getAnimDrawRect(anim, e.pos.x, e.pos.y + bob);
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      } else {
+        ctx.fillRect(
+          e.pos.x - sprite.anchor.x * SPRITE_SCALE,
+          e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
+          sprite.width * SPRITE_SCALE,
+          sprite.height * SPRITE_SCALE,
+        );
+      }
       ctx.restore();
 
       // Spawn impact sparks on fresh hit
