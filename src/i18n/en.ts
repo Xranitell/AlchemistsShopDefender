@@ -772,6 +772,8 @@ Object.assign(EN, {
   'ui.lb.tab.dailyWaves': 'Daily Event',
   'ui.lb.loading': 'Loading…',
   'ui.lb.empty': 'No entries yet.',
+  'ui.lb.signInPrompt': 'Sign in to Yandex to appear on the leaderboard.',
+  'ui.lb.signInBtn': 'Sign in',
 
   // ── Endless modifiers ────────────────────────────────────────────────
   'ui.endless.cycleTitle': 'Endless Cycle {loop}',

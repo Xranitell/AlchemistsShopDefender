@@ -11641,9 +11641,44 @@ body {
 
 /* Cancel the legacy `@media (max-width: 820px)` single-column rule —
    in fit-mode we always render the two-column body since the global
-   scale shrinks it to fit even on a 768-wide phone. */
+   scale shrinks it to fit even on a 768-wide phone.
+
+   The `display: grid` is restored explicitly because the legacy narrow
+   rule (`.craft-body { display: flex; flex-direction: column }`) won
+   on cascade order even though our selector is more specific. Without
+   this, the grid-template-columns below was a no-op on narrow
+   viewports and the body collapsed into a stacked flex column —
+   exactly the "doesn't look like PC" report from mobile QA. */
 :root.viewport-fitted .craft-panel .craft-body {
+  display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  overflow: hidden;
+  min-height: 0;
+}
+:root.viewport-fitted .craft-panel .craft-col-left {
+  /* Restore desktop default: left column does NOT scroll on its own;
+     the page is already pinned to a design rectangle, so the content
+     fits without a per-column scrollbar. */
+  overflow: visible;
+  flex: none;
+  min-height: 0;
+}
+:root.viewport-fitted .craft-panel .craft-col-right {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+:root.viewport-fitted .craft-panel .craft-recipes-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+:root.viewport-fitted .craft-panel .craft-recipes {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -11912,11 +11947,35 @@ body {
     background: linear-gradient(180deg, rgba(50, 12, 14, 0.95), rgba(20, 4, 4, 0.95));
   }
 
-  /* ── HUD top row: scale an extra 20% beyond the existing
-         `--hud-scale` (which is already floored at 0.85). Composing the
-         two yields ~0.68 on phones. */
+  /* ── HUD top row: clusters scale individually with origins anchored
+         to their respective screen edges, so after the visual shrink
+         the wave badge still hugs the left edge and the gold / essence
+         / pause cluster still hugs the right edge. The previous
+         `transform: scale(.8)` on `.hud-top` itself shrunk the row
+         around `top center`, which pulled both clusters inward and
+         left visible gutters between the chips and the screen edges.
+
+         `--hud-scale` is the existing fit-mode floor (≈0.85 on
+         phones). Composing it with the extra 0.8 mobile factor here
+         keeps the same visual size but with edge-anchored origins. */
   :root.viewport-fitted .hud-top {
+    /* Cancel the parent fit-mode transform so the inner clusters can
+       own scaling. The fit-mode rule above sets
+       `transform: scale(var(--hud-scale, 1))` on `.hud-top`, but with
+       the per-cluster transforms below we don't want to compound. */
+    transform: none;
+  }
+  :root.viewport-fitted .hud-top .hud-wave-stack {
     transform: scale(calc(var(--hud-scale, 1) * 0.8));
+    transform-origin: top left;
+  }
+  :root.viewport-fitted .hud-top .hud-hp-badge {
+    transform: scale(calc(var(--hud-scale, 1) * 0.8));
+    transform-origin: top center;
+  }
+  :root.viewport-fitted .hud-top .hud-right-stack {
+    transform: scale(calc(var(--hud-scale, 1) * 0.8));
+    transform-origin: top right;
   }
   /* Counter-scale the prep / wave timer bar so it stays at the
      original `--hud-scale` size (≈0.85 on phones) — the user
@@ -11924,9 +11983,9 @@ body {
      shrink with the rest of the top HUD. */
   :root.viewport-fitted .hud-top .hud-timer-bar {
     transform: scale(1.25);
-    transform-origin: top center;
+    transform-origin: top left;
     /* Compensate for the visual offset the inverse scale creates so
-       the bar still reads as "centred under the wave badge". */
+       the bar still reads as "sitting just under the wave badge". */
     margin-top: 4px;
   }
 
@@ -11938,28 +11997,42 @@ body {
     transform-origin: top left;
   }
 
-  /* ── Cursed cards: bigger faces + smaller effect text so the long
-         downside list always fits on screen instead of clipping at the
-         bottom of the card. Affects any draft that contains cursed
-         cards (cursed-only drafts and mixed drafts both qualify). */
+  /* ── Cursed cards: bigger faces + smaller text everywhere (title
+         above the cards, card title, effect list) so the long downside
+         list always fits on screen instead of clipping at the bottom
+         of the card. Affects any draft that contains cursed cards
+         (cursed-only drafts and mixed drafts both qualify). The
+         viewport-fitted parent applies a uniform scale to the entire
+         stage; reducing typography here gives back vertical headroom
+         that the scaled-up card faces can spend on bonus lines. */
+  :root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-stage-title {
+    font-size: 22px;
+    letter-spacing: 4px;
+    padding: 4px 20px;
+  }
+  :root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-stage-subtitle {
+    font-size: 16px;
+    line-height: 1.25;
+    max-width: 720px;
+  }
   #overlay.cards-mode.cursed-mode .cards-rh {
-    grid-template-columns: repeat(3, minmax(0, 360px));
-    gap: 16px;
+    grid-template-columns: repeat(3, minmax(0, 420px));
+    gap: 14px;
   }
   .card-rh.cursed .card-rh-effects {
-    font-size: 15px;
-    gap: 4px;
+    font-size: 12px;
+    gap: 3px;
     padding: 0 2px;
   }
   .card-rh.cursed .card-rh-effects li {
-    line-height: 1.25;
+    line-height: 1.2;
   }
   .card-rh.cursed .card-rh-effects li.card-rh-unique {
-    padding: 3px 6px;
-    margin: 3px -2px;
+    padding: 2px 6px;
+    margin: 2px -2px;
   }
   .card-rh.cursed .card-rh-title {
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
@@ -12026,4 +12099,97 @@ body {
   .settings-reset-btn { font-size: 12px; }
   .settings-volume-slider { height: 5px; }
   .settings-reset-btn { padding: 7px 14px; }
+
+  /* Auth-prompt CTA shown above the leaderboard list when the SDK
+     reports the player as anonymous ('lite'). Compact-only mobile
+     style; see `leaderboardOverlay.ts` for the rendering logic. */
+  .lb-auth-prompt {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Leaderboard auth prompt — both desktop + mobile share these base
+   rules. The prompt only renders when `yandex.isAuthorized()` returns
+   false, so on local-dev / signed-in players nothing shows up.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.lb-auth-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(60, 38, 14, 0.55), rgba(28, 16, 6, 0.45));
+}
+.lb-auth-text {
+  color: #f6e8c8;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.lb-auth-btn {
+  appearance: none;
+  cursor: pointer;
+  border: 2px solid #2a1a08;
+  background: linear-gradient(180deg, #ffb04a, #d27b1a);
+  color: #1a0e04;
+  font-family: inherit;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  padding: 6px 16px;
+  border-radius: 4px;
+}
+.lb-auth-btn:hover { transform: translateY(-1px); }
+.lb-auth-btn:active { transform: translateY(1px); }
+.lb-auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Pause-stats overlay — mobile polish (round 3).
+
+   - Hide HUD chrome that would otherwise bleed through the 88% backdrop
+     on phones (gold / essence / pause / abilities). Body class
+     `pause-stats-open` is toggled in `pauseStatsOverlay.ts`.
+   - Strengthen the backdrop (96% + blur) so the panel reads as a
+     foreground modal instead of "stats floating over the live HUD".
+   - Constrain the header's width to the actual visible row width so
+     the close button doesn't drift far past the right edge of the
+     stats panel when only one column is rendered (no blessings/laws).
+   ════════════════════════════════════════════════════════════════════════ */
+
+@media (pointer: coarse) {
+  body.pause-stats-open .hud-top,
+  body.pause-stats-open .hud-bottom-row,
+  body.pause-stats-open .hud-run-sidebar {
+    visibility: hidden;
+  }
+
+  .pause-stats-overlay {
+    background: rgba(6, 4, 12, 0.96);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* Keep the header tightly framed around the visible content even
+     when the right side panel is missing. `align-self: center` lets
+     the header take its natural width (title + close + gap) instead
+     of stretching across a wide row that may not exist this run. */
+  :root.viewport-fitted .pause-stats-group {
+    align-items: center;
+  }
+  :root.viewport-fitted .pause-stats-header {
+    width: 100%;
+    max-width: 640px;
+    padding: 0 8px 10px;
+  }
+  :root.viewport-fitted .pause-stats-row {
+    align-self: center;
+  }
+  :root.viewport-fitted .pause-stats-footer {
+    align-self: center;
+  }
 }
