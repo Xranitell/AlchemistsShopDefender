@@ -501,7 +501,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   // followed by 40% release. We reuse it to pick the baked fallback
   // sprite AND to map the painted throw row's 4 frames over the throw
   // duration (frames 0–1 during wind-up, frames 2–3 during release).
-  const THROW_DURATION = 0.22;
+  const THROW_DURATION = 0.44;
   const THROW_RELEASE_FRACTION = 0.4;
   const windupCutoff = THROW_DURATION * THROW_RELEASE_FRACTION;
   if (m.throwAnim > 0) {
@@ -527,9 +527,14 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   const drawX = m.pos.x + lunge.x;
   const drawY = m.pos.y + bob + lunge.y;
+  // Mirror the painted mannequin to face the most recent throw direction
+  // so a left-side throw reads as the alchemist actually turning before
+  // releasing. The painted sheet faces right by default; a small deadband
+  // around throwDir.x ≈ 0 keeps a straight-up throw from flipping.
+  const mannequinFlipX = m.throwDir.x < -0.01;
 
   if (useAnim) {
-    drawAnimFrame(ctx, animRow, animFrame, drawX, drawY);
+    drawAnimFrame(ctx, animRow, animFrame, drawX, drawY, { flipX: mannequinFlipX });
     if (m.damageFlash > 0) {
       // Tint via offscreen mask so the salmon overlay clips to the
       // mannequin's painted pixels — a `source-atop fillRect` on the
@@ -544,6 +549,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
         drawY,
         COLORS.fireC,
         Math.min(0.7, m.damageFlash * 1.5),
+        { flipX: mannequinFlipX },
       );
     }
   } else if (m.damageFlash > 0) {
