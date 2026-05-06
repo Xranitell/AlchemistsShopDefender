@@ -901,8 +901,7 @@ function submitWaveLeaderboards(): void {
   if (wave < 1) return;
   void yandex.setLeaderboardScore('endlessWaves', wave);
   if (state.difficulty === 'daily') {
-    const score = wave * 1000 + state.totalKills;
-    void yandex.setLeaderboardScore(dailyBoardId(), score);
+    void yandex.setLeaderboardScore(dailyBoardId(), wave);
   }
 }
 

@@ -774,10 +774,6 @@ Object.assign(EN, {
   'ui.lb.empty': 'No entries yet.',
   'ui.lb.signInPrompt': 'Sign in to Yandex to appear on the leaderboard.',
   'ui.lb.signInBtn': 'Sign in',
-  'ui.lb.diag.title': 'Diagnostics',
-  'ui.lb.diag.probes': 'Yandex boards:',
-  'ui.lb.diag.submits': 'Recent attempts:',
-  'ui.lb.diag.noSubmits': 'No submits yet.',
 
   // ── Endless modifiers ────────────────────────────────────────────────
   'ui.endless.cycleTitle': 'Endless Cycle {loop}',
