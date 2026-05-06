@@ -26,18 +26,6 @@ interface YaLeaderboards {
       player: { publicName: string; scopePermissions?: { avatar?: string }; getAvatarSrc?(size: string): string };
     }[];
   }>;
-  /** Fetch the metadata for a leaderboard. Returns the technical id +
-   *  default sort order + per-locale display titles. We use this on
-   *  init to verify that the boards we submit to (`endlessWaves`,
-   *  `dailyWaves`) are actually registered in the Yandex console — if
-   *  the SDK rejects the call the board doesn't exist and submits will
-   *  silently fail no matter what we do client-side. */
-  getLeaderboardDescription(boardName: string): Promise<{
-    name?: string;
-    title?: { ru?: string; en?: string; tr?: string };
-    isDefault?: boolean;
-    description?: { invert_sort_order?: boolean; type?: string };
-  }>;
 }
 
 /** Subset of the player object the SDK returns from getPlayer().
@@ -102,44 +90,6 @@ export interface LeaderboardEntry {
   avatarUrl: string;
 }
 
-/** One row of the in-memory diagnostic log. Captures every leaderboard
- *  submit attempt — what board, what score, what happened — so the
- *  Diagnostics panel inside `leaderboardOverlay` can show players (and
- *  us, post-incident) why the board appears empty. */
-export interface LeaderboardSubmitLogEntry {
-  /** Wall-clock time the submit was issued. */
-  ts: number;
-  /** Technical board id (`endlessWaves` / `dailyWaves`). */
-  boardId: string;
-  /** Score we tried to submit. */
-  score: number;
-  /** What actually happened.
-   *   `mock`        → no SDK; fell back to localStorage mock board.
-   *   `skipped`     → SDK present but player is `'lite'` guest.
-   *   `sent`        → setLeaderboardScore resolved without throwing.
-   *   `failed`      → setLeaderboardScore rejected (error captured). */
-  status: 'mock' | 'skipped' | 'sent' | 'failed';
-  /** Human-readable error message when `status==='failed'`. */
-  error?: string;
-}
-
-/** Result of probing `getLeaderboardDescription(boardId)` once at SDK
- *  init. If the board is not registered in Yandex Games Console the
- *  SDK throws and we capture the error here so the diagnostics panel
- *  can surface "board not found" instead of "the player must not be
- *  scoring high enough". */
-export interface LeaderboardProbeResult {
-  /** Technical board id we probed. */
-  boardId: string;
-  /** True if `getLeaderboardDescription` resolved successfully (board
-   *  exists and SDK is reachable). */
-  ok: boolean;
-  /** Human-readable error / status when `ok===false`. */
-  error?: string;
-  /** Display title returned by the SDK (preferred locale or `name`). */
-  title?: string;
-}
-
 // localStorage-based mock for leaderboards during local development.
 const MOCK_KEY_PREFIX = 'asd_lb_';
 
@@ -166,17 +116,6 @@ function mockSetScore(boardId: string, score: number): void {
   } catch { /* noop */ }
 }
 
-/** Soft cap on the in-memory submit log so the Diagnostics panel never
- *  bloats memory in a long endless run. The most recent N submits are
- *  what's actionable anyway. */
-const SUBMIT_LOG_CAP = 24;
-
-/** Boards we probe at init. Aligns with the technical ids used by
- *  `setLeaderboardScore` in main.ts (`submitWaveLeaderboards`). If the
- *  designer renames a board in the Yandex console we want this list
- *  updated in lock-step. */
-const PROBE_BOARDS = ['endlessWaves', 'dailyWaves'] as const;
-
 class YandexGames {
   private sdk: YGameSdk | null = null;
   private lb: YaLeaderboards | null = null;
@@ -184,16 +123,6 @@ class YandexGames {
   private ready = false;
   /** Listeners notified when the player auth state changes (init / sign-in). */
   private authListeners: Array<() => void> = [];
-  /** Listeners notified when the leaderboard diagnostics state changes
-   *  (init probes complete or a submit was logged). The leaderboard
-   *  overlay renders a live "last attempts" table from this state. */
-  private diagListeners: Array<() => void> = [];
-  /** Rolling in-memory log of recent submit attempts (newest first). */
-  private submitLog: LeaderboardSubmitLogEntry[] = [];
-  /** Result of the init-time `getLeaderboardDescription` probe per
-   *  board. `null` until the probe completes; a non-null entry means
-   *  we have a definitive answer (`ok` true/false). */
-  private probeResults: LeaderboardProbeResult[] = [];
 
   async init(): Promise<void> {
     if (typeof window === 'undefined' || !window.YaGames) {
@@ -209,48 +138,9 @@ class YandexGames {
       // accepted. Yandex rejects setLeaderboardScore from `'lite'`
       // (anonymous) players, so we surface auth state to the UI.
       await this.refreshPlayer();
-      // Probe each leaderboard's description so the diagnostics panel
-      // can tell players whether the boards we submit to are even
-      // registered in the Yandex console. A non-existent board makes
-      // every setLeaderboardScore fail silently and is the most likely
-      // root cause of "leaderboard is empty even though I cleared
-      // 30 waves" reports. Awaited in parallel so init isn't slow.
-      await this.probeLeaderboards();
     } catch (err) {
       console.warn('[YandexGames] init failed, running in stub mode', err);
     }
-  }
-
-  private async probeLeaderboards(): Promise<void> {
-    if (!this.lb?.getLeaderboardDescription) {
-      // Older SDK build without the description API — record the boards
-      // as un-probed (`ok: false`) so the diag panel makes the gap
-      // visible instead of pretending the probe passed.
-      this.probeResults = PROBE_BOARDS.map((id) => ({
-        boardId: id,
-        ok: false,
-        error: 'getLeaderboardDescription not available',
-      }));
-      for (const cb of this.diagListeners) cb();
-      return;
-    }
-    const lb = this.lb;
-    this.probeResults = await Promise.all(
-      PROBE_BOARDS.map(async (boardId): Promise<LeaderboardProbeResult> => {
-        try {
-          const desc = await lb.getLeaderboardDescription(boardId);
-          const title = desc.title?.ru ?? desc.title?.en ?? desc.name ?? boardId;
-          return { boardId, ok: true, title };
-        } catch (err) {
-          return {
-            boardId,
-            ok: false,
-            error: err instanceof Error ? err.message : String(err),
-          };
-        }
-      }),
-    );
-    for (const cb of this.diagListeners) cb();
   }
 
   private async refreshPlayer(): Promise<void> {
@@ -262,10 +152,6 @@ class YandexGames {
       this.player = null;
     }
     for (const cb of this.authListeners) cb();
-    // Auth state changing (e.g. after signIn) flips the `authorized`
-    // field on the diagnostics snapshot — re-render any open
-    // diagnostics panels too.
-    for (const cb of this.diagListeners) cb();
   }
 
   /** Subscribe to player auth-state changes. The callback fires after
@@ -371,75 +257,21 @@ class YandexGames {
    *  mode — Yandex throws on those, and a noisy console warn after
    *  every cleared wave isn't useful when the fix is "sign in" rather
    *  than "retry". The Leaderboard panel surfaces a sign-in button
-   *  so the player can fix the auth state explicitly.
-   *
-   *  Every attempt is also pushed onto `submitLog` so the Diagnostics
-   *  section inside leaderboardOverlay can show the last few results
-   *  (board, score, status, error) — invaluable when a player reports
-   *  "the board is empty even after I cleared 20 waves". */
+   *  so the player can fix the auth state explicitly. */
   async setLeaderboardScore(boardId: string, score: number): Promise<void> {
     if (this.lb) {
       if (!this.isAuthorized()) {
         console.info('[YandexGames] skipping leaderboard write — player not signed in (lite mode)');
-        this.recordSubmit({ ts: Date.now(), boardId, score, status: 'skipped' });
         return;
       }
       try {
         await this.lb.setLeaderboardScore(boardId, score);
-        this.recordSubmit({ ts: Date.now(), boardId, score, status: 'sent' });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
         console.warn('[YandexGames] setLeaderboardScore failed', err);
-        this.recordSubmit({
-          ts: Date.now(),
-          boardId,
-          score,
-          status: 'failed',
-          error: msg,
-        });
       }
     } else {
       mockSetScore(boardId, score);
-      this.recordSubmit({ ts: Date.now(), boardId, score, status: 'mock' });
     }
-  }
-
-  private recordSubmit(entry: LeaderboardSubmitLogEntry): void {
-    this.submitLog.unshift(entry);
-    if (this.submitLog.length > SUBMIT_LOG_CAP) {
-      this.submitLog.length = SUBMIT_LOG_CAP;
-    }
-    for (const cb of this.diagListeners) cb();
-  }
-
-  /** Snapshot of the leaderboard diagnostic state for the UI. Always
-   *  returns a fresh array/object so the caller can safely render
-   *  without worrying about mutation. */
-  getLeaderboardDiagnostics(): {
-    sdkReachable: boolean;
-    authorized: boolean;
-    playerMode: string | null;
-    probes: LeaderboardProbeResult[];
-    submits: LeaderboardSubmitLogEntry[];
-  } {
-    return {
-      sdkReachable: this.sdk !== null,
-      authorized: this.isAuthorized(),
-      playerMode: this.player?.getMode?.() ?? null,
-      probes: [...this.probeResults],
-      submits: [...this.submitLog],
-    };
-  }
-
-  /** Subscribe to diagnostic-state changes (probe results landing, a
-   *  submit being logged, sign-in flipping the auth state). Returns
-   *  the usual unsubscribe function. */
-  onDiagnosticsChange(cb: () => void): () => void {
-    this.diagListeners.push(cb);
-    return () => {
-      const i = this.diagListeners.indexOf(cb);
-      if (i >= 0) this.diagListeners.splice(i, 1);
-    };
   }
 
   /** Get top players for a leaderboard. Falls back to localStorage mock. */
