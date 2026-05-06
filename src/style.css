@@ -12290,3 +12290,136 @@ body {
   max-width: 640px;
   margin: 0 auto;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Settings overlay — mobile-adaptive sizing pass.
+
+   The pre-existing ladder (Phase 4 overlay #4 + `(max-height: 700px)` +
+   `(max-width: 900px)` + `(pointer: coarse)`) handled most desktop /
+   tablet sizes, but reports of the panel "vылазит за границы экрана"
+   on phone-landscape (≤500 CSS px tall) still hit when:
+
+     1. The natural panel content (4 sections + 6-line stats + reset
+        button) is ~470 CSS px tall — taller than a 375 px iPhone-SE
+        landscape viewport even after `--ui-scale` floors at 0.5.
+     2. `max-height: none` on the fitted panel removes the safety net
+        from `.panel { max-height: min(95dvh, 95vh) }`, so when scale
+        ×content > viewport-height the panel clips off the top edge
+        (translate(-50%, -50%) anchors centre, not top).
+
+   Fixes:
+
+     • Make the panel a flex column so the body region can flex-shrink
+       and own its own scroll.
+     • Cap `.settings-body` to `1fr` and let it scroll internally — the
+       header (with the close X) stays anchored at the top of the panel
+       no matter how short the viewport is.
+     • Re-introduce `max-height: 92dvh` on the fitted panel so the
+       panel itself is bounded by the viewport even before `--ui-scale`
+       kicks in.
+     • For very short landscape phones (≤500 px tall), tighten chrome
+       further and let the body grid become 2-column so 4 short
+       sections + reset btn fit in roughly 240 px of body height.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  /* Cap the panel itself even outside viewport-fitted so portrait
+     phones (where the rotate-warning blocks gameplay but the gear
+     button is still tappable on short landscape Yandex frames) don't
+     rely solely on `--ui-scale`. */
+  max-height: min(92dvh, 92vh);
+}
+
+.settings-header {
+  flex: 0 0 auto;
+}
+
+.settings-body {
+  /* Flex shrink + own-scroll so a too-tall body never pushes the
+     header (and its close X) above the viewport top. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Pad the inside slightly so the scrollbar doesn't kiss the section
+     borders on browsers with always-visible scrollbars. */
+  padding-right: 2px;
+}
+
+/* Re-cap the fitted panel even though the JS-driven `--ui-scale`
+   normally fits it. Belt-and-braces against zoom, font-boosting, or
+   `--ui-scale` flooring at 0.5 on phones below the design height. */
+:root.viewport-fitted .settings-panel {
+  max-height: 92dvh;
+}
+
+/* ─── Phone-landscape (≤500 px tall) — 2-column body grid ────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .settings-panel {
+    /* Wider but flatter — give the body room to lay out two columns
+       of sections side-by-side. */
+    max-width: min(96vw, 560px);
+    width: min(96vw, 560px);
+    padding: 10px 12px;
+  }
+  .settings-header { margin-bottom: 6px; }
+  .settings-header h2 { font-size: 12px; letter-spacing: 1px; }
+
+  .settings-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+  }
+  .settings-section { padding: 8px 10px; }
+  .settings-section h3 { font-size: 12px; margin-bottom: 4px; }
+  .settings-stat,
+  .settings-volume-label,
+  .settings-volume-value { font-size: 12px; }
+  .settings-volume-row {
+    margin: 4px 0;
+    gap: 6px;
+    grid-template-columns: 50px 1fr 32px;
+  }
+  .settings-volume-slider { height: 4px; }
+  .settings-lang-btn,
+  .settings-motion-btn { padding: 4px 10px; font-size: 11px; }
+  .settings-reset-btn { padding: 6px 14px; font-size: 12px; }
+  /* Reset button "section" spans full width so it visually anchors
+     the bottom of the panel. */
+  .settings-section.settings-reset-section,
+  .settings-section:last-of-type {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ─── Tiny landscape (≤380 px tall) — single-column scroll ────────
+   Below 380 px tall there isn't enough room even with the 2-column
+   layout to show every section comfortably; collapse to a single
+   column and rely on `.settings-body`'s own-scroll to expose the
+   stats / reset button via a flick scroll. */
+@media (orientation: landscape) and (max-height: 380px) {
+  .settings-panel {
+    max-width: min(96vw, 460px);
+    width: min(96vw, 460px);
+  }
+  .settings-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Yandex narrow sandbox + (very rare) portrait ────────────────
+   When a phone reports `pointer: coarse` and the viewport is narrower
+   than ~640 CSS px, override the desktop ladder's `min(94vw, 460px)`
+   so the panel never exceeds the visible area on slim sandboxes
+   (Yandex Games sometimes hands us 600×900 in portrait when the
+   rotate-warning is dismissed). */
+@media (max-width: 640px) {
+  .settings-panel {
+    width: min(96vw, 380px);
+    max-width: min(96vw, 380px);
+    padding: 12px 14px;
+  }
+}
