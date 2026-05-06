@@ -1366,9 +1366,12 @@ function showGameOver(): void {
   // baked pixel-art mannequin no longer appears anywhere else in the
   // shipped build). The CSS rotate/saturation filters above turn the
   // upright pose into the "fallen" look the panel is named after.
+  // Sprite host shrunk 1.5× from the previous 220×260 so the figure no
+  // longer dominates the panel — leaves more breathing room for the
+  // shattered-rays backdrop and glitched title that frame it.
   const fallen = animatedSpriteIcon(MANNEQUIN_IDLE_ANIM, {
-    width: 220,
-    height: 260,
+    width: 147,
+    height: 173,
     extraClass: 'defeat-mannequin-sprite',
     staticFrameIndex: 0,
     fitScale: 0.95,
