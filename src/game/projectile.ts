@@ -199,6 +199,16 @@ export function updateProjectiles(state: GameState, dt: number): void {
     }
   }
   for (let i = remove.length - 1; i >= 0; i--) state.projectiles.splice(remove[i]!, 1);
+
+  // Tick the potion-impact shockwave VFX (visual-only; damage was
+  // already resolved at spawn time inside `resolveImpact`). Ringed
+  // entries that have run out of life are spliced out so the array
+  // stays bounded.
+  for (let i = state.potionBlasts.length - 1; i >= 0; i--) {
+    const b = state.potionBlasts[i]!;
+    b.time -= dt;
+    if (b.time <= 0) state.potionBlasts.splice(i, 1);
+  }
 }
 
 function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
@@ -207,10 +217,29 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
     // skip the SFX so the rate-limit stays kind to chained reactions.
     audio.playSfx('potionImpact');
   }
+  // Spawn the impact-shockwave VFX so the player can see the splash
+  // zone the area-damage check actually used. Only potions get a ring;
+  // single-target tower projectiles (needler, acid) skip it because
+  // they have no splash radius and a 0-radius ring would just be a
+  // flash on top of the existing muzzle-flash sparkles.
+  if (p.kind === 'potion' && p.splashRadius > 0) {
+    state.potionBlasts.push({
+      id: newId(state),
+      pos: { x: at.x, y: at.y },
+      radius: p.splashRadius,
+      time: 0.5,
+      maxTime: 0.5,
+      element: p.element,
+      echo: !!p.echoExplosion,
+    });
+  }
   // Camera shake for splash impacts: scaled by splash radius so a wide
-  // mortar boom shakes harder than a single-target needler. Echo
-  // secondaries get a softer kick to avoid double-thump on chains.
-  if (p.splashRadius > 0) {
+  // potion explosion shakes harder than a single-target needler.
+  // Tower projectiles (mortar, mercury sprayer, …) skip the shake —
+  // turrets fire on every cooldown and the constant shake reads as
+  // jitter rather than weight. Echo secondaries from the player's own
+  // potions get a softer kick to avoid double-thump on chain reactions.
+  if (p.splashRadius > 0 && p.kind === 'potion') {
     const base = Math.min(5, 1.5 + p.splashRadius / 40);
     const mag = p.echoExplosion ? base * 0.5 : base;
     shakeCamera(mag, 0.16);

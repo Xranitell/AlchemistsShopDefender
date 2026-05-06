@@ -48,8 +48,12 @@ export function buildRunePoints(width: number = ARENA_W, height: number = ARENA_
   // pushed the runes inward on landscape phones (~576px tall) until they
   // overlapped the central character. Pinning the radii reproduces the
   // 1920×1080 layout exactly on every viewport.
-  const rx = Math.min(378, Math.max(0, width / 2 - 24));
-  const ry = Math.min(194, Math.max(0, height / 2 - 24));
+  // Slightly tighter ring than before (was 378 × 194). The new 330 ×
+  // 170 keeps each rune just outside the dais (DAIS_RADIUS_OUTER = 170)
+  // while pulling the leftmost / rightmost slots toward the centre so
+  // the towers don't crowd the floor edges on narrow viewports.
+  const rx = Math.min(330, Math.max(0, width / 2 - 24));
+  const ry = Math.min(170, Math.max(0, height / 2 - 24));
   // Visual angles around the dais — ten evenly spaced points (every 36°).
   const angles: number[] = [];
   for (let i = 0; i < 10; i++) {
@@ -240,6 +244,7 @@ export function buildInitialState(
     goldPickups: [],
     floatingTexts: [],
     chainBolts: [],
+    potionBlasts: [],
     reactionPools: [],
     gold: 90, // enough for one starter tower
     essence: 0,

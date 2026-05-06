@@ -119,7 +119,7 @@ function drawSpritesheetProps(
   // never land on top of the rune ring / dais.
   const excludeRX = 280;
   const excludeRY = 150;
-  const PROPS = 28;
+  const PROPS = 14;
 
   for (let i = 0; i < PROPS; i++) {
     // Two independent hashes so position and prop-pick don't correlate.
@@ -194,10 +194,10 @@ function drawSpritesheetDecals(
   // size — same size always gives the same decal layout (consistent
   // session feel), different sizes re-roll cleanly.
   const sizeSeed = hash2(w | 0, h | 0);
-  const count = 2 + ((sizeSeed >>> 4) & 1); // 2 or 3
+  const count = 5 + ((sizeSeed >>> 4) & 3); // 5..8 — denser floor scuff
   let placed = 0;
   let attempt = 0;
-  while (placed < count && attempt < 30) {
+  while (placed < count && attempt < 60) {
     const r1 = hash2(attempt * 47 + 31, sizeSeed ^ (attempt * 13));
     const r2 = hash2(attempt * 91 + 17, sizeSeed ^ (attempt * 29 + 5));
     // Bias positions away from the canvas edges so the iso rhombus
