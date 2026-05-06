@@ -6,14 +6,20 @@
 // browser loads asynchronously; the renderer falls back to the baked
 // pixel-art version (see `getSprites()`) whenever the image isn't ready yet.
 //
-// Each sheet is a horizontal strip of N equal-width frames per row; rows on
-// the same image can have different vertical extents (e.g. small slime row,
-// taller golem row) so each `AnimRow` carries its own `rowY` / `cellH`.
+// Each sheet is a horizontal strip of 4 painted frames per row. Frames in
+// painted spritesheets often DON'T sit cleanly on a uniform N-pixel grid —
+// e.g. a running rat's tail extends from the next cell into the previous,
+// or a slime's drip dribbles past the cell boundary. To avoid pulling
+// neighbour content into the wrong frame, every frame carries its own
+// source rect (`sx`, `sw`) and body-centre anchor (`ax`); the row's `sy`
+// and `sh` stay shared so all 4 frames have the same vertical extent.
 //
-// Anchors are expressed in CELL-LOCAL pixels (relative to the top-left of the
-// frame's source rect). When drawn, the anchor lands on the supplied (x, y)
-// world coordinate; we use bottom-centre anchoring so creatures' "feet" sit
-// on the entity position, matching the convention used by the baked sprites.
+// The anchor is the painted body's mass-centre x within the source rect,
+// expressed in cell-local pixels. `ay` is implied to be `sh` (frame
+// bottom — i.e. the creature's "feet"). When the renderer draws frame f
+// at world position (x, y), the source rect is sliced from the sheet and
+// the (ax, sh) anchor lands on (x, y); the caller is expected to pick y
+// equal to the shadow centre so feet sit on top of the drop shadow.
 
 const sheetCache = new Map<string, AnimSheet>();
 
@@ -23,22 +29,34 @@ export interface AnimSheet {
   url: string;
 }
 
+export interface AnimFrame {
+  /** Source rect in spritesheet pixels — left edge. */
+  sx: number;
+  /** Source rect width in spritesheet pixels. */
+  sw: number;
+  /** Body mass-centre x within the source rect (0..sw). Doubles as the
+   *  draw anchor: when the frame is drawn at world (x, y), this anchor
+   *  lands on (x, y). Per-frame so body stays put even when frame bboxes
+   *  shift (e.g. squashed slime poses that grow leftward). */
+  ax: number;
+}
+
 export interface AnimRow {
   sheet: AnimSheet;
-  /** Number of horizontal frames in this row (typically 4). */
-  frames: number;
-  /** Width of one frame's source rect, in spritesheet pixels. */
-  cellW: number;
-  /** Height of one frame's source rect, in spritesheet pixels. */
-  cellH: number;
-  /** Y offset of this row inside the spritesheet. */
-  rowY: number;
-  /** Optional X offset; defaults to 0 (frames start flush left). */
-  rowX?: number;
-  /** Anchor inside the frame's source rect (0..cellW, 0..cellH). */
-  anchor: { x: number; y: number };
-  /** Default render scale (cell px → screen px). Can be overridden per-call. */
+  /** Source rect top y — shared by all frames in this row. */
+  sy: number;
+  /** Source rect height — shared. Anchor.y = sh (frame bottom). */
+  sh: number;
+  frames: AnimFrame[];
+  /** Default render scale (source px → screen px). */
   scale: number;
+}
+
+export interface DrawAnimOptions {
+  scale?: number;
+  /** Mirror horizontally — used to flip enemies that should face left
+   *  when they're moving toward a target on their left side. */
+  flipX?: boolean;
 }
 
 export function loadSheet(url: string): AnimSheet {
@@ -63,20 +81,29 @@ export function isSheetReady(sheet: AnimSheet): boolean {
   return sheet.loaded && sheet.image.complete && sheet.image.naturalWidth > 0;
 }
 
+function pickFrame(row: AnimRow, frameIndex: number): AnimFrame {
+  const n = row.frames.length;
+  const f = ((frameIndex % n) + n) % n;
+  // Non-null assertion: f is a valid index into a non-empty frames[].
+  return row.frames[f]!;
+}
+
 /** Returns the screen-space rect of a frame drawn at (x,y). Mirrors
  *  drawAnimFrame's positioning so callers can paint hit-flash overlays. */
 export function getAnimDrawRect(
   row: AnimRow,
+  frameIndex: number,
   x: number,
   y: number,
-  scaleOverride?: number,
+  opts?: DrawAnimOptions,
 ): { x: number; y: number; w: number; h: number } {
-  const scale = scaleOverride ?? row.scale;
+  const frame = pickFrame(row, frameIndex);
+  const scale = opts?.scale ?? row.scale;
   return {
-    x: Math.round(x - row.anchor.x * scale),
-    y: Math.round(y - row.anchor.y * scale),
-    w: Math.round(row.cellW * scale),
-    h: Math.round(row.cellH * scale),
+    x: Math.round(x - frame.ax * scale),
+    y: Math.round(y - row.sh * scale),
+    w: Math.round(frame.sw * scale),
+    h: Math.round(row.sh * scale),
   };
 }
 
@@ -86,20 +113,41 @@ export function drawAnimFrame(
   frameIndex: number,
   x: number,
   y: number,
-  scaleOverride?: number,
+  opts?: DrawAnimOptions,
 ): boolean {
   if (!isSheetReady(row.sheet)) return false;
-  const f = ((frameIndex % row.frames) + row.frames) % row.frames;
-  const sx = (row.rowX ?? 0) + f * row.cellW;
-  const sy = row.rowY;
-  const rect = getAnimDrawRect(row, x, y, scaleOverride);
+  const frame = pickFrame(row, frameIndex);
+  const scale = opts?.scale ?? row.scale;
+  const drawW = Math.round(frame.sw * scale);
+  const drawH = Math.round(row.sh * scale);
+  // Anchor lands on (x, y); for flipped sprites we still want the body
+  // mass-centre at x — i.e. mirror around `x`, not around the frame's
+  // bbox centre. We therefore flip via translate(x) → scale(-1, 1) →
+  // translate(-x) and then draw with the same un-flipped anchor maths.
+  const drawX = Math.round(x - frame.ax * scale);
+  const drawY = Math.round(y - row.sh * scale);
   ctx.save();
   // The painted spritesheets use anti-aliased shading; nearest-neighbour
-  // downscaling makes them look jagged. Switch on bilinear smoothing for the
-  // image blit only — surrounding pixel-art draws keep their crisp setting.
+  // downscaling makes them look jagged. Switch on bilinear smoothing for
+  // the image blit only — surrounding pixel-art keeps its crisp setting.
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'medium';
-  ctx.drawImage(row.sheet.image, sx, sy, row.cellW, row.cellH, rect.x, rect.y, rect.w, rect.h);
+  if (opts?.flipX) {
+    ctx.translate(x, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-x, 0);
+  }
+  ctx.drawImage(
+    row.sheet.image,
+    frame.sx,
+    row.sy,
+    frame.sw,
+    row.sh,
+    drawX,
+    drawY,
+    drawW,
+    drawH,
+  );
   ctx.restore();
   return true;
 }

@@ -518,7 +518,7 @@ function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (useAnim) {
     drawAnimFrame(ctx, MANNEQUIN_ANIM, animFrame, drawX, drawY);
     if (m.damageFlash > 0) {
-      const rect = getAnimDrawRect(MANNEQUIN_ANIM, drawX, drawY);
+      const rect = getAnimDrawRect(MANNEQUIN_ANIM, animFrame, drawX, drawY);
       ctx.save();
       ctx.globalCompositeOperation = 'source-atop';
       ctx.globalAlpha = Math.min(0.7, m.damageFlash * 1.5);
@@ -619,6 +619,10 @@ function drawMannequinShieldBubble(
 function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
   const difAura = difficultyAuraColor(state.difficulty);
+  // Reference point for facing: enemies move toward the mannequin, so any
+  // enemy whose mannequin sits to its LEFT should be drawn flipped (the
+  // painted spritesheets all face right by default).
+  const targetX = state.mannequin.pos.x;
   for (const e of state.enemies) {
     // Drop shadow
     drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
@@ -752,8 +756,17 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (e.kind.id === 'sapper' && e.sapperFuse > 0) fps *= 2.2;
     const frameIndex = Math.floor(state.worldTime * fps + e.id * 0.137);
 
+    // Painted sprites are anchored at the frame's body-mass centre + bottom,
+    // so we draw them onto the SHADOW centre (e.pos.y + r*0.65) — that puts
+    // the creature's feet on the ellipse instead of floating above it.
+    // The baked-pixel-art fallback already bakes its own shadow row into the
+    // sprite, so it stays drawn at e.pos.y when the sheet hasn't loaded.
+    const groundY = e.pos.y + e.kind.radius * 0.65;
+    // Flip when the mannequin is to the enemy's left. A 4 px deadband stops
+    // jitter for enemies passing directly over the mannequin centre line.
+    const flipX = targetX < e.pos.x - 4;
     const drewAnim = anim
-      ? drawAnimFrame(ctx, anim, frameIndex, e.pos.x, e.pos.y + bob)
+      ? drawAnimFrame(ctx, anim, frameIndex, e.pos.x, groundY + bob, { flipX })
       : false;
     if (!drewAnim) {
       drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
@@ -771,7 +784,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.globalAlpha = Math.min(0.85, e.hitFlash * 4);
       ctx.fillStyle = COLORS.whiteSoft;
       if (drewAnim && anim) {
-        const rect = getAnimDrawRect(anim, e.pos.x, e.pos.y + bob);
+        const rect = getAnimDrawRect(anim, frameIndex, e.pos.x, groundY + bob, { flipX });
         ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       } else {
         ctx.fillRect(
