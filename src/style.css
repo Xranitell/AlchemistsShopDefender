@@ -13743,6 +13743,102 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.diary-grid-synergies {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.diary-entry-synergy {
+  align-items: stretch;
+  min-height: 188px;
+  gap: 8px;
+}
+.diary-synergy-formula {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.diary-synergy-formula-card {
+  min-height: 70px;
+  padding: 6px 4px;
+}
+.diary-synergy-formula-info {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 209, 102, 0.14);
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.06);
+}
+.diary-synergy-element {
+  --element-color: #ffd166;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--element-color) 65%, #2a1f3c);
+  background:
+    radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--element-color) 30%, white), transparent 42%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--element-color) 30%, #1a0e2a) 0%,
+      color-mix(in srgb, var(--element-color) 12%, #07040d) 100%);
+  color: #fff4ca;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 0 12px color-mix(in srgb, var(--element-color) 35%, transparent);
+}
+.diary-synergy-element-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--element-color) 85%, white), color-mix(in srgb, var(--element-color) 60%, #180c20));
+  color: #120712;
+  font-size: 17px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--element-color) 64%, transparent);
+}
+.diary-synergy-element-name {
+  min-width: 0;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--element-color) 45%, #fff2c2);
+  text-shadow: 0 1px 0 #05030a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.diary-synergy-plus {
+  flex: 0 0 auto;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--diary-accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--diary-accent) 65%, transparent);
+}
+.diary-synergy-result-name {
+  position: relative;
+  z-index: 1;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.7px;
+  color: color-mix(in srgb, var(--diary-accent) 62%, #fff4ca);
+  text-align: center;
+  text-shadow: 0 0 9px color-mix(in srgb, var(--diary-accent) 45%, transparent);
+}
+.diary-synergy-note {
+  -webkit-line-clamp: 3;
+}
 .diary-info-head {
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--diary-accent) 34%, transparent);
@@ -13895,6 +13991,8 @@ body {
   }
   .diary-entry-icon { width: 60px; height: 60px; }
   .diary-entry-bestiary .diary-entry-icon { width: 120px; height: 120px; padding: 6px; }
+  .diary-grid-synergies { grid-template-columns: 1fr; }
+  .diary-synergy-formula-card { min-height: 58px; }
   .diary-info-sprite { width: 80px; height: 80px; }
   .diary-info-name { font-size: 12px; }
 }
@@ -13980,6 +14078,15 @@ body {
   .diary-entry { padding: 6px 4px 8px; min-height: 76px; gap: 4px; }
   .diary-entry-icon { width: 44px; height: 44px; padding: 2px; }
   .diary-entry-bestiary .diary-entry-icon { width: 80px; height: 80px; padding: 3px; }
+  .diary-entry-synergy { min-height: 104px; }
+  .diary-grid-synergies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diary-synergy-formula { gap: 4px; }
+  .diary-synergy-formula-card { min-height: 44px; padding: 2px; }
+  .diary-synergy-element { gap: 3px; padding: 3px 5px 3px 3px; border-width: 1px; }
+  .diary-synergy-element-glyph { width: 18px; height: 18px; font-size: 11px; }
+  .diary-synergy-element-name { font-size: 13px; }
+  .diary-synergy-result-name { font-size: 8px; }
+  .diary-synergy-note { display: none; }
   .diary-entry-name { font-size: 8px; letter-spacing: 0.3px; }
   .diary-entry-glyph { font-size: 24px; }
   .diary-info-head { padding-bottom: 6px; margin-bottom: 6px; }
@@ -13989,6 +14096,7 @@ body {
   .diary-info-section-label { font-size: 8px; margin-top: 6px; margin-bottom: 4px; }
   .diary-info-desc { font-size: 13px; line-height: 1.25; margin-bottom: 6px; }
   .diary-info-features { font-size: 13px; line-height: 1.25; margin-bottom: 6px; }
+  .diary-synergy-formula-info { padding: 6px 8px; }
 }
 
 /* Even shorter landscape (≤ 360 px tall — e.g. some Android phones in
