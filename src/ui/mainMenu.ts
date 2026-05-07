@@ -207,6 +207,29 @@ export class MainMenu {
     // both «meta state» cards live side-by-side in the left column.
     leftCol.appendChild(buildLoadoutCard(opts.meta, opts.onLoadout));
 
+    // Alchemist's Diary card — title-on-top + animated book-prop body so
+    // it reads as a sibling of the Laboratory card rather than a generic
+    // strip. The book art is sampled from `public/sprites/props.png`
+    // (closed spellbook, frame index 1) via a CSS background-position.
+    const diaryBtn = document.createElement('button');
+    diaryBtn.type = 'button';
+    diaryBtn.className = 'mm-card mm-diary-card';
+    diaryBtn.dataset.tutorialTarget = 'menu-diary';
+    const diaryTitle = document.createElement('div');
+    diaryTitle.className = 'mm-card-title';
+    diaryTitle.innerHTML = `<span>${t('ui.menu.diary')}</span>`;
+    diaryBtn.appendChild(diaryTitle);
+    const diaryBody = document.createElement('div');
+    diaryBody.className = 'mm-diary-body';
+    diaryBody.innerHTML = `
+      <span class="mm-diary-halo" aria-hidden="true"></span>
+      <span class="mm-diary-book" aria-hidden="true"></span>
+      <span class="mm-diary-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    `;
+    diaryBtn.appendChild(diaryBody);
+    diaryBtn.addEventListener('click', opts.onDiary);
+    leftCol.appendChild(diaryBtn);
+
     body.appendChild(leftCol);
 
     const centerCol = document.createElement('div');
@@ -233,22 +256,12 @@ export class MainMenu {
     //   Default state: leaderboard expanded, daily calendar collapsed to
     //   just the header strip with a status indicator. Clicking the daily
     //   header animates daily open and shrinks leaderboard; clicking the
-    //   leaderboard or the header again collapses daily back.
+    //   leaderboard or the header again collapses daily back. The diary
+    //   button used to live above the leaderboard here — it now sits in
+    //   the left column alongside the Laboratory / Loadout cards, freeing
+    //   the leaderboard to occupy the full upper-right area.
     const rightCol = document.createElement('div');
     rightCol.className = 'mm-col mm-col-right';
-
-    // Alchemist's Diary opener — a compact strip pinned above the
-    // leaderboard. Per the design brief the button has to live "in the
-    // upper part of the main menu, above the leaderboard"; the strip
-    // matches the leaderboard / daily card visual language so the
-    // right column reads as one cohesive sidebar.
-    const diaryBtn = document.createElement('button');
-    diaryBtn.type = 'button';
-    diaryBtn.className = 'mm-card mm-diary-btn';
-    diaryBtn.dataset.tutorialTarget = 'menu-diary';
-    diaryBtn.innerHTML = `<span class="mm-diary-icon">📖</span><span class="mm-diary-label">${t('ui.menu.diary')}</span><span class="mm-diary-arrow">›</span>`;
-    diaryBtn.addEventListener('click', opts.onDiary);
-    rightCol.appendChild(diaryBtn);
 
     const lbWrap = document.createElement('div');
     lbWrap.className = 'mm-card mm-lb-card';
