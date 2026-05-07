@@ -647,6 +647,36 @@ function shopBackdropSVG(): string {
     <rect x="0" y="74" width="200" height="22" fill="url(#mm-shop-shelf)"/>
     <rect x="0" y="74" width="200" height="3"  fill="url(#mm-shop-shelf-edge)"/>
 
+    <g class="mm-shop-ingredients">
+      <ellipse cx="38" cy="68" rx="16" ry="4" fill="rgba(0,0,0,0.28)"/>
+      <g class="mm-shop-ingredient" transform="translate(33 56) rotate(-13)">
+        <path d="M-9 8 C-7 -6 7 -8 10 6 C5 12 -4 13 -9 8Z" fill="#62d96a" stroke="#07110b" stroke-width="2"/>
+        <path d="M-3 -1 C1 -5 7 -4 7 2 C4 0 1 2 -1 5 C-4 4 -5 2 -3 -1Z" fill="#b7ff88" opacity="0.72"/>
+      </g>
+      <ellipse cx="68" cy="63" rx="13" ry="3.4" fill="rgba(0,0,0,0.24)"/>
+      <g class="mm-shop-ingredient" transform="translate(68 52) rotate(18)">
+        <path d="M-4 -9 C2 -7 8 -1 10 7 C3 9 -5 7 -9 3 C-7 0 -6 -5 -4 -9Z" fill="#f0d7ba" stroke="#160b08" stroke-width="2"/>
+        <path d="M-2 -4 C2 -2 5 1 6 5" fill="none" stroke="#8d6b56" stroke-width="1.2"/>
+      </g>
+      <ellipse cx="102" cy="66" rx="15" ry="3.6" fill="rgba(0,0,0,0.25)"/>
+      <g class="mm-shop-ingredient" transform="translate(101 52) rotate(-8)">
+        <path d="M-7 -12 L7 -12 L9 6 C4 12 -4 12 -9 6Z" fill="#7d2c1e" stroke="#120808" stroke-width="2"/>
+        <path d="M-6 -2 C-1 -6 4 -4 8 -1 L9 6 C4 12 -4 12 -9 6Z" fill="#ff8c4a"/>
+        <rect x="-4" y="-17" width="8" height="6" rx="1.5" fill="#d0b889" stroke="#120808" stroke-width="1.5"/>
+      </g>
+      <ellipse cx="131" cy="68" rx="15" ry="4" fill="rgba(0,0,0,0.22)"/>
+      <g class="mm-shop-ingredient" transform="translate(131 57) rotate(13)">
+        <path d="M-10 7 C-8 -4 -1 -9 2 -2 C6 -10 13 -6 8 4 C4 11 -4 11 -10 7Z" fill="#7bcf63" stroke="#10200d" stroke-width="2"/>
+        <path d="M-5 5 C-1 1 2 -2 6 -5" stroke="#d7ff9a" stroke-width="1.3" stroke-linecap="round"/>
+      </g>
+      <ellipse cx="166" cy="64" rx="16" ry="3.6" fill="rgba(0,0,0,0.22)"/>
+      <g class="mm-shop-ingredient" transform="translate(164 52) rotate(-19)">
+        <path d="M-9 5 L-2 -10 L5 4 Z" fill="#94e8ff" stroke="#081521" stroke-width="2"/>
+        <path d="M4 -4 L12 8 L0 7 Z" fill="#5fb6ff" stroke="#081521" stroke-width="2"/>
+        <path d="M-2 -7 L1 2" stroke="#e7fbff" stroke-width="1.2" opacity="0.8"/>
+      </g>
+    </g>
+
     <!-- Drifting steam wisps (animated via CSS) -->
     <g class="mm-shop-steam">
       <ellipse cx="40"  cy="22" rx="18" ry="6" fill="rgba(255,210,140,0.18)"/>
