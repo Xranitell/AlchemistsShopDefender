@@ -45,11 +45,23 @@ export class MainMenu {
     const wrap = document.createElement('div');
     wrap.className = 'main-menu';
 
+    // Atmosphere layer — corner candle-pools, soft mist, vignette.
+    // Sits behind every other element and is purely decorative; it
+    // gives the dark wine background more visual depth so the menu
+    // doesn't read as a flat gradient.
+    wrap.appendChild(buildMenuAtmosphere());
+
     // Floating ember sparks behind the menu — pure decoration, mirrors
     // the language used by the run-end / chest stages so the main menu
     // reads as part of the same world. Each spark has a randomised x /
-    // delay / duration / scale so the layer never visibly loops.
-    wrap.appendChild(buildMenuSparks(18));
+    // delay / duration / scale (and now a colour tone) so the layer
+    // never visibly loops.
+    wrap.appendChild(buildMenuSparks(28));
+
+    // Drifting alchemic runes — slow, very faint glyphs that float up
+    // through the menu, reinforcing the «rune defense» fantasy. They
+    // sit between the atmosphere layer and the menu chrome.
+    wrap.appendChild(buildMenuRunes(9));
 
     // ─── Top row: currencies + logo + settings/lang ───────────────
     const topRow = document.createElement('div');
@@ -84,10 +96,22 @@ export class MainMenu {
     ));
     topRow.appendChild(topLeft);
 
-    // Logo / title
+    // Logo / title — wrapped between two pixel-art flourishes that
+    // visually frame the wordmark. Inside the title we emit a soft
+    // backdrop glyph (the alchemy ☿ mercury symbol) and a thin
+    // golden underline rule, both purely cosmetic.
     const title = document.createElement('div');
     title.className = 'mm-title';
-    title.innerHTML = `<span class="mm-title-top">${t('ui.menu.title.top')}</span><span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>`;
+    title.innerHTML = `
+      <span class="mm-title-flourish mm-title-flourish-l" aria-hidden="true"></span>
+      <span class="mm-title-stack">
+        <span class="mm-title-glyph" aria-hidden="true">☿</span>
+        <span class="mm-title-top">${t('ui.menu.title.top')}</span>
+        <span class="mm-title-rule" aria-hidden="true"></span>
+        <span class="mm-title-bottom">${t('ui.menu.title.bottom')}</span>
+      </span>
+      <span class="mm-title-flourish mm-title-flourish-r" aria-hidden="true"></span>
+    `;
     topRow.appendChild(title);
 
     const topRight = document.createElement('div');
@@ -816,19 +840,76 @@ function buildMasteryLine(meta: MetaSave): HTMLElement | null {
  *  the main menu background. Each spark gets randomised CSS variables so
  *  they desync naturally — see the `mm-spark-rise` keyframes for the
  *  actual motion. Mirrors the technique used by the defeat / chest
- *  stages (`defeat-spark` etc.). */
+ *  stages (`defeat-spark` etc.).
+ *
+ *  Sparks now come in three tonal variants — warm gold (default), cool
+ *  arcane cyan, and ancient violet — picked at random so the backdrop
+ *  reads as «alchemy» rather than «just embers». */
 function buildMenuSparks(count: number): HTMLElement {
   const layer = document.createElement('div');
   layer.className = 'mm-sparks';
   layer.setAttribute('aria-hidden', 'true');
+  const tones: Array<'gold' | 'cyan' | 'violet'> = ['gold', 'gold', 'gold', 'cyan', 'violet'];
   for (let i = 0; i < count; i++) {
     const s = document.createElement('span');
-    s.className = 'mm-spark';
+    const tone = tones[Math.floor(Math.random() * tones.length)];
+    s.className = `mm-spark mm-spark-${tone}`;
     s.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
     s.style.setProperty('--delay', `${(Math.random() * 6).toFixed(2)}s`);
     s.style.setProperty('--dur', `${(6 + Math.random() * 4).toFixed(2)}s`);
     s.style.setProperty('--scale', `${(0.6 + Math.random() * 1.2).toFixed(2)}`);
+    s.style.setProperty('--drift', `${(Math.random() * 60 - 30).toFixed(0)}px`);
     layer.appendChild(s);
+  }
+  return layer;
+}
+
+/** Builds the «atmosphere» layer that sits behind every other element.
+ *  It contains:
+ *   - two warm corner candle pools (top-left, bottom-right)
+ *   - a cool arcane glow pool (bottom-left)
+ *   - a soft mist band drifting above the floor
+ *   - a global vignette frame
+ *
+ *  Everything is purely additive (`pointer-events: none`, `z-index: 0`)
+ *  so it can be added/removed without touching the layout grid. */
+function buildMenuAtmosphere(): HTMLElement {
+  const layer = document.createElement('div');
+  layer.className = 'mm-atmosphere';
+  layer.setAttribute('aria-hidden', 'true');
+  layer.innerHTML = `
+    <span class="mm-atmo-pool mm-atmo-pool-warm-tl"></span>
+    <span class="mm-atmo-pool mm-atmo-pool-warm-br"></span>
+    <span class="mm-atmo-pool mm-atmo-pool-cool-bl"></span>
+    <span class="mm-atmo-mist"></span>
+    <span class="mm-atmo-vignette"></span>
+  `;
+  return layer;
+}
+
+/** Pool of decorative «alchemic rune» glyphs that drift slowly upward
+ *  through the menu, very faint and big, so they read as ambient flair.
+ *
+ *  We pick from a curated set of unicode alchemy / occult symbols. None
+ *  of them carry semantic meaning — they're chosen purely because they
+ *  read as «runes» on a dark wine backdrop. */
+function buildMenuRunes(count: number): HTMLElement {
+  const RUNE_GLYPHS = ['☿', '♄', '♃', '♅', '⚗', '⚛', '✦', '✧', '☉', '☽', '⚝', '✶'];
+  const TONES: Array<'gold' | 'cyan' | 'violet'> = ['gold', 'cyan', 'violet'];
+  const layer = document.createElement('div');
+  layer.className = 'mm-runes';
+  layer.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < count; i++) {
+    const r = document.createElement('span');
+    const tone = TONES[i % TONES.length];
+    r.className = `mm-rune mm-rune-${tone}`;
+    r.textContent = RUNE_GLYPHS[Math.floor(Math.random() * RUNE_GLYPHS.length)];
+    r.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    r.style.setProperty('--delay', `${(Math.random() * 18).toFixed(2)}s`);
+    r.style.setProperty('--dur', `${(22 + Math.random() * 16).toFixed(2)}s`);
+    r.style.setProperty('--size', `${(28 + Math.random() * 36).toFixed(0)}px`);
+    r.style.setProperty('--rot', `${(Math.random() * 360).toFixed(0)}deg`);
+    layer.appendChild(r);
   }
   return layer;
 }
