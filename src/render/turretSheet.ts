@@ -97,8 +97,10 @@ export const PAINTED_TURRET_SCALE = 0.25;
 /** World-space Y offset (negative = up in screen space) used to lift the
  *  painted turret stand off the floor at its rune. The shadow stays at
  *  the rune position so the turret reads as floating above the floor —
- *  and the rune chalk circle below remains visible / clickable. */
-export const PAINTED_TURRET_LIFT_Y = 24;
+ *  and the rune chalk circle below remains visible / clickable. The
+ *  small lift keeps the rune chalk readable under the stand without
+ *  the turret looking like it's hovering in mid-air over its dais. */
+export const PAINTED_TURRET_LIFT_Y = 8;
 
 /** World-space Y offset from the painted turret's pedestal base (where
  *  `t.pos` sits) to the vertical mid-point of the turret body. Used by

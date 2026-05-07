@@ -539,10 +539,11 @@ export class DiaryOverlay {
       const def = DIFFICULTY_MODES[diff];
       const threshold = entry.killThresholds[diff];
       const kills = meta ? bestiaryKills(meta, entry.id, diff) : 0;
-      const ratio = threshold > 0 ? Math.min(1, kills / threshold) : 0;
+      const completed = threshold > 0 && kills >= threshold;
 
       const row = document.createElement('div');
       row.className = `diary-progress-row diary-progress-${diff}`;
+      if (completed) row.classList.add('is-complete');
       row.style.setProperty('--diary-progress-color', def.color);
 
       const head = document.createElement('div');
@@ -553,18 +554,38 @@ export class DiaryOverlay {
       head.appendChild(name);
       const value = document.createElement('span');
       value.className = 'diary-progress-value';
-      const cap = Math.min(kills, threshold);
-      value.textContent = `${cap} / ${threshold}`;
+      if (completed) {
+        // Once the kill quota is met we no longer need to teach the
+        // player about progress; the tag now reads as a "studied" stamp
+        // so the row still has a right-side affordance.
+        value.textContent = t('ui.diary.progress.complete');
+      } else {
+        const cap = Math.min(kills, threshold);
+        value.textContent = `${cap} / ${threshold}`;
+      }
       head.appendChild(value);
       row.appendChild(head);
 
-      const bar = document.createElement('div');
-      bar.className = 'diary-progress-bar';
-      const fill = document.createElement('div');
-      fill.className = 'diary-progress-fill';
-      fill.style.width = `${Math.round(ratio * 100)}%`;
-      bar.appendChild(fill);
-      row.appendChild(bar);
+      if (completed) {
+        // Swap the bar for the tier note — the player has earned the
+        // "real" entry for this difficulty, so we surface what the
+        // enemy actually does on that mode instead of a redundant
+        // 100%-filled bar.
+        const note = document.createElement('div');
+        note.className = 'diary-progress-note';
+        const ruFallback = entry.ruTierNotes[diff] ?? '';
+        note.textContent = tWithFallback(`${entry.i18nKey}.tier.${diff}`, ruFallback);
+        row.appendChild(note);
+      } else {
+        const ratio = threshold > 0 ? Math.min(1, kills / threshold) : 0;
+        const bar = document.createElement('div');
+        bar.className = 'diary-progress-bar';
+        const fill = document.createElement('div');
+        fill.className = 'diary-progress-fill';
+        fill.style.width = `${Math.round(ratio * 100)}%`;
+        bar.appendChild(fill);
+        row.appendChild(bar);
+      }
 
       wrap.appendChild(row);
     }

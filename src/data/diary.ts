@@ -53,6 +53,14 @@ export interface BestiaryEntry {
    *  as 100% — the bar caps visually at the threshold so the player
    *  always sees a finished bar once they've put in the work. */
   killThresholds: Record<DifficultyMode, number>;
+  /** Russian source-of-truth ability summary per difficulty mode. Once
+   *  the player has met that mode's `killThresholds` entry the diary
+   *  swaps the progress bar for the matching tier note, so the bestiary
+   *  card turns into a quick reminder of what the enemy actually does
+   *  on that mode (base behaviour on Обычный, the epic-only ability on
+   *  Эпический, the amplified ancient version on Древний, etc.). The
+   *  i18n suffix is `.tier.<mode>`. */
+  ruTierNotes: Partial<Record<DifficultyMode, string>>;
 }
 
 export interface StanceEntry {
@@ -198,6 +206,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Уязвим к огню и кислоте.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Распадается на 2 малых слизня при смерти — добивай быстро, иначе они доползут.',
+      epic: 'Распад усилен: 3 «детки» с увеличенным HP, разлетаются в стороны.',
+      ancient: 'Распад в 4 «детки», и каждая может расколоться ещё раз — нужен AoE.',
+    },
   },
   {
     id: 'rat',
@@ -210,6 +223,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Замедление и ртуть резко снижают его опасность.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Зигзагообразные рывки в стороны — целься в момент паузы между дашами.',
+      epic: 'Рывки чаще и резче, прицельные башни мажут заметно сильнее.',
+      ancient: 'Рывки максимально частые — без замедления попасть почти невозможно.',
+    },
   },
   {
     id: 'golem',
@@ -222,6 +240,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Кислота снимает броню и открывает уязвимости.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Одноразовый щит гасит первый удар — вспомогательным выстрелом сбей его, потом бей основным.',
+      epic: 'При смерти отключает башни в радиусе ~100 px на 2 сек — добивай вдали от линии стоек.',
+      ancient: 'EMP-радиус 130 px и длится 3 сек — несколько голёмов подряд могут полностью отключить дайс.',
+    },
   },
   {
     id: 'flying_flask',
@@ -233,6 +256,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Эфир и точные броски сбивают её до взрыва.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Взрывается при гибели в небольшом радиусе — не подпускай к манекену.',
+      epic: 'Радиус взрыва увеличен — одна колба теперь может задеть весь дайс.',
+      ancient: 'Взрыв оставляет ядовитую лужу, добавляющую DoT на несколько секунд.',
+    },
   },
   {
     id: 'shaman',
@@ -244,6 +272,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Уязвим к огню — DoT гасит ауру быстрее одиночных ударов.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Аура лечения восстанавливает соседей — добивай в первую очередь.',
+      epic: 'Аура шире и сильнее — без AoE урон превращается в фарс.',
+      ancient: 'Аура воскрешает добитых соседей — режь шамана прежде, чем он откроет рот.',
+    },
   },
   {
     id: 'sapper',
@@ -256,6 +289,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Замедление ртутью и эфирная цепь обезвреживают раньше.',
     ],
     killThresholds: REGULAR_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Подрывается на манекене за 1.5 сек — цельный таргет с ранним залпом.',
+      epic: 'Цепляется к ближайшей стойке и отключает её EMP-импульсом на 3 сек до подрыва.',
+      ancient: 'Дольше отключает стойку (4 сек), а взрыв оставляет ядовитую лужу.',
+    },
   },
   {
     id: 'miniboss_slime',
@@ -267,6 +305,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Огненные лужи режут популяцию «деток» сразу после деления.',
     ],
     killThresholds: BOSS_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Делится на 4 малых слизня при смерти — заранее накрой место AoE.',
+      epic: 'Каждая «детка» делится ещё раз — без огненных луж волну не остановить.',
+      ancient: 'Двойное деление + ускорение «деток» — критически важна морозная вспышка.',
+    },
   },
   {
     id: 'boss_rat_king',
@@ -279,6 +322,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Кислота и эфир снимают броню и сбивают рывки.',
     ],
     killThresholds: BOSS_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'Зигзагообразные рывки + призыв крыс на 50% HP — копи перегруз ко второй фазе.',
+      epic: 'Призыв крыс чаще, рывки в 1.5 раза резче — нужны замедления и AoE.',
+      ancient: 'Постоянный пул крыс-воров, рывки сбивают почти любые автоприцелы.',
+    },
   },
   {
     id: 'boss_homunculus',
@@ -290,6 +338,11 @@ export const BESTIARY_ENTRIES: BestiaryEntry[] = [
       'Реакция Эфир+Ртуть детонирует сразу несколько фрагментов.',
     ],
     killThresholds: BOSS_THRESHOLDS,
+    ruTierNotes: {
+      normal: 'На третьей фазе ускоряется в 1.5 раза — береги перегруз для финального рывка.',
+      epic: 'Фазы чередуются вдвое чаще, заклинание-щит требует постоянного прерывания.',
+      ancient: 'Все три фазы активны одновременно — без Эфир+Ртуть и морозы пройти почти нереально.',
+    },
   },
 ];
 

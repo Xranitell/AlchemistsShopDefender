@@ -1218,21 +1218,32 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
   for (const p of state.projectiles) {
     const trailColors = trailColorMap[p.element] ?? AETHER_COLORS;
 
-    if (p.kind === 'potion') {
-      // Arc height (z) is a visual-only offset so the potion appears airborne.
+    if (p.kind === 'potion' || (p.kind === 'tower' && p.arc)) {
+      // Arc height (z) is a visual-only offset so the projectile reads
+      // as airborne. Both thrown potions and mortar shells take this
+      // path — only the sprite / size differs.
       const z = p.arc?.height ?? 0;
       const drawX = p.pos.x;
       const drawY = p.pos.y - z;
 
+      // Mortar shells are large iron spheres; thrown potions are small
+      // bottles. The shadow / trail scale with the projectile silhouette
+      // so the player can read incoming siege fire at a glance.
+      const isMortar = p.kind === 'tower';
+
       // Ground shadow: opaque dark ellipse that stays on the floor and
-      // shrinks as the potion rises. No glow — shadows don't emit light.
+      // shrinks as the projectile rises. No glow — shadows don't emit
+      // light. Mortar shells get a markedly bigger shadow because the
+      // ball itself is much bigger.
       if (z > 0.5) {
         ctx.save();
         const shrink = Math.max(0.35, 1 - z / 180);
         ctx.globalAlpha = 0.55 * shrink;
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.ellipse(p.pos.x, p.pos.y + 2, 7 * shrink, 3 * shrink, 0, 0, Math.PI * 2);
+        const sx = isMortar ? 14 : 7;
+        const sy = isMortar ? 5 : 3;
+        ctx.ellipse(p.pos.x, p.pos.y + 2, sx * shrink, sy * shrink, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -1240,7 +1251,7 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       // Particle trail follows the AIRBORNE position so the glow traces the
       // arc in the air rather than piling up on the floor (which would look
       // like a glowing shadow).
-      spawnTrail(drawX, drawY, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
+      spawnTrail(drawX, drawY, trailColors[Math.floor(Math.random() * trailColors.length)]!, isMortar ? 2.5 : 1.5);
 
       // Soft glow tail — also airborne, and slightly smaller so it reads as
       // "trailing vapour" rather than another shadow.
@@ -1256,14 +1267,49 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
       ctx.fillStyle = trailGlow[p.element] ?? 'rgba(125, 249, 255, 0.3)';
       const tx = p.arc ? (p.arc.target.x - p.arc.start.x) : p.vel.x;
       const ty = p.arc ? (p.arc.target.y - p.arc.start.y) : p.vel.y;
-      ctx.fillRect(Math.round(drawX - 3 - tx * 0.006), Math.round(drawY - 3 - ty * 0.006), 6, 6);
+      const tailSize = isMortar ? 8 : 6;
+      ctx.fillRect(Math.round(drawX - tailSize / 2 - tx * 0.006), Math.round(drawY - tailSize / 2 - ty * 0.006), tailSize, tailSize);
       ctx.restore();
 
-      let sprite = s.potionBottle;
-      if (p.element === 'fire') sprite = s.potionBottleFire;
-      else if (p.element === 'mercury') sprite = s.potionBottleMercury;
-      else if (p.element === 'acid') sprite = s.potionBottleAcid;
-      drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
+      if (isMortar) {
+        // Big iron-ball mortar shell — drawn directly as a layered
+        // gradient circle so we don't need a new sprite asset. The
+        // wisp on top sells the lit fuse / heat-haze readability.
+        ctx.save();
+        // Outer dark shell
+        ctx.fillStyle = '#1f1410';
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Mid tone
+        ctx.fillStyle = '#3a2a22';
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Highlight
+        ctx.fillStyle = '#6f4632';
+        ctx.beginPath();
+        ctx.arc(drawX - 2.2, drawY - 2.4, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Specular spark
+        ctx.fillStyle = 'rgba(255, 220, 170, 0.8)';
+        ctx.beginPath();
+        ctx.arc(drawX - 3, drawY - 3.2, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        // Burning fuse glow at the top of the ball
+        const flicker = 0.7 + 0.3 * Math.sin(state.worldTime * 30 + p.id);
+        ctx.fillStyle = `rgba(255, 168, 76, ${0.55 * flicker})`;
+        ctx.beginPath();
+        ctx.arc(drawX, drawY - 11, 3.2 * flicker, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        let sprite = s.potionBottle;
+        if (p.element === 'fire') sprite = s.potionBottleFire;
+        else if (p.element === 'mercury') sprite = s.potionBottleMercury;
+        else if (p.element === 'acid') sprite = s.potionBottleAcid;
+        drawSprite(ctx, sprite, drawX, drawY, SPRITE_SCALE);
+      }
     } else {
       // Tower projectiles stay on the ground plane, trail can go there too.
       spawnTrail(p.pos.x, p.pos.y, trailColors[Math.floor(Math.random() * trailColors.length)]!, 1.5);
