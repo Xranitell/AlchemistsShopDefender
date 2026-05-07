@@ -44,41 +44,60 @@ export interface DifficultyModeDef {
   color: string;
 }
 
+/** Master list of every enemy ability flag the wave system understands.
+ *  Each enemy kind only picks up the ones that make sense for it (see
+ *  `pickEnemyAbilities` in `wave.ts`), so handing out the full set on
+ *  every difficulty mode is what gives every monster its baseline
+ *  signature ability — slimes split, golems shield, rats dash, flying
+ *  flasks explode, shamans heal — at no extra cost. The Epic / Ancient
+ *  modes layer extra scaling on top via `abilityTier` (see
+ *  `Enemy.abilityTier`), not by adding new flags here. */
+export const ALL_ENEMY_ABILITIES: EnemyAbility[] = [
+  'split_on_death',
+  'one_hit_shield',
+  'dash_back_on_hit',
+  'explode_on_death',
+  'aura_heal',
+];
+
 export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
   normal: {
     id: 'normal',
     name: 'Обычное подземелье',
     shortName: 'Обычный',
-    flavor: 'Стандартные волны. Награды — обычные.',
+    flavor: 'Стандартные волны. У каждого монстра — своя способность.',
     keyCost: 'none',
     modifier: {
       hpMult: 1,
       speedMult: 1,
       damageMult: 1,
       goldMult: 1,
-      abilities: [],
+      abilities: [...ALL_ENEMY_ABILITIES],
     },
-    previewLines: ['Стандартные враги и скорость', 'Не требует ключа'],
+    previewLines: [
+      'Стандартные характеристики врагов',
+      'У каждого монстра — своя способность',
+      'Не требует ключа',
+    ],
     color: '#7fc97f',
   },
   epic: {
     id: 'epic',
     name: 'Эпическое подземелье',
     shortName: 'Эпический',
-    flavor: 'Враги крепче, у слизней — раздел при смерти.',
+    flavor: 'Враги крепче и опаснее, способности усилены.',
     keyCost: 'epic',
     modifier: {
       hpMult: 1.3,
       speedMult: 1.15,
       damageMult: 1.15,
       goldMult: 1.5,
-      abilities: ['split_on_death', 'dash_back_on_hit'],
+      abilities: [...ALL_ENEMY_ABILITIES],
     },
     previewLines: [
       '+30% здоровья врагов',
       '+15% скорости и урона',
-      'Слизни распадаются на осколки',
-      'Крысы отскакивают при попадании',
+      'Способности монстров усилены',
       '×1.5 синей эссенции, ×2 древней',
       'Победа: +1 эпич. мастерство (+2% эссенции навсегда)',
     ],
@@ -88,21 +107,19 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'ancient',
     name: 'Древнее подземелье',
     shortName: 'Древний',
-    flavor: 'Закалённые враги, броня, ауры — только для опытных.',
+    flavor: 'Закалённые враги — способности раскрываются полностью.',
     keyCost: 'ancient',
     modifier: {
       hpMult: 1.6,
       speedMult: 1.25,
       damageMult: 1.3,
       goldMult: 2,
-      abilities: ['split_on_death', 'one_hit_shield', 'dash_back_on_hit', 'explode_on_death'],
+      abilities: [...ALL_ENEMY_ABILITIES],
     },
     previewLines: [
       '+60% здоровья врагов',
       '+25% скорости, +30% урона',
-      'Големы с бронёй, блокирующей первое попадание',
-      'Слизни распадаются, крысы отскакивают',
-      'Колбы-враги взрываются при смерти',
+      'Способности монстров получают древние механики',
       '×2.5 синей эссенции, ×4 древней, +1 древн. ключ за победу',
       'Победа: +1 древн. мастерство (+3% эссенции навсегда)',
     ],
@@ -119,7 +136,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       speedMult: 1,
       damageMult: 1,
       goldMult: 1.2,
-      abilities: [],
+      abilities: [...ALL_ENEMY_ABILITIES],
     },
     previewLines: [
       'Волны повторяются по кругу',
@@ -139,7 +156,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       speedMult: 1,
       damageMult: 1,
       goldMult: 1,
-      abilities: [],
+      abilities: [...ALL_ENEMY_ABILITIES],
     },
     previewLines: [
       'Уникальное событие на каждый день недели',
@@ -149,6 +166,17 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     color: '#f9c74f',
   },
 };
+
+/** Map a difficulty mode to the ability-strength tier that should be
+ *  applied to each enemy spawned in that mode. `base` keeps the default
+ *  mechanics, `epic` amplifies them (e.g. larger splash, more children),
+ *  and `ancient` adds an extra layer of behaviour on top (e.g. minis
+ *  split once more, exploding flasks leave a poison pool). */
+export function abilityTierFor(mode: DifficultyMode): 'base' | 'epic' | 'ancient' {
+  if (mode === 'epic') return 'epic';
+  if (mode === 'ancient') return 'ancient';
+  return 'base';
+}
 
 export function abilityLabel(ability: EnemyAbility): string {
   return t(`ui.ability.${ability}`);

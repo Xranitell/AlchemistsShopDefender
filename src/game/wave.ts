@@ -5,7 +5,7 @@ import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
-import type { EnemyAbility } from '../data/difficulty';
+import { abilityTierFor, type EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
@@ -283,6 +283,19 @@ export function spawnEnemy(
     maxHp = Math.round(maxHp * 0.7);
   }
 
+  // Tier the abilities scale on. Epic amplifies the base behaviour
+  // (more children on split, larger explosion, etc.); Ancient layers an
+  // extra mechanic on top (children can split once more, exploded
+  // flasks drop a poison pool, etc.). Defaults to `base` for normal /
+  // endless / daily so every monster still gets its signature ability.
+  const tier = abilityTierFor(state.difficulty);
+  // Golems start with one shield charge plus a second one on Ancient,
+  // matching the "ancient mechanics" tier promise on the difficulty
+  // preview text.
+  const baseShield = abilities.includes('one_hit_shield')
+    ? (tier === 'ancient' ? 2 : 1)
+    : 0;
+
   state.enemies.push({
     id: newId(state),
     kind,
@@ -293,7 +306,7 @@ export function spawnEnemy(
     hitFlash: 0,
     goldPending: 0,
     abilities,
-    shieldCharges: abilities.includes('one_hit_shield') ? 1 : 0,
+    shieldCharges: baseShield,
     // Cursed-extra: seed the bonus damage-soak shield from the global
     // multiplier. Bosses don't get this — their HP pools are already
     // tuned, and stacking another shield ruins their pacing. The
@@ -319,6 +332,14 @@ export function spawnEnemy(
     bossDodgeSpeed: 0,
     bossSlamWindup: 0,
     lastHitElement: 'neutral',
+    abilityTier: tier,
+    // First aura pulse fires after a short stagger so a wave that
+    // spawns several shamans at once doesn't pulse them on the same
+    // frame.
+    auraHealTimer: abilities.includes('aura_heal')
+      ? 0.5 + state.rng.range(0, 1.0)
+      : 0,
+    shieldRegenTimer: 0,
   });
 }
 

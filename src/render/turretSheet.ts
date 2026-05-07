@@ -94,16 +94,34 @@ export const TURRET_COUNT = TURRET_FRAMES.length;
  *  on-screen size of the turret. */
 export const PAINTED_TURRET_SCALE = 0.25;
 
+/** World-space Y offset (negative = up in screen space) used to lift the
+ *  painted turret stand off the floor at its rune. The shadow stays at
+ *  the rune position so the turret reads as floating above the floor —
+ *  and the rune chalk circle below remains visible / clickable. */
+export const PAINTED_TURRET_LIFT_Y = 24;
+
 /** World-space Y offset from the painted turret's pedestal base (where
  *  `t.pos` sits) to the vertical mid-point of the turret body. Used by
  *  the firing pipeline so projectiles spawn from roughly the centre of
  *  the stand instead of from the ground at its feet. Negative because
- *  Y increases downward in screen space. */
+ *  Y increases downward in screen space. The lift offset is added on
+ *  top so projectiles spawn from the centre of the *floating* stand,
+ *  not the ground beneath it. */
 export function getTurretFireOriginOffsetY(
   kindId: string,
   scale: number = PAINTED_TURRET_SCALE,
 ): number {
-  return -getTurretFootprint(kindId, scale).height / 2;
+  return -getTurretFootprint(kindId, scale).height / 2 - PAINTED_TURRET_LIFT_Y;
+}
+
+/** True once the painted turret-stands PNG has finished loading. The
+ *  `drawTurret` helper falls back to baked pixel-art when the sheet is
+ *  not yet ready, so call-sites that need to know in advance whether
+ *  the painted footprint will be drawn (e.g. the elevation lift in
+ *  `drawTowers`) can branch on this instead of post-hoc on the return
+ *  value of `drawTurret`. */
+export function isPaintedTurretSheetReady(): boolean {
+  return isSheetReady(turretSheet);
 }
 
 /* ── Drawing ──────────────────────────────────────────────────── */

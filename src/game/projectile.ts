@@ -342,10 +342,19 @@ export function applyDamageToEnemy(
   }
 
   // Difficulty abilities:
-  // One-hit shield absorbs the first hit completely and breaks.
+  // One-hit shield absorbs the first hit completely and breaks. Epic /
+  // Ancient golems regenerate the shield after a short delay (8s on
+  // Epic, 6s on Ancient) so a single AoE clear no longer disables them
+  // for the rest of the wave.
   if (e.shieldCharges > 0) {
     e.shieldCharges -= 1;
     e.hitFlash = 0.18;
+    if (e.abilities.includes('one_hit_shield') && e.abilityTier !== 'base') {
+      const regenDelay = e.abilityTier === 'ancient' ? 6 : 8;
+      // Only queue a regen if there isn't one already running, so
+      // chaining hits while a regen is queued doesn't keep deferring it.
+      if (e.shieldRegenTimer <= 0) e.shieldRegenTimer = regenDelay;
+    }
     // Spawn a small visual cue via floating text so the player reads it.
     spawnFloatingText(state, t('floating.shieldHit'), e.pos, '#ffd166');
     return;
@@ -438,10 +447,14 @@ export function applyDamageToEnemy(
     shakeCamera(2.5, 0.1);
   }
 
-  // Dash-back: on a successful hit push the enemy away from the hero for
-  // a brief period so the projectile knocks them back slightly.
+  // Dash-back: on a successful hit push the enemy away from the hero
+  // for a brief period so the projectile knocks them back slightly.
+  // Tier scales how long the kite lasts — Epic doubles the impulse,
+  // Ancient stretches it further so rats become very hard to chain.
   if (e.abilities.includes('dash_back_on_hit')) {
-    e.dashBackTimer = Math.max(e.dashBackTimer, 0.25);
+    const dashDuration =
+      e.abilityTier === 'epic' ? 0.45 : e.abilityTier === 'ancient' ? 0.65 : 0.25;
+    e.dashBackTimer = Math.max(e.dashBackTimer, dashDuration);
   }
 
   // Boss perpendicular dodge: triggered on hits when ready.

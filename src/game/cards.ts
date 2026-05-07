@@ -333,11 +333,6 @@ export function applyCard(state: GameState, card: CardDef): void {
       mq.maxHp += 25; mq.hp = Math.min(mq.maxHp, mq.hp + 25);
       m.goldDropMult *= 0.80;
       break;
-    case 'curse_chronos':
-      state.activeModuleId = 'chronos';
-      m.potionDamageMult *= 1.15;
-      m.potionCooldownMult *= 1.20;
-      break;
     case 'curse_golem_heart':
       state.golemHeartCharges = 1;
       mq.maxHp += 38; mq.hp = Math.min(mq.maxHp, mq.hp + 38);

@@ -353,12 +353,6 @@ const CURSED_CARDS: CardDef[] = [
     desc: '+8 урон в ответ при касании Манекена · +25 макс. ХП Манекена · −20% золота.',
   },
   {
-    id: 'curse_chronos',
-    name: 'Хронос (проклятый)',
-    category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+5 с замедления всех врагов от Перегруза (заменяет Громоотвод) · +15% урон склянок · +20% откат склянок.',
-  },
-  {
     id: 'curse_golem_heart',
     name: 'Сердце Голема (проклятое)',
     category: 'ritual', rarity: 'legendary', isCursed: true,

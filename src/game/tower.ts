@@ -23,11 +23,34 @@ export function cycleTargetingMode(t: Tower): void {
   t.targetingMode = TARGETING_MODES[(i + 1) % TARGETING_MODES.length]!;
 }
 
+/** Сторожевой фонарь: hard cap on how many lanterns can exist on the
+ *  field at the same time. The lantern is a strict force-multiplier on
+ *  the rest of the build, so allowing two of them stacks aura buffs in
+ *  ways the rest of the balance pass isn't tuned for. Capping at 1 also
+ *  means every level-up of the lantern is meaningful since players
+ *  can't just buy a second one for more coverage. */
+export const WATCH_TOWER_BUILD_LIMIT = 1;
+
+/** Convenience: count how many towers of a given kind are currently on
+ *  the field. Used to enforce per-kind build limits in `buyTower` and
+ *  to grey out the corresponding card in the build menu. */
+export function countTowersOfKind(state: GameState, kindId: string): number {
+  let n = 0;
+  for (const t of state.towers) if (t.kind.id === kindId) n += 1;
+  return n;
+}
+
 export function buyTower(state: GameState, runePointId: number, towerKindId: string): boolean {
   const rp = state.runePoints.find((r) => r.id === runePointId);
   if (!rp || !rp.active || rp.towerId !== null) return false;
   const kind = TOWERS[towerKindId];
   if (!kind) return false;
+  // Hard cap on lanterns — see WATCH_TOWER_BUILD_LIMIT for rationale.
+  // The build menu hides the card once the cap is reached, but the
+  // function still defends against direct re-entry from scripts / tests.
+  if (kind.id === 'watch_tower' && countTowersOfKind(state, 'watch_tower') >= WATCH_TOWER_BUILD_LIMIT) {
+    return false;
+  }
   const isFirst = state.towers.length === 0;
   const discount = isFirst ? state.metaTowerDiscount : 0;
   // Archmaster legendary: +25% cost on every new tower. Cursed Cards may
@@ -91,6 +114,12 @@ export function upgradeTower(state: GameState, towerId: number): boolean {
   if (state.gold < cost) return false;
   state.gold -= cost;
   t.level += 1;
+  // Lantern upgrades change how many neighbours are buffed (see
+  // `watchTowerBuffCount`), so the per-aura buff set has to be
+  // recomputed. Other tower upgrades don't need this in principle,
+  // but the cache is cheap to rebuild and clearing it on every
+  // upgrade keeps the invariant "upgrade always re-evaluates auras".
+  invalidateTowerCaches();
   spawnFloatingText(state, `Lv ${t.level}`, t.pos, '#7df9ff');
   tutorial.notify('towerUpgraded');
   return true;
@@ -109,6 +138,8 @@ export function invalidateTowerCaches(): void {
   cachedRuneById = null;
   cachedAuraCount = -1;
   cachedTowers = null;
+  cachedAuraBuffSets = null;
+  cachedAuraBuffStateRef = null;
 }
 
 function getRuneById(state: GameState, id: number): GameState['runePoints'][number] | undefined {
@@ -128,6 +159,77 @@ function getAuraCount(state: GameState): number {
     cachedAuraCount = n;
   }
   return cachedAuraCount;
+}
+
+/** Сторожевой фонарь: how many neighbouring towers a lantern at this
+ *  level buffs. Level 1 buffs 1 neighbour, level 5 buffs 5 — every
+ *  upgrade adds another simultaneous bond. The cap matches
+ *  `TOWER_MAX_LEVEL` so a fully upgraded lantern can saturate every
+ *  other rune slot on the dais. */
+export function watchTowerBuffCount(level: number): number {
+  return Math.max(1, Math.min(5, Math.floor(level)));
+}
+
+/** Per-frame cache: for each aura tower, the set of tower-IDs it is
+ *  currently buffing. Computed lazily on first access via
+ *  `buffedTowerIdsByAura` and invalidated by `invalidateTowerCaches`
+ *  (called from buy / sell / upgrade / level-change). Frame-time tower
+ *  level changes go through `upgradeTower` which calls the invalidator,
+ *  so the cache stays correct without per-frame re-checks of level. */
+let cachedAuraBuffSets: Map<number, Set<number>> | null = null;
+let cachedAuraBuffStateRef: GameState['towers'] | null = null;
+
+function buffedTowerIdsByAura(state: GameState): Map<number, Set<number>> {
+  if (cachedAuraBuffSets && cachedAuraBuffStateRef === state.towers) {
+    return cachedAuraBuffSets;
+  }
+  const out = new Map<number, Set<number>>();
+  cachedAuraBuffStateRef = state.towers;
+  if (getAuraCount(state) === 0) {
+    cachedAuraBuffSets = out;
+    return out;
+  }
+  const rangeMod = state.modifiers.towerRangeMult * towerRangeMultiplier(state);
+  for (const aura of state.towers) {
+    if (aura.kind.behavior !== 'aura') continue;
+    const auraRange = aura.kind.range * rangeMod;
+    const r2 = auraRange * auraRange;
+    // Collect every other tower whose centre falls inside the same
+    // iso-plane ellipse the aura ring is drawn at — same membership
+    // test as `pickTowerTarget` so the visualised ring matches the
+    // gameplay zone.
+    const candidates: { id: number; d2: number }[] = [];
+    for (const other of state.towers) {
+      if (other.id === aura.id) continue;
+      const dx = other.pos.x - aura.pos.x;
+      const dy = other.pos.y - aura.pos.y;
+      const score = dx * dx + 4 * dy * dy;
+      if (score > r2) continue;
+      candidates.push({ id: other.id, d2: score });
+    }
+    candidates.sort((a, b) => a.d2 - b.d2);
+    const cap = watchTowerBuffCount(aura.level);
+    const set = new Set<number>();
+    for (let i = 0; i < Math.min(cap, candidates.length); i++) {
+      set.add(candidates[i]!.id);
+    }
+    out.set(aura.id, set);
+  }
+  cachedAuraBuffSets = out;
+  return out;
+}
+
+/** Public helper for the renderer: returns the array of aura-tower IDs
+ *  whose buff-set currently contains `towerId`. Empty array means the
+ *  tower isn't being buffed by any lantern this frame. */
+export function getAurasBuffing(state: GameState, towerId: number): number[] {
+  if (getAuraCount(state) === 0) return [];
+  const map = buffedTowerIdsByAura(state);
+  const out: number[] = [];
+  for (const [auraId, set] of map) {
+    if (set.has(towerId)) out.push(auraId);
+  }
+  return out;
 }
 
 export function towerStats(state: GameState, t: Tower) {
@@ -150,25 +252,22 @@ export function towerStats(state: GameState, t: Tower) {
     baseRange *= bonus.range;
   }
 
-  // Сторожевой фонарь aura: each watch tower whose range covers `t` adds its
-  // multipliers. Aura towers don't buff themselves and don't stack with copies
-  // of themselves on the same rune (only one tower per rune anyway). We skip
-  // the loop entirely when there are no aura towers — the common case.
+  // Сторожевой фонарь aura: only the K nearest in-range towers per
+  // lantern get the buff, where K = lantern level (see
+  // `watchTowerBuffCount`). The buff sets are precomputed per frame in
+  // `buffedTowerIdsByAura`; we just check membership here. Aura towers
+  // don't buff themselves and the ID-based lookup means stacking
+  // multiple lanterns (when the build limit is lifted, e.g. via mods)
+  // would still apply each buff at most once per source.
   let rateMult = 1;
   let rangeMult = 1;
   if (getAuraCount(state) > 0) {
-    const rangeMod = state.modifiers.towerRangeMult * towerRangeMultiplier(state);
-    for (const other of state.towers) {
-      if (other.id === t.id) continue;
-      if (other.kind.behavior !== 'aura') continue;
-      const auraRange = other.kind.range * rangeMod;
-      const dx = other.pos.x - t.pos.x;
-      const dy = other.pos.y - t.pos.y;
-      // Same iso-plane ellipse the aura indicator is drawn at — match
-      // the gameplay zone to the visualised one.
-      if (dx * dx + 4 * dy * dy > auraRange * auraRange) continue;
-      rateMult *= WATCH_TOWER_AURA.fireRateMult;
-      rangeMult *= WATCH_TOWER_AURA.rangeMult;
+    const buffMap = buffedTowerIdsByAura(state);
+    for (const [, set] of buffMap) {
+      if (set.has(t.id)) {
+        rateMult *= WATCH_TOWER_AURA.fireRateMult;
+        rangeMult *= WATCH_TOWER_AURA.rangeMult;
+      }
     }
   }
   return { damage, rate: baseRate * rateMult, range: baseRange * rangeMult };

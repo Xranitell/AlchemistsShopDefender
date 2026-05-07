@@ -473,19 +473,25 @@ const TOWER_TREE: TreeDef = {
   prefix: 'tm',
   branch: 'engineering',
   rows: [
-    // Tier 0 — apex keystone
+    // Tier 0 — apex keystone. Used to unlock a third rune point — but
+    // the dais now only has 6 rune slots (2 of them locked), so the
+    // unlock is replaced by an outright +10% tower damage on top of
+    // the existing range bonus to keep the keystone feeling like a
+    // capstone.
     [
       {
         kind: 'keystone',
         name: 'Чертёж Архимастера',
-        desc: '+1 руническая точка стойки и +10% дальность стоек',
+        desc: '+10% урона и +10% дальности стоек',
         cost: 2,
         currency: 'ancient',
-        effect: { kind: 'runePointUnlock', value: 3 },
+        effect: { kind: 'towerDamage', value: 1.10 },
         extraEffects: [{ kind: 'towerRange', value: 1.10 }],
       },
     ],
-    // Tier 1 — 3 small near keystone
+    // Tier 1 — 3 small near keystone. The middle β slot is the second
+    // (and last) rune-unlock; the right slot was the old γ unlock and
+    // is now an offensive stat node since γ has no rune to open.
     [
       {
         kind: 'small',
@@ -505,23 +511,25 @@ const TOWER_TREE: TreeDef = {
       },
       {
         kind: 'small',
-        name: 'Открытая руническая точка γ',
-        desc: '+1 руническая точка стойки',
+        name: 'Усиленные дюзы IV',
+        desc: '+5% урона стоек',
         cost: 33,
         currency: 'blue',
-        effect: { kind: 'runePointUnlock', value: 4 },
+        effect: { kind: 'towerDamage', value: 1.05 },
       },
     ],
-    // Tier 2 — 5 cells; the wing slots host the new rune-unlock talents δ / ε
-    // so every locked rune around the dais now has a matching talent.
+    // Tier 2 — 5 cells. The two wing slots used to host extra
+    // runePointUnlock talents (δ / ε); with only 2 locked runes left
+    // they now grant extra range / fire-rate so the build path still
+    // pays out the same number of stat upgrades.
     [
       {
         kind: 'small',
-        name: 'Открытая руническая точка δ',
-        desc: '+1 руническая точка стойки',
+        name: 'Оптика IV',
+        desc: '+5% дальности стоек',
         cost: 36,
         currency: 'blue',
-        effect: { kind: 'runePointUnlock', value: 5 },
+        effect: { kind: 'towerRange', value: 1.05 },
       },
       {
         kind: 'small',
@@ -550,14 +558,15 @@ const TOWER_TREE: TreeDef = {
       },
       {
         kind: 'small',
-        name: 'Открытая руническая точка ε',
-        desc: '+1 руническая точка стойки',
+        name: 'Калибровка ствола',
+        desc: '+5% скорости стрельбы стоек',
         cost: 36,
         currency: 'blue',
-        effect: { kind: 'runePointUnlock', value: 6 },
+        effect: { kind: 'towerFireRate', value: 1.05 },
       },
     ],
-    // Tier 3 — 5 small (widest)
+    // Tier 3 — 5 small (widest). The α node is the first rune unlock;
+    // every other slot in this row stays as a stat upgrade.
     [
       {
         kind: 'small',
