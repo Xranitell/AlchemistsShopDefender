@@ -4094,12 +4094,43 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 209, 102, 0.4) transparent;
 }
+.hud-run-sidebar.collapsed {
+  overflow: visible;
+  max-height: none;
+  max-width: none;
+}
 .hud-run-sidebar::-webkit-scrollbar {
   width: 4px;
 }
 .hud-run-sidebar::-webkit-scrollbar-thumb {
   background: rgba(255, 209, 102, 0.4);
   border-radius: 2px;
+}
+.hud-run-sidebar-toggle {
+  position: sticky;
+  top: 0;
+  align-self: flex-end;
+  padding: 5px 8px;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 8px;
+  line-height: 1.2;
+  color: #ffd166;
+  background: linear-gradient(180deg, rgba(34, 26, 18, 0.95), rgba(12, 10, 8, 0.95));
+  border: 1px solid rgba(255, 209, 102, 0.72);
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 10px rgba(255, 209, 102, 0.18);
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.45);
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 1;
+}
+.hud-run-sidebar-toggle:hover {
+  color: #fff3c4;
+  border-color: rgba(255, 240, 180, 0.9);
+}
+.hud-run-sidebar.collapsed .hud-run-section {
+  display: none;
 }
 .hud-run-section {
   display: flex;

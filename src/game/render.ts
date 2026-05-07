@@ -153,6 +153,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawTowerFloors(ctx, state);
   drawSortedEntities(ctx, state);
   drawMannequin(ctx, state);
+  drawMortarTargetReticles(ctx, state);
   drawPotionBlasts(ctx, state);
   drawProjectiles(ctx, state);
   drawChainBolts(ctx, state);
@@ -377,6 +378,10 @@ function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
  *  `drawTowerBody`, which is interleaved with enemy sprites by the
  *  combined depth-sort pass in `drawSortedEntities`. */
 function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Tower): void {
+  const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
+  const willPaint = isPaintedTurretSheetReady();
+  const bodyY = willPaint ? t.pos.y - PAINTED_TURRET_LIFT_Y : t.pos.y;
+
   // Range indicator when shop is open on this rune — iso-plane ellipse so
   // it visually lies on the floor.
   if (state.activeRunePoint === t.runePointId) {
@@ -386,7 +391,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, t.pos.y, R, R * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, bodyY, R, R * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -396,12 +401,10 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
   // the pedestal base lands on the iso-front edge of the chalk circle
   // (see PAINTED_TURRET_LIFT_Y); the shadow follows the body so it
   // hugs the pedestal instead of floating behind it on the rune.
-  const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
-  const willPaint = isPaintedTurretSheetReady();
   const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
   const shadowH = willPaint ? 9 : 7;
   const shadowAlpha = willPaint ? 0.32 : 0.42;
-  const shadowY = willPaint ? t.pos.y - PAINTED_TURRET_LIFT_Y + 4 : t.pos.y + 6;
+  const shadowY = bodyY + (willPaint ? 4 : 6);
   drawShadow(ctx, t.pos.x, shadowY, shadowW, shadowH, shadowAlpha);
 
   // Base glow (cached halo to avoid per-frame gradient allocation).
@@ -409,7 +412,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx,
     { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
     t.pos.x,
-    t.pos.y,
+    bodyY,
     0.08,
   );
 
@@ -429,17 +432,17 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.strokeStyle = `rgba(255, 218, 130, ${ringAlpha})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, t.pos.y + 4, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, bodyY + 4, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = `rgba(255, 209, 102, ${0.55 + pulse * 0.30})`;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, t.pos.y + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, bodyY + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     const halox = t.pos.x;
-    const haloy = t.pos.y + 4;
+    const haloy = bodyY + 4;
     const haloFill = ctx.createRadialGradient(halox, haloy, 0, halox, haloy, haloR);
     haloFill.addColorStop(0, `rgba(255, 230, 163, ${0.32 + pulse * 0.18})`);
     haloFill.addColorStop(0.6, `rgba(255, 209, 102, ${0.16 + pulse * 0.10})`);
@@ -461,7 +464,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.strokeStyle = `rgba(125, 249, 255, ${0.55 * blink})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, t.pos.y + 4, 26, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, bodyY + 4, 26, 12, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -470,9 +473,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
   // floor. Painted pedestals are dropped past the rune centre, so pips
   // shift down by the same amount and land just under the cast
   // shadow; the pixel-art fallback keeps its tighter offset.
-  const pipY = willPaint
-    ? Math.round(t.pos.y - PAINTED_TURRET_LIFT_Y + 2)
-    : t.pos.y + 29;
+  const pipY = Math.round(bodyY + (willPaint ? 2 : 29));
   for (let i = 0; i < t.level; i++) {
     ctx.fillStyle = COLORS.brassHi;
     ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);
@@ -1145,16 +1146,16 @@ function drawSingleEnemy(
  *  by `drawTowerFloors`, before this pass, so the floor effects always
  *  sit underneath everything else.
  *
- *  Tower "feet" are at `t.pos.y` — the rune the tower was summoned on,
- *  which is now the literal floor-anchor of the painted pedestal
- *  (PAINTED_TURRET_LIFT_Y = 0). Enemy "feet" are at
+ *  Tower "feet" are at the painted pedestal base, shifted down from
+ *  the summoned rune by PAINTED_TURRET_LIFT_Y. Enemy "feet" are at
  *  `pos.y + radius * 0.65` (matches `drawShadow`). Equal-y entities
  *  tie-break on spawn id so depth doesn't flicker between frames. */
 function drawSortedEntities(ctx: CanvasRenderingContext2D, state: GameState): void {
   type Item = { feetY: number; tieId: number; tower?: Tower; enemy?: Enemy };
   const items: Item[] = [];
   for (const t of state.towers) {
-    items.push({ feetY: t.pos.y, tieId: t.id, tower: t });
+    const feetY = isPaintedTurretSheetReady() ? t.pos.y - PAINTED_TURRET_LIFT_Y : t.pos.y;
+    items.push({ feetY, tieId: t.id, tower: t });
   }
   for (const e of state.enemies) {
     items.push({ feetY: e.pos.y + e.kind.radius * 0.65, tieId: e.id, enemy: e });
@@ -1256,6 +1257,56 @@ function drawPotionBlasts(ctx: CanvasRenderingContext2D, state: GameState): void
     ctx.stroke();
   }
   ctx.globalCompositeOperation = prevComp;
+  ctx.restore();
+}
+
+function drawMortarTargetReticles(ctx: CanvasRenderingContext2D, state: GameState): void {
+  ctx.save();
+  for (const p of state.projectiles) {
+    if (p.kind !== 'tower' || !p.arc) continue;
+    const t = Math.min(1, Math.max(0, p.arc.t));
+    const x = p.arc.target.x;
+    const y = p.arc.target.y;
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 12 + p.id);
+    const warn = 0.45 + 0.35 * t;
+    const r = 28 - 8 * t + pulse * 2;
+    const bracket = 8;
+    const splashR = Math.max(16, p.splashRadius);
+
+    ctx.globalAlpha = 0.2 + warn * 0.45;
+    ctx.fillStyle = 'rgba(255, 91, 58, 0.12)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, splashR, splashR * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 0.5 + warn * 0.35;
+    ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, splashR, splashR * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.75 + warn * 0.25;
+    ctx.strokeStyle = COLORS.fireA;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x - r, y - r * 0.5 + bracket);
+    ctx.lineTo(x - r, y - r * 0.5);
+    ctx.lineTo(x - r + bracket, y - r * 0.5);
+    ctx.moveTo(x + r - bracket, y - r * 0.5);
+    ctx.lineTo(x + r, y - r * 0.5);
+    ctx.lineTo(x + r, y - r * 0.5 + bracket);
+    ctx.moveTo(x + r, y + r * 0.5 - bracket);
+    ctx.lineTo(x + r, y + r * 0.5);
+    ctx.lineTo(x + r - bracket, y + r * 0.5);
+    ctx.moveTo(x - r + bracket, y + r * 0.5);
+    ctx.lineTo(x - r, y + r * 0.5);
+    ctx.lineTo(x - r, y + r * 0.5 - bracket);
+    ctx.stroke();
+
+    ctx.fillStyle = COLORS.whiteSoft;
+    ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+  }
   ctx.restore();
 }
 

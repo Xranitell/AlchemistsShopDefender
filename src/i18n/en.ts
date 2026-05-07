@@ -74,6 +74,8 @@ export const EN: Record<string, string> = {
   'ui.hud.magnet': 'MAGNET',
   'ui.hud.overload': 'OVERLOAD',
   'ui.hud.bossIncoming': '⚠ BOSS WAVE ⚠',
+  'ui.hud.runSidebar.collapse': 'Collapse',
+  'ui.hud.runSidebar.expand': 'Expand',
 
   // ── Card overlay (draft) ─────────────────────────────────────────────
   'ui.cards.empty': 'No more upgrade cards — hit "Continue".',
