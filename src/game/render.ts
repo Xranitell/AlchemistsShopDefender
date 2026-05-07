@@ -392,15 +392,17 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.restore();
   }
 
-  // Drop shadow. The painted stand is now planted directly on the rune
-  // (PAINTED_TURRET_LIFT_Y = 0), so the shadow sits just under the
-  // pedestal as a normal floor cast instead of a "floating" projection.
+  // Drop shadow. The painted stand is dropped past the rune centre so
+  // the pedestal base lands on the iso-front edge of the chalk circle
+  // (see PAINTED_TURRET_LIFT_Y); the shadow follows the body so it
+  // hugs the pedestal instead of floating behind it on the rune.
   const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
   const willPaint = isPaintedTurretSheetReady();
   const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
   const shadowH = willPaint ? 9 : 7;
   const shadowAlpha = willPaint ? 0.32 : 0.42;
-  drawShadow(ctx, t.pos.x, t.pos.y + 6, shadowW, shadowH, shadowAlpha);
+  const shadowY = willPaint ? t.pos.y - PAINTED_TURRET_LIFT_Y + 4 : t.pos.y + 6;
+  drawShadow(ctx, t.pos.x, shadowY, shadowW, shadowH, shadowAlpha);
 
   // Base glow (cached halo to avoid per-frame gradient allocation).
   drawRadialGlow(
@@ -465,10 +467,12 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
   }
 
   // Level pips: small brass dots beneath the pedestal base, on the
-  // floor. Painted pedestals are now planted directly on the rune
-  // (PAINTED_TURRET_LIFT_Y = 0), so pips render just under the cast
+  // floor. Painted pedestals are dropped past the rune centre, so pips
+  // shift down by the same amount and land just under the cast
   // shadow; the pixel-art fallback keeps its tighter offset.
-  const pipY = willPaint ? Math.round(t.pos.y + 16) : t.pos.y + 29;
+  const pipY = willPaint
+    ? Math.round(t.pos.y - PAINTED_TURRET_LIFT_Y + 2)
+    : t.pos.y + 29;
   for (let i = 0; i < t.level; i++) {
     ctx.fillStyle = COLORS.brassHi;
     ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);

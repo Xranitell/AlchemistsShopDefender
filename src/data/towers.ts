@@ -30,25 +30,32 @@ export const TOWERS: Record<string, TowerKind> = {
     id: 'mortar',
     name: 'Алхимическая мортира',
     cost: 130,
-    damage: 48,
-    // Long arc: outranges every other turret so the splash zone can
-    // cover most of an entrance corridor from the back rune.
-    range: 360,
+    // Base hit damage cut 30% from the previous 48 — the mortar's
+    // strength now lives in its arena-spanning targeting reach, not
+    // in raw shell damage.
+    damage: 34,
+    // Arena-spanning targeting range: the mortar can shoot ANY enemy
+    // on the map regardless of where it sits on the dais. The 1280×720
+    // arena's diagonal is ~1469 px, so 1500 px guarantees every spawn
+    // is in range. The shell still arcs and travels visibly, so a
+    // far-side target gets a long flight time — the player reads the
+    // shell crossing the screen and can plan around it.
+    range: 1500,
     // One shot every ~6.7 seconds (half the previous cadence). The
-    // mortar is now an arena-scale siege piece — it fires very rarely,
-    // but every shell wipes the entire battlefield, so the long
-    // cooldown keeps it from trivialising waves.
+    // mortar is a siege piece: it fires very rarely, but every shell
+    // can land anywhere on the map, so the long cooldown keeps it
+    // from trivialising waves.
     fireRate: 0.15,
     // Slow shell so the player can read it travelling — important
-    // visual since the splash can wipe an entire wave when it lands.
+    // visual since the splash can wipe a packed cluster when it lands.
     projectileSpeed: 320,
-    // Arena-spanning splash. The 1280×720 arena's diagonal is
-    // ~1469 px, so 1500 ensures every enemy on the map is caught
-    // in the blast regardless of where the mortar fires from.
-    splashRadius: 1500,
+    // Localised splash — back to the original 140 px (the user wants
+    // arena-wide *targeting reach*, not arena-wide explosions). A 140-px
+    // blast still hits a tight cluster of enemies near the impact.
+    splashRadius: 140,
     element: 'fire',
     color: '#ff8c5a',
-    desc: 'Стреляет очень редко, но взрыв накрывает всю карту. Идеальна против больших волн.',
+    desc: 'Бьёт по всей карте, но редко. Локальный взрыв при попадании — идеальна для точечного удара по дальним угрозам.',
   },
   mercury_sprayer: {
     id: 'mercury_sprayer',

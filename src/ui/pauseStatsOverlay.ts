@@ -679,9 +679,9 @@ function abilityLabel(ab: string): string {
     case 'split_on_death': return tWithFallback('ui.pause.ability.split', 'Деление при смерти');
     case 'dash_back_on_hit': return tWithFallback('ui.pause.ability.dash', 'Рывок назад при ударе');
     case 'one_hit_shield': return tWithFallback('ui.pause.ability.shield', 'Одноразовый щит');
-    case 'explode_on_death': return tWithFallback('ui.pause.ability.explode', 'Взрыв при смерти');
+    case 'explode_on_death': return tWithFallback('ui.pause.ability.explode', 'EMP-выброс при смерти');
     case 'aura_heal': return tWithFallback('ui.pause.ability.aura_heal', 'Аура лечения');
-    case 'zigzag_dash': return tWithFallback('ui.pause.ability.zigzag_dash', 'Зигзагообразные рывки');
+    case 'zigzag_dash': return tWithFallback('ui.pause.ability.zigzag_dash', 'Резкий рывок вперёд');
     case 'disable_tower_on_contact': return tWithFallback('ui.pause.ability.disable_tower_on_contact', 'EMP на стойках');
     case 'stun_towers_on_death': return tWithFallback('ui.pause.ability.stun_towers_on_death', 'EMP-импульс при смерти');
     // Unknown ability id — fall back to the generic `ui.ability.<id>`

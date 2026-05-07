@@ -65,11 +65,20 @@ export function animatedSpriteIcon(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'medium';
 
-  // Frame slot size: scale the painted body so its row height fills
-  // the requested fraction of the canvas. Width then follows from the
-  // frame's own `sw` (frames have variable widths).
-  const renderedH = height * fitScale;
-  const scale = renderedH / row.sh;
+  // Frame slot size: scale the painted body so it fits inside the
+  // requested fraction of the canvas on BOTH axes. Some painted rows
+  // (e.g. the slime walk-cycle's stretched mid-frames at sw=260) are
+  // significantly wider than the row's height, so a height-only scale
+  // would clip the body horizontally. We therefore take the minimum of
+  // (height-fit, width-fit-against-the-widest-frame) and use that as
+  // the uniform scale, then fall back to bottom-anchoring at the
+  // resulting rendered height.
+  let maxFrameW = row.sh;
+  for (const f of row.frames) if (f.sw > maxFrameW) maxFrameW = f.sw;
+  const heightLimit = (height * fitScale) / row.sh;
+  const widthLimit = (width * fitScale) / maxFrameW;
+  const scale = Math.min(heightLimit, widthLimit);
+  const renderedH = row.sh * scale;
 
   const drawFrameAt = (frameIdx: number): void => {
     const frames = row.frames;

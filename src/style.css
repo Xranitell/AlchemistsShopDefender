@@ -12570,6 +12570,23 @@ body {
     0 14px 50px rgba(255, 174, 58, 0.4),
     0 0 32px rgba(255, 209, 102, 0.4);
 }
+/* Dramatic-stage backdrop — the rays / sparks / sigil decoration is
+ * promoted to fill the entire panel as a soft background layer instead
+ * of taking flow height at the top. The bestiary panel was previously
+ * losing ~96 px of vertical space to the stage banner, which pushed the
+ * scroll area uncomfortably low. The header / body / corner accents
+ * sit on z-index 2/3, so dropping the stage to z-index 0 keeps the
+ * decoration visible behind every column without competing for space. */
+.diary-panel > .mp-stage {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  border-radius: inherit;
+}
+
 .diary-panel::before,
 .diary-panel::after {
   content: '';
