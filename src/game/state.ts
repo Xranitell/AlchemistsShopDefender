@@ -104,6 +104,23 @@ export interface Enemy {
   /** Golem-only: seconds remaining until the one-hit shield regenerates
    *  another charge (epic / ancient only). 0 when no regen is queued. */
   shieldRegenTimer: number;
+  /** Rat-only (when carrying `zigzag_dash`): seconds until the next
+   *  zig-zag impulse. While `zigzagTimer > 0` the rat moves along
+   *  `zigzagDir` perpendicular to the manequin axis instead of
+   *  straight at it. */
+  zigzagTimer: number;
+  /** Direction multiplier for the active zig-zag burst (+1 = right,
+   *  -1 = left). Flipped at the end of each burst so the rat alternates
+   *  side every dash, producing the visible zig-zag pattern. */
+  zigzagDir: 1 | -1;
+  /** Cooldown until the next zig-zag burst can start. Lets the player
+   *  see distinct dashes instead of a continuous wave. */
+  zigzagCooldown: number;
+  /** Sapper-only (Эпический+ when carrying `disable_tower_on_contact`):
+   *  the tower-id this sapper has latched onto. -1 when not latched.
+   *  While latched the sapper freezes in place, drains the tower's
+   *  `disabledTimer`, and detonates after the regular fuse expires. */
+  attachedTowerId: number;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';
@@ -166,6 +183,11 @@ export interface Tower {
   /** Which enemy this tower picks out of candidates in range. Default 'nearest'
    * = closest to mannequin, matching the historical behaviour. */
   targetingMode: TargetingMode;
+  /** Seconds the tower is offline. While `disabledTimer > 0` the tower
+   *  cannot acquire targets or fire — currently driven by Эпический+
+   *  sapper EMP attaches and golem death pulses. The renderer paints a
+   *  glitch / sparks overlay while disabled so the silence is legible. */
+  disabledTimer: number;
 }
 
 /** Type of a rune point (GDD §7.4). Each kind grants a distinct in-run

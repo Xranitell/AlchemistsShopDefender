@@ -5,7 +5,7 @@ import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
-import { abilityTierFor, type EnemyAbility } from '../data/difficulty';
+import { abilityTierFor, EPIC_ONLY_ENEMY_ABILITIES, type EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
@@ -271,7 +271,21 @@ export function spawnEnemy(
 ): void {
   const mod = state.difficultyModifier;
   let maxHp = Math.round(kind.hp * mod.hpMult * waveHpScale(state));
-  const abilities = pickEnemyAbilities(kind.id, mod.abilities);
+  // Tier the abilities scale on. Epic amplifies the base behaviour
+  // (more children on split, larger explosion, etc.); Ancient layers an
+  // extra mechanic on top (children can split once more, exploded
+  // flasks drop a poison pool, etc.). Defaults to `base` for normal /
+  // endless / daily so every monster still gets its signature ability.
+  const tier = abilityTierFor(state.difficulty);
+  // Эпический+ gives every kind its base abilities AND any kind-specific
+  // epic ability on top — sapper EMP, golem stun pulse, etc. The base
+  // pool already comes from the mode's modifier; we just append the
+  // epic-only pool when the tier qualifies and let `pickEnemyAbilities`
+  // filter to abilities that apply to this enemy kind.
+  const abilityPool = tier === 'epic' || tier === 'ancient'
+    ? [...mod.abilities, ...EPIC_ONLY_ENEMY_ABILITIES]
+    : mod.abilities;
+  const abilities = pickEnemyAbilities(kind.id, abilityPool);
   // Homunculus enters phase 1 and starts summoning minions every 4 sec.
   const isHomunculus = kind.id === 'boss_homunculus';
 
@@ -283,12 +297,6 @@ export function spawnEnemy(
     maxHp = Math.round(maxHp * 0.7);
   }
 
-  // Tier the abilities scale on. Epic amplifies the base behaviour
-  // (more children on split, larger explosion, etc.); Ancient layers an
-  // extra mechanic on top (children can split once more, exploded
-  // flasks drop a poison pool, etc.). Defaults to `base` for normal /
-  // endless / daily so every monster still gets its signature ability.
-  const tier = abilityTierFor(state.difficulty);
   // Golems start with one shield charge plus a second one on Ancient,
   // matching the "ancient mechanics" tier promise on the difficulty
   // preview text.
@@ -340,6 +348,14 @@ export function spawnEnemy(
       ? 0.5 + state.rng.range(0, 1.0)
       : 0,
     shieldRegenTimer: 0,
+    // Zig-zag dash bookkeeping. The cooldown is staggered so a pack of
+    // rats spawned together don't all dash on the same frame.
+    zigzagTimer: 0,
+    zigzagDir: state.rng.range(0, 1) < 0.5 ? -1 : 1,
+    zigzagCooldown: abilities.includes('zigzag_dash')
+      ? 0.6 + state.rng.range(0, 0.9)
+      : 0,
+    attachedTowerId: -1,
   });
 }
 
@@ -378,6 +394,19 @@ function pickEnemyAbilities(kindId: string, abilities: EnemyAbility[]): EnemyAbi
         break;
       case 'aura_heal':
         if (kindId === 'shaman') out.push(a);
+        break;
+      case 'zigzag_dash':
+        // Rats and the rat-king both move in zig-zag — the boss reads
+        // as a giant version of the same pattern, so the player's
+        // existing intuition for "this thing weaves left/right"
+        // carries over to the wave it shows up on.
+        if (kindId === 'rat' || kindId === 'boss_rat_king') out.push(a);
+        break;
+      case 'disable_tower_on_contact':
+        if (kindId === 'sapper') out.push(a);
+        break;
+      case 'stun_towers_on_death':
+        if (kindId === 'golem') out.push(a);
         break;
     }
   }

@@ -561,6 +561,7 @@ export const EN: Record<string, string> = {
   'tutorial.menu-shop': 'Brewer. Turn ingredients you find in runs into potions and bring up to 4 of them into your next run. Click the card to open.',
   'tutorial.menu-laboratory': 'Talent laboratory — permanent upgrades bought with blue and ancient essence. Bonuses apply to every future run.',
   'tutorial.menu-loadout': 'Mannequin loadout. Pick one active module (Overload) and one passive aura — one of each.',
+  'tutorial.menu-diary': 'Alchemist\u2019s Diary. Three tabs — Alchemy (elements & reactions), Bestiary (enemies and their abilities, unlocked as you kill them) and Stances (tower stats). Drop in here to prep for tougher waves.',
   'tutorial.menu-leaderboard': 'Leaderboards. See how far other players got in your mode and in the daily challenge.',
   'tutorial.menu-daily': 'Daily rewards. Come back each day — gold, keys and essence for completed days. The "Claim!" button is live while the "!" badge is showing.',
   'tutorial.menu-battle': 'Ready? Hit "TO BATTLE" to pick a difficulty and start a run. Good luck!',

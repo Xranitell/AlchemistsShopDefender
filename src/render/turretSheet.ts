@@ -188,3 +188,68 @@ export function getTurretFootprint(
   const frame = TURRET_FRAMES[idx]!;
   return { width: frame.sw * scale, height: frame.sh * scale };
 }
+
+/** Returns an `HTMLCanvasElement` with the painted turret body fitted
+ *  into a `size × size` box. The painted frame is scaled so its longer
+ *  side fills `size * fitScale`, then centred horizontally and
+ *  vertically within the canvas. Used by the Alchemist's Diary to show
+ *  the actual game sprite for each tower (instead of a placeholder
+ *  pixel-art icon).
+ *
+ *  When the painted sheet has not finished loading yet, the canvas is
+ *  returned empty and a `load` listener is attached that paints the
+ *  turret as soon as the PNG resolves — same lazy-paint pattern as
+ *  `animatedSpriteIcon`. The canvas always returns immediately so the
+ *  DOM layout is stable. */
+export function paintedTurretIcon(
+  kindId: string,
+  size: number,
+  opts: { fitScale?: number; extraClass?: string; title?: string } = {},
+): HTMLCanvasElement {
+  const idx = TURRET_KIND_TO_FRAME[kindId];
+  const frame = idx != null ? TURRET_FRAMES[idx] : undefined;
+  const fitScale = opts.fitScale ?? 0.94;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.className = ('turret-icon ' + (opts.extraClass ?? '')).trim();
+  if (opts.title) canvas.title = opts.title;
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+
+  if (!frame) return canvas;
+
+  const paint = (): void => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, size, size);
+    // Fit the painted body into the icon canvas, preserving aspect ratio
+    // and reserving `(1 - fitScale)` worth of padding on every side.
+    const targetH = size * fitScale;
+    const targetW = size * fitScale;
+    const scale = Math.min(targetW / frame.sw, targetH / frame.sh);
+    const drawW = frame.sw * scale;
+    const drawH = frame.sh * scale;
+    const dx = (size - drawW) / 2;
+    const dy = (size - drawH) / 2;
+    const prevSmooth = ctx.imageSmoothingEnabled;
+    const prevQuality = ctx.imageSmoothingQuality;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'medium';
+    ctx.drawImage(
+      turretSheet.image,
+      frame.sx, frame.sy, frame.sw, frame.sh,
+      dx, dy, drawW, drawH,
+    );
+    ctx.imageSmoothingEnabled = prevSmooth;
+    ctx.imageSmoothingQuality = prevQuality;
+  };
+
+  if (isSheetReady(turretSheet)) {
+    paint();
+  } else {
+    onTurretSheetLoad(paint);
+  }
+  return canvas;
+}

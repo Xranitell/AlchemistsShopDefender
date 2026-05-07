@@ -12550,13 +12550,16 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  width: min(98vw, 1280px);
-  max-height: 94dvh;
+  /* Stable size that does not change between tabs. Caps at 98vw / 94dvh
+   * but otherwise the panel locks to a fixed 1320×860 logical size so
+   * switching Алхимия → Бестиарий → Стойки does not reflow the window. */
+  width: min(98vw, 1320px);
+  height: min(94dvh, 860px);
   display: flex;
   flex-direction: column;
   border: 3px solid var(--diary-edge);
   border-radius: 14px;
-  padding: 22px 22px 18px;
+  padding: 14px 22px 16px;
   background:
     radial-gradient(ellipse at top, rgba(255, 174, 58, 0.22) 0%, transparent 58%),
     linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
@@ -12592,14 +12595,15 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
+  padding-top: 0;
 }
 .diary-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 22px;
+  font-size: 20px;
   letter-spacing: 2px;
   color: var(--diary-edge);
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
   text-transform: uppercase;
   text-shadow:
     -2px -2px 0 #1a0608, 2px -2px 0 #1a0608,
@@ -12608,12 +12612,12 @@ body {
 }
 .diary-tagline {
   font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--diary-glow);
   text-shadow: 0 0 8px color-mix(in srgb, var(--diary-glow) 55%, transparent);
-  margin: 2px 0 0;
+  margin: 1px 0 0;
 }
 .diary-close {
   position: absolute;
@@ -12642,7 +12646,7 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 180px 1fr 320px;
+  grid-template-columns: 160px 1fr 340px;
   gap: 14px;
   overflow: hidden;
 }
@@ -12651,7 +12655,12 @@ body {
   display: flex;
   flex-direction: column;
 }
-.diary-col-tabs { gap: 8px; }
+/* Tabs column: stretch tabs to fill the full body height — three tabs
+ * split the column evenly so each is a tall icon-over-label tile. */
+.diary-col-tabs {
+  gap: 10px;
+  height: 100%;
+}
 .diary-col-entries {
   overflow-y: auto;
   padding-right: 4px;
@@ -12670,12 +12679,17 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.25);
 }
 
-/* Tabs */
+/* Tabs — vertical tiles with a glyph on top and the label below. Each
+ * tab gets `flex: 1` so the three tabs split the tabs-column height
+ * evenly, regardless of which tab is active. */
 .diary-tab {
   display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 10px;
   border: 2px solid rgba(255, 209, 102, 0.45);
   border-radius: 10px;
   background:
@@ -12687,6 +12701,7 @@ body {
   text-transform: uppercase;
   cursor: pointer;
   transition: transform 90ms ease, filter 90ms ease, border-color 120ms ease;
+  min-height: 0;
 }
 .diary-tab:hover {
   filter: brightness(1.1);
@@ -12702,10 +12717,15 @@ body {
     0 0 12px rgba(255, 174, 58, 0.4);
 }
 .diary-tab-glyph {
-  font-size: 18px;
-  filter: drop-shadow(0 0 4px rgba(255, 174, 58, 0.45));
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(255, 174, 58, 0.45));
 }
-.diary-tab-label { flex: 1; text-align: left; }
+.diary-tab-label {
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
 
 /* Entry grid */
 .diary-grid {
@@ -12720,7 +12740,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 8px 12px;
   border: 2px solid color-mix(in srgb, var(--diary-accent) 50%, #2a1f3c);
   border-radius: 10px;
@@ -12744,12 +12764,20 @@ body {
     0 0 14px color-mix(in srgb, var(--diary-accent) 40%, transparent);
 }
 .diary-entry-icon {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Container is wider than the rendered sprite, so the painted body
+   * never touches the card edges and the silhouettes are not clipped. */
+  padding: 6px;
+  box-sizing: border-box;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--diary-accent) 30%, transparent));
+}
+.diary-entry-icon > .diary-sprite {
+  max-width: 100%;
+  max-height: 100%;
 }
 .diary-entry-glyph {
   font-size: 36px;
@@ -12923,34 +12951,73 @@ body {
   transition: width 240ms ease;
 }
 
-/* Compact layout for narrow screens — collapse the info side panel
- * onto a third row beneath the entry grid. The tabs column shrinks to
- * an icon-and-label strip. */
-@media (max-width: 900px) {
+/* Tablet / small desktop — info panel moves under the grid, tabs stay
+ * on the left as a tall column of icon-over-label tiles. */
+@media (max-width: 1024px) {
   .diary-body {
-    grid-template-columns: 140px 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 130px 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
   .diary-col-info {
     grid-column: 1 / -1;
-    max-height: 30dvh;
+    max-height: 32dvh;
   }
-  .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (max-width: 600px) {
-  .diary-panel { padding: 14px 12px 12px; }
-  .diary-title { font-size: 16px; }
-  .diary-tagline { font-size: 8px; }
+
+/* Mobile portrait / narrow phones — single-column flow with tabs as a
+ * horizontal scroll strip across the top so the entry grid gets the
+ * full width and the info panel sits beneath it. */
+@media (max-width: 720px) {
+  .diary-overlay { padding: 8px; }
+  .diary-panel {
+    padding: 10px 12px 12px;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+  .diary-title { font-size: 14px; letter-spacing: 1px; }
+  .diary-tagline { font-size: 8px; letter-spacing: 1px; }
+  .diary-head { margin-bottom: 6px; }
+  .diary-close { width: 28px; height: 28px; font-size: 18px; }
   .diary-body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
   }
   .diary-col-tabs {
     flex-direction: row;
     overflow-x: auto;
     gap: 6px;
     padding-bottom: 4px;
+    height: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  .diary-tab { flex: 0 0 auto; padding: 8px 10px; font-size: 9px; }
-  .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diary-tab {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+  .diary-tab-glyph { font-size: 18px; }
+  .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .diary-col-info {
+    max-height: 36dvh;
+    padding: 10px;
+  }
+  .diary-entry-icon { width: 60px; height: 60px; }
+  .diary-info-sprite { width: 80px; height: 80px; }
+  .diary-info-name { font-size: 12px; }
+}
+
+/* Very small / landscape phones — squeeze tighter so the diary still
+ * fits without horizontal scrolling. */
+@media (max-width: 480px) {
+  .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .diary-entry { padding: 8px 6px 10px; min-height: 92px; }
+  .diary-entry-icon { width: 52px; height: 52px; padding: 2px; }
+  .diary-entry-name { font-size: 9px; letter-spacing: 0.4px; }
 }

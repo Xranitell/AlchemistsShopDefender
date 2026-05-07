@@ -246,6 +246,13 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     dismiss: { kind: 'next' },
   },
   {
+    id: 'menu-diary',
+    trigger: { kind: 'mainMenuOpen' },
+    text: 'Дневник алхимика. Три вкладки — Алхимия (стихии и реакции), Бестиарий (враги и их способности, открываются по мере убийств) и Стойки (характеристики башен). Заглядывай сюда, чтобы готовиться к новым волнам.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="menu-diary"]', arrow: 'left' },
+    dismiss: { kind: 'next' },
+  },
+  {
     id: 'menu-leaderboard',
     trigger: { kind: 'mainMenuOpen' },
     text: 'Лидерборды. Тут видно, как далеко зашли другие игроки в твоём режиме и в ежедневном испытании.',
