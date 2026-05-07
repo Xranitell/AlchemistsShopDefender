@@ -16,7 +16,13 @@ import {
 } from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
-import { drawTurret, getTurretFootprint, PAINTED_TURRET_SCALE } from '../render/turretSheet';
+import {
+  drawTurret,
+  getTurretFootprint,
+  PAINTED_TURRET_LIFT_Y,
+  PAINTED_TURRET_SCALE,
+  isPaintedTurretSheetReady,
+} from '../render/turretSheet';
 import {
   drawFirePool,
   drawPixelFloatingText,
@@ -37,6 +43,7 @@ import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import { applyBloom } from '../render/bloom';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
+import { getAurasBuffing } from './tower';
 
 function difficultyAuraColor(mode: DifficultyMode): string | null {
   if (mode === 'normal') return null;
@@ -374,11 +381,18 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
-    // Drop shadow under base. The painted turret stands have wider
-    // pedestals than the old pixel-art bases, so size the shadow off
-    // the painted footprint when the painted sheet is in use.
+    // Drop shadow under base. Painted stands are drawn lifted off the
+    // floor (see PAINTED_TURRET_LIFT_Y), so the shadow stays at the
+    // rune position to read as a cast on the floor below the floating
+    // stand. The shadow grows slightly + softens when lifted so it
+    // reads as a projection rather than a footprint.
     const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
-    drawShadow(ctx, t.pos.x, t.pos.y + 4, painted.width * 0.42, 7, 0.42);
+    const willPaint = isPaintedTurretSheetReady();
+    const liftY = willPaint ? PAINTED_TURRET_LIFT_Y : 0;
+    const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
+    const shadowH = willPaint ? 9 : 7;
+    const shadowAlpha = willPaint ? 0.32 : 0.42;
+    drawShadow(ctx, t.pos.x, t.pos.y + 6, shadowW, shadowH, shadowAlpha);
 
     // Base glow (cached halo to avoid per-frame gradient allocation).
     drawRadialGlow(
@@ -397,7 +411,9 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     //
     // Falls back to the baked sprite while the painted sheet PNG is
     // still loading so towers don't pop in invisibly on the first
-    // frame after placement.
+    // frame after placement. The painted stand is drawn lifted by
+    // PAINTED_TURRET_LIFT_Y so the rune chalk circle below stays
+    // visible (and clickable for the upgrade popup).
     // Mirror the painted stand so non-aura turrets visually face away
     // from the mannequin: stands on the right of the dais point right,
     // stands on the left point left. Aura towers (Сторожевой фонарь)
@@ -408,7 +424,7 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     const usingPainted = drawTurret(
       ctx,
       t.pos.x,
-      t.pos.y,
+      t.pos.y - liftY,
       t.kind.id,
       { scale: TOWER_PAINTED_SCALE, flipX: facesAwayLeft },
     );
@@ -425,12 +441,13 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
 
     // Painted-mode "tower top" anchor — the painted stand is drawn
-    // bottom-anchored at (pos.x, pos.y), so the machinery on top lands
-    // at roughly y - painted.height. Procedural sparkles / flames /
-    // muzzle flashes that previously sat on top of the small pixel-art
-    // sprite need to be lifted by the same amount when the painted
-    // sheet is in use; baked-fallback frames keep the original offsets.
-    const topY = usingPainted ? t.pos.y - painted.height + 12 : t.pos.y - 6;
+    // bottom-anchored at (pos.x, pos.y - liftY), so the machinery on
+    // top lands at roughly y - liftY - painted.height. Procedural
+    // sparkles / flames / muzzle flashes that previously sat on top of
+    // the small pixel-art sprite need to be lifted by the same amount
+    // when the painted sheet is in use; baked-fallback frames keep the
+    // original offsets.
+    const topY = usingPainted ? t.pos.y - liftY - painted.height + 12 : t.pos.y - 6;
     const muzzleReach = usingPainted ? Math.max(28, painted.width * 0.55) : 24;
 
     // Эфирная катушка: pulsing arcane halo above the coil to read it as
@@ -474,6 +491,48 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.restore();
     }
 
+    // Сторожевой фонарь buff indicator: every tower currently within a
+    // lantern's K-nearest set gets a small floor halo + a faint warm
+    // pulse around its pedestal so the player can read at a glance who
+    // is being amplified. Skip aura towers themselves (they're the
+    // source). The halo colour matches the lantern's flame so the link
+    // is visually obvious. The work is gated on `getAurasBuffing`
+    // returning a non-empty list so the common no-lantern case is free.
+    if (t.kind.behavior !== 'aura') {
+      const sources = getAurasBuffing(state, t.id);
+      if (sources.length > 0) {
+        const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 209, 102, ${0.32 + pulse * 0.18})`;
+        ctx.lineWidth = 1.5;
+        const haloR = Math.max(22, painted.width * 0.42);
+        ctx.beginPath();
+        ctx.ellipse(t.pos.x, t.pos.y + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        // Soft inner fill so the halo reads even on busy biome floors.
+        ctx.fillStyle = `rgba(255, 230, 163, ${0.06 + pulse * 0.04})`;
+        ctx.beginPath();
+        ctx.ellipse(t.pos.x, t.pos.y + 4, haloR * 0.85, haloR * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Two tiny "fireflies" rotating around the lifted body to read
+        // as captured aura motes when the painted lantern is on screen.
+        if (usingPainted) {
+          const orbitR = haloR * 0.38;
+          const ang = state.worldTime * 1.6 + t.id;
+          const bodyY = t.pos.y - liftY - painted.height * 0.5;
+          ctx.fillStyle = '#ffd166';
+          ctx.globalAlpha = 0.75;
+          for (let k = 0; k < 2; k++) {
+            const a = ang + k * Math.PI;
+            const fx = Math.round(t.pos.x + Math.cos(a) * orbitR);
+            const fy = Math.round(bodyY + Math.sin(a) * orbitR * 0.5);
+            ctx.fillRect(fx - 1, fy - 1, 3, 3);
+          }
+        }
+        ctx.restore();
+      }
+    }
+
     // Muzzle flash when recently fired. Anchored to the painted-tower
     // top (where the barrel / spout actually sits) when painted, or
     // the pixel-art barrel y when falling back.
@@ -491,9 +550,11 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
 
     // Level pips: small brass dots beneath the base. Painted pedestals
-    // have a wider footprint, so the pips are spread proportionally;
-    // baked-fallback rendering uses the original tight 8 px spacing.
-    const pipY = usingPainted ? Math.round(t.pos.y + 6) : t.pos.y + 29;
+    // are now drawn lifted off the floor — keep the pips by the rune
+    // (just below the cast shadow) so they read as a label for the rune
+    // slot itself; baked-fallback rendering keeps the tight 8 px spacing
+    // hugging the small pixel sprite's base.
+    const pipY = usingPainted ? Math.round(t.pos.y + 16) : t.pos.y + 29;
     for (let i = 0; i < t.level; i++) {
       ctx.fillStyle = COLORS.brassHi;
       ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);

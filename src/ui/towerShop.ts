@@ -1,6 +1,14 @@
 import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost, towerName } from '../data/towers';
 import type { GameState } from '../game/state';
-import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower, sellTower } from '../game/tower';
+import {
+  buyTower,
+  countTowersOfKind,
+  cycleTargetingMode,
+  sellTower,
+  targetingModeLabel,
+  upgradeTower,
+  WATCH_TOWER_BUILD_LIMIT,
+} from '../game/tower';
 import { placePopupNearAnchor } from './popupPlacement';
 import { t } from '../i18n';
 
@@ -69,14 +77,25 @@ export class TowerShop {
         const displayCost = Math.ceil(
           baseCost * archmasterMult * this.state.modifiers.towerCostMult,
         );
-        right.textContent = archmaster
-          ? t('ui.tower.cost.archmaster', { n: displayCost })
-          : (discount > 0
-              ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
-              : t('ui.tower.cost.plain', { n: displayCost }));
+        // Сторожевой фонарь: only one lantern allowed per run (see
+        // WATCH_TOWER_BUILD_LIMIT). Once purchased the card stays
+        // visible for affordance but is disabled and shows the cap as
+        // its cost text instead of a price.
+        const atLanternCap =
+          kind.id === 'watch_tower'
+          && countTowersOfKind(this.state, 'watch_tower') >= WATCH_TOWER_BUILD_LIMIT;
+        if (atLanternCap) {
+          right.textContent = t('ui.tower.cost.cap', { n: WATCH_TOWER_BUILD_LIMIT });
+        } else {
+          right.textContent = archmaster
+            ? t('ui.tower.cost.archmaster', { n: displayCost })
+            : (discount > 0
+                ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
+                : t('ui.tower.cost.plain', { n: displayCost }));
+        }
         btn.appendChild(left);
         btn.appendChild(right);
-        btn.disabled = this.state.gold < displayCost;
+        btn.disabled = atLanternCap || this.state.gold < displayCost;
         btn.addEventListener('click', () => {
           if (!this.state) return;
           const ok = buyTower(this.state, runePointId, kind.id);

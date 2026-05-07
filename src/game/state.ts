@@ -91,6 +91,19 @@ export interface Enemy {
    *  paths (projectile, DoT tick, sapper explosion, reaction) so the run
    *  contract counters can attribute the killing blow's element. */
   lastHitElement: Element;
+  /** Strength tier for the enemy's signature ability. `base` keeps the
+   *  default mechanics, `epic` amplifies them (more children on split,
+   *  bigger explosion radius, etc.) and `ancient` adds an extra layer
+   *  on top (split children also split, exploding flasks leave a
+   *  poison pool, etc.). Set once at spawn time from the active
+   *  difficulty (see `abilityTierFor`). */
+  abilityTier: 'base' | 'epic' | 'ancient';
+  /** Shaman-only: seconds until the next aura-heal pulse. The pulse
+   *  itself is handled in `enemy.ts` once the timer hits zero. */
+  auraHealTimer: number;
+  /** Golem-only: seconds remaining until the one-hit shield regenerates
+   *  another charge (epic / ancient only). 0 when no regen is queued. */
+  shieldRegenTimer: number;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';

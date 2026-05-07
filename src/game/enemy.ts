@@ -81,6 +81,55 @@ export function updateEnemies(state: GameState, dt: number): void {
       e.dashBackTimer -= dt;
     }
 
+    // Shield-regen tick (golems / boss rat-king on Epic / Ancient): when
+    // the timer hits zero a fresh shield charge is granted up to the
+    // tier-aware cap (1 on Epic, 2 on Ancient). Base-tier golems never
+    // regenerate.
+    if (e.shieldRegenTimer > 0) {
+      e.shieldRegenTimer -= dt;
+      if (e.shieldRegenTimer <= 0) {
+        const cap = e.abilityTier === 'ancient' ? 2 : 1;
+        if (e.shieldCharges < cap) {
+          e.shieldCharges += 1;
+          spawnFloatingText(state, t('floating.shieldHit'), e.pos, '#ffd166');
+        }
+      }
+    }
+
+    // Aura heal (shamans): pulse a small heal to nearby allied enemies
+    // every ~1.5 s. Tier scales the heal amount and pulse radius; Ancient
+    // also briefly buffs nearby allies' speed so the cluster around a
+    // shaman feels noticeably more aggressive.
+    if (e.abilities.includes('aura_heal') && e.hp > 0) {
+      e.auraHealTimer -= dt;
+      if (e.auraHealTimer <= 0) {
+        const auraR =
+          e.abilityTier === 'ancient' ? 130 : e.abilityTier === 'epic' ? 110 : 90;
+        const heal =
+          e.abilityTier === 'ancient' ? 8 : e.abilityTier === 'epic' ? 6 : 4;
+        let healed = 0;
+        for (const ally of state.enemies) {
+          if (ally.id === e.id) continue;
+          if (ally.hp <= 0) continue;
+          if (ally.hp >= ally.maxHp) continue;
+          const dx = ally.pos.x - e.pos.x;
+          const dy = ally.pos.y - e.pos.y;
+          if (dx * dx + dy * dy > auraR * auraR) continue;
+          ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+          healed += 1;
+          // Ancient: brief speed buff layered on top of the heal.
+          if (e.abilityTier === 'ancient') {
+            ally.status.slowFactor = Math.max(ally.status.slowFactor, 1.15);
+            ally.status.slowTime = Math.max(ally.status.slowTime, 1.2);
+          }
+        }
+        if (healed > 0) {
+          spawnFloatingText(state, `+${heal}`, e.pos, '#7fc97f');
+        }
+        e.auraHealTimer = 1.5;
+      }
+    }
+
     // ── Elite modifier ticks ──
     // Regenerating: +5 HP/sec up to 50 % max HP.
     if (e.elite === 'regenerating' && e.hp < e.maxHp * 0.5) {
@@ -592,14 +641,21 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   cs.killsByElement[e.lastHitElement] = (cs.killsByElement[e.lastHitElement] ?? 0) + 1;
   if (e.kind.isBoss) cs.bossKills += 1;
 
-  // Split-on-death: spawn N smaller slimes (2 the first generation, 1 the
-  // second) at the death position. Offspring inherit abilities but cannot
-  // split themselves beyond generation 2.
-  if (e.abilities.includes('split_on_death') && e.splitGeneration < 2) {
-    const count = e.splitGeneration === 0 ? 2 : 1;
+  // Split-on-death: spawn N smaller slimes at the death position. Tier
+  // controls the children count and how deep splits chain — Ancient lets
+  // the first generation of children also split once more (max gen 2),
+  // base / Epic only allows generation 0 to split.
+  const splitMaxGen = e.abilityTier === 'ancient' ? 2 : 1;
+  if (e.abilities.includes('split_on_death') && e.splitGeneration < splitMaxGen) {
+    const baseCount =
+      e.abilityTier === 'epic'
+        ? (e.splitGeneration === 0 ? 3 : 2)
+        : e.abilityTier === 'ancient'
+        ? (e.splitGeneration === 0 ? 3 : 2)
+        : (e.splitGeneration === 0 ? 2 : 1);
     const slime = ENEMIES['slime'];
     if (slime) {
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < baseCount; i++) {
         const angle = state.rng.range(0, Math.PI * 2);
         const r = 14 + state.rng.range(0, 8);
         const pos = {
@@ -611,18 +667,25 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
     }
   }
 
-  // Explode-on-death: do a small fire-pool-less radial damage burst.
+  // Explode-on-death: small radial burst that tier scales. Epic
+  // amplifies radius and damage, Ancient additionally leaves a 3 s
+  // poison pool that ticks the hero / nearby ally enemies.
   if (e.abilities.includes('explode_on_death')) {
-    const radius = 60;
+    const radius =
+      e.abilityTier === 'epic' ? 100 : e.abilityTier === 'ancient' ? 120 : 60;
+    const enemyDmg =
+      e.abilityTier === 'epic' ? 10 : e.abilityTier === 'ancient' ? 14 : 6;
+    const heroBaseDmg =
+      e.abilityTier === 'epic' ? 7 : e.abilityTier === 'ancient' ? 10 : 4;
     for (const other of state.enemies) {
       if (other.id === e.id) continue;
       if (dist(other.pos, e.pos) < radius) {
-        applyDamageToEnemy(state, other, 6, 'fire');
+        applyDamageToEnemy(state, other, enemyDmg, 'fire');
       }
     }
     // Damage the hero too if close enough.
     if (dist(state.mannequin.pos, e.pos) < radius) {
-      const raw = Math.max(1, 4 * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor) * takenDamageMultiplier(state));
+      const raw = Math.max(1, heroBaseDmg * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor) * takenDamageMultiplier(state));
       const dmg = absorbWithShield(state, raw);
       state.mannequin.hp -= dmg;
       state.mannequin.damageFlash = 0.22;
@@ -633,6 +696,18 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
         const w = state.waveState.currentIndex + 1;
         state.contractStats.damageInWave[w] = true;
       }
+    }
+    // Ancient: leave a small lingering fire pool so allied enemies
+    // walking through the kill zone get singed and the player has to
+    // dodge or wait for it to clear before retrieving loot.
+    if (e.abilityTier === 'ancient') {
+      state.firePools.push({
+        id: newId(state),
+        pos: { x: e.pos.x, y: e.pos.y },
+        radius: Math.round(radius * 0.6),
+        dps: 5,
+        time: 3,
+      });
     }
   }
 
