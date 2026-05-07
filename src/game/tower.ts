@@ -2,7 +2,7 @@
 import { TOWERS, TOWER_MAX_LEVEL, TOWER_UPGRADE_DAMAGE_MULT, TOWER_UPGRADE_RATE_MULT, towerUpgradeCost, WATCH_TOWER_AURA, ETHER_COIL_CHAIN, towerName } from '../data/towers';
 import type { GameState, TargetingMode, Tower, Enemy } from './state';
 import { newId, spawnFloatingText } from './state';
-import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
+import { fireTowerProjectile, fireMortarShell, applyDamageToEnemy } from './projectile';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
 import { getTurretFireOriginOffsetY } from '../render/turretSheet';
@@ -451,17 +451,14 @@ export function updateTowers(state: GameState, dt: number): void {
       x: t.pos.x,
       y: t.pos.y + getTurretFireOriginOffsetY(t.kind.id),
     };
-    fireTowerProjectile(
-      state,
-      fromPos,
-      target,
-      stats.damage,
-      t.kind.splashRadius,
-      t.kind.projectileSpeed,
-      t.kind.element,
-    );
-    // Synchronized Volley: every 4th shot fires twice.
-    if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
+    if (t.kind.id === 'mortar') {
+      // Mortar fires a parabolic shell — see `fireMortarShell` for the
+      // siege-style impact (flask shockwave + fire pool).
+      fireMortarShell(state, fromPos, target, stats.damage, t.kind.splashRadius, t.kind.element);
+      if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
+        fireMortarShell(state, fromPos, target, stats.damage, t.kind.splashRadius, t.kind.element);
+      }
+    } else {
       fireTowerProjectile(
         state,
         fromPos,
@@ -471,6 +468,18 @@ export function updateTowers(state: GameState, dt: number): void {
         t.kind.projectileSpeed,
         t.kind.element,
       );
+      // Synchronized Volley: every 4th shot fires twice.
+      if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
+        fireTowerProjectile(
+          state,
+          fromPos,
+          target,
+          stats.damage,
+          t.kind.splashRadius,
+          t.kind.projectileSpeed,
+          t.kind.element,
+        );
+      }
     }
   }
 }
