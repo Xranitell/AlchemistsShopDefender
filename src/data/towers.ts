@@ -41,14 +41,14 @@ export const TOWERS: Record<string, TowerKind> = {
     // far-side target gets a long flight time — the player reads the
     // shell crossing the screen and can plan around it.
     range: 1500,
-    // One shot every ~6.7 seconds (half the previous cadence). The
+    // One shot every ~13.3 seconds. The
     // mortar is a siege piece: it fires very rarely, but every shell
     // can land anywhere on the map, so the long cooldown keeps it
     // from trivialising waves.
-    fireRate: 0.15,
+    fireRate: 0.075,
     // Slow shell so the player can read it travelling — important
     // visual since the splash can wipe a packed cluster when it lands.
-    projectileSpeed: 320,
+    projectileSpeed: 320 / 3,
     // Localised splash — back to the original 140 px (the user wants
     // arena-wide *targeting reach*, not arena-wide explosions). A 140-px
     // blast still hits a tight cluster of enemies near the impact.

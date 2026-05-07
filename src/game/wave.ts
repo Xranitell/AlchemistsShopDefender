@@ -68,17 +68,16 @@ export function currentWaveDuration(state: GameState): number {
 /** Length of the prep window shown BEFORE the very first wave of a run.
  *  Gives the player a moment to read the scene, place a starter tower, and
  *  pick a target before slimes arrive. */
-export const INITIAL_PREP_DURATION = 18;
+export const PREP_DURATION = 25;
+export const INITIAL_PREP_DURATION = PREP_DURATION;
 
 /** Configured length of the upcoming pause (used while the game is in the
  *  'preparing' phase). Falls back to a sensible default when no wave has run
  *  yet (e.g. just after starting a new run). */
 export function currentPauseDuration(state: GameState): number {
   const idx = state.waveState.currentIndex;
-  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, INITIAL_PREP_DURATION);
-  const waves = activeWaves(state);
-  const def = waves[idx];
-  return def?.pauseAfterSec ?? 6;
+  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, PREP_DURATION);
+  return PREP_DURATION;
 }
 
 export function startNextWave(state: GameState): void {
@@ -195,10 +194,8 @@ function doStartWave(state: GameState): void {
 
 export function startPause(state: GameState): void {
   const ws = state.waveState;
-  const waves = activeWaves(state);
-  const def = waves[ws.currentIndex];
   ws.pauseTime = 0;
-  ws.pauseDurationLeft = def?.pauseAfterSec ?? 6;
+  ws.pauseDurationLeft = PREP_DURATION;
   state.entrances.forEach((e) => { e.active = false; });
   state.phase = 'preparing';
   // Re-roll the wave-rotating "dungeon laws" so the upcoming prep window

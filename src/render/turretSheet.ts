@@ -101,12 +101,12 @@ export const PAINTED_TURRET_SCALE = 0.25;
  *  reads as the floor the stand is standing *on* rather than a halo the
  *  body is hovering *above*. The chalk circle is a 2:1 floor ellipse
  *  with horizontal radius 22 (see `drawRunePoints`) — its iso-front
- *  edge sits at `rp.pos.y + 11`, so we drop the body slightly past
- *  that (-14) so the entire ellipse is occluded by the pedestal base
- *  and the bottom contour of the body lands cleanly on a floor tile.
+ *  edge sits at `rp.pos.y + 11`, so we drop the body well past that
+ *  (-42) so the bottom contour of the body lands cleanly on the floor
+ *  instead of hovering above the player's selected rune.
  *  The drop shadow + lantern halos still anchor at `t.pos.y` so the
  *  floor decals stay readable. */
-export const PAINTED_TURRET_LIFT_Y = -14;
+export const PAINTED_TURRET_LIFT_Y = -42;
 
 /** World-space Y offset from the painted turret's pedestal base (where
  *  `t.pos` sits) to the vertical mid-point of the turret body. Used by

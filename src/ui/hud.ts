@@ -46,6 +46,8 @@ export class Hud {
    *  so the player can read the active rules, effects, and goals at
    *  all times during a run. */
   private runSidebar!: HTMLDivElement;
+  private runSidebarToggle!: HTMLButtonElement;
+  private runSidebarCollapsed = false;
   /** Section inside the sidebar listing the picked blessings (and curse
    *  in Ancient). Built once per run since the picks don't change. */
   private blessingSection!: HTMLDivElement;
@@ -169,6 +171,16 @@ export class Hud {
       this.pauseButton.setAttribute('aria-label', t(key));
       this.pauseButton.title = t(key);
     }
+    if (this.runSidebarToggle) {
+      this.updateRunSidebarToggleLabel();
+    }
+  }
+
+  private updateRunSidebarToggleLabel(): void {
+    const key = this.runSidebarCollapsed ? 'ui.hud.runSidebar.expand' : 'ui.hud.runSidebar.collapse';
+    this.runSidebarToggle.textContent = t(key);
+    this.runSidebarToggle.setAttribute('aria-label', t(key));
+    this.runSidebarToggle.setAttribute('aria-expanded', this.runSidebarCollapsed ? 'false' : 'true');
   }
 
   private build(): void {
@@ -223,12 +235,22 @@ export class Hud {
     this.runSidebar = document.createElement('div');
     this.runSidebar.className = 'hud-run-sidebar';
     this.runSidebar.style.display = 'none';
+    this.runSidebarToggle = document.createElement('button');
+    this.runSidebarToggle.className = 'hud-run-sidebar-toggle';
+    this.runSidebarToggle.type = 'button';
+    this.runSidebarToggle.addEventListener('click', () => {
+      this.runSidebarCollapsed = !this.runSidebarCollapsed;
+      this.runSidebar.classList.toggle('collapsed', this.runSidebarCollapsed);
+      this.updateRunSidebarToggleLabel();
+    });
+    this.updateRunSidebarToggleLabel();
     this.blessingSection = document.createElement('div');
     this.blessingSection.className = 'hud-run-section hud-run-section-blessings';
     this.mutatorSection = document.createElement('div');
     this.mutatorSection.className = 'hud-run-section hud-run-section-laws';
     this.contractSection = document.createElement('div');
     this.contractSection.className = 'hud-run-section hud-run-section-contracts';
+    this.runSidebar.appendChild(this.runSidebarToggle);
     this.runSidebar.appendChild(this.blessingSection);
     this.runSidebar.appendChild(this.mutatorSection);
     this.runSidebar.appendChild(this.contractSection);

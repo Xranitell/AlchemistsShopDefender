@@ -80,6 +80,7 @@ export function fireMortarShell(
   target: Enemy,
   damage: number,
   splash: number,
+  speed: number,
   element: Projectile['element'],
 ): void {
   // Mortars fire at the target's *current* position. The 140-px splash
@@ -88,9 +89,14 @@ export function fireMortarShell(
   // missile chasing the enemy through the air.
   const ts: Vec2 = { ...target.pos };
   const d = dist(fromPos, ts);
-  // Scale flight time with distance — short shots feel snappy, long
-  // shots have the satisfying "wait for it" siege beat.
-  const duration = Math.min(1.1, Math.max(0.55, d / 700));
+  // Scale flight time with distance and the tower stat. A base speed of
+  // 320 maps to the old 700 px/s feel; lowering the stat stretches both
+  // short and long arcs proportionally.
+  const speedScale = 320 / Math.max(1, speed);
+  const duration = Math.min(
+    1.1 * speedScale,
+    Math.max(0.55 * speedScale, (d / 700) * speedScale),
+  );
   // Tall arc: mortar shells fly higher than thrown flasks so the shadow
   // sweeps across the floor.
   const peakHeight = Math.min(170, 80 + d * 0.18);
