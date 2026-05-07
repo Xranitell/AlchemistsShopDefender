@@ -258,6 +258,21 @@ export function getAurasBuffing(state: GameState, towerId: number): number[] {
   return out;
 }
 
+/** True when the lantern (aura tower) `auraId` is currently providing
+ *  buffs to at least one neighbouring tower this frame and is not
+ *  itself disabled. The renderer uses this so the lantern can paint
+ *  the same warm aura visuals on its own pedestal that buffed
+ *  turrets carry — visualising "this lantern is doing work right
+ *  now" instead of a quiet idle stand. */
+export function isAuraProvidingBuffs(state: GameState, auraId: number): boolean {
+  if (getAuraCount(state) === 0) return false;
+  const aura = state.towers.find((x) => x.id === auraId);
+  if (!aura || aura.kind.behavior !== 'aura' || aura.disabledTimer > 0) return false;
+  const map = buffedTowerIdsByAura(state);
+  const set = map.get(auraId);
+  return !!set && set.size > 0;
+}
+
 export function towerStats(state: GameState, t: Tower) {
   let damage = t.kind.damage *
     Math.pow(TOWER_UPGRADE_DAMAGE_MULT, t.level - 1) *

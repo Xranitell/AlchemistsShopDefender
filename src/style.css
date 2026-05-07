@@ -6331,22 +6331,45 @@ body {
   padding: 28px 28px 24px;
   position: relative;
   isolation: isolate;
+  /* Brighter, multi-layer "celebration" backdrop: warm gold glow up
+   * top, twin purple/violet glints on either shoulder so the panel
+   * doesn't read as a flat dark slab, and a subtle starfield (two
+   * radial-gradient dot layers at low opacity) so the dark navy still
+   * has texture even on the bottom half of the modal. */
   background:
-    radial-gradient(ellipse at top, rgba(255, 209, 102, 0.18) 0%, transparent 55%),
-    linear-gradient(180deg, #160c10 0%, #0c0712 65%, #14070a 100%);
-  border-color: #3a2a12;
+    radial-gradient(circle at 20% 88%, rgba(255, 240, 180, 0.04) 0 1px, transparent 2px),
+    radial-gradient(circle at 80% 70%, rgba(255, 240, 180, 0.04) 0 1px, transparent 2px),
+    radial-gradient(circle at 35% 25%, rgba(255, 240, 180, 0.05) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 18%, rgba(255, 240, 180, 0.05) 0 1px, transparent 2px),
+    radial-gradient(ellipse at 18% 18%, rgba(167, 139, 250, 0.18) 0%, transparent 38%),
+    radial-gradient(ellipse at 82% 18%, rgba(167, 139, 250, 0.18) 0%, transparent 38%),
+    radial-gradient(ellipse at top, rgba(255, 209, 102, 0.34) 0%, transparent 55%),
+    linear-gradient(180deg, #2a1810 0%, #170c1c 55%, #0e0418 100%);
+  background-size: 22px 22px, 30px 30px, 36px 36px, 28px 28px, auto, auto, auto, auto;
+  border-color: #6b4a14;
   box-shadow:
-    inset 0 0 0 2px rgba(255, 209, 102, 0.30),
+    inset 0 0 0 2px rgba(255, 220, 120, 0.55),
+    inset 0 0 60px rgba(255, 168, 60, 0.18),
     0 0 0 1px #0a0608,
-    0 12px 40px rgba(170, 110, 30, 0.30);
+    0 0 30px rgba(255, 200, 80, 0.35),
+    0 12px 40px rgba(170, 110, 30, 0.40);
+  /* The chest celebration is a tightly-paced reveal — there's no real
+   * scroll content here and the inner chest-stage already sizes itself
+   * to fit. Override the generic .panel scroll cap so the gold rays
+   * never trigger an ugly side scrollbar on shorter viewports. */
+  overflow: visible;
+  max-height: none;
 }
+/* Pixel-art gold corner ornaments — kept from the previous design but
+ * brightened to match the festive backdrop. */
 .chest-overlay::before,
 .chest-overlay::after {
   content: '';
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background: linear-gradient(135deg, var(--accent) 50%, transparent 50%);
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #fff2c2 50%, transparent 50%);
+  filter: drop-shadow(0 0 6px rgba(255, 220, 120, 0.7));
   pointer-events: none;
   z-index: 1;
 }
@@ -6354,16 +6377,43 @@ body {
 .chest-overlay::after {
   bottom: 6px;
   right: 6px;
-  background: linear-gradient(-45deg, var(--accent) 50%, transparent 50%);
+  background: linear-gradient(-45deg, #fff2c2 50%, transparent 50%);
+}
+/* Confetti / sparkle layer — three fixed-position pixel "stars" baked
+ * into a single repeating gradient so we get free GPU-only twinkles
+ * without any extra DOM nodes or per-frame paints. The twinkle is a
+ * mask-image opacity pulse so each star fades in/out independently. */
+.chest-overlay > h2 {
+  position: relative;
+  z-index: 2;
+  margin: 0 0 6px;
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: #fff2c2;
+  text-shadow:
+    -1px -1px 0 #2a1410, 1px -1px 0 #2a1410,
+    -1px 1px 0 #2a1410, 2px 2px 0 #2a1410,
+    0 0 14px rgba(255, 220, 120, 0.85),
+    0 0 26px rgba(255, 168, 60, 0.55);
+  animation: chest-title-shimmer 3.2s ease-in-out infinite;
+}
+@keyframes chest-title-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.25); }
 }
 
 .chest-summary {
+  position: relative;
+  z-index: 2;
   font-family: 'VT323', monospace;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: 0.5px;
-  color: var(--fg-dim);
+  color: #fff2c2;
   text-align: center;
   margin-top: -2px;
+  text-shadow:
+    0 0 8px rgba(255, 220, 120, 0.5),
+    0 1px 0 #2a1410;
 }
 
 /* Stage = positioning context for chest sprite + radial-rays backdrop +
@@ -6378,6 +6428,33 @@ body {
   justify-content: center;
   padding: 18px 0 6px;
 }
+/* Confetti layer drawn behind the rays — six small "star" sparkles
+ * (drawn as tiny radial-gradient dots) that drift upward in a slow
+ * loop while subtly twinkling. Pure CSS so it adds zero JS work to
+ * the celebration moment. */
+.chest-stage::before {
+  content: '';
+  position: absolute;
+  inset: -12px -8px 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, #fff2c2 0 1.5px, transparent 2.4px),
+    radial-gradient(circle, #ffd166 0 1.5px, transparent 2.4px),
+    radial-gradient(circle, #fff2c2 0 1px, transparent 2px),
+    radial-gradient(circle, #ffe27a 0 1.5px, transparent 2.4px),
+    radial-gradient(circle, #fff2c2 0 1px, transparent 2px),
+    radial-gradient(circle, #ffd166 0 1.5px, transparent 2.4px);
+  background-position:
+    14% 12%, 86% 22%, 22% 78%, 78% 70%, 50% 8%, 50% 92%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 4px rgba(255, 220, 120, 0.85));
+  animation: chest-confetti-twinkle 1.6s ease-in-out infinite alternate;
+  z-index: 0;
+}
+@keyframes chest-confetti-twinkle {
+  0%   { opacity: 0.35; transform: translateY(0); }
+  100% { opacity: 1;    transform: translateY(-3px); }
+}
 
 /* Radial gold rays behind the chest. Built from two stacked conic
  * gradients so the "rays" look stripey instead of a flat blob. The
@@ -6387,34 +6464,75 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 380px;
-  height: 380px;
+  width: 460px;
+  height: 460px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   /* Clip the conic-gradient "rays" to a circle so they don't visibly
    * snap to the bounding-box square at the corners. */
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, rgba(255, 220, 130, 0.45) 0%, rgba(255, 200, 90, 0.18) 30%, transparent 60%),
+    radial-gradient(circle at center, rgba(255, 232, 150, 0.7) 0%, rgba(255, 200, 90, 0.32) 28%, transparent 62%),
     conic-gradient(
       from 0deg,
-      rgba(255, 209, 102, 0.18) 0deg, transparent 14deg,
-      rgba(255, 209, 102, 0.18) 28deg, transparent 42deg,
-      rgba(255, 209, 102, 0.18) 56deg, transparent 70deg,
-      rgba(255, 209, 102, 0.18) 84deg, transparent 98deg,
-      rgba(255, 209, 102, 0.18) 112deg, transparent 126deg,
-      rgba(255, 209, 102, 0.18) 140deg, transparent 154deg,
-      rgba(255, 209, 102, 0.18) 168deg, transparent 182deg,
-      rgba(255, 209, 102, 0.18) 196deg, transparent 210deg,
-      rgba(255, 209, 102, 0.18) 224deg, transparent 238deg,
-      rgba(255, 209, 102, 0.18) 252deg, transparent 266deg,
-      rgba(255, 209, 102, 0.18) 280deg, transparent 294deg,
-      rgba(255, 209, 102, 0.18) 308deg, transparent 322deg,
-      rgba(255, 209, 102, 0.18) 336deg, transparent 350deg
+      rgba(255, 230, 150, 0.42) 0deg, transparent 14deg,
+      rgba(255, 230, 150, 0.42) 28deg, transparent 42deg,
+      rgba(255, 230, 150, 0.42) 56deg, transparent 70deg,
+      rgba(255, 230, 150, 0.42) 84deg, transparent 98deg,
+      rgba(255, 230, 150, 0.42) 112deg, transparent 126deg,
+      rgba(255, 230, 150, 0.42) 140deg, transparent 154deg,
+      rgba(255, 230, 150, 0.42) 168deg, transparent 182deg,
+      rgba(255, 230, 150, 0.42) 196deg, transparent 210deg,
+      rgba(255, 230, 150, 0.42) 224deg, transparent 238deg,
+      rgba(255, 230, 150, 0.42) 252deg, transparent 266deg,
+      rgba(255, 230, 150, 0.42) 280deg, transparent 294deg,
+      rgba(255, 230, 150, 0.42) 308deg, transparent 322deg,
+      rgba(255, 230, 150, 0.42) 336deg, transparent 350deg
     );
   filter: blur(0.5px);
-  opacity: 0.6;
+  opacity: 0.95;
   animation: chest-rays-spin 22s linear infinite;
+}
+/* Second, counter-rotating ring of finer rays — adds visual depth so
+ * the burst reads as multi-layered light and not a single spinning
+ * disc. Shorter than the primary rays so they form a "halo of glints"
+ * around the chest. */
+.chest-rays::after {
+  content: '';
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255, 200, 110, 0.55) 0deg, transparent 8deg,
+      rgba(255, 200, 110, 0.55) 18deg, transparent 26deg,
+      rgba(255, 200, 110, 0.55) 36deg, transparent 44deg,
+      rgba(255, 200, 110, 0.55) 54deg, transparent 62deg,
+      rgba(255, 200, 110, 0.55) 72deg, transparent 80deg,
+      rgba(255, 200, 110, 0.55) 90deg, transparent 98deg,
+      rgba(255, 200, 110, 0.55) 108deg, transparent 116deg,
+      rgba(255, 200, 110, 0.55) 126deg, transparent 134deg,
+      rgba(255, 200, 110, 0.55) 144deg, transparent 152deg,
+      rgba(255, 200, 110, 0.55) 162deg, transparent 170deg,
+      rgba(255, 200, 110, 0.55) 180deg, transparent 188deg,
+      rgba(255, 200, 110, 0.55) 198deg, transparent 206deg,
+      rgba(255, 200, 110, 0.55) 216deg, transparent 224deg,
+      rgba(255, 200, 110, 0.55) 234deg, transparent 242deg,
+      rgba(255, 200, 110, 0.55) 252deg, transparent 260deg,
+      rgba(255, 200, 110, 0.55) 270deg, transparent 278deg,
+      rgba(255, 200, 110, 0.55) 288deg, transparent 296deg,
+      rgba(255, 200, 110, 0.55) 306deg, transparent 314deg,
+      rgba(255, 200, 110, 0.55) 324deg, transparent 332deg,
+      rgba(255, 200, 110, 0.55) 342deg, transparent 350deg
+    );
+  filter: blur(0.6px);
+  opacity: 0.65;
+  animation: chest-rays-spin-rev 16s linear infinite;
+}
+@keyframes chest-rays-spin-rev {
+  to { transform: rotate(-360deg); }
 }
 .chest-rays.blasting {
   animation:
@@ -6528,14 +6646,34 @@ body {
   align-items: center;
   gap: 4px;
   padding: 12px 8px 10px;
-  background: linear-gradient(180deg, rgba(60, 36, 30, 0.96), rgba(24, 12, 14, 0.96));
+  background:
+    radial-gradient(ellipse at top, rgba(255, 220, 130, 0.22) 0%, transparent 65%),
+    linear-gradient(180deg, rgba(80, 48, 36, 0.96), rgba(28, 14, 22, 0.96));
   border: 3px solid #1a0608;
   border-radius: 6px;
+  overflow: hidden;
   box-shadow:
-    0 0 0 2px rgba(255, 140, 60, 0.35),
-    inset 0 2px 0 rgba(255, 209, 102, 0.18),
+    0 0 0 2px rgba(255, 200, 100, 0.55),
+    inset 0 2px 0 rgba(255, 220, 130, 0.32),
     inset 0 -3px 0 rgba(0, 0, 0, 0.45),
-    0 4px 0 rgba(0, 0, 0, 0.55);
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(255, 168, 60, 0.22);
+}
+/* Diagonal "gift wrap" ribbon — a thin gold stripe across the tile
+ * top corner that visually paries each tile to the celebration motif
+ * without making it look noisy. Pseudo-element so it adds zero DOM
+ * cost. */
+.chest-reward-tile::before {
+  content: '';
+  position: absolute;
+  top: -22px;
+  right: -22px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, transparent 48%, #ffd166 48%, #fff2c2 56%, #ffd166 64%, transparent 64%);
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.6));
+  opacity: 0.85;
 }
 .chest-reward-tile.pending .chest-reward-tile-icon,
 .chest-reward-tile.pending .chest-reward-tile-amount,
@@ -12823,6 +12961,14 @@ body {
   box-sizing: border-box;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--diary-accent) 30%, transparent));
 }
+/* Bestiary cards intentionally show a much larger painted creature so
+ * the player can read the silhouette at a glance from the entry grid
+ * — element / stance cards keep the smaller portrait box. */
+.diary-entry-bestiary .diary-entry-icon {
+  width: 160px;
+  height: 160px;
+  padding: 8px;
+}
 .diary-entry-icon > .diary-sprite {
   max-width: 100%;
   max-height: 100%;
@@ -12960,6 +13106,66 @@ body {
   text-align: right;
 }
 
+/* Element row — replaces the value text on the right with a coloured
+ * "pill" badge so the player can read the element of a tower at a
+ * glance. Backdrop is keyed off the element's lore colour set in
+ * `ELEMENT_ENTRIES`, with a soft glow that picks up the same colour
+ * so the badge feels like the element itself glowing through. */
+.diary-stat-row-element {
+  align-items: center;
+  border-bottom: 1px dashed color-mix(in srgb, var(--element-color, #ffd166) 38%, transparent);
+}
+.diary-element-badge {
+  /* `--element-color` is set on the parent .diary-stat-row-element
+   * so both the row border and this badge pick up the same lore
+   * tint. The fallback handles the case where the element entry is
+   * missing from the diary data. */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--element-color) 38%, #1a0e2a) 0%,
+      color-mix(in srgb, var(--element-color) 16%, #0d0818) 100%);
+  border: 2px solid color-mix(in srgb, var(--element-color) 70%, #2a1f3c);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--element-color) 55%, white 0%),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 0 10px color-mix(in srgb, var(--element-color) 35%, transparent);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  color: #fff;
+  text-shadow:
+    0 1px 0 #1a0e2a,
+    0 0 6px color-mix(in srgb, var(--element-color) 60%, transparent);
+  white-space: nowrap;
+}
+.diary-element-badge-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 14px;
+  background:
+    radial-gradient(circle at 30% 28%,
+      color-mix(in srgb, var(--element-color) 90%, white 30%) 0%,
+      color-mix(in srgb, var(--element-color) 70%, #1a0e2a) 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 0 8px color-mix(in srgb, var(--element-color) 60%, transparent);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--element-color) 80%, transparent));
+}
+.diary-element-badge-name {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--element-color) 50%, #fff2c2);
+}
+
 .diary-info-progress {
   display: flex;
   flex-direction: column;
@@ -13077,6 +13283,7 @@ body {
     padding: 10px;
   }
   .diary-entry-icon { width: 60px; height: 60px; }
+  .diary-entry-bestiary .diary-entry-icon { width: 120px; height: 120px; padding: 6px; }
   .diary-info-sprite { width: 80px; height: 80px; }
   .diary-info-name { font-size: 12px; }
 }
@@ -13087,5 +13294,6 @@ body {
   .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .diary-entry { padding: 8px 6px 10px; min-height: 92px; }
   .diary-entry-icon { width: 52px; height: 52px; padding: 2px; }
+  .diary-entry-bestiary .diary-entry-icon { width: 104px; height: 104px; padding: 4px; }
   .diary-entry-name { font-size: 9px; letter-spacing: 0.4px; }
 }

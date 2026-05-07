@@ -43,7 +43,7 @@ import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import { applyBloom } from '../render/bloom';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
-import { getAurasBuffing } from './tower';
+import { getAurasBuffing, isAuraProvidingBuffs } from './tower';
 
 function difficultyAuraColor(mode: DifficultyMode): string | null {
   if (mode === 'normal') return null;
@@ -380,7 +380,16 @@ function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
 function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Tower): void {
   const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
   const willPaint = isPaintedTurretSheetReady();
-  const bodyY = willPaint ? t.pos.y - PAINTED_TURRET_LIFT_Y : t.pos.y;
+  // Painted turret base — used by level pips, which want to land just
+  // under the body silhouette. Floor decals (shadow, halo, range
+  // indicator, EMP ring) intentionally anchor at `t.pos.y` instead so
+  // they visually sit *under the legs* of the painted stand at the
+  // rune-point centre, matching the chalk-circle the player tapped to
+  // summon the tower. Anchoring decals at the painted base pushed them
+  // past the front edge of the chalk circle and they read as floating
+  // detached from the tower silhouette (see screenshot in PR #208).
+  const baseY = willPaint ? t.pos.y - PAINTED_TURRET_LIFT_Y : t.pos.y;
+  const floorY = t.pos.y;
 
   // Range indicator when shop is open on this rune — iso-plane ellipse so
   // it visually lies on the floor.
@@ -391,20 +400,19 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, bodyY, R, R * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, floorY, R, R * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
   }
 
-  // Drop shadow. The painted stand is dropped past the rune centre so
-  // the pedestal base lands on the iso-front edge of the chalk circle
-  // (see PAINTED_TURRET_LIFT_Y); the shadow follows the body so it
-  // hugs the pedestal instead of floating behind it on the rune.
+  // Drop shadow. Anchors at the rune centre (`t.pos.y`) so the shadow
+  // sits directly under the legs of the painted stand instead of
+  // dropping past the chalk-circle's front edge.
   const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
   const shadowH = willPaint ? 9 : 7;
   const shadowAlpha = willPaint ? 0.32 : 0.42;
-  const shadowY = bodyY + (willPaint ? 4 : 6);
+  const shadowY = floorY + (willPaint ? 4 : 6);
   drawShadow(ctx, t.pos.x, shadowY, shadowW, shadowH, shadowAlpha);
 
   // Base glow (cached halo to avoid per-frame gradient allocation).
@@ -412,7 +420,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx,
     { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
     t.pos.x,
-    bodyY,
+    floorY,
     0.08,
   );
 
@@ -421,7 +429,14 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
   //   1. Outer expanding "ping" ring — slow, ramps and fades.
   //   2. Bright floor halo at the lantern colour.
   //   3. Inner radial gradient spotlight under the tower.
-  if (t.kind.behavior !== 'aura' && getAurasBuffing(state, t.id).length > 0) {
+  // Painted on every tower currently being buffed by a lantern and
+  // *also* on the lantern itself while it is providing buffs, so the
+  // aura source reads as actively working on its own pedestal.
+  const showAuraHalo =
+    t.kind.behavior === 'aura'
+      ? isAuraProvidingBuffs(state, t.id)
+      : getAurasBuffing(state, t.id).length > 0;
+  if (showAuraHalo) {
     const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
     const haloR = Math.max(30, painted.width * 0.55);
     ctx.save();
@@ -432,17 +447,17 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.strokeStyle = `rgba(255, 218, 130, ${ringAlpha})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, bodyY + 4, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, floorY + 4, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.strokeStyle = `rgba(255, 209, 102, ${0.55 + pulse * 0.30})`;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, bodyY + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, floorY + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     const halox = t.pos.x;
-    const haloy = bodyY + 4;
+    const haloy = floorY + 4;
     const haloFill = ctx.createRadialGradient(halox, haloy, 0, halox, haloy, haloR);
     haloFill.addColorStop(0, `rgba(255, 230, 163, ${0.32 + pulse * 0.18})`);
     haloFill.addColorStop(0.6, `rgba(255, 209, 102, ${0.16 + pulse * 0.10})`);
@@ -464,7 +479,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
     ctx.strokeStyle = `rgba(125, 249, 255, ${0.55 * blink})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(t.pos.x, bodyY + 4, 26, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(t.pos.x, floorY + 4, 26, 12, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -473,7 +488,7 @@ function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Towe
   // floor. Painted pedestals are dropped past the rune centre, so pips
   // shift down by the same amount and land just under the cast
   // shadow; the pixel-art fallback keeps its tighter offset.
-  const pipY = Math.round(bodyY + (willPaint ? 2 : 29));
+  const pipY = Math.round(baseY + (willPaint ? 2 : 29));
   for (let i = 0; i < t.level; i++) {
     ctx.fillStyle = COLORS.brassHi;
     ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);
@@ -561,7 +576,14 @@ function drawTowerBody(ctx: CanvasRenderingContext2D, state: GameState, t: Tower
   // Сторожевой фонарь buff indicator (body part). Floor halos are
   // drawn in `drawTowerFloor`; the body parts here are the warm bloom
   // over the painted body and the orbiting fireflies / rising sparks.
-  if (t.kind.behavior !== 'aura' && usingPainted && getAurasBuffing(state, t.id).length > 0) {
+  // Painted on every tower currently being buffed by a lantern and
+  // *also* on the lantern itself while it is providing buffs, so the
+  // aura source carries the same warm bloom that buffed turrets do.
+  const showAuraBody =
+    t.kind.behavior === 'aura'
+      ? isAuraProvidingBuffs(state, t.id)
+      : getAurasBuffing(state, t.id).length > 0;
+  if (usingPainted && showAuraBody) {
     const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
     const haloR = Math.max(30, painted.width * 0.55);
     const bodyY = t.pos.y - liftY - painted.height * 0.5;
