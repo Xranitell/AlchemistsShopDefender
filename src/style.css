@@ -3784,6 +3784,7 @@ body {
   color: var(--dif-color);
   letter-spacing: 1px;
   text-align: center;
+  white-space: nowrap;
 }
 .mp-mode-epic .mp-title,
 .mp-mode-ancient .mp-title {
@@ -12327,6 +12328,7 @@ body {
 }
 :root.viewport-fitted .modifier-preview-panel .mp-title {
   margin: 0 0 2px;
+  white-space: nowrap;
 }
 :root.viewport-fitted .modifier-preview-panel .mp-tagline {
   margin: 0 0 4px;

@@ -66,3 +66,20 @@ export function appendGlitchTitleChars(parent: HTMLElement, text: string): void 
     parent.appendChild(span);
   }
 }
+
+export function fitSingleLineText(el: HTMLElement, minFontSize = 11): void {
+  requestAnimationFrame(() => {
+    el.style.removeProperty('font-size');
+    const maxWidth = el.clientWidth;
+    if (maxWidth <= 0) return;
+
+    const naturalWidth = el.scrollWidth;
+    if (naturalWidth <= maxWidth) return;
+
+    const fontSize = Number.parseFloat(getComputedStyle(el).fontSize);
+    if (!Number.isFinite(fontSize) || fontSize <= 0) return;
+
+    const fittedSize = Math.max(minFontSize, Math.floor(fontSize * (maxWidth / naturalWidth) * 100) / 100);
+    el.style.fontSize = `${fittedSize}px`;
+  });
+}
