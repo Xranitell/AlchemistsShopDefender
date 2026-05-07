@@ -1,14 +1,17 @@
 // Painted floor-decals spritesheet (`public/sprites/decals.png`).
 //
-// 8 hand-drawn top-down decal sprites (cracks, ash scatter, scorch
-// stains, dropped foliage, etc.) used as static dressing baked into
-// the room backdrop. The room loop picks 10 decals per
-// session and scatters them on the floor at the same iso angle as
-// the painted floor tiles, so they read as lying on the surface.
+// The PNG itself contains 8 hand-drawn top-down decal sprites
+// (cracks, an explosion crater, a chalk circle, claw scratches,
+// rubble, scorch, slime, purple drips) — but per design request
+// (May 2026) only the two crack variants are actually scattered on
+// the floor. The non-crack frames remain in the PNG so that the
+// sheet asset doesn't have to be repacked and other call-sites that
+// might index into them keep working, but `DECAL_FRAMES` below only
+// exposes the cracks so `drawSpritesheetDecals` can never pick a
+// non-crack frame.
 //
-// The sheet is a 1200 × 654 PNG containing the 8 decals at varied
-// positions (no clean grid — frame rects below were derived offline
-// from the alpha mask via connected-component bbox detection).
+// The sheet is a 1200 × 654 PNG; frame rects below were derived
+// offline from the alpha mask via connected-component bbox detection.
 //
 // Render position: between the painted floor tiles and the painted
 // props in `room.ts → getRoomBackdrop`. The decals end up baked into
@@ -42,17 +45,14 @@ export interface DecalFrame {
   sh: number;
 }
 
-/** 8 decals, ordered top-row-then-bottom-row (matches the source PNG
- *  layout). Bbox derived from connected-component analysis of α > 200. */
+/** 2 crack decals (top-left + impact crater with cracks). The other 6
+ *  frames in the source PNG (chalk circle, claws, rubble, scorch,
+ *  slime, purple drips) are intentionally excluded so floor decals
+ *  read exclusively as cracks per design request. Bbox derived from
+ *  connected-component analysis of α > 200. */
 export const DECAL_FRAMES: readonly DecalFrame[] = [
   { sx:  45, sy:  62, sw: 210, sh: 210 },
   { sx: 354, sy:  53, sw: 200, sh: 218 },
-  { sx: 637, sy:  50, sw: 225, sh: 227 },
-  { sx: 940, sy:  40, sw: 220, sh: 249 },
-  { sx:  66, sy: 394, sw: 158, sh: 165 },
-  { sx: 368, sy: 394, sw: 177, sh: 171 },
-  { sx: 637, sy: 381, sw: 217, sh: 205 },
-  { sx: 989, sy: 402, sw: 121, sh: 166 },
 ];
 
 export const DECAL_COUNT = DECAL_FRAMES.length;
