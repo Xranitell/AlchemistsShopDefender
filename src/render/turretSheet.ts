@@ -16,12 +16,28 @@
 // each cell (alpha > 200) so we sample only the body, not the
 // speckled cell margin.
 //
-// Anchor convention: each tower is centred horizontally on its bbox
-// and bottom-aligned to the base of its stone pedestal (i.e.
-// `ax = sw / 2`, `ay = sh`). Drawing `drawTurret(ctx, x, y, kindId)`
-// then plants the pedestal's bottom on the world (x, y) — same anchor
-// the rune-point chalk circle is drawn at, so the tower sits cleanly
-// over the rune slot.
+// Anchor convention: each tower's anchor sits at the visual centre +
+// bottom of its **pedestal-ring base** (the wide brick disc at the
+// foot of the body), NOT at the bbox centre / bbox bottom. The bbox is
+// tight to all opaque pixels of the painted body — including hanging
+// detail like the mortar's red flask, the mercury sprayer's bottle,
+// the cannon barrels poking out, the ether coil's curling pipes, etc.
+// Those off-pedestal elements push the bbox left/right/down beyond the
+// pedestal disc, so anchoring at `(sw / 2, sh)` would offset the
+// pedestal away from the rune-point centre and leave the visible feet
+// of the stand outside the buff halo / drop shadow / chalk circle
+// (which all anchor on the rune itself).
+//
+// `(ax, ay)` are bbox-local pixel coords obtained by per-frame pixel
+// analysis of the painted spritesheet (see
+// `tools/analyze_stands_v3.py`): for each frame we walk the bottom
+// 35 % of the bbox, find the bottommost contiguous run of rows that
+// are ≥ 55 % of the band's max width (= the brick-ring base), and pick
+// the centre-x of that run as `ax` and the bottom-y as `ay`. Drawing
+// `drawTurret(ctx, x, y, kindId)` then plants the pedestal-ring's
+// **bottom** on the world (x, y) — same anchor the rune-point chalk
+// circle / drop shadow / buff halo all sit on, so the tower's feet
+// land inside the halo instead of floating above it.
 
 import { loadSheet, isSheetReady, type AnimSheet } from './animatedSprite';
 
@@ -69,19 +85,32 @@ export const TURRET_KIND_TO_FRAME: Readonly<Record<string, number>> = {
   watch_tower: 5,
 };
 
+// Per-frame `(ax, ay)` is the centre-x and bottom-y of the painted
+// brick-ring pedestal in bbox-local px (see anchor-convention block at
+// the top of this file). The values came from a connected-component
+// analysis of the painted PNG, then snapped to integer px. Hand-tune
+// only if a sprite is replaced; otherwise leave alone — they line up
+// with the floor decals (drop shadow / buff halo / chalk circle) which
+// all anchor on the rune-point centre at `t.pos`.
 export const TURRET_FRAMES: readonly TurretFrame[] = [
   // 0  needler           — multi-barrel brass cannon
-  { sx:  87, sy: 152, sw: 276, sh: 328, ax: 276 / 2, ay: 328 },
-  // 1  mortar            — bubbling alchemy cauldron
-  { sx: 453, sy:  90, sw: 277, sh: 390, ax: 277 / 2, ay: 390 },
-  // 2  mercury_sprayer   — steam-pump pressure rig
-  { sx: 806, sy: 120, sw: 302, sh: 360, ax: 302 / 2, ay: 360 },
-  // 3  acid_injector     — green-liquid test-tube refinery
-  { sx:  45, sy: 480, sw: 307, sh: 374, ax: 307 / 2, ay: 374 },
+  { sx:  87, sy: 152, sw: 276, sh: 328, ax: 160, ay: 268 },
+  // 1  mortar            — bubbling alchemy cauldron (red flask hangs
+  //                       low on the right; bbox extends past the
+  //                       pedestal ring to capture it)
+  { sx: 453, sy:  90, sw: 277, sh: 390, ax: 137, ay: 335 },
+  // 2  mercury_sprayer   — steam-pump pressure rig (steam puff top-left
+  //                       and bottle bottom-left push the bbox left)
+  { sx: 806, sy: 120, sw: 302, sh: 360, ax: 176, ay: 304 },
+  // 3  acid_injector     — green-liquid test-tube refinery (needle pokes
+  //                       far left of the pedestal)
+  { sx:  45, sy: 480, sw: 307, sh: 374, ax: 175, ay: 359 },
   // 4  ether_coil        — purple Tesla coil
-  { sx: 458, sy: 480, sw: 277, sh: 373, ax: 277 / 2, ay: 373 },
-  // 5  watch_tower       — glass-and-brass alchemist's lantern
-  { sx: 854, sy: 480, sw: 251, sh: 375, ax: 251 / 2, ay: 375 },
+  { sx: 458, sy: 480, sw: 277, sh: 373, ax: 140, ay: 363 },
+  // 5  watch_tower       — glass-and-brass alchemist's lantern (pendant
+  //                       on left, flag on right cancel out — pedestal
+  //                       lands almost on bbox centre)
+  { sx: 854, sy: 480, sw: 251, sh: 375, ax: 125, ay: 368 },
 ];
 
 export const TURRET_COUNT = TURRET_FRAMES.length;
@@ -96,17 +125,17 @@ export const PAINTED_TURRET_SCALE = 0.25;
 
 /** World-space Y offset (negative = down in screen space because the
  *  caller does `t.pos.y - LIFT_Y`) used to plant the painted turret
- *  stand on its rune. The painted frame's anchor (`ay = sh`) sits at
- *  the bottom of the stone pedestal sprite, so drawing at
- *  `t.pos.y - LIFT_Y` puts the pedestal's bottom row of pixels at
- *  `t.pos.y - LIFT_Y`. Floor decals (drop shadow, buff halo, range
- *  indicator, EMP overlay) all anchor at `t.pos.y + 4` (see
- *  `drawTowerFloor`), so we lift the body by the same `-4` so the
- *  pedestal's bottom lands inside the buff halo instead of past it.
- *  The chalk circle (2:1 ellipse, ry=11 — see `drawRunePoints`) ends
- *  up just at the bottom edge of the pedestal, reading as "the rune
- *  the stand is standing on" while the buff halo paints behind /
- *  through the legs. */
+ *  stand on its rune. Each painted frame's anchor `(ax, ay)` lands at
+ *  the centre-bottom of its **pedestal-ring base** (see anchor block
+ *  at the top of this file), so drawing at `t.pos.y - LIFT_Y` puts the
+ *  pedestal-ring's bottom row of pixels at `t.pos.y - LIFT_Y`. Floor
+ *  decals (drop shadow, buff halo, range indicator, EMP overlay) all
+ *  anchor at `t.pos.y + 4` (see `drawTowerFloor`), so we lift the body
+ *  by the same `-4` so the pedestal's bottom lands inside the buff
+ *  halo instead of past it. The chalk circle (2:1 ellipse, ry=11 — see
+ *  `drawRunePoints`) ends up just at the bottom edge of the pedestal,
+ *  reading as "the rune the stand is standing on" while the buff halo
+ *  paints behind / through the legs. */
 export const PAINTED_TURRET_LIFT_Y = -4;
 
 /** World-space Y offset from the painted turret's pedestal base (where
@@ -115,7 +144,13 @@ export const PAINTED_TURRET_LIFT_Y = -4;
  *  the stand instead of from the ground at its feet. Negative because
  *  Y increases downward in screen space. The lift offset is added on
  *  top so projectiles spawn from the centre of the *floating* stand,
- *  not the ground beneath it. */
+ *  not the ground beneath it.
+ *
+ *  Uses `getTurretFootprint().height`, which is `ay * scale` — the
+ *  height of the painted body **above the pedestal-ring anchor**. The
+ *  bbox can extend below the anchor (e.g. mortar's red flask), but
+ *  those hanging elements aren't part of the body's vertical footprint
+ *  for fire-origin purposes, so we exclude them. */
 export function getTurretFireOriginOffsetY(
   kindId: string,
   scale: number = PAINTED_TURRET_SCALE,
@@ -186,16 +221,26 @@ export function drawTurret(
   return true;
 }
 
-/** Painted turret bbox (in screen pixels at the given scale) from the
- *  pedestal base — useful for sizing the drop shadow and the level pip
- *  row beneath the painted sprite. */
+/** Painted turret footprint (in screen pixels at the given scale).
+ *  - `width`  is the full bbox width (`sw * scale`) — useful for sizing
+ *    the drop shadow / buff halo, which want to span the whole visual
+ *    silhouette.
+ *  - `height` is the body height **above the pedestal-ring anchor**
+ *    (`ay * scale`), NOT the full bbox height. Anything below the
+ *    pedestal anchor (e.g. the mortar's red flask, the mercury
+ *    sprayer's bottle) is hanging detail that lives on the floor in
+ *    front of the pedestal — it isn't part of the stand's silhouette
+ *    for layout purposes, so consumers like `drawTowerBody` (which
+ *    uses `painted.height` to compute the body-top Y for muzzle flashes
+ *    / sparkles / fireflies) and `getTurretFireOriginOffsetY` would
+ *    over-estimate the body if they used `sh * scale`. */
 export function getTurretFootprint(
   kindId: string,
   scale = 0.25,
 ): { width: number; height: number } {
   const idx = TURRET_KIND_TO_FRAME[kindId] ?? 0;
   const frame = TURRET_FRAMES[idx]!;
-  return { width: frame.sw * scale, height: frame.sh * scale };
+  return { width: frame.sw * scale, height: frame.ay * scale };
 }
 
 /** Returns an `HTMLCanvasElement` with the painted turret body fitted
