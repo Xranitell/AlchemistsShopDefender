@@ -39,6 +39,24 @@ export interface ElementEntry {
   color: string;
 }
 
+export interface SynergyEntry {
+  id: string;
+  /** i18n key prefix; resolves `.name`, `.result`, `.features.<idx>`. */
+  i18nKey: string;
+  first: Element;
+  second: Element;
+  /** Russian source-of-truth result name. */
+  ruName: string;
+  /** Russian source-of-truth result description. */
+  ruResult: string;
+  /** Russian source-of-truth mechanic bullets. */
+  ruFeatures: string[];
+  /** Glyph shown near the reaction result. */
+  glyph: string;
+  /** Hex accent colour used for the card border / title glow. */
+  color: string;
+}
+
 export interface BestiaryEntry {
   /** Matches `EnemyKind.id` in `data/enemies.ts`. */
   id: string;
@@ -168,6 +186,111 @@ export const ELEMENT_ENTRIES: ElementEntry[] = [
       'Не вызывает реакции и не накладывает статусы.',
       'Стабилен против любого типа защиты.',
       'Базовая стрельба иглометов и снарядов мортиры.',
+    ],
+  },
+];
+
+// ────────────────────────────────────────────────────────────────────────
+// Synergies
+// ────────────────────────────────────────────────────────────────────────
+
+export const SYNERGY_ENTRIES: SynergyEntry[] = [
+  {
+    id: 'caustic_vapor',
+    i18nKey: 'diary.synergy.caustic_vapor',
+    first: 'fire',
+    second: 'acid',
+    glyph: '☣',
+    color: '#d2f55a',
+    ruName: 'Едкий пар',
+    ruResult: 'Огонь испаряет кислоту в ядовитое облако, которое обжигает врагов и разъедает броню.',
+    ruFeatures: [
+      'Создаёт облако радиусом 55 px на 3 секунды.',
+      'Внутри облака враги получают урон и сильнее теряют броню.',
+    ],
+  },
+  {
+    id: 'time_rift',
+    i18nKey: 'diary.synergy.time_rift',
+    first: 'mercury',
+    second: 'aether',
+    glyph: '⌁',
+    color: '#7df9ff',
+    ruName: 'Временной разлом',
+    ruResult: 'Ртуть удерживает эфирный заряд, открывая разлом, который резко замедляет группу врагов.',
+    ruFeatures: [
+      'Создаёт поле радиусом 65 px на 2.5 секунды.',
+      'Враги в поле движутся почти в четыре раза медленнее.',
+    ],
+  },
+  {
+    id: 'spark_cascade',
+    i18nKey: 'diary.synergy.spark_cascade',
+    first: 'fire',
+    second: 'aether',
+    glyph: '✦',
+    color: '#a78bfa',
+    ruName: 'Искровой каскад',
+    ruResult: 'Эфир подхватывает пламя и перебрасывает искры на ближайших врагов цепной молнией.',
+    ruFeatures: [
+      'Мгновенно бьёт до 3 ближайших врагов в радиусе 180 px.',
+      'Каждый поражённый враг получает эфирную метку для новых реакций.',
+    ],
+  },
+  {
+    id: 'brittle_frost',
+    i18nKey: 'diary.synergy.brittle_frost',
+    first: 'acid',
+    second: 'frost',
+    glyph: '❖',
+    color: '#7dd3fc',
+    ruName: 'Хрупкая глазурь',
+    ruResult: 'Кислота въедается в ледяную корку: броня трескается, а цель застывает под давлением кристаллов.',
+    ruFeatures: [
+      'Создаёт морозное поле радиусом 50 px на 2.5 секунды.',
+      'Обновляет холод и снижает броню цели до 30%.',
+    ],
+  },
+  {
+    id: 'glass_shatter',
+    i18nKey: 'diary.synergy.glass_shatter',
+    first: 'mercury',
+    second: 'frost',
+    glyph: '✧',
+    color: '#c0e8ff',
+    ruName: 'Стеклянная заморозка',
+    ruResult: 'Ртутный холод делает врага стеклянно-хрупким и взрывает его осколочным импульсом.',
+    ruFeatures: [
+      'Наносит мощный разовый урон в радиусе 45 px.',
+      'Лучше всего срабатывает по уже замедленным и охлаждённым целям.',
+    ],
+  },
+  {
+    id: 'mutagen_burst',
+    i18nKey: 'diary.synergy.mutagen_burst',
+    first: 'acid',
+    second: 'poison',
+    glyph: '✺',
+    color: '#9be36b',
+    ruName: 'Мутагенный взрыв',
+    ruResult: 'Кислота раскрывает яд, превращая его в стойкую мутагенную вспышку вокруг цели.',
+    ruFeatures: [
+      'Создаёт токсичную зону радиусом 60 px на 4 секунды.',
+      'Накладывает сильный яд и оставляет цель с ослабленной бронёй.',
+    ],
+  },
+  {
+    id: 'flash_steam',
+    i18nKey: 'diary.synergy.flash_steam',
+    first: 'fire',
+    second: 'frost',
+    glyph: '♨',
+    color: '#f4a261',
+    ruName: 'Паровой удар',
+    ruResult: 'Пламя резко срывает ледяную корку, превращая холод в обжигающий пар по площади.',
+    ruFeatures: [
+      'Создаёт широкий паровой удар радиусом 70 px на 1.5 секунды.',
+      'Снимает холод и оставляет на врагах сильный поджог.',
     ],
   },
 ];

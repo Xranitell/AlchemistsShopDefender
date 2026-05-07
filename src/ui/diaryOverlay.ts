@@ -10,12 +10,13 @@
 //
 // Tabs:
 //   • Алхимия   — element reference (fire / acid / mercury / aether / …)
+//   • Синергии  — element pairs and their reaction results.
 //   • Бестиарий — every enemy kind, with silhouette + ??? until first
 //                 kill (Terraria-style). Per-difficulty progress bars.
 //   • Стойки    — every tower kind, with mechanical features.
 //
 // All content lives in `src/data/diary.ts` so adding a new element /
-// enemy / tower entry is a one-file change. Localised text falls back to
+// synergy / enemy / tower entry is a one-file change. Localised text falls back to
 // the Russian source-of-truth via `tWithFallback`.
 
 import { audio } from '../audio/audio';
@@ -28,9 +29,11 @@ import {
   BESTIARY_ENTRIES,
   ELEMENT_ENTRIES,
   STANCE_ENTRIES,
+  SYNERGY_ENTRIES,
   type BestiaryEntry,
   type ElementEntry,
   type StanceEntry,
+  type SynergyEntry,
 } from '../data/diary';
 import {
   bestiaryKills,
@@ -46,7 +49,7 @@ import type { BakedSprite } from '../render/sprite';
 import { paintedTurretIcon } from '../render/turretSheet';
 import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
-type DiaryTab = 'alchemy' | 'bestiary' | 'stances';
+type DiaryTab = 'alchemy' | 'synergies' | 'bestiary' | 'stances';
 
 /** Difficulty modes that get a bestiary progress bar. Endless / daily
  *  share their counters with the player, but they're not displayed as
@@ -55,6 +58,7 @@ const PROGRESS_DIFFICULTIES: DifficultyMode[] = ['normal', 'epic', 'ancient'];
 
 const TAB_ORDER: { id: DiaryTab; labelKey: string; glyph: string }[] = [
   { id: 'alchemy', labelKey: 'ui.diary.tab.alchemy', glyph: '⚗' },
+  { id: 'synergies', labelKey: 'ui.diary.tab.synergies', glyph: '✦' },
   { id: 'bestiary', labelKey: 'ui.diary.tab.bestiary', glyph: '☠' },
   { id: 'stances', labelKey: 'ui.diary.tab.stances', glyph: '🛡' },
 ];
@@ -263,6 +267,14 @@ export class DiaryOverlay {
       return;
     }
 
+    if (this.activeTab === 'synergies') {
+      grid.classList.add('diary-grid-synergies');
+      for (const e of SYNERGY_ENTRIES) {
+        grid.appendChild(this.buildSynergyCard(e, this.selectedId === e.id, host));
+      }
+      return;
+    }
+
     if (this.activeTab === 'bestiary') {
       for (const e of BESTIARY_ENTRIES) {
         const discovered = meta ? isBestiaryDiscovered(meta, e.id) : false;
@@ -297,6 +309,32 @@ export class DiaryOverlay {
     const note = document.createElement('div');
     note.className = 'diary-entry-note';
     note.textContent = elementFlavor(entry);
+    card.appendChild(note);
+
+    card.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+    card.addEventListener('click', () => {
+      host.dispatchEvent(new CustomEvent<string>('diary:select-entry', { detail: entry.id }));
+    });
+    return card;
+  }
+
+  private buildSynergyCard(entry: SynergyEntry, isSelected: boolean, host: HTMLElement): HTMLElement {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'diary-entry diary-entry-synergy';
+    if (isSelected) card.classList.add('selected');
+    card.style.setProperty('--diary-accent', entry.color);
+
+    card.appendChild(buildSynergyFormula(entry, 'card'));
+
+    const result = document.createElement('div');
+    result.className = 'diary-synergy-result-name';
+    result.textContent = synergyName(entry);
+    card.appendChild(result);
+
+    const note = document.createElement('div');
+    note.className = 'diary-entry-note diary-synergy-note';
+    note.textContent = synergyResult(entry);
     card.appendChild(note);
 
     card.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
@@ -401,6 +439,12 @@ export class DiaryOverlay {
       return;
     }
 
+    if (this.activeTab === 'synergies') {
+      const entry = SYNERGY_ENTRIES.find((e) => e.id === id);
+      if (entry) this.renderSynergyInfo(host, entry);
+      return;
+    }
+
     if (this.activeTab === 'bestiary') {
       const entry = BESTIARY_BY_ID[id];
       if (entry) this.renderBestiaryInfo(host, entry);
@@ -433,6 +477,36 @@ export class DiaryOverlay {
     const desc = document.createElement('p');
     desc.className = 'diary-info-desc';
     desc.textContent = elementFlavor(entry);
+    host.appendChild(desc);
+
+    host.appendChild(infoSectionLabel(t('ui.diary.section.features')));
+    host.appendChild(this.buildFeatureList(entry.i18nKey, entry.ruFeatures));
+  }
+
+  private renderSynergyInfo(host: HTMLElement, entry: SynergyEntry): void {
+    host.style.setProperty('--diary-accent', entry.color);
+
+    const head = document.createElement('div');
+    head.className = 'diary-info-head';
+
+    const name = document.createElement('div');
+    name.className = 'diary-info-name';
+    name.textContent = synergyName(entry);
+    head.appendChild(name);
+
+    const glyph = document.createElement('div');
+    glyph.className = 'diary-info-sprite diary-info-glyph';
+    glyph.textContent = entry.glyph;
+    head.appendChild(glyph);
+    host.appendChild(head);
+
+    host.appendChild(infoSectionLabel(t('ui.diary.section.formula')));
+    host.appendChild(buildSynergyFormula(entry, 'info'));
+
+    host.appendChild(infoSectionLabel(t('ui.diary.section.result')));
+    const desc = document.createElement('p');
+    desc.className = 'diary-info-desc';
+    desc.textContent = synergyResult(entry);
     host.appendChild(desc);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.features')));
@@ -696,6 +770,7 @@ export class DiaryOverlay {
 
   private firstIdOfTab(tab: DiaryTab): string {
     if (tab === 'alchemy') return ELEMENT_ENTRIES[0]!.id;
+    if (tab === 'synergies') return SYNERGY_ENTRIES[0]!.id;
     if (tab === 'bestiary') return BESTIARY_ENTRIES[0]!.id;
     return STANCE_ENTRIES[0]!.id;
   }
@@ -711,6 +786,14 @@ function elementName(entry: ElementEntry): string {
 
 function elementFlavor(entry: ElementEntry): string {
   return tWithFallback(`${entry.i18nKey}.flavor`, entry.ruFlavor);
+}
+
+function synergyName(entry: SynergyEntry): string {
+  return tWithFallback(`${entry.i18nKey}.name`, entry.ruName);
+}
+
+function synergyResult(entry: SynergyEntry): string {
+  return tWithFallback(`${entry.i18nKey}.result`, entry.ruResult);
 }
 
 function enemyDisplayName(id: string): string {
@@ -736,6 +819,39 @@ function infoSectionLabel(text: string): HTMLElement {
   div.className = 'diary-info-section-label';
   div.textContent = text;
   return div;
+}
+
+function buildSynergyFormula(entry: SynergyEntry, variant: 'card' | 'info'): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = `diary-synergy-formula diary-synergy-formula-${variant}`;
+  wrap.appendChild(elementFormulaBadge(entry.first));
+
+  const plus = document.createElement('span');
+  plus.className = 'diary-synergy-plus';
+  plus.textContent = '+';
+  wrap.appendChild(plus);
+
+  wrap.appendChild(elementFormulaBadge(entry.second));
+  return wrap;
+}
+
+function elementFormulaBadge(id: ElementEntry['id']): HTMLElement {
+  const entry = ELEMENT_ENTRIES.find((e) => e.id === id);
+  const badge = document.createElement('span');
+  badge.className = 'diary-synergy-element';
+  if (entry) badge.style.setProperty('--element-color', entry.color);
+
+  const glyph = document.createElement('span');
+  glyph.className = 'diary-synergy-element-glyph';
+  glyph.textContent = entry ? entry.glyph : '◆';
+  badge.appendChild(glyph);
+
+  const name = document.createElement('span');
+  name.className = 'diary-synergy-element-name';
+  name.textContent = entry ? elementName(entry) : t(`ui.diary.element.short.${id}`);
+  badge.appendChild(name);
+
+  return badge;
 }
 
 // ────────────────────────────────────────────────────────────────────────
