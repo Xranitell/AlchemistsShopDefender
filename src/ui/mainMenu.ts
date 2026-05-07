@@ -6,9 +6,6 @@ import { DAILY_REWARDS, DAILY_CYCLE, rewardLabel, rewardSprite } from '../data/d
 import { buildLeaderboardPanel } from './leaderboardOverlay';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
-import { animatedSpriteIcon } from '../render/animatedSpriteIcon';
-import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
-import { getDais } from '../render/dais';
 import { masteryEssenceMult } from '../game/meta';
 import {
   ACTIVE_MODULES,
@@ -212,53 +209,23 @@ export class MainMenu {
 
     body.appendChild(leftCol);
 
-    // ─ Center column: Animated mannequin ─
-    //   The painted spritesheet supplies a 4-frame idle breathing loop;
-    //   we render it via `animatedSpriteIcon` so the menu portrait moves
-    //   in sync with the in-game mannequin (same sheet, same frames).
-    //
-    //   The backdrop is now the same baked stone dais the in-game scene
-    //   uses (`getDais`), so the menu portrait reads as "the same
-    //   alchemist on the same platform you'll fight on" instead of a
-    //   bespoke SVG floor that diverges from the gameplay scene.
     const centerCol = document.createElement('div');
     centerCol.className = 'mm-col mm-col-center';
     const illu = document.createElement('div');
-    illu.className = 'mm-mannequin-display';
-
-    // In-game dais — rendered once into a baked canvas, then placed
-    // behind the painted mannequin. Box matches the host's 5:6 aspect
-    // (width:height) so CSS scales it cleanly on resize.
-    const DAIS_HOST_W = 360;
-    const DAIS_HOST_H = 432;
-    const daisCanvas = document.createElement('canvas');
-    daisCanvas.className = 'mm-mannequin-dais';
-    daisCanvas.width = DAIS_HOST_W;
-    daisCanvas.height = DAIS_HOST_H;
-    const daisCtx = daisCanvas.getContext('2d');
-    if (daisCtx) {
-      daisCtx.imageSmoothingEnabled = false;
-      const baked = getDais(DAIS_HOST_W, DAIS_HOST_H);
-      daisCtx.drawImage(baked, 0, 0);
-    }
-    illu.appendChild(daisCanvas);
-
-    // Painted mannequin overlay — sized + positioned so the figure
-    // matches the in-game silhouette (same sheet, same row, same
-    // ~100 px-tall body). `floorOffset` plants the painted feet on
-    // the dais centre line (canvas-y = canvas-h / 2) which the parent
-    // box anchors at the dais's visual centre.
-    illu.appendChild(animatedSpriteIcon(MANNEQUIN_IDLE_ANIM, {
-      width: 200,
-      height: 240,
-      fps: 3.3,
-      extraClass: 'mm-mannequin-anim',
-      // 240 / 2 = 120: figure feet sit on the dais centre.
-      floorOffset: 120,
-      // 240 × 0.42 ≈ 101 px tall — same body height as the in-game
-      // mannequin (336 × 0.30) so the menu silhouette matches.
-      fitScale: 0.42,
-    }));
+    illu.className = 'mm-mannequin-display mm-alchemist-display';
+    illu.innerHTML = `
+      <span class="mm-alchemist-halo" aria-hidden="true"></span>
+      <span class="mm-alchemist-platform" aria-hidden="true"></span>
+      <img class="mm-alchemist-image" src="sprites/main-menu-alchemist.png" alt="" draggable="false">
+      <span class="mm-flask-glow mm-flask-glow-blue" aria-hidden="true"></span>
+      <span class="mm-flask-glow mm-flask-glow-green" aria-hidden="true"></span>
+      <span class="mm-liquid-shimmer mm-liquid-shimmer-blue" aria-hidden="true"></span>
+      <span class="mm-liquid-shimmer mm-liquid-shimmer-green" aria-hidden="true"></span>
+      <span class="mm-smoke-plume mm-smoke-plume-blue" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="mm-smoke-plume mm-smoke-plume-green" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="mm-bubbles mm-bubbles-blue" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="mm-bubbles mm-bubbles-green" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    `;
     centerCol.appendChild(illu);
     body.appendChild(centerCol);
 

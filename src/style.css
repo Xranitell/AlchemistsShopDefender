@@ -2429,46 +2429,163 @@ body {
 
 /* ── Mannequin display (center) ─────────────────────────────── */
 .mm-mannequin-display {
-  width: min(100%, 360px);
+  width: min(100%, 420px);
   aspect-ratio: 5/6;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.mm-mannequin-display svg {
-  width: 100%;
-  height: 100%;
-  display: block;
+.mm-alchemist-display {
+  overflow: visible;
 }
-/* In-game stone dais (baked via `getDais` in `mainMenu.ts`). Stretched
-   to fill the host box; the host's own `aspect-ratio: 5/6` matches the
-   canvas's intrinsic 360×432 so the dais isn't squashed on resize.
-   `image-rendering: pixelated` matches the in-game scene which paints
-   the dais one CSS pixel per source pixel and keeps the chunky stone
-   blocks crisp instead of bilinear-blurred. */
-.mm-mannequin-display .mm-mannequin-dais {
+.mm-alchemist-halo,
+.mm-alchemist-platform,
+.mm-alchemist-image,
+.mm-flask-glow,
+.mm-liquid-shimmer,
+.mm-smoke-plume,
+.mm-bubbles {
   position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 100%;
-  height: 100%;
-  display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   pointer-events: none;
+}
+.mm-alchemist-halo {
+  inset: 2% -10% 10%;
+  border-radius: 44% 44% 50% 50%;
+  background:
+    radial-gradient(circle at 32% 30%, rgba(99, 236, 255, 0.32), transparent 18%),
+    radial-gradient(circle at 72% 28%, rgba(77, 255, 119, 0.34), transparent 20%),
+    radial-gradient(ellipse at 50% 55%, rgba(255, 172, 72, 0.32), rgba(99, 36, 18, 0.08) 46%, transparent 68%);
+  filter: blur(2px);
+  opacity: 0.9;
   z-index: 0;
 }
-/* The painted-mannequin idle canvas sits on top of the dais so the
-   stone reads behind the figure. Both elements share the host box's
-   centred flex layout via absolute positioning. */
-.mm-mannequin-display .mm-mannequin-anim {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+.mm-alchemist-platform {
+  left: 12%;
+  right: 10%;
+  bottom: 3%;
+  height: 18%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 197, 91, 0.32), transparent 42%),
+    radial-gradient(ellipse at 50% 52%, rgba(12, 6, 8, 0.88), rgba(12, 6, 8, 0.20) 72%, transparent 74%);
+  box-shadow: 0 0 34px rgba(255, 117, 52, 0.22);
   z-index: 1;
+}
+.mm-alchemist-image {
+  left: 50%;
+  bottom: 2%;
+  height: 98%;
+  width: auto;
+  transform: translateX(-50%);
+  filter:
+    drop-shadow(0 20px 18px rgba(0, 0, 0, 0.58))
+    drop-shadow(0 0 14px rgba(255, 142, 44, 0.42));
+  animation: mm-alchemist-float 3.8s ease-in-out infinite;
+  z-index: 3;
+}
+.mm-flask-glow {
+  width: 25%;
+  height: 20%;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  animation: mm-flask-pulse 2.8s ease-in-out infinite;
+  z-index: 4;
+}
+.mm-flask-glow-blue {
+  left: 4%;
+  top: 33%;
+  background: radial-gradient(circle, rgba(107, 253, 255, 0.72), rgba(38, 180, 255, 0.20) 46%, transparent 70%);
+}
+.mm-flask-glow-green {
+  right: 4%;
+  top: 32%;
+  background: radial-gradient(circle, rgba(133, 255, 88, 0.76), rgba(56, 224, 96, 0.20) 48%, transparent 72%);
+  animation-delay: -1.2s;
+}
+.mm-liquid-shimmer {
+  width: 18%;
+  height: 7%;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.88), transparent);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: rotate(-12deg);
+  animation: mm-liquid-shine 2.4s ease-in-out infinite;
+  z-index: 5;
+}
+.mm-liquid-shimmer-blue { left: 9%; top: 37%; }
+.mm-liquid-shimmer-green { right: 9%; top: 36%; animation-delay: -0.9s; }
+.mm-smoke-plume {
+  width: 24%;
+  height: 28%;
+  top: 6%;
+  z-index: 2;
+}
+.mm-smoke-plume-blue { left: 2%; }
+.mm-smoke-plume-green { right: 3%; }
+.mm-smoke-plume i {
+  position: absolute;
+  display: block;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: currentColor;
+  filter: blur(5px);
+  opacity: 0;
+  animation: mm-smoke-rise 4.6s ease-in-out infinite;
+}
+.mm-smoke-plume-blue i { color: rgba(63, 234, 255, 0.58); }
+.mm-smoke-plume-green i { color: rgba(89, 255, 91, 0.58); }
+.mm-smoke-plume i:nth-child(1) { left: 40%; bottom: 12%; }
+.mm-smoke-plume i:nth-child(2) { left: 20%; bottom: 0; animation-delay: -1.5s; transform: scale(0.8); }
+.mm-smoke-plume i:nth-child(3) { left: 58%; bottom: 2%; animation-delay: -2.8s; transform: scale(0.72); }
+.mm-bubbles {
+  width: 20%;
+  height: 24%;
+  top: 25%;
+  z-index: 5;
+}
+.mm-bubbles-blue { left: 9%; }
+.mm-bubbles-green { right: 9%; }
+.mm-bubbles i {
+  position: absolute;
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  animation: mm-bubble-rise 3s ease-in infinite;
+}
+.mm-bubbles-blue i { color: rgba(156, 254, 255, 0.82); }
+.mm-bubbles-green i { color: rgba(188, 255, 128, 0.82); }
+.mm-bubbles i:nth-child(1) { left: 24%; bottom: 18%; }
+.mm-bubbles i:nth-child(2) { left: 52%; bottom: 8%; animation-delay: -0.9s; transform: scale(0.78); }
+.mm-bubbles i:nth-child(3) { left: 70%; bottom: 28%; animation-delay: -1.7s; transform: scale(0.64); }
+.mm-bubbles i:nth-child(4) { left: 36%; bottom: 38%; animation-delay: -2.4s; transform: scale(0.56); }
+@keyframes mm-alchemist-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-7px); }
+}
+@keyframes mm-flask-pulse {
+  0%, 100% { opacity: 0.52; transform: scale(0.96); }
+  50% { opacity: 0.9; transform: scale(1.08); }
+}
+@keyframes mm-liquid-shine {
+  0%, 18% { opacity: 0; transform: translateX(-18px) rotate(-12deg) scaleX(0.65); }
+  45% { opacity: 0.9; }
+  72%, 100% { opacity: 0; transform: translateX(18px) rotate(-12deg) scaleX(1.08); }
+}
+@keyframes mm-smoke-rise {
+  0% { opacity: 0; transform: translate(0, 26px) scale(0.55); }
+  24% { opacity: 0.62; }
+  100% { opacity: 0; transform: translate(-8px, -42px) scale(1.45); }
+}
+@keyframes mm-bubble-rise {
+  0% { opacity: 0; transform: translateY(18px) scale(0.55); }
+  18% { opacity: 0.85; }
+  100% { opacity: 0; transform: translateY(-52px) scale(1.12); }
 }
 
 /* ── Inline daily rewards calendar ──────────────────────────── */
@@ -9271,6 +9388,11 @@ body {
 :root.motion-reduced .mm-battle-btn::before,
 :root.motion-reduced .mm-card,
 :root.motion-reduced .mm-mannequin-display::before,
+:root.motion-reduced .mm-alchemist-image,
+:root.motion-reduced .mm-flask-glow,
+:root.motion-reduced .mm-liquid-shimmer,
+:root.motion-reduced .mm-smoke-plume i,
+:root.motion-reduced .mm-bubbles i,
 :root.motion-reduced .daily-panel,
 :root.motion-reduced .lb-panel,
 :root.motion-reduced .meta-tree-panel,
