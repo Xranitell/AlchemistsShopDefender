@@ -147,14 +147,52 @@ export function updateEnemies(state: GameState, dt: number): void {
     // --- Per-kind pre-move behaviours ---
     // Sapper: once it gets close enough to the mannequin, freeze in place and
     // tick a short fuse; explode radially when the fuse reaches zero.
+    // Эпический+ sappers also latch onto the closest tower they pass by and
+    // EMP it for the full fuse duration before detonating.
     if (e.kind.id === 'sapper') {
       const sdx = e.pos.x - m.pos.x;
       const sdy = e.pos.y - m.pos.y;
       const sapR = e.kind.radius + 48;
-      if (e.sapperFuse > 0 || (sdx * sdx + sdy * sdy) < sapR * sapR) {
+      const nearMannequin = (sdx * sdx + sdy * sdy) < sapR * sapR;
+
+      // Try to latch onto a tower if the sapper carries the EMP ability
+      // (Эпический+) and isn't already fused / latched. The latch radius
+      // mirrors the iso-plane ellipse used elsewhere (4× y² weight) so a
+      // sapper walking past the rune dais on a slightly tilted angle still
+      // catches the tower.
+      if (e.attachedTowerId === -1 && e.sapperFuse <= 0
+          && e.abilities.includes('disable_tower_on_contact')) {
+        const latchR = e.kind.radius + 28;
+        const latchR2 = latchR * latchR;
+        for (const t of state.towers) {
+          const ddx = t.pos.x - e.pos.x;
+          const ddy = t.pos.y - e.pos.y;
+          if (ddx * ddx + 4 * ddy * ddy < latchR2) {
+            e.attachedTowerId = t.id;
+            // Эпический disables for 3 s, Древний for 4 s, matching the
+            // tier escalation pattern used by the other abilities.
+            const disableDur = e.abilityTier === 'ancient' ? 4 : 3;
+            t.disabledTimer = Math.max(t.disabledTimer, disableDur);
+            e.sapperFuse = disableDur;
+            spawnFloatingText(state, '⚡', e.pos, '#7df9ff');
+            break;
+          }
+        }
+      }
+
+      if (e.sapperFuse > 0 || nearMannequin) {
         if (e.sapperFuse <= 0) {
           e.sapperFuse = 0.55;
           spawnFloatingText(state, '!', e.pos, '#ff5a5a');
+        }
+        // Keep the latched tower disabled for the remainder of the fuse
+        // so the EMP doesn't lift off early if the sapper's fuse ticks
+        // run faster than the tower's `disabledTimer`.
+        if (e.attachedTowerId !== -1) {
+          const tower = state.towers.find((t) => t.id === e.attachedTowerId);
+          if (tower) {
+            tower.disabledTimer = Math.max(tower.disabledTimer, Math.max(0, e.sapperFuse));
+          }
         }
         e.sapperFuse -= dt;
         // Pulse by flashing hitFlash so the sprite visibly blinks red.
@@ -224,9 +262,38 @@ export function updateEnemies(state: GameState, dt: number): void {
           const speed = e.kind.speed * e.status.slowFactor
             * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult
             * enemySpeedMultiplier(state) * waveSpeedScale(state);
-          const inv = (speed * dt) / len;
-          e.pos.x += dx * inv;
-          e.pos.y += dy * inv;
+          // Direction toward the mannequin, normalized.
+          let nx = dx / len;
+          let ny = dy / len;
+          // Zig-zag dash: rats / rat-king carrying `zigzag_dash` periodically
+          // burst sideways perpendicular to the manequin axis, alternating
+          // direction so the path traces a visible weave. The state machine
+          // ticks the cooldown, then opens a short burst window where
+          // movement biases toward the perpendicular vector. The forward
+          // component is preserved so the rat still closes the gap, just
+          // along a curved path.
+          if (e.abilities.includes('zigzag_dash') && e.dashBackTimer <= 0) {
+            if (e.zigzagTimer > 0) {
+              e.zigzagTimer -= dt;
+              const px = -ny * e.zigzagDir;
+              const py = nx * e.zigzagDir;
+              const blend = 0.7;
+              nx = nx * (1 - blend) + px * blend;
+              ny = ny * (1 - blend) + py * blend;
+              const m2 = Math.sqrt(nx * nx + ny * ny);
+              if (m2 > 0) { nx /= m2; ny /= m2; }
+            } else if (e.zigzagCooldown > 0) {
+              e.zigzagCooldown -= dt;
+            } else {
+              // Open a fresh burst on the opposite side so the rat
+              // alternates left / right across successive dashes.
+              e.zigzagTimer = 0.45;
+              e.zigzagDir = (e.zigzagDir === 1 ? -1 : 1);
+              e.zigzagCooldown = 1.4 + state.rng.range(0, 0.5);
+            }
+          }
+          e.pos.x += nx * speed * dt;
+          e.pos.y += ny * speed * dt;
         }
       }
     }
@@ -709,6 +776,28 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
         time: 3,
       });
     }
+  }
+
+  // Stun-towers-on-death: Эпический+ golems release a short-range EMP
+  // pulse on death that disables every tower whose centre falls within
+  // the ring for `STUN_DURATION` seconds. The visual is a single
+  // "bzzt" floating text on the dead golem so the tower silence isn't
+  // mysterious — paired with the per-tower disabled overlay it reads
+  // as a clear cause-and-effect.
+  if (e.abilities.includes('stun_towers_on_death')) {
+    const STUN_RADIUS = e.abilityTier === 'ancient' ? 130 : 100;
+    const STUN_DURATION = e.abilityTier === 'ancient' ? 3 : 2;
+    const r2 = STUN_RADIUS * STUN_RADIUS;
+    let any = false;
+    for (const t of state.towers) {
+      const dx2 = t.pos.x - e.pos.x;
+      const dy2 = t.pos.y - e.pos.y;
+      if (dx2 * dx2 + dy2 * dy2 < r2) {
+        t.disabledTimer = Math.max(t.disabledTimer, STUN_DURATION);
+        any = true;
+      }
+    }
+    if (any) spawnFloatingText(state, 'EMP', e.pos, '#7df9ff');
   }
 
   // Crafting ingredient drops. Split-on-death offspring are NOT eligible

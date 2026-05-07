@@ -43,6 +43,7 @@ import { animatedSpriteIcon } from '../render/animatedSpriteIcon';
 import { ENEMY_ANIMS } from '../render/creatureAnims';
 import type { AnimRow } from '../render/animatedSprite';
 import type { BakedSprite } from '../render/sprite';
+import { paintedTurretIcon } from '../render/turretSheet';
 import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
 type DiaryTab = 'alchemy' | 'bestiary' | 'stances';
@@ -265,13 +266,14 @@ export class DiaryOverlay {
 
     const icon = document.createElement('div');
     icon.className = 'diary-entry-icon diary-entry-sprite';
-    if (discovered) {
-      const sprite = enemySpriteIconNode(entry.id, 64);
-      if (sprite) icon.appendChild(sprite);
-    } else {
-      const silhouette = enemySpriteIconNode(entry.id, 64, { silhouette: true });
-      if (silhouette) icon.appendChild(silhouette);
-    }
+    // Render sprite into a 64×64 box but only fill ~70% of it so tall
+    // silhouettes (golem, shaman, boss kinds) keep margin on every side
+    // and never bleed into the card border.
+    const sprite = enemySpriteIconNode(entry.id, 64, {
+      silhouette: !discovered,
+      fitScale: 0.7,
+    });
+    if (sprite) icon.appendChild(sprite);
     card.appendChild(icon);
 
     const name = document.createElement('div');
@@ -620,6 +622,10 @@ function infoSectionLabel(text: string): HTMLElement {
 
 interface SpriteIconNodeOpts {
   silhouette?: boolean;
+  /** Fraction of the icon canvas the painted body should occupy.
+   *  Defaults to 0.86 (matches the menu portraits). The bestiary
+   *  cards pass a smaller value so tall sprites do not clip. */
+  fitScale?: number;
 }
 
 function enemySpriteIconNode(
@@ -627,13 +633,14 @@ function enemySpriteIconNode(
   size: number,
   opts: SpriteIconNodeOpts = {},
 ): HTMLElement | null {
+  const fitScale = opts.fitScale ?? 0.86;
   const row: AnimRow | undefined = ENEMY_ANIMS[id];
   if (row) {
     const node = animatedSpriteIcon(row, {
       width: size,
       height: size,
       fps: 3,
-      fitScale: 0.86,
+      fitScale,
       extraClass: opts.silhouette ? 'diary-sprite diary-sprite-silhouette' : 'diary-sprite',
     });
     return node;
@@ -642,7 +649,8 @@ function enemySpriteIconNode(
   const sprites = getSprites();
   const baked = bakedEnemySprite(sprites, id);
   if (!baked) return null;
-  const scale = Math.max(1, Math.floor(size / Math.max(baked.width, baked.height)));
+  const target = Math.floor(size * fitScale);
+  const scale = Math.max(1, Math.floor(target / Math.max(baked.width, baked.height)));
   const icon = spriteIcon(baked, {
     scale,
     extraClass: opts.silhouette ? 'diary-sprite diary-sprite-silhouette' : 'diary-sprite',
@@ -651,6 +659,17 @@ function enemySpriteIconNode(
 }
 
 function towerSpriteIconNode(id: string, size: number): HTMLElement | null {
+  // Painted turret sheet is the source of truth for tower visuals — every
+  // tower kind has a hand-drawn frame (see `TURRET_FRAMES` in
+  // `render/turretSheet.ts`). Use that here so the diary shows exactly
+  // the same sprite the player sees on the rune dais. Falls back to the
+  // baked pixel-art sprite if the painted sheet hasn't loaded yet (the
+  // `paintedTurretIcon` helper auto-paints once the PNG resolves).
+  const painted = paintedTurretIcon(id, size, {
+    fitScale: 0.92,
+    extraClass: 'diary-sprite',
+  });
+  if (painted) return painted;
   const sprites = getSprites();
   const baked = bakedTowerSprite(sprites, id);
   if (!baked) return null;

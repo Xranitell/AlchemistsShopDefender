@@ -43,7 +43,7 @@ import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import { applyBloom } from '../render/bloom';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
-import { getAurasBuffing } from './tower';
+import { getAurasBuffing, watchTowerSlotOrder, watchTowerBuffCount } from './tower';
 
 function difficultyAuraColor(mode: DifficultyMode): string | null {
   if (mode === 'normal') return null;
@@ -472,14 +472,31 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // so the procedural pixel flame is skipped in painted mode; the
     // floor aura ring (a gameplay buff indicator) is always drawn.
     if (t.kind.id === 'watch_tower') {
-      const auraR = t.kind.range * state.modifiers.towerRangeMult;
       const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 1.5);
       ctx.save();
-      ctx.strokeStyle = `rgba(255, 209, 102, ${0.10 + pulse * 0.08})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(t.pos.x, t.pos.y, auraR, auraR * 0.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      // Slot-based aura: instead of a range ring (which would lie about
+      // who is actually buffed), draw glowing thread-lines from the
+      // lantern's rune to each rune slot it currently lights up. The
+      // line fades in/out with the lantern's pulse so the link reads
+      // as living energy rather than a static effect range.
+      const totalSlots = state.runePoints.length;
+      const order = watchTowerSlotOrder(t.runePointId, totalSlots);
+      const reach = watchTowerBuffCount(t.level);
+      ctx.strokeStyle = `rgba(255, 209, 102, ${0.18 + pulse * 0.14})`;
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < Math.min(reach, order.length); i++) {
+        const slotId = order[i]!;
+        const rp = state.runePoints[slotId];
+        if (!rp) continue;
+        ctx.beginPath();
+        ctx.moveTo(t.pos.x, t.pos.y);
+        ctx.lineTo(rp.pos.x, rp.pos.y);
+        ctx.stroke();
+        // Soft anchor halo on the lit slot.
+        ctx.beginPath();
+        ctx.arc(rp.pos.x, rp.pos.y, 4 + pulse * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (!usingPainted) {
         // Lantern flame on top of the small pixel-art lantern.
         ctx.fillStyle = '#ffd166';
@@ -533,10 +550,35 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
       }
     }
 
+    // EMP / stun overlay: while `disabledTimer > 0` the tower has been
+    // shut off by a sapper EMP attach or golem death pulse. Paint a
+    // cyan glitch ring + sparks on top of the tower so the silence is
+    // legible. Kept simple — a flickering arc on the pedestal and a
+    // floating "OFFLINE" tag — to avoid masking the painted tower body.
+    if (t.disabledTimer > 0) {
+      const blink = (Math.floor(state.worldTime * 16) % 2) === 0 ? 1 : 0.55;
+      ctx.save();
+      ctx.strokeStyle = `rgba(125, 249, 255, ${0.55 * blink})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(t.pos.x, t.pos.y + 4, 26, 12, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Tiny static "sparks" rotating around the body.
+      ctx.fillStyle = `rgba(125, 249, 255, ${0.7 * blink})`;
+      const spinAng = state.worldTime * 6 + t.id;
+      for (let k = 0; k < 3; k++) {
+        const a = spinAng + (k * Math.PI * 2) / 3;
+        const sx = Math.round(t.pos.x + Math.cos(a) * 22);
+        const sy = Math.round(t.pos.y - 22 + Math.sin(a) * 6);
+        ctx.fillRect(sx - 1, sy - 1, 2, 2);
+      }
+      ctx.restore();
+    }
+
     // Muzzle flash when recently fired. Anchored to the painted-tower
     // top (where the barrel / spout actually sits) when painted, or
     // the pixel-art barrel y when falling back.
-    if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura') {
+    if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura' && t.disabledTimer <= 0) {
       const flashX = t.pos.x + Math.cos(t.aimAngle) * muzzleReach;
       const flashY = topY + Math.sin(t.aimAngle) * muzzleReach;
       ctx.save();

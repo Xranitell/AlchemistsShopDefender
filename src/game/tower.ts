@@ -74,6 +74,7 @@ export function buyTower(state: GameState, runePointId: number, towerKindId: str
     aimAngle: 0,
     shotCount: 0,
     targetingMode: 'nearest',
+    disabledTimer: 0,
   };
   state.towers.push(tower);
   rp.towerId = tower.id;
@@ -161,13 +162,37 @@ function getAuraCount(state: GameState): number {
   return cachedAuraCount;
 }
 
-/** Сторожевой фонарь: how many neighbouring towers a lantern at this
- *  level buffs. Level 1 buffs 1 neighbour, level 5 buffs 5 — every
- *  upgrade adds another simultaneous bond. The cap matches
- *  `TOWER_MAX_LEVEL` so a fully upgraded lantern can saturate every
- *  other rune slot on the dais. */
+/** Сторожевой фонарь: how many neighbouring rune slots a lantern at
+ *  this level reaches. Level 1 covers 1 slot (the closest neighbour on
+ *  either side), level 5 covers 5 — every upgrade extends the lantern's
+ *  reach to one more rune position. The cap matches `TOWER_MAX_LEVEL`
+ *  so a fully upgraded lantern reaches every other rune slot on a
+ *  6-slot dais. */
 export function watchTowerBuffCount(level: number): number {
   return Math.max(1, Math.min(5, Math.floor(level)));
+}
+
+/** Build the list of rune-point IDs the lantern at `slotId` reaches in
+ *  priority order. The first level reaches the immediate left neighbour
+ *  (`slotId - 1`), the second adds the immediate right neighbour
+ *  (`slotId + 1`), the third adds `slotId - 2`, and so on — alternating
+ *  left → right while expanding outward. Out-of-range slot ids are
+ *  skipped silently, so the order naturally collapses to the side that
+ *  still has slots when one direction runs out.
+ *
+ *  Example: lantern at slot 2 (0-indexed; the "3rd" rune slot in 1-based
+ *  player terms) on a 6-slot dais yields the sequence [1, 3, 0, 4, 5]
+ *  — matches the design call-out for what each lantern level should
+ *  light up. */
+export function watchTowerSlotOrder(slotId: number, totalSlots: number): number[] {
+  const order: number[] = [];
+  for (let d = 1; d < totalSlots; d++) {
+    const left = slotId - d;
+    const right = slotId + d;
+    if (left >= 0 && left < totalSlots) order.push(left);
+    if (right >= 0 && right < totalSlots) order.push(right);
+  }
+  return order;
 }
 
 /** Per-frame cache: for each aura tower, the set of tower-IDs it is
@@ -189,29 +214,30 @@ function buffedTowerIdsByAura(state: GameState): Map<number, Set<number>> {
     cachedAuraBuffSets = out;
     return out;
   }
-  const rangeMod = state.modifiers.towerRangeMult * towerRangeMultiplier(state);
+  // Per-rune-point lookup: which tower (if any) currently sits on each
+  // rune slot. The lantern's buff list is built off rune-point IDs
+  // (slot positions) rather than world distances, so we resolve to a
+  // tower id via this map.
+  const towerByRune = new Map<number, number>();
+  for (const t of state.towers) towerByRune.set(t.runePointId, t.id);
+  const totalSlots = state.runePoints.length;
   for (const aura of state.towers) {
     if (aura.kind.behavior !== 'aura') continue;
-    const auraRange = aura.kind.range * rangeMod;
-    const r2 = auraRange * auraRange;
-    // Collect every other tower whose centre falls inside the same
-    // iso-plane ellipse the aura ring is drawn at — same membership
-    // test as `pickTowerTarget` so the visualised ring matches the
-    // gameplay zone.
-    const candidates: { id: number; d2: number }[] = [];
-    for (const other of state.towers) {
-      if (other.id === aura.id) continue;
-      const dx = other.pos.x - aura.pos.x;
-      const dy = other.pos.y - aura.pos.y;
-      const score = dx * dx + 4 * dy * dy;
-      if (score > r2) continue;
-      candidates.push({ id: other.id, d2: score });
-    }
-    candidates.sort((a, b) => a.d2 - b.d2);
-    const cap = watchTowerBuffCount(aura.level);
+    // Slot-based reach: the lantern lights up rune slots in expansion
+    // order from its own slot (see `watchTowerSlotOrder`). The lantern
+    // level controls how many slots into that order it reaches; slots
+    // without a tower contribute no buff but are still counted toward
+    // the reach (the design models the lantern as a positional fixture,
+    // not a "find me K closest towers" search). The disabled-timer
+    // check is done dynamically in `towerStats` instead of here so the
+    // cached buff sets don't have to be invalidated every frame.
+    const order = watchTowerSlotOrder(aura.runePointId, totalSlots);
+    const reach = watchTowerBuffCount(aura.level);
     const set = new Set<number>();
-    for (let i = 0; i < Math.min(cap, candidates.length); i++) {
-      set.add(candidates[i]!.id);
+    for (let i = 0; i < Math.min(reach, order.length); i++) {
+      const slotId = order[i]!;
+      const towerId = towerByRune.get(slotId);
+      if (towerId !== undefined && towerId !== aura.id) set.add(towerId);
     }
     out.set(aura.id, set);
   }
@@ -252,22 +278,23 @@ export function towerStats(state: GameState, t: Tower) {
     baseRange *= bonus.range;
   }
 
-  // Сторожевой фонарь aura: only the K nearest in-range towers per
-  // lantern get the buff, where K = lantern level (see
-  // `watchTowerBuffCount`). The buff sets are precomputed per frame in
-  // `buffedTowerIdsByAura`; we just check membership here. Aura towers
-  // don't buff themselves and the ID-based lookup means stacking
-  // multiple lanterns (when the build limit is lifted, e.g. via mods)
-  // would still apply each buff at most once per source.
+  // Сторожевой фонарь aura: each lantern's level controls how many
+  // rune slots its slot-order reach covers (see
+  // `watchTowerBuffCount` / `watchTowerSlotOrder`). The buff sets are
+  // precomputed per frame in `buffedTowerIdsByAura`; we just check
+  // membership here. EMP'd lanterns are filtered out dynamically so
+  // their buffs lift the moment a sapper latches on or a golem stuns
+  // the dais — the cached buff sets don't have to be invalidated.
   let rateMult = 1;
   let rangeMult = 1;
   if (getAuraCount(state) > 0) {
     const buffMap = buffedTowerIdsByAura(state);
-    for (const [, set] of buffMap) {
-      if (set.has(t.id)) {
-        rateMult *= WATCH_TOWER_AURA.fireRateMult;
-        rangeMult *= WATCH_TOWER_AURA.rangeMult;
-      }
+    for (const [auraId, set] of buffMap) {
+      if (!set.has(t.id)) continue;
+      const aura = state.towers.find((x) => x.id === auraId);
+      if (aura && aura.disabledTimer > 0) continue;
+      rateMult *= WATCH_TOWER_AURA.fireRateMult;
+      rangeMult *= WATCH_TOWER_AURA.rangeMult;
     }
   }
   return { damage, rate: baseRate * rateMult, range: baseRange * rangeMult };
@@ -370,6 +397,12 @@ export function updateTowers(state: GameState, dt: number): void {
   }
 
   for (const t of state.towers) {
+    // Tick the global tower-disable timer driven by Эпический+ sapper
+    // EMP attaches and golem death pulses. While disabled the tower is
+    // off the firing lookups (lantern aura is also suppressed) but its
+    // fire timer keeps draining so it can ramp back up cleanly when
+    // the EMP lifts.
+    if (t.disabledTimer > 0) t.disabledTimer = Math.max(0, t.disabledTimer - dt);
     // Aura towers (Сторожевой фонарь) never fire, but they keep ticking the
     // fire timer so the visual idle-rotation can still use it.
     if (t.kind.behavior === 'aura') {
@@ -391,6 +424,10 @@ export function updateTowers(state: GameState, dt: number): void {
     const stats = towerStats(state, t);
     t.fireTimer -= dt;
     if (t.fireTimer > 0) continue;
+    // EMP'd towers can't acquire targets or shoot — but the fire-timer
+    // tick above still runs so they're ready to fire as soon as the
+    // disable lifts, instead of being on a fresh full cooldown.
+    if (t.disabledTimer > 0) continue;
 
     const target = pickTowerTarget(state, t, stats.range);
     if (!target) continue;

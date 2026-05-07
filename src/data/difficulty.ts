@@ -20,7 +20,20 @@ export type EnemyAbility =
   // Flying flasks explode on death in a short radius.
   | 'explode_on_death'
   // Shamans heal nearby enemies on a timer.
-  | 'aura_heal';
+  | 'aura_heal'
+  // Rats sprint in a periodic zig-zag — alternating left / right
+  // perpendicular dashes — so chain-volley towers can't pre-fire a
+  // straight line through them.
+  | 'zigzag_dash'
+  // Sappers latch onto the closest tower if they reach point-blank
+  // range and EMP-disable it for several seconds before exploding,
+  // applied on Эпический+ to make sapper waves a tower-protection
+  // problem rather than just a manequin-damage one.
+  | 'disable_tower_on_contact'
+  // Golems release a stun pulse on death that briefly silences nearby
+  // towers, applied on Эпический+ so killing the front-liner has a
+  // real cost beyond losing a damage soak.
+  | 'stun_towers_on_death';
 
 export interface DifficultyModifier {
   hpMult: number;
@@ -58,6 +71,19 @@ export const ALL_ENEMY_ABILITIES: EnemyAbility[] = [
   'dash_back_on_hit',
   'explode_on_death',
   'aura_heal',
+  // Rats zig-zag on every difficulty — it's their signature behaviour
+  // so even Обычный players see the new movement pattern.
+  'zigzag_dash',
+];
+
+/** Abilities that only attach when the enemy is spawned in
+ *  Эпический or Древний. They stack on top of the kind's base ability
+ *  rather than replacing it: an Эпический rat keeps the on-hit
+ *  back-dash AND now also zig-zags, an Эпический sapper keeps the
+ *  detonation fuse AND now also disables towers it touches, etc. */
+export const EPIC_ONLY_ENEMY_ABILITIES: EnemyAbility[] = [
+  'disable_tower_on_contact',
+  'stun_towers_on_death',
 ];
 
 export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
