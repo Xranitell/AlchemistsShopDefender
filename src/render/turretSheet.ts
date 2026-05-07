@@ -128,15 +128,20 @@ export const PAINTED_TURRET_SCALE = 0.25;
  *  stand on its rune. Each painted frame's anchor `(ax, ay)` lands at
  *  the centre-bottom of its **pedestal-ring base** (see anchor block
  *  at the top of this file), so drawing at `t.pos.y - LIFT_Y` puts the
- *  pedestal-ring's bottom row of pixels at `t.pos.y - LIFT_Y`. Floor
- *  decals (drop shadow, buff halo, range indicator, EMP overlay) all
- *  anchor at `t.pos.y + 4` (see `drawTowerFloor`), so we lift the body
- *  by the same `-4` so the pedestal's bottom lands inside the buff
- *  halo instead of past it. The chalk circle (2:1 ellipse, ry=11 — see
- *  `drawRunePoints`) ends up just at the bottom edge of the pedestal,
- *  reading as "the rune the stand is standing on" while the buff halo
- *  paints behind / through the legs. */
-export const PAINTED_TURRET_LIFT_Y = -4;
+ *  pedestal-ring's bottom row of pixels at `t.pos.y - LIFT_Y`.
+ *
+ *  We deliberately drop the pedestal **past** the rune-point centre so
+ *  the brick ring visibly sinks into the chalk circle instead of
+ *  perching on top of it. Floor decals all anchor at `t.pos.y` /
+ *  `t.pos.y + 4` (drop shadow, buff halo, EMP overlay — see
+ *  `drawTowerFloor`); the chalk circle has ry=11 (`drawRunePoints`,
+ *  YS=0.5 × 22), so its lower edge is at `t.pos.y + 11`. Lifting the
+ *  body by `-12` lands the pedestal bottom right at the bottom of the
+ *  chalk circle — the painted stand reads as "standing inside the
+ *  rune" rather than floating just above it. The buff halo (haloR ×
+ *  0.5 ≈ 19 px ry) extends comfortably below this point so the legs
+ *  still sit inside the warm glow. */
+export const PAINTED_TURRET_LIFT_Y = -12;
 
 /** World-space Y offset from the painted turret's pedestal base (where
  *  `t.pos` sits) to the vertical mid-point of the turret body. Used by
