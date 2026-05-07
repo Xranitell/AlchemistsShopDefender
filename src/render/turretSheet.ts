@@ -94,14 +94,19 @@ export const TURRET_COUNT = TURRET_FRAMES.length;
  *  on-screen size of the turret. */
 export const PAINTED_TURRET_SCALE = 0.25;
 
-/** World-space Y offset (negative = up in screen space) used to lift the
- *  painted turret stand off the floor at its rune. Set to 0 so the
- *  bottom of the stone pedestal is planted exactly on the rune chalk
- *  position the player tapped to summon the tower — the summon circle
- *  reads as the literal foundation of the stand instead of a glow
- *  underneath a hovering pedestal. The drop shadow + lantern halos
- *  still anchor at `t.pos.y` so the floor decals stay readable. */
-export const PAINTED_TURRET_LIFT_Y = 0;
+/** World-space Y offset (negative = down in screen space because the
+ *  caller does `t.pos.y - LIFT_Y`) used to plant the painted turret
+ *  stand on its rune. Negative ⇒ the pedestal base is pushed *past* the
+ *  centre of the chalk circle and onto its front edge, so the rune
+ *  reads as the floor the stand is standing *on* rather than a halo the
+ *  body is hovering *above*. The chalk circle is a 2:1 floor ellipse
+ *  with horizontal radius 22 (see `drawRunePoints`) — its iso-front
+ *  edge sits at `rp.pos.y + 11`, so we drop the body slightly past
+ *  that (-14) so the entire ellipse is occluded by the pedestal base
+ *  and the bottom contour of the body lands cleanly on a floor tile.
+ *  The drop shadow + lantern halos still anchor at `t.pos.y` so the
+ *  floor decals stay readable. */
+export const PAINTED_TURRET_LIFT_Y = -14;
 
 /** World-space Y offset from the painted turret's pedestal base (where
  *  `t.pos` sits) to the vertical mid-point of the turret body. Used by

@@ -59,7 +59,7 @@ export class AudioEngine {
    *  Music defaults to 0.7× the previous baseline so the menu loop and
    *  battle ambient track no longer drown out SFX on a fresh save. */
   private sfxVolume = 0.6;
-  private musicVolume = 0.28;
+  private musicVolume = 0.25;
   private muted = false;
 
   /** Currently scheduled music: source nodes + the track id. Switching a

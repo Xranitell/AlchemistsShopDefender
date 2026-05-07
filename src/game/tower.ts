@@ -487,7 +487,16 @@ export function updateTowers(state: GameState, dt: number): void {
 /** Эфирная катушка primary attack. Chains from `tower` → `primary` → up to
  *  `ETHER_COIL_CHAIN.hops` additional enemies, dealing decreasing damage with
  *  each hop. Each hop is independently selected so the bolt picks the closest
- *  unhit enemy at every step. Visual segments are pushed to `state.chainBolts`. */
+ *  unhit enemy at every step. Visual segments are pushed to `state.chainBolts`.
+ *
+ *  Reaction-spam guard: only the *primary* target carries the coil's full
+ *  `aether` element so it can mark the enemy for follow-up Spark Cascade
+ *  reactions when the player throws a fire potion. Hop targets take their
+ *  damage as `'neutral'` so a single fire potion lobbed at a cluster of
+ *  tesla'd enemies doesn't detonate three simultaneous Spark Cascades —
+ *  one per pre-marked enemy — that previously melted even the fattest
+ *  rivals in a single throw. The visual / audio of the chain stays the
+ *  same, but the chain only seeds *one* aether mark per fire. */
 function fireChainLightning(
   state: GameState,
   tower: Tower,
@@ -496,7 +505,8 @@ function fireChainLightning(
 ): void {
   const hit = new Set<number>();
   hit.add(primary.id);
-  // Primary hit
+  // Primary hit — full coil element so reactions stay possible on the
+  // intended single target.
   applyDamageToEnemy(state, primary, baseDamage, tower.kind.element);
   pushBolt(state, tower.pos, primary.pos, 0);
 
@@ -515,7 +525,9 @@ function fireChainLightning(
     }
     if (!next) break;
     hit.add(next.id);
-    applyDamageToEnemy(state, next, dmg, tower.kind.element);
+    // Hop hits use 'neutral' so they DON'T stamp aether marks all over
+    // the cluster — see function-doc comment for why.
+    applyDamageToEnemy(state, next, dmg, 'neutral');
     pushBolt(state, current.pos, next.pos, h + 1);
     current = next;
   }

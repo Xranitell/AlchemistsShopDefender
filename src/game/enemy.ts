@@ -265,35 +265,29 @@ export function updateEnemies(state: GameState, dt: number): void {
           // Direction toward the mannequin, normalized.
           let nx = dx / len;
           let ny = dy / len;
-          // Zig-zag dash: rats / rat-king carrying `zigzag_dash` periodically
-          // burst sideways perpendicular to the manequin axis, alternating
-          // direction so the path traces a visible weave. The state machine
-          // ticks the cooldown, then opens a short burst window where
-          // movement biases toward the perpendicular vector. The forward
-          // component is preserved so the rat still closes the gap, just
-          // along a curved path.
+          // Sprint surge (formerly the perpendicular zig-zag pattern,
+          // which was useless against the stationary mannequin since
+          // the lateral weave only exists to dodge towers). The rework
+          // re-uses the same state fields but turns them into a
+          // *forward* burst: every ~1.7 s the rat opens a 0.4 s window
+          // where it doubles its forward speed toward the mannequin so
+          // killing slow rats becomes urgent (they close the gap in
+          // bursts the player has to interrupt). `zigzagDir` is no
+          // longer read but kept on the type to avoid a wider refactor.
+          let sprintMul = 1;
           if (e.abilities.includes('zigzag_dash') && e.dashBackTimer <= 0) {
             if (e.zigzagTimer > 0) {
               e.zigzagTimer -= dt;
-              const px = -ny * e.zigzagDir;
-              const py = nx * e.zigzagDir;
-              const blend = 0.7;
-              nx = nx * (1 - blend) + px * blend;
-              ny = ny * (1 - blend) + py * blend;
-              const m2 = Math.sqrt(nx * nx + ny * ny);
-              if (m2 > 0) { nx /= m2; ny /= m2; }
+              sprintMul = 2.0;
             } else if (e.zigzagCooldown > 0) {
               e.zigzagCooldown -= dt;
             } else {
-              // Open a fresh burst on the opposite side so the rat
-              // alternates left / right across successive dashes.
-              e.zigzagTimer = 0.45;
-              e.zigzagDir = (e.zigzagDir === 1 ? -1 : 1);
-              e.zigzagCooldown = 1.4 + state.rng.range(0, 0.5);
+              e.zigzagTimer = 0.4;
+              e.zigzagCooldown = 1.4 + state.rng.range(0, 0.6);
             }
           }
-          e.pos.x += nx * speed * dt;
-          e.pos.y += ny * speed * dt;
+          e.pos.x += nx * speed * sprintMul * dt;
+          e.pos.y += ny * speed * sprintMul * dt;
         }
       }
     }
@@ -734,48 +728,33 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
     }
   }
 
-  // Explode-on-death: small radial burst that tier scales. Epic
-  // amplifies radius and damage, Ancient additionally leaves a 3 s
-  // poison pool that ticks the hero / nearby ally enemies.
+  // Volatile-burst on death: Эпохи назад this used to splash chip
+  // damage to the mannequin and to nearby allied enemies, but the
+  // mannequin is stationary so the player couldn't dodge it and the
+  // friendly-fire chip never mattered against thick waves. Reworked so
+  // dying flying flasks instead release a *short-range tower EMP* —
+  // every tower whose dais centre falls inside the burst goes offline
+  // for `disableDur` seconds, the same offline state used by sapper
+  // contact-EMP and golem death-pulse. This gives the player a real
+  // strategic reason to focus flasks down BEFORE they drift past the
+  // tower line: a flask popping at the back of the dais now silences
+  // every turret it overlaps for a beat.
   if (e.abilities.includes('explode_on_death')) {
     const radius =
-      e.abilityTier === 'epic' ? 100 : e.abilityTier === 'ancient' ? 120 : 60;
-    const enemyDmg =
-      e.abilityTier === 'epic' ? 10 : e.abilityTier === 'ancient' ? 14 : 6;
-    const heroBaseDmg =
-      e.abilityTier === 'epic' ? 7 : e.abilityTier === 'ancient' ? 10 : 4;
-    for (const other of state.enemies) {
-      if (other.id === e.id) continue;
-      if (dist(other.pos, e.pos) < radius) {
-        applyDamageToEnemy(state, other, enemyDmg, 'fire');
+      e.abilityTier === 'epic' ? 90 : e.abilityTier === 'ancient' ? 110 : 70;
+    const disableDur =
+      e.abilityTier === 'epic' ? 2.0 : e.abilityTier === 'ancient' ? 2.5 : 1.5;
+    const r2 = radius * radius;
+    let any = false;
+    for (const tw of state.towers) {
+      const dx2 = tw.pos.x - e.pos.x;
+      const dy2 = tw.pos.y - e.pos.y;
+      if (dx2 * dx2 + dy2 * dy2 < r2) {
+        tw.disabledTimer = Math.max(tw.disabledTimer, disableDur);
+        any = true;
       }
     }
-    // Damage the hero too if close enough.
-    if (dist(state.mannequin.pos, e.pos) < radius) {
-      const raw = Math.max(1, heroBaseDmg * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor) * takenDamageMultiplier(state));
-      const dmg = absorbWithShield(state, raw);
-      state.mannequin.hp -= dmg;
-      state.mannequin.damageFlash = 0.22;
-      shakeCamera(3, 0.16);
-      flashScreen(Math.min(1, 0.3 + (dmg / Math.max(1, state.mannequin.maxHp)) * 4), 0.28);
-      spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
-      if (dmg > 0) {
-        const w = state.waveState.currentIndex + 1;
-        state.contractStats.damageInWave[w] = true;
-      }
-    }
-    // Ancient: leave a small lingering fire pool so allied enemies
-    // walking through the kill zone get singed and the player has to
-    // dodge or wait for it to clear before retrieving loot.
-    if (e.abilityTier === 'ancient') {
-      state.firePools.push({
-        id: newId(state),
-        pos: { x: e.pos.x, y: e.pos.y },
-        radius: Math.round(radius * 0.6),
-        dps: 5,
-        time: 3,
-      });
-    }
+    if (any) spawnFloatingText(state, '⚡', e.pos, '#7df9ff');
   }
 
   // Stun-towers-on-death: Эпический+ golems release a short-range EMP
