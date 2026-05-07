@@ -40,6 +40,7 @@ import { TowerShop } from './ui/towerShop';
 import { MannequinShop } from './ui/mannequinShop';
 import { MetaOverlay } from './ui/metaOverlay';
 import { LoadoutOverlay } from './ui/loadoutOverlay';
+import { DiaryOverlay } from './ui/diaryOverlay';
 import { MainMenu } from './ui/mainMenu';
 import { DailyRewardsOverlay } from './ui/dailyRewardsOverlay';
 import { BattlePassOverlay, addBpXp } from './ui/battlePassOverlay';
@@ -65,7 +66,7 @@ import {
   curseChoiceCount,
 } from './data/blessings';
 import type { GameState } from './game/state';
-import { loadMeta, saveMeta, resetMeta, type MetaSave } from './game/save';
+import { loadMeta, saveMeta, resetMeta, recordBestiaryKill, type MetaSave } from './game/save';
 import { applyMetaUpgrades, calcRunEssence } from './game/meta';
 import {
   attachRunInventory,
@@ -220,6 +221,7 @@ const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);
 const loadoutOverlay = new LoadoutOverlay(overlayRoot);
+const diaryOverlay = new DiaryOverlay(overlayRoot);
 const mainMenu = new MainMenu(overlayRoot);
 const dailyOverlay = new DailyRewardsOverlay(overlayRoot);
 const bpOverlay = new BattlePassOverlay(overlayRoot);
@@ -885,6 +887,15 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   addBpXp(meta, bpXp);
   // Persist surviving (unused) potion slots back to the meta save.
   persistRunInventory(state, meta);
+  // Bestiary: fold the run-time per-kind kill counters into the meta
+  // store so the Alchemist's Diary (right column of the main menu)
+  // reflects every kill the player just made, with per-difficulty
+  // progress bars for normal / epic / ancient / endless / daily.
+  for (const [enemyId, kills] of Object.entries(state.contractStats.killsByKind)) {
+    if (typeof kills === 'number' && kills > 0) {
+      recordBestiaryKill(meta, enemyId, state.difficulty, kills);
+    }
+  }
   saveMeta(meta);
 
   // Submit scores to the two Yandex Games leaderboards. `endlessWaves`
@@ -1725,6 +1736,11 @@ function showMainMenu(): void {
       mainMenu.hide();
       showLoadout();
     },
+    onDiary: () => {
+      dismissMenuTutorial();
+      mainMenu.hide();
+      showDiary();
+    },
   });
   // First-time main-menu walkthrough — fires once per save. Steps
   // whose target card isn't on-screen for some reason are skipped
@@ -1749,6 +1765,15 @@ function showLoadout(): void {
     onSave: () => saveMeta(meta),
     onClose: () => {
       loadoutOverlay.hide();
+      showMainMenu();
+    },
+  });
+}
+
+function showDiary(): void {
+  diaryOverlay.show({
+    meta,
+    onClose: () => {
       showMainMenu();
     },
   });

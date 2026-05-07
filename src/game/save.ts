@@ -11,6 +11,22 @@ import {
   type IngredientId,
 } from '../data/potions';
 import { META_BY_ID } from '../data/metaTree';
+import type { DifficultyMode } from '../data/difficulty';
+
+/** Per-difficulty kill counter for a single enemy kind. Difficulty modes
+ *  not yet encountered are simply absent from the partial record. */
+export type BestiaryRecord = Partial<Record<DifficultyMode, number>>;
+
+/** Whole-meta bestiary store: enemy id → per-difficulty kill counts. */
+export type BestiaryStore = Partial<Record<string, BestiaryRecord>>;
+
+const VALID_DIFFICULTIES: DifficultyMode[] = [
+  'normal',
+  'epic',
+  'ancient',
+  'endless',
+  'daily',
+];
 
 const SAVE_KEY = 'asd_meta_v2';
 
@@ -88,6 +104,12 @@ export interface MetaSave {
   /** Brewed-potion inventory carried across runs. Fixed length =
    *  `POTION_INVENTORY_SIZE` (4); each slot is either a recipe id or `null`. */
   inventory: (string | null)[];
+  /** Bestiary kill counts keyed by enemy id, then by difficulty mode.
+   *  Drives the Alchemist's Diary unlock state — once an entry has at
+   *  least one kill (in any difficulty) the silhouette resolves into
+   *  the full info card. Per-difficulty counts feed the progress bars
+   *  shown next to the entry. Persisted across runs. */
+  bestiary: BestiaryStore;
 }
 
 export function newMetaSave(): MetaSave {
@@ -125,6 +147,7 @@ export function newMetaSave(): MetaSave {
     ancientMastery: 0,
     ingredients: {},
     inventory: emptyInventory(),
+    bestiary: {},
   };
 }
 
@@ -157,6 +180,24 @@ function sanitizePurchased(raw: unknown): string[] {
     if (!META_BY_ID[id]) continue;
     if (out.includes(id)) continue;
     out.push(id);
+  }
+  return out;
+}
+
+function sanitizeBestiary(raw: unknown): BestiaryStore {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: BestiaryStore = {};
+  for (const [enemyId, perDiff] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof enemyId !== 'string' || !enemyId) continue;
+    if (!perDiff || typeof perDiff !== 'object') continue;
+    const rec: BestiaryRecord = {};
+    for (const diff of VALID_DIFFICULTIES) {
+      const v = (perDiff as Record<string, unknown>)[diff];
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+        rec[diff] = Math.floor(v);
+      }
+    }
+    if (Object.keys(rec).length > 0) out[enemyId] = rec;
   }
   return out;
 }
@@ -244,6 +285,7 @@ export function loadMeta(): MetaSave {
       ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
       inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
+      bestiary: sanitizeBestiary((data as Record<string, unknown>).bestiary),
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {
@@ -296,4 +338,50 @@ export function todayString(): string {
 
 export function canClaimDaily(meta: MetaSave): boolean {
   return meta.dailyLastClaim !== todayString();
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Bestiary helpers
+// ────────────────────────────────────────────────────────────────────────
+
+/** Increment the per-difficulty kill counter for `enemyId` by `amount`.
+ *  No-op when `amount <= 0`. Mutates `meta` in place — callers are
+ *  responsible for invoking `saveMeta(meta)` once the batch is applied. */
+export function recordBestiaryKill(
+  meta: MetaSave,
+  enemyId: string,
+  difficulty: DifficultyMode,
+  amount: number = 1,
+): void {
+  if (!enemyId || !Number.isFinite(amount) || amount <= 0) return;
+  if (!meta.bestiary) meta.bestiary = {};
+  const rec = (meta.bestiary[enemyId] ??= {});
+  rec[difficulty] = (rec[difficulty] ?? 0) + Math.floor(amount);
+}
+
+/** Convenience: kills of `enemyId` in `difficulty` (0 if missing). */
+export function bestiaryKills(
+  meta: MetaSave,
+  enemyId: string,
+  difficulty: DifficultyMode,
+): number {
+  return meta.bestiary?.[enemyId]?.[difficulty] ?? 0;
+}
+
+/** Convenience: total kills of `enemyId` across every difficulty. The
+ *  Alchemist's Diary uses this to decide whether the silhouette is
+ *  unlocked (any kill in any mode reveals the entry). */
+export function bestiaryTotalKills(meta: MetaSave, enemyId: string): number {
+  const rec = meta.bestiary?.[enemyId];
+  if (!rec) return 0;
+  let total = 0;
+  for (const v of Object.values(rec)) {
+    if (typeof v === 'number' && v > 0) total += v;
+  }
+  return total;
+}
+
+/** Convenience: `true` once `enemyId` has been killed at least once. */
+export function isBestiaryDiscovered(meta: MetaSave, enemyId: string): boolean {
+  return bestiaryTotalKills(meta, enemyId) > 0;
 }

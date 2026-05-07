@@ -37,6 +37,7 @@ export class MainMenu {
     onSettings: () => void;
     onCrafting: () => void;
     onLoadout: () => void;
+    onDiary: () => void;
   }): void {
     this.leaderboardCollapseCleanup?.();
     this.leaderboardCollapseCleanup = null;
@@ -244,6 +245,19 @@ export class MainMenu {
     //   leaderboard or the header again collapses daily back.
     const rightCol = document.createElement('div');
     rightCol.className = 'mm-col mm-col-right';
+
+    // Alchemist's Diary opener — a compact strip pinned above the
+    // leaderboard. Per the design brief the button has to live "in the
+    // upper part of the main menu, above the leaderboard"; the strip
+    // matches the leaderboard / daily card visual language so the
+    // right column reads as one cohesive sidebar.
+    const diaryBtn = document.createElement('button');
+    diaryBtn.type = 'button';
+    diaryBtn.className = 'mm-card mm-diary-btn';
+    diaryBtn.dataset.tutorialTarget = 'menu-diary';
+    diaryBtn.innerHTML = `<span class="mm-diary-icon">📖</span><span class="mm-diary-label">${t('ui.menu.diary')}</span><span class="mm-diary-arrow">›</span>`;
+    diaryBtn.addEventListener('click', opts.onDiary);
+    rightCol.appendChild(diaryBtn);
 
     const lbWrap = document.createElement('div');
     lbWrap.className = 'mm-card mm-lb-card';
