@@ -84,10 +84,7 @@ export class DifficultyOverlay {
       const halo = document.createElement('span');
       halo.className = 'difficulty-icon-halo';
       iconWrap.appendChild(halo);
-      const glyph = document.createElement('span');
-      glyph.className = 'difficulty-glyph';
-      glyph.textContent = modeIcon(modeId);
-      iconWrap.appendChild(glyph);
+      iconWrap.appendChild(buildModeIllustration(modeId));
       // Three orbiting sparkle dots — picked up by per-mode CSS so each
       // dungeon has its own feel (orbit speed, distance, colour).
       for (let i = 0; i < 3; i++) {
@@ -168,12 +165,62 @@ export function canStartMode(meta: MetaSave, mode: DifficultyMode): boolean {
   return true;
 }
 
-function modeIcon(mode: DifficultyMode): string {
+function buildModeIllustration(mode: DifficultyMode): HTMLElement {
+  const art = document.createElement('span');
+  art.className = `difficulty-glyph difficulty-mode-art difficulty-mode-art-${mode}`;
+
   switch (mode) {
-    case 'normal': return '⚔';
-    case 'epic': return '✦';
-    case 'ancient': return '☀';
-    case 'endless': return '∞';
-    case 'daily': return '📅';
+    case 'normal':
+      art.innerHTML = `
+        <span class="difficulty-art-shadow"></span>
+        <span class="difficulty-sword difficulty-sword-left"></span>
+        <span class="difficulty-sword difficulty-sword-right"></span>
+        <span class="difficulty-spark-bit difficulty-spark-bit-a"></span>
+        <span class="difficulty-spark-bit difficulty-spark-bit-b"></span>
+      `;
+      break;
+    case 'epic':
+      art.innerHTML = `
+        <span class="difficulty-art-shadow"></span>
+        <span class="difficulty-crystal difficulty-crystal-core"></span>
+        <span class="difficulty-crystal difficulty-crystal-left"></span>
+        <span class="difficulty-crystal difficulty-crystal-right"></span>
+        <span class="difficulty-spark-bit difficulty-spark-bit-a"></span>
+        <span class="difficulty-spark-bit difficulty-spark-bit-b"></span>
+      `;
+      break;
+    case 'ancient':
+      art.innerHTML = `
+        <span class="difficulty-art-shadow"></span>
+        <span class="difficulty-sun-rays"></span>
+        <span class="difficulty-sun-core"></span>
+        <span class="difficulty-ruin difficulty-ruin-left"></span>
+        <span class="difficulty-ruin difficulty-ruin-right"></span>
+      `;
+      break;
+    case 'endless':
+      art.innerHTML = `
+        <span class="difficulty-art-shadow"></span>
+        <span class="difficulty-loop difficulty-loop-left"></span>
+        <span class="difficulty-loop difficulty-loop-right"></span>
+        <span class="difficulty-trail difficulty-trail-a"></span>
+        <span class="difficulty-trail difficulty-trail-b"></span>
+        <span class="difficulty-trail difficulty-trail-c"></span>
+      `;
+      break;
+    case 'daily':
+      art.innerHTML = `
+        <span class="difficulty-art-shadow"></span>
+        <span class="difficulty-calendar-page"></span>
+        <span class="difficulty-calendar-top"></span>
+        <span class="difficulty-calendar-ring difficulty-calendar-ring-left"></span>
+        <span class="difficulty-calendar-ring difficulty-calendar-ring-right"></span>
+        <span class="difficulty-calendar-cell difficulty-calendar-cell-a"></span>
+        <span class="difficulty-calendar-cell difficulty-calendar-cell-b"></span>
+        <span class="difficulty-calendar-cell difficulty-calendar-cell-c"></span>
+      `;
+      break;
   }
+
+  return art;
 }

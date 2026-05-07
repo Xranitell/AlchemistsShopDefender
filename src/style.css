@@ -9728,19 +9728,49 @@ body {
     0 0 14px color-mix(in srgb, var(--dif-color) 18%, transparent);
   animation: difficulty-card-idle 4.4s ease-in-out infinite;
 }
+.difficulty-card::before,
 .difficulty-card::after {
-  /* Decorative inner highlight — a single soft band that sweeps the
-     card horizontally on hover. The previous diagonal multi-stop
-     gradient produced an X-shaped "crossing" artefact when its tiled
-     background-position animated; this version uses one narrow band
-     translating along a single axis so the shimmer reads as a clean
-     sweep instead of two crossing lines. */
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  overflow: hidden;
+  z-index: 0;
+  mix-blend-mode: screen;
+}
+.difficulty-card::before {
+  background: var(--difficulty-motif, radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--dif-color) 18%, transparent), transparent 48%));
+  opacity: 0.42;
+}
+.difficulty-normal {
+  --difficulty-motif:
+    linear-gradient(38deg, transparent 41%, rgba(127, 201, 127, 0.16) 42% 44%, transparent 45%),
+    linear-gradient(-38deg, transparent 39%, rgba(210, 255, 210, 0.12) 40% 42%, transparent 43%),
+    radial-gradient(circle at 50% 28%, rgba(127, 201, 127, 0.24), transparent 31%);
+}
+.difficulty-epic {
+  --difficulty-motif:
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.16) 0 2px, transparent 4px),
+    radial-gradient(circle at 70% 36%, rgba(255, 255, 255, 0.12) 0 2px, transparent 4px),
+    conic-gradient(from 45deg at 50% 31%, transparent 0 15%, rgba(192, 132, 252, 0.20) 15% 23%, transparent 23% 100%);
+}
+.difficulty-ancient {
+  --difficulty-motif:
+    repeating-conic-gradient(from 0deg at 50% 29%, rgba(255, 209, 102, 0.20) 0 6deg, transparent 6deg 16deg),
+    linear-gradient(90deg, transparent 17%, rgba(255, 209, 102, 0.12) 18% 19%, transparent 20% 80%, rgba(255, 209, 102, 0.12) 81% 82%, transparent 83%);
+}
+.difficulty-endless {
+  --difficulty-motif:
+    radial-gradient(ellipse at 36% 30%, transparent 0 16%, rgba(142, 202, 230, 0.22) 17% 21%, transparent 22%),
+    radial-gradient(ellipse at 64% 30%, transparent 0 16%, rgba(142, 202, 230, 0.22) 17% 21%, transparent 22%),
+    linear-gradient(180deg, transparent 55%, rgba(142, 202, 230, 0.10));
+}
+.difficulty-daily {
+  --difficulty-motif:
+    linear-gradient(90deg, transparent 18%, rgba(249, 199, 79, 0.16) 19% 20%, transparent 21% 49%, rgba(249, 199, 79, 0.13) 50% 51%, transparent 52% 80%, rgba(249, 199, 79, 0.16) 81% 82%, transparent 83%),
+    linear-gradient(180deg, transparent 23%, rgba(249, 199, 79, 0.16) 24% 25%, transparent 26% 39%, rgba(249, 199, 79, 0.12) 40% 41%, transparent 42%);
+}
+.difficulty-card::after {
   background: linear-gradient(115deg,
     transparent 40%,
     color-mix(in srgb, var(--dif-color) 28%, transparent) 50%,
@@ -9749,9 +9779,7 @@ body {
   background-position: 200% 0;
   background-repeat: no-repeat;
   opacity: 0;
-  z-index: 0;
   transition: opacity 240ms ease;
-  mix-blend-mode: screen;
 }
 @keyframes difficulty-card-idle {
   0%, 100% {
@@ -9841,6 +9869,175 @@ body {
   text-shadow: 0 0 18px color-mix(in srgb, var(--dif-color) 50%, transparent);
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dif-color) 35%, transparent));
 }
+.difficulty-mode-art {
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 58px;
+  text-shadow: none;
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, var(--dif-color) 42%, transparent))
+    drop-shadow(0 2px 0 rgba(0, 0, 0, 0.55));
+}
+.difficulty-mode-art > span { position: absolute; box-sizing: border-box; }
+.difficulty-art-shadow {
+  left: 8px;
+  right: 8px;
+  bottom: 5px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.36);
+  filter: blur(1px);
+}
+.difficulty-spark-bit {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7c7 0%, var(--dif-color) 45%, transparent 72%);
+  box-shadow: 0 0 10px var(--dif-color);
+}
+.difficulty-spark-bit-a { left: 8px; top: 15px; }
+.difficulty-spark-bit-b { right: 7px; bottom: 17px; transform: scale(0.72); }
+.difficulty-sword {
+  left: 25px;
+  top: 5px;
+  width: 8px;
+  height: 42px;
+  border: 1px solid #123013;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(90deg, #d7ffd7 0%, #77e46f 45%, #2d8f38 100%);
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.45);
+  transform-origin: 50% 78%;
+}
+.difficulty-sword::before,
+.difficulty-sword::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.difficulty-sword::before {
+  bottom: 6px;
+  width: 21px;
+  height: 5px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #2f5c2e, #c6ffd0, #2f5c2e);
+  border: 1px solid #10270f;
+}
+.difficulty-sword::after {
+  bottom: -5px;
+  width: 7px;
+  height: 9px;
+  border-radius: 0 0 5px 5px;
+  background: #6fd96e;
+  border: 1px solid #10270f;
+}
+.difficulty-sword-left { transform: rotate(-42deg); }
+.difficulty-sword-right { transform: rotate(42deg); }
+.difficulty-crystal {
+  clip-path: polygon(50% 0%, 88% 25%, 72% 100%, 28% 100%, 12% 25%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 44%),
+    linear-gradient(180deg, #eed2ff 0%, #be72ff 46%, #6630b8 100%);
+  box-shadow: inset -4px -8px 0 rgba(61, 22, 111, 0.28), 0 0 14px #c084fc;
+}
+.difficulty-crystal-core { left: 19px; top: 7px; width: 22px; height: 39px; }
+.difficulty-crystal-left { left: 8px; top: 20px; width: 17px; height: 28px; transform: rotate(-25deg) scale(0.82); opacity: 0.86; }
+.difficulty-crystal-right { right: 8px; top: 19px; width: 17px; height: 28px; transform: rotate(24deg) scale(0.78); opacity: 0.82; }
+.difficulty-sun-rays {
+  left: 7px;
+  top: 7px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 8deg, #ffe6a3 0 9deg, transparent 9deg 18deg);
+  filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.65));
+}
+.difficulty-sun-core {
+  left: 16px;
+  top: 16px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #6f4a20;
+  background: radial-gradient(circle at 35% 30%, #fff5c4 0%, #ffd166 42%, #8d6926 100%);
+  box-shadow: inset -3px -4px 0 rgba(0, 0, 0, 0.22), 0 0 12px rgba(255, 209, 102, 0.6);
+}
+.difficulty-ruin {
+  bottom: 7px;
+  width: 7px;
+  height: 18px;
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(180deg, #d8bd82, #765d3a);
+  border: 1px solid #2a1b0f;
+  opacity: 0.9;
+}
+.difficulty-ruin-left { left: 8px; transform: rotate(-9deg); }
+.difficulty-ruin-right { right: 8px; transform: rotate(9deg); }
+.difficulty-loop {
+  top: 17px;
+  width: 27px;
+  height: 20px;
+  border: 5px solid #8eeaff;
+  border-radius: 50%;
+  box-shadow: 0 0 11px rgba(142, 202, 230, 0.72), inset 0 0 6px rgba(142, 202, 230, 0.35);
+}
+.difficulty-loop-left { left: 7px; transform: rotate(27deg); }
+.difficulty-loop-right { right: 7px; transform: rotate(-27deg); }
+.difficulty-trail {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b8f7ff;
+  box-shadow: 0 0 9px #8ecae6;
+}
+.difficulty-trail-a { left: 10px; top: 10px; opacity: 0.55; }
+.difficulty-trail-b { left: 27px; top: 8px; opacity: 0.85; }
+.difficulty-trail-c { right: 9px; bottom: 11px; opacity: 0.65; }
+.difficulty-calendar-page {
+  left: 12px;
+  top: 12px;
+  width: 35px;
+  height: 35px;
+  border-radius: 5px;
+  border: 2px solid #6a5120;
+  background:
+    linear-gradient(180deg, transparent 0 30%, rgba(249, 199, 79, 0.18) 30% 32%, transparent 32%),
+    linear-gradient(90deg, transparent 0 34%, rgba(44, 36, 52, 0.18) 34% 36%, transparent 36% 66%, rgba(44, 36, 52, 0.18) 66% 68%, transparent 68%),
+    linear-gradient(180deg, #fff4dc 0%, #d8c8ee 100%);
+  box-shadow: inset -3px -4px 0 rgba(83, 61, 143, 0.2), 0 0 14px rgba(249, 199, 79, 0.55);
+}
+.difficulty-calendar-top {
+  left: 12px;
+  top: 12px;
+  width: 35px;
+  height: 10px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(180deg, #ffd166, #f08a3c);
+  border: 2px solid #6a5120;
+  border-bottom: 0;
+}
+.difficulty-calendar-ring {
+  top: 7px;
+  width: 5px;
+  height: 11px;
+  border-radius: 5px;
+  border: 2px solid #8060d0;
+  background: #e7ddff;
+}
+.difficulty-calendar-ring-left { left: 19px; }
+.difficulty-calendar-ring-right { right: 19px; }
+.difficulty-calendar-cell {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #7aa0ff;
+  box-shadow: 0 0 5px rgba(122, 160, 255, 0.6);
+}
+.difficulty-calendar-cell-a { left: 18px; top: 28px; }
+.difficulty-calendar-cell-b { left: 28px; top: 28px; background: #f08a3c; }
+.difficulty-calendar-cell-c { left: 38px; top: 38px; background: #f9c74f; }
 
 /* Orbiting sparkle dots. Each `:nth-child` gets its own offset & phase
    so the three dots trace different orbits around the icon. Orb sizes
