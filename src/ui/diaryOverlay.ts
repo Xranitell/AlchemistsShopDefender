@@ -294,6 +294,11 @@ export class DiaryOverlay {
     name.textContent = elementName(entry);
     card.appendChild(name);
 
+    const note = document.createElement('div');
+    note.className = 'diary-entry-note';
+    note.textContent = elementFlavor(entry);
+    card.appendChild(note);
+
     card.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
     card.addEventListener('click', () => {
       host.dispatchEvent(new CustomEvent<string>('diary:select-entry', { detail: entry.id }));
@@ -307,6 +312,8 @@ export class DiaryOverlay {
     card.className = 'diary-entry diary-entry-bestiary';
     if (isSelected) card.classList.add('selected');
     if (!discovered) card.classList.add('locked');
+    const kind = ENEMIES[entry.id];
+    if (kind) card.style.setProperty('--diary-accent', kind.color);
 
     const icon = document.createElement('div');
     icon.className = 'diary-entry-icon diary-entry-sprite';
@@ -330,6 +337,11 @@ export class DiaryOverlay {
       name.classList.add('locked-name');
     }
     card.appendChild(name);
+
+    const note = document.createElement('div');
+    note.className = 'diary-entry-note';
+    note.textContent = discovered ? bestiaryFlavor(entry) : t('ui.diary.locked.description');
+    card.appendChild(note);
 
     card.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
     card.addEventListener('click', () => {
@@ -357,6 +369,18 @@ export class DiaryOverlay {
     name.className = 'diary-entry-name';
     name.textContent = towerDisplayName(entry.id);
     card.appendChild(name);
+
+    if (tower) {
+      const badge = document.createElement('div');
+      badge.className = 'diary-entry-badge';
+      badge.textContent = t(`ui.diary.element.short.${tower.element}`);
+      card.appendChild(badge);
+    }
+
+    const note = document.createElement('div');
+    note.className = 'diary-entry-note';
+    note.textContent = stanceFlavor(entry);
+    card.appendChild(note);
 
     card.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
     card.addEventListener('click', () => {
