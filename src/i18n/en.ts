@@ -14,7 +14,7 @@ export const EN: Record<string, string> = {
   'ui.lang.tooltip': 'Language',
 
   // ── Main menu ────────────────────────────────────────────────────────
-  'ui.menu.title.top': "Alchemist's Shop",
+  'ui.menu.title.top': "Alchemist's Shop:",
   'ui.menu.title.bottom': 'Rune Defense',
   'ui.menu.toBattle': 'TO BATTLE',
   'ui.menu.shop': 'BREWERY',
