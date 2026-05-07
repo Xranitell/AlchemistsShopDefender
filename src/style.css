@@ -280,6 +280,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Wrapper itself isn't interactive — only the pause button inside is.
+     Without `pointer-events: none` the gap area between the badges and
+     the pause button catches finger taps on phones, blocking potion
+     throws aimed at the canvas behind the HUD's right edge. */
+  pointer-events: none;
 }
 .hud-resource-badge {
   min-width: 158px;
@@ -377,6 +382,12 @@ body {
   gap: 8px;
   text-align: center;
   transform: translateY(-72px);
+  /* Wrapper itself isn't interactive — only the BATTLE CTA and potion
+     slots inside are. Keeping `pointer-events: none` on the column
+     means finger taps on the gaps between the hint text, CTA, and
+     potion belt fall through to the canvas (so potion throws / rune
+     clicks aimed at the centre-bottom area still register). */
+  pointer-events: none;
 }
 .hud-hint {
   color: var(--fg);
@@ -430,6 +441,11 @@ body {
   display: flex;
   gap: 14px;
   align-items: center;
+  /* Wrapper itself isn't interactive — only the round buttons are.
+     Without this, the 14 px gap area between the buttons (and the
+     padding around them) catches taps on phones, blocking potion
+     throws aimed at the canvas behind the HUD's right edge. */
+  pointer-events: none;
 }
 
 .hud-round-btn {
@@ -4037,6 +4053,10 @@ body {
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+  /* Wrapper itself isn't interactive — keep the gap-between-rows
+     transparent to taps so canvas clicks behind the HUD's top-left
+     edge still register. */
+  pointer-events: none;
 }
 .hud-difficulty-badge {
   font-family: 'Press Start 2P', 'VT323', monospace;
@@ -5676,7 +5696,12 @@ body {
 .hud-potion-bar {
   display: flex;
   gap: 8px;
-  pointer-events: auto;
+  /* Bar wrapper itself isn't interactive — only the individual potion
+     slots are. `pointer-events: none` here makes the 8 px gaps between
+     slots fall through to the canvas so a finger tap that lands on a
+     gap (common on phones) triggers a potion throw instead of being
+     swallowed by the wrapper. */
+  pointer-events: none;
   margin-top: 2px;
 }
 .hud-potion-slot {
@@ -11431,10 +11456,16 @@ body {
 
 :root.viewport-fitted .defeat-overlay {
   max-width: 760px;
-  max-height: none;
+  /* Cap the panel to the visible viewport height so the very tall
+     defeat layout (mannequin stage + chips + tip + CTAs) on short
+     landscape phones (≈398 px) doesn't run off the top/bottom of the
+     screen. The parent transform scales by `--ui-scale` so the cap
+     here is in pre-scale CSS pixels — a 96dvh box scaled by ~0.55
+     still fits the visible viewport with a small margin. */
+  max-height: calc(96dvh / var(--ui-scale, 1));
   padding: 28px 28px 22px;
   gap: 12px;
-  overflow-y: visible;
+  overflow-y: auto;
 
   position: absolute;
   top: 50%;

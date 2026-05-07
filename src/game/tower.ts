@@ -5,6 +5,7 @@ import { newId, spawnFloatingText } from './state';
 import { fireTowerProjectile, applyDamageToEnemy } from './projectile';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import { getTurretFireOriginOffsetY } from '../render/turretSheet';
 import {
   towerFireRateMultiplier,
   towerRangeMultiplier,
@@ -163,7 +164,9 @@ export function towerStats(state: GameState, t: Tower) {
       const auraRange = other.kind.range * rangeMod;
       const dx = other.pos.x - t.pos.x;
       const dy = other.pos.y - t.pos.y;
-      if (dx * dx + dy * dy > auraRange * auraRange) continue;
+      // Same iso-plane ellipse the aura indicator is drawn at — match
+      // the gameplay zone to the visualised one.
+      if (dx * dx + 4 * dy * dy > auraRange * auraRange) continue;
       rateMult *= WATCH_TOWER_AURA.fireRateMult;
       rangeMult *= WATCH_TOWER_AURA.rangeMult;
     }
@@ -206,6 +209,11 @@ export function runeKindMultipliers(
 function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | null {
   let best: Enemy | null = null;
   let bestScore = -Infinity;
+  // The on-screen range indicator is an iso-plane ellipse (rx=range,
+  // ry=range/2) drawn flat on the floor; gameplay treats anything inside
+  // that ellipse as in-range so the visualised reach matches the actual
+  // reach. The ellipse-membership test (dx/rx)² + (dy/ry)² ≤ 1 simplifies
+  // to dx² + 4·dy² ≤ range² since rx = 2·ry.
   const range2 = range * range;
   const mode = t.targetingMode;
   const mx = state.mannequin.pos.x;
@@ -213,7 +221,7 @@ function pickTowerTarget(state: GameState, t: Tower, range: number): Enemy | nul
   for (const e of state.enemies) {
     const dx = e.pos.x - t.pos.x;
     const dy = e.pos.y - t.pos.y;
-    if (dx * dx + dy * dy > range2) continue;
+    if (dx * dx + 4 * dy * dy > range2) continue;
     let score = 0;
     switch (mode) {
       case 'nearest':
@@ -272,6 +280,15 @@ export function updateTowers(state: GameState, dt: number): void {
       continue;
     }
 
+    // Face away from the mannequin: stands on the right of the dais
+    // point right (aimAngle 0), stands on the left point left
+    // (aimAngle π). The painted sprite is mirror-flipped at draw time
+    // (see `drawTowers` in `render.ts`) so the muzzle flash anchored
+    // off `aimAngle` lands on the outward-facing side of the stand
+    // instead of toward whichever target it just locked.
+    const facesRight = t.pos.x >= state.mannequin.pos.x;
+    t.aimAngle = facesRight ? 0 : Math.PI;
+
     const stats = towerStats(state, t);
     t.fireTimer -= dt;
     if (t.fireTimer > 0) continue;
@@ -279,7 +296,6 @@ export function updateTowers(state: GameState, dt: number): void {
     const target = pickTowerTarget(state, t, stats.range);
     if (!target) continue;
 
-    t.aimAngle = Math.atan2(target.pos.y - t.pos.y, target.pos.x - t.pos.x);
     t.fireTimer = 1 / Math.max(0.0001, stats.rate);
     t.shotCount += 1;
 
@@ -292,9 +308,16 @@ export function updateTowers(state: GameState, dt: number): void {
       continue;
     }
 
+    // Spawn projectiles from the mid-point of the painted stand
+    // (≈ chest height) instead of from the pedestal base, so shots
+    // visually leave the machinery rather than the ground at its feet.
+    const fromPos = {
+      x: t.pos.x,
+      y: t.pos.y + getTurretFireOriginOffsetY(t.kind.id),
+    };
     fireTowerProjectile(
       state,
-      t.pos,
+      fromPos,
       target,
       stats.damage,
       t.kind.splashRadius,
@@ -305,7 +328,7 @@ export function updateTowers(state: GameState, dt: number): void {
     if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
       fireTowerProjectile(
         state,
-        t.pos,
+        fromPos,
         target,
         stats.damage,
         t.kind.splashRadius,

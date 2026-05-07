@@ -86,6 +86,26 @@ export const TURRET_FRAMES: readonly TurretFrame[] = [
 
 export const TURRET_COUNT = TURRET_FRAMES.length;
 
+/** Default render scale for painted turret stands. The 0.25 factor maps
+ *  the largest 390-px frame down to ~98 px tall on the canvas — roughly
+ *  the same screen footprint as the older baked pixel-art tower at
+ *  TOWER_SCALE = 3. Shared between `drawTowers` (rendering) and
+ *  `updateTowers` (firing-height math) so both call-sites agree on the
+ *  on-screen size of the turret. */
+export const PAINTED_TURRET_SCALE = 0.25;
+
+/** World-space Y offset from the painted turret's pedestal base (where
+ *  `t.pos` sits) to the vertical mid-point of the turret body. Used by
+ *  the firing pipeline so projectiles spawn from roughly the centre of
+ *  the stand instead of from the ground at its feet. Negative because
+ *  Y increases downward in screen space. */
+export function getTurretFireOriginOffsetY(
+  kindId: string,
+  scale: number = PAINTED_TURRET_SCALE,
+): number {
+  return -getTurretFootprint(kindId, scale).height / 2;
+}
+
 /* ── Drawing ──────────────────────────────────────────────────── */
 
 export interface DrawTurretOptions {

@@ -542,6 +542,7 @@ export const EN: Record<string, string> = {
   'tutorial.w1-throw': 'Aim at an enemy — the mannequin will hurl a potion.',
   'tutorial.w1-aim-bonus': 'A precise manual hit deals +20% damage. Aim — don\u2019t spam.',
   'tutorial.w2-cards': 'Nice! Every 3 waves you pick an upgrade card. They stack into synergies.',
+  'tutorial.w2-mannequin-shop': 'During prep, click the mannequin to open the repair and shield panel. Restore HP for gold and drop a temporary 10 s shield.',
   'tutorial.w3-rune': 'Choose a rune next to the mannequin to place an automated tower there.',
   'tutorial.w3-upgrade': 'Open your tower to upgrade it — much cheaper than buying another.',
   'tutorial.w5-boss': 'Boss! Fill the Overload bar with reactions and throws, then trigger the overload.',

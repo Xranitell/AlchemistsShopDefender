@@ -114,11 +114,21 @@ export function drawProp(
   const prevQuality = ctx.imageSmoothingQuality;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'medium';
+  // Darken + slightly desaturate the source spritesheet so the props
+  // blend into the muted stone-floor palette instead of popping as
+  // brightly-painted islands. The shadow pass (alpha < 1) is already
+  // a near-black silhouette so we skip the filter for it — applying
+  // brightness(0.7) to a 20%-alpha black silhouette would muddy it
+  // into the floor and lose the grounding shadow underfoot.
+  const isShadowPass = alpha < 1;
+  const prevFilter = ctx.filter;
+  if (!isShadowPass) ctx.filter = 'brightness(0.72) saturate(0.88)';
   ctx.drawImage(
     propsSheet.image,
     frame.sx, frame.sy, frame.sw, frame.sh,
     dx, dy, drawW, drawH,
   );
+  if (!isShadowPass) ctx.filter = prevFilter;
   ctx.imageSmoothingEnabled = prevSmooth;
   ctx.imageSmoothingQuality = prevQuality;
   ctx.restore();

@@ -16,7 +16,7 @@ import {
 } from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
 import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
-import { drawTurret, getTurretFootprint } from '../render/turretSheet';
+import { drawTurret, getTurretFootprint, PAINTED_TURRET_SCALE } from '../render/turretSheet';
 import {
   drawFirePool,
   drawPixelFloatingText,
@@ -55,7 +55,10 @@ const TOWER_SCALE = 3;
 // floor tile (TILE_W = 128 px), which keeps the painted pedestals
 // proportional to the rune-circle / mannequin and roughly matches the
 // previous 30-px-wide pixel-art tower silhouette in visual weight.
-const TOWER_PAINTED_SCALE = 0.25;
+/** Default render scale for painted turret stands. Re-exported from
+ *  `turretSheet` so the firing pipeline (in `tower.ts`) reads the same
+ *  value when computing the muzzle Y offset. */
+const TOWER_PAINTED_SCALE = PAINTED_TURRET_SCALE;
 const RIM_RED = 'rgba(202, 37, 43, 0.72)';
 
 let lastRenderTime = -1;
@@ -137,6 +140,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawEnemies(ctx, state);
   drawTowers(ctx, state);
   drawMannequin(ctx, state);
+  drawPotionBlasts(ctx, state);
   drawProjectiles(ctx, state);
   drawChainBolts(ctx, state);
   // Update and draw particle system. Use real frame delta derived from
@@ -394,12 +398,19 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Falls back to the baked sprite while the painted sheet PNG is
     // still loading so towers don't pop in invisibly on the first
     // frame after placement.
+    // Mirror the painted stand so non-aura turrets visually face away
+    // from the mannequin: stands on the right of the dais point right,
+    // stands on the left point left. Aura towers (Сторожевой фонарь)
+    // are symmetric and idle-rotate `aimAngle`, so we leave them
+    // un-flipped to keep the lantern reading the same on both sides.
+    const facesAwayLeft =
+      t.kind.behavior !== 'aura' && t.pos.x < state.mannequin.pos.x;
     const usingPainted = drawTurret(
       ctx,
       t.pos.x,
       t.pos.y,
       t.kind.id,
-      { scale: TOWER_PAINTED_SCALE },
+      { scale: TOWER_PAINTED_SCALE, flipX: facesAwayLeft },
     );
     if (!usingPainted) {
       let base: BakedSprite = s.towerNeedler;
@@ -1031,6 +1042,66 @@ function drawChainBolts(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
+/** Render the 0.5-second potion-impact shockwaves. Each blast traces
+ *  the *exact* splash radius the area-damage check used so the player
+ *  can read which enemies got caught in the blast. Drawn flat on the
+ *  iso-floor (rx = radius, ry = radius * 0.5) under the projectile /
+ *  particle pass so the brighter explosion sparks layer over it. */
+function drawPotionBlasts(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.potionBlasts.length === 0) return;
+  ctx.save();
+  const prevComp = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+  for (const b of state.potionBlasts) {
+    // 1 → 0 envelope. The radius eases out from 60% to 100% over the
+    // first ~70% of the lifetime so the ring "snaps" to its real size
+    // quickly, then holds while it fades.
+    const t = Math.max(0, Math.min(1, b.time / b.maxTime));
+    const elapsed = 1 - t;
+    const grow = Math.min(1, elapsed / 0.35);
+    const r = b.radius * (0.6 + 0.4 * grow);
+    const rx = r;
+    const ry = r * 0.5;
+    const fade = t * t;
+    const tint = potionBlastTint(b.element);
+    const innerAlpha = (b.echo ? 0.18 : 0.32) * fade;
+    const ringAlpha = (b.echo ? 0.45 : 0.85) * fade;
+    // Filled gradient disc — darker centre, transparent edge — so the
+    // splash zone reads as a "dust cloud" rather than just an outline.
+    const gradient = ctx.createRadialGradient(b.pos.x, b.pos.y, 0, b.pos.x, b.pos.y, rx);
+    gradient.addColorStop(0, `rgba(${tint}, ${innerAlpha})`);
+    gradient.addColorStop(0.7, `rgba(${tint}, ${innerAlpha * 0.5})`);
+    gradient.addColorStop(1, `rgba(${tint}, 0)`);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(b.pos.x, b.pos.y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Bright outer ring at the actual splash radius.
+    ctx.strokeStyle = `rgba(${tint}, ${ringAlpha})`;
+    ctx.lineWidth = (b.echo ? 1.5 : 2.2) * fade + 0.5;
+    ctx.beginPath();
+    ctx.ellipse(b.pos.x, b.pos.y, b.radius, b.radius * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = prevComp;
+  ctx.restore();
+}
+
+/** RGB triplet (without alpha) for the potion-impact ring/glow tint
+ *  per element. Picked to match the existing `deathRingColor` palette
+ *  so reaction effects share a visual language across the renderer. */
+function potionBlastTint(element: import('./state').PotionBlast['element']): string {
+  switch (element) {
+    case 'fire': return '255, 180, 90';
+    case 'mercury': return '220, 230, 255';
+    case 'acid': return '210, 245, 90';
+    case 'aether': return '189, 246, 255';
+    case 'frost': return '189, 246, 255';
+    case 'poison': return '155, 227, 107';
+    default: return '245, 232, 255';
+  }
+}
+
 function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void {
   const s = getSprites();
   const trailColorMap: Record<string, string[]> = {
@@ -1487,8 +1558,30 @@ function drawAmbientParticles(ctx: CanvasRenderingContext2D, state: GameState): 
 // into the canvas height. World width matches canvas aspect (see
 // `setArenaSize`), so the same scale also maps world (0..world.w) onto
 // canvas (0..canvas.w) with no horizontal letterboxing.
+//
+// On phone-sized viewports an extra `MOBILE_ZOOM` factor is applied
+// uniformly. With cx=cy=0 the scale is anchored at the world origin
+// (top-left), so a >1 zoom would push the mannequin (= world centre)
+// off the canvas centre toward the bottom-right. We compensate with a
+// `offsetX/Y` shift that pulls the scaled image back so the mannequin
+// — and the rune ring around it — stays pinned to the canvas
+// midpoint. Net effect: the dais / runes / combat ring read larger
+// on a small screen while the floor's outer (mostly-empty) margins
+// are cropped equally on every side.
+const MOBILE_ZOOM = 1.18;
 export function getRenderCamera(_width: number, height: number): Camera {
-  const { height: canvasH } = getViewportSize();
-  const scale = canvasH / height;
-  return { cx: 0, cy: 0, scale };
+  const { width: canvasW, height: canvasH } = getViewportSize();
+  const baseScale = canvasH / height;
+  const isMobile = canvasW < 1100 || canvasH < 620;
+  if (!isMobile) {
+    return { cx: 0, cy: 0, scale: baseScale };
+  }
+  const scale = baseScale * MOBILE_ZOOM;
+  // Recenter: world centre maps to canvas centre at base scale; the
+  // extra MOBILE_ZOOM blows that point off-centre by
+  // `canvasDim/2 * (MOBILE_ZOOM - 1)` toward the bottom-right. Pulling
+  // the rendered image back by exactly that vector restores centring.
+  const offsetX = -canvasW * 0.5 * (MOBILE_ZOOM - 1);
+  const offsetY = -canvasH * 0.5 * (MOBILE_ZOOM - 1);
+  return { cx: 0, cy: 0, scale, offsetX, offsetY };
 }

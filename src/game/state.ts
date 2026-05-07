@@ -251,6 +251,31 @@ export interface ChainBolt {
   hop: number;
 }
 
+/** Short-lived shockwave / glow drawn at a potion's impact site so the
+ *  player can see the actual splash radius the area-damage check used.
+ *  Spawned by `resolveImpact` on every potion landing (including echo
+ *  secondaries). Visual only — `applyAreaDamage` already resolved the
+ *  hit before the blast was queued. */
+export interface PotionBlast {
+  id: number;
+  pos: Vec2;
+  /** World-space splash radius — the same value passed to
+   *  `applyAreaDamage`, so the on-screen ring traces the exact zone
+   *  enemies were checked against. */
+  radius: number;
+  /** Remaining lifetime in seconds. Counts down to 0 and is removed. */
+  time: number;
+  /** Original lifetime — needed to compute the expansion / fade
+   *  envelope independently of `time`'s shrinking value. */
+  maxTime: number;
+  /** Element of the parent potion. Used to tint the ring (fire =
+   *  orange, frost = cyan, mercury = silver, …). */
+  element: import('./types').Element;
+  /** True for echo-secondary blasts so the renderer can draw a softer
+   *  / smaller ring (matches the halved camera shake of echoes). */
+  echo: boolean;
+}
+
 export interface Modifiers {
   potionDamageMult: number;
   potionRadiusMult: number;
@@ -430,6 +455,10 @@ export interface GameState {
   /** Visual-only chain-lightning segments (Эфирная катушка). Updated in lockstep
    *  with the rest of the world; damage is applied at spawn-time. */
   chainBolts: ChainBolt[];
+  /** Active potion-impact shockwaves — visual rings drawn at the
+   *  splash radius for ~0.5 s after every potion landing. See
+   *  `PotionBlast` for the per-blast fields. */
+  potionBlasts: PotionBlast[];
   reactionPools: ReactionPool[];
   gold: number;
   essence: number;
