@@ -9566,6 +9566,15 @@ body {
   0%, 100% { opacity: 0.25; transform: scale(0.6); }
   50%      { opacity: 1;    transform: scale(1.15); }
 }
+.mm-shop-backdrop .mm-shop-ingredients {
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.38));
+}
+.mm-shop-backdrop .mm-shop-ingredient {
+  filter: drop-shadow(0 0 5px rgba(255, 209, 102, 0.14));
+}
+.mm-shop-card:hover .mm-shop-backdrop .mm-shop-ingredient {
+  filter: drop-shadow(0 0 7px rgba(255, 209, 102, 0.28));
+}
 
 /* Lift the slots above the backdrop. */
 .mm-shop-card .mm-shop-slots { position: relative; z-index: 1; }
