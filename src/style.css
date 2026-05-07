@@ -12795,29 +12795,126 @@ body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 4px;
-  padding-top: 0;
+  margin-bottom: 6px;
+  padding-top: 2px;
+}
+/* Horizontal row that hosts the left flourish, the title stack, and
+ * the right flourish so the wordmark reads as framed by pixel
+ * decoration. The stack itself stays vertical (glyph backdrop, title,
+ * rule, tagline). */
+.diary-head-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.2vw, 14px);
+  width: 100%;
+}
+.diary-head-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+  /* Stack establishes its own positioning context so the rotating
+   * backdrop glyph can sit centred behind the title without leaking
+   * into the surrounding header layout. */
 }
 .diary-title {
+  position: relative;
+  z-index: 1;
   font-family: 'Press Start 2P', 'VT323', monospace;
-  font-size: 16px;
-  letter-spacing: 2px;
+  /* Per design request: doubled from 16 → 32 px so the wordmark reads
+   * as the centrepiece of the diary chrome. The shadow stack scales
+   * with the size to keep the chunky pixel-stroke silhouette. */
+  font-size: 32px;
+  letter-spacing: 3px;
   color: var(--diary-edge);
-  margin: 0 0 1px 0;
+  margin: 0 0 2px 0;
   text-transform: uppercase;
   text-shadow:
     -2px -2px 0 #1a0608, 2px -2px 0 #1a0608,
     -2px 2px 0 #1a0608, 2px 2px 0 #1a0608,
-    0 0 14px color-mix(in srgb, var(--diary-glow) 65%, transparent);
+    0 0 22px color-mix(in srgb, var(--diary-glow) 70%, transparent);
 }
 .diary-tagline {
+  position: relative;
+  z-index: 1;
   font-family: 'Press Start 2P', monospace;
-  font-size: 8px;
-  letter-spacing: 2px;
+  /* Per design request: doubled from 8 → 16 px so the tagline carries
+   * its own weight under the title instead of reading as a footnote. */
+  font-size: 16px;
+  letter-spacing: 3px;
   text-transform: uppercase;
   color: var(--diary-glow);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--diary-glow) 55%, transparent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--diary-glow) 60%, transparent);
   margin: 0;
+}
+/* Soft alembic glyph that sits behind the title, slowly rotating as
+ * ambient flair. Z-indexed below the title text so the ink stays
+ * readable while the glyph tints the backdrop. */
+.diary-title-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(54px, 6vw, 96px);
+  color: rgba(255, 209, 102, 0.10);
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  pointer-events: none;
+  z-index: 0;
+  filter: drop-shadow(0 0 14px rgba(255, 184, 74, 0.30));
+  animation: diary-title-glyph-spin 28s linear infinite;
+  user-select: none;
+  -webkit-user-select: none;
+}
+@keyframes diary-title-glyph-spin {
+  0%   { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+/* Thin golden rule between the title and tagline, breathing slowly
+ * to give the chrome a heartbeat. */
+.diary-title-rule {
+  display: block;
+  width: clamp(120px, 22vw, 320px);
+  height: 2px;
+  margin: 4px auto 6px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 184, 74, 0.55) 30%,
+    rgba(255, 230, 150, 0.95) 50%,
+    rgba(255, 184, 74, 0.55) 70%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 8px rgba(255, 184, 74, 0.65),
+    0 0 18px rgba(255, 184, 74, 0.35);
+  animation: diary-title-rule-pulse 3.4s ease-in-out infinite;
+}
+@keyframes diary-title-rule-pulse {
+  0%, 100% { opacity: 0.80; transform: scaleX(1); }
+  50%      { opacity: 1;    transform: scaleX(1.08); }
+}
+/* Pixel-art diamond flourish. Same shape as the main-menu wordmark
+ * frames so the diary feels like the same world. The left variant
+ * is mirrored. */
+.diary-title-flourish {
+  width: clamp(28px, 4vw, 52px);
+  height: clamp(28px, 4vw, 52px);
+  flex-shrink: 0;
+  align-self: center;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(255, 209, 102, 0.55) 0%, transparent 55%),
+    linear-gradient(45deg, transparent 35%, rgba(255, 184, 74, 0.85) 38%, rgba(255, 184, 74, 0.85) 42%, transparent 45%),
+    linear-gradient(-45deg, transparent 35%, rgba(255, 184, 74, 0.85) 38%, rgba(255, 184, 74, 0.85) 42%, transparent 45%);
+  filter: drop-shadow(0 0 6px rgba(255, 184, 74, 0.7));
+  animation: diary-title-flourish-glow 3.4s ease-in-out infinite;
+}
+.diary-title-flourish-l { transform: scaleX(-1); }
+@keyframes diary-title-flourish-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 184, 74, 0.55));  opacity: 0.85; }
+  50%      { filter: drop-shadow(0 0 16px rgba(255, 220, 130, 0.95)); opacity: 1; }
 }
 .diary-close {
   position: absolute;
@@ -13266,9 +13363,14 @@ body {
     max-height: none;
     border-radius: 0;
   }
-  .diary-title { font-size: 14px; letter-spacing: 1px; }
-  .diary-tagline { font-size: 8px; letter-spacing: 1px; }
+  /* Phone portrait: keep the proportions — still ~2× the original
+   * sizes so the heading dominates the panel as the user requested. */
+  .diary-title { font-size: 22px; letter-spacing: 1.5px; }
+  .diary-tagline { font-size: 12px; letter-spacing: 1px; }
   .diary-head { margin-bottom: 6px; }
+  .diary-title-glyph { font-size: 64px; }
+  .diary-title-rule { width: clamp(80px, 40vw, 200px); }
+  .diary-title-flourish { width: 24px; height: 24px; }
   .diary-close { width: 28px; height: 28px; font-size: 18px; }
   .diary-body {
     grid-template-columns: 1fr;
@@ -13338,9 +13440,15 @@ body {
     max-height: none;
     border-radius: 0;
   }
+  /* Landscape phone (≤ 520 px tall): drop the tagline + tighten the
+   * title so the header is at most ~28 px tall, leaving room for the
+   * tabs / entries / info columns. */
   .diary-head { margin-bottom: 4px; }
-  .diary-title { font-size: 12px; letter-spacing: 1px; margin-bottom: 0; }
+  .diary-title { font-size: 18px; letter-spacing: 1px; margin-bottom: 0; }
   .diary-tagline { display: none; }
+  .diary-title-glyph { display: none; }
+  .diary-title-rule { display: none; }
+  .diary-title-flourish { display: none; }
   .diary-close { width: 26px; height: 26px; font-size: 18px; top: 0; }
   .diary-body {
     grid-template-columns: 96px minmax(0, 1fr) 240px;
@@ -13398,6 +13506,153 @@ body {
   .diary-tab-label { display: none; }
   .diary-tab { padding: 6px 2px; }
   .diary-tab-glyph { font-size: 20px; }
+}
+
+/* ============================================================
+ *  Diary visual overhaul — atmospheric backdrop and drifting
+ *  alchemic runes layered behind the rays / sparks / sigil from
+ *  `buildDramaticStage`. Mirrors the language used by the main
+ *  menu so the diary reads as part of the same world. All layers
+ *  are purely additive: pointer-events disabled, z-indexed at 0
+ *  so the rays / sigil / chrome paint on top, with motion-reduced
+ *  fallbacks at the bottom of this block.
+ * ============================================================ */
+
+/* ── Diary atmosphere layer (corner pools + mist + vignette) ─── */
+.diary-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.diary-atmo-pool {
+  position: absolute;
+  width: 60%;
+  height: 80%;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: diary-atmo-pulse 7s ease-in-out infinite;
+}
+.diary-atmo-pool-warm-tl {
+  top: -28%;
+  left: -22%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 184, 74, 0.40) 0%,
+    rgba(255, 110, 60, 0.18) 45%,
+    transparent 70%
+  );
+  animation-delay: 0s;
+}
+.diary-atmo-pool-warm-br {
+  bottom: -32%;
+  right: -22%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 200, 90, 0.36) 0%,
+    rgba(170, 30, 30, 0.18) 45%,
+    transparent 70%
+  );
+  animation-delay: 2.4s;
+}
+.diary-atmo-pool-cool-bl {
+  bottom: -28%;
+  left: -28%;
+  width: 55%;
+  height: 70%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(125, 249, 255, 0.20) 0%,
+    rgba(110, 80, 200, 0.14) 50%,
+    transparent 75%
+  );
+  opacity: 0.45;
+  animation-delay: 4.8s;
+}
+@keyframes diary-atmo-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.45; }
+  50%      { transform: scale(1.06); opacity: 0.65; }
+}
+.diary-atmo-mist {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 6%;
+  height: 26%;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(255, 220, 160, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 90%, rgba(255, 220, 160, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 220, 160, 0.08) 0%, transparent 55%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: diary-atmo-mist-drift 18s ease-in-out infinite;
+}
+@keyframes diary-atmo-mist-drift {
+  0%, 100% { transform: translateX(0)    scaleY(1); opacity: 0.55; }
+  50%      { transform: translateX(40px) scaleY(1.05); opacity: 0.85; }
+}
+.diary-atmo-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 0%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.28) 92%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+}
+
+/* ── Drifting alchemic runes (curated unicode glyphs) ────────── */
+.diary-runes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+  border-radius: inherit;
+}
+.diary-rune {
+  position: absolute;
+  left: var(--x, 50%);
+  bottom: -8%;
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: var(--size, 36px);
+  line-height: 1;
+  transform: translate(-50%, 0) rotate(var(--rot, 0deg));
+  opacity: 0;
+  animation: diary-rune-drift var(--dur, 28s) linear var(--delay, 0s) infinite;
+  filter: drop-shadow(0 0 8px currentColor);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.diary-rune-gold   { color: rgba(255, 209, 102, 0.50); }
+.diary-rune-cyan   { color: rgba(125, 249, 255, 0.42); }
+.diary-rune-violet { color: rgba(192, 132, 252, 0.46); }
+@keyframes diary-rune-drift {
+  0%   { transform: translate(-50%, 0) rotate(var(--rot, 0deg)) scale(0.7); opacity: 0; }
+  10%  { opacity: 0.5; }
+  90%  { opacity: 0.5; }
+  100% { transform: translate(-50%, -120%) rotate(calc(var(--rot, 0deg) + 60deg)) scale(0.5); opacity: 0; }
+}
+
+/* ── Reduced-motion safety for the new diary layers ────────── */
+:root.motion-reduced .diary-atmo-pool,
+:root.motion-reduced .diary-atmo-mist,
+:root.motion-reduced .diary-rune,
+:root.motion-reduced .diary-title-glyph,
+:root.motion-reduced .diary-title-rule,
+:root.motion-reduced .diary-title-flourish {
+  animation: none !important;
+}
+:root.motion-reduced .diary-runes,
+:root.motion-reduced .diary-atmo-mist {
+  display: none;
 }
 
 /* ============================================================
