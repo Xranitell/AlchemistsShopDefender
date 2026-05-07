@@ -12,9 +12,12 @@
       href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap"
       rel="stylesheet"
     />
-    <!-- Yandex Games SDK. The script is hosted on Yandex CDN and is no-op in
-         non-Yandex environments. Our wrapper falls back to a stub. -->
-    <script src="https://yandex.ru/games/sdk/v2"></script>
+    <!-- Yandex Games SDK. Hosted on Yandex CDN, no-op in non-Yandex
+         envs (our wrapper falls back to a stub). `defer` keeps HTML
+         parsing un-blocked so the boot loader paints earlier; the SDK
+         still runs before our deferred module bundle so `window.YaGames`
+         is ready when `yandex.init()` reads it. -->
+    <script src="https://yandex.ru/games/sdk/v2" defer></script>
     <!--
       Inline boot-time loading screen styles.
 
