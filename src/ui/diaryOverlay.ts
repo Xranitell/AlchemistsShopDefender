@@ -266,10 +266,11 @@ export class DiaryOverlay {
 
     const icon = document.createElement('div');
     icon.className = 'diary-entry-icon diary-entry-sprite';
-    // Render sprite into a 64×64 box but only fill ~70% of it so tall
-    // silhouettes (golem, shaman, boss kinds) keep margin on every side
-    // and never bleed into the card border.
-    const sprite = enemySpriteIconNode(entry.id, 64, {
+    // Render sprite into a 128×128 box (2× larger than the default 64
+    // we use elsewhere) but only fill ~70% of it so tall silhouettes
+    // (golem, shaman, boss kinds) keep margin on every side and never
+    // bleed into the card border.
+    const sprite = enemySpriteIconNode(entry.id, 128, {
       silhouette: !discovered,
       fitScale: 0.7,
     });
@@ -511,7 +512,6 @@ export class DiaryOverlay {
       { label: t('ui.diary.stat.range'), value: String(kind.range) },
       { label: t('ui.diary.stat.fireRate'), value: rate },
       { label: t('ui.diary.stat.splash'), value: splash },
-      { label: t('ui.diary.stat.element'), value: t(`ui.diary.element.short.${kind.element}`) },
     ];
 
     for (const row of rows) {
@@ -527,6 +527,39 @@ export class DiaryOverlay {
       cell.appendChild(v);
       wrap.appendChild(cell);
     }
+
+    // Element row gets a dedicated badge — coloured pill with the
+    // element glyph on the left and its name to the right — so the
+    // player can tell at a glance which element a tower lives in
+    // without parsing the plain row above. Falls back to a plain row
+    // if the tower's element somehow isn't in the diary table.
+    const elementEntry = ELEMENT_ENTRIES.find((e) => e.id === kind.element);
+    const elementRow = document.createElement('div');
+    elementRow.className = 'diary-stat-row diary-stat-row-element';
+    if (elementEntry) {
+      // Set the element-tinted custom property on the row so both the
+      // dashed bottom border (parent) and the inner badge (child)
+      // pick up the same lore colour without duplicating the value.
+      elementRow.style.setProperty('--element-color', elementEntry.color);
+    }
+    const elementKey = document.createElement('span');
+    elementKey.className = 'diary-stat-key';
+    elementKey.textContent = t('ui.diary.stat.element');
+    elementRow.appendChild(elementKey);
+
+    const badge = document.createElement('span');
+    badge.className = 'diary-element-badge';
+    const glyph = document.createElement('span');
+    glyph.className = 'diary-element-badge-glyph';
+    glyph.textContent = elementEntry ? elementEntry.glyph : '◆';
+    const name = document.createElement('span');
+    name.className = 'diary-element-badge-name';
+    name.textContent = t(`ui.diary.element.short.${kind.element}`);
+    badge.appendChild(glyph);
+    badge.appendChild(name);
+    elementRow.appendChild(badge);
+    wrap.appendChild(elementRow);
+
     return wrap;
   }
 
