@@ -2,7 +2,7 @@
 //
 // 8 hand-drawn top-down decal sprites (cracks, ash scatter, scorch
 // stains, dropped foliage, etc.) used as static dressing baked into
-// the room backdrop. The room loop picks 2-3 random decals per
+// the room backdrop. The room loop picks 10 decals per
 // session and scatters them on the floor at the same iso angle as
 // the painted floor tiles, so they read as lying on the surface.
 //

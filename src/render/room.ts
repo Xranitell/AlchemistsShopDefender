@@ -53,7 +53,7 @@ export function getRoomBackdrop(width: number, height: number): HTMLCanvasElemen
   // amber palette + workshop decor (shelves, candles, props) are still
   // enough to read the room as the alchemist's lab.
   drawFloor(ctx, width, height, pal);
-  // Floor decals — 2-3 random painted decals scattered on the
+  // Floor decals — 10 painted decals scattered on the
   // floor at the same iso angle as the tiles. Drawn between the
   // floor and the props so they read as lying on the surface
   // (above the painted floor tiles, below the painted props,
@@ -157,12 +157,12 @@ function drawSpritesheetProps(
 }
 
 /**
- * Scatters 2-3 painted floor decals (cracks, stains, dropped foliage,
+ * Scatters 10 painted floor decals (cracks, stains, dropped foliage,
  * etc.) across the floor. Each decal is iso-projected so it lies on
  * the surface at the same 45° camera angle as the painted floor tiles.
  *
  * Layout rules:
- *   - 2 or 3 decals per session (deterministic from canvas size — same
+ *   - 10 decals per session (deterministic from canvas size — same
  *     size always yields the same decal set, but different sizes pick
  *     different decals, so a viewport resize re-rolls without looking
  *     "random per frame").
@@ -190,11 +190,12 @@ function drawSpritesheetDecals(
   // never land on top of the rune ring / dais.
   const excludeRX = 280;
   const excludeRY = 150;
-  // Pick 2 or 3 decals based on a stable seed derived from the canvas
+  // Pick 10 decals based on a stable seed derived from the canvas
   // size — same size always gives the same decal layout (consistent
   // session feel), different sizes re-roll cleanly.
   const sizeSeed = hash2(w | 0, h | 0);
-  const count = 5 + ((sizeSeed >>> 4) & 3); // 5..8 — denser floor scuff
+  const count = 10;
+  const startDecal = (sizeSeed >>> 8) % DECAL_COUNT;
   let placed = 0;
   let attempt = 0;
   while (placed < count && attempt < 60) {
@@ -209,7 +210,7 @@ function drawSpritesheetDecals(
     attempt++;
     if (dx * dx + dy * dy < 1) continue;
 
-    const id = (r2 >>> 1) % DECAL_COUNT;
+    const id = (startDecal + placed) % DECAL_COUNT;
     const flipX = ((r2 >>> 11) & 1) === 1;
     // Decal half-width in screen px (rhombus footprint is 2·halfW
     // wide). 70-100 keeps the decals readable but never larger than
