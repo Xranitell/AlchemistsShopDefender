@@ -214,12 +214,18 @@ body {
 
 /* WAVE widget */
 .hud-wave-badge { min-width: 130px; }
-.hud-wave-col { display: flex; flex-direction: column; gap: 3px; }
+/* Keep the wave value (e.g. "3 / 15") on a single line — without an
+   explicit `white-space: nowrap` the badge can wrap "3 / 15" into
+   "3" + "15" on tighter viewports, which read as two separate
+   numbers. The column itself stays flex-column so label / value
+   still stack. */
+.hud-wave-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .hud-wave-value {
   font-size: 22px;
   color: #ffffff;
   font-family: 'Press Start 2P', monospace;
   text-shadow: 2px 2px 0 var(--hud-frame-dark);
+  white-space: nowrap;
 }
 
 /* HP central widget — bigger, with a chunky red bar and metal frame.
@@ -12654,7 +12660,15 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* `.mm-card` does `all: unset`, which resets `box-sizing` back to its
+     initial `content-box`. Combined with the `width: 100%` + 14 px side
+     padding + 2 px border below, the button rendered ~32 px wider than
+     its right column container and visibly overflowed past the panels
+     beneath it. Forcing border-box (and locking `width` to the column
+     instead of 100%-of-content) keeps it flush. */
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   padding: 10px 14px;
   margin: 0 0 8px 0;
   background:
@@ -13296,4 +13310,92 @@ body {
   .diary-entry-icon { width: 52px; height: 52px; padding: 2px; }
   .diary-entry-bestiary .diary-entry-icon { width: 104px; height: 104px; padding: 4px; }
   .diary-entry-name { font-size: 9px; letter-spacing: 0.4px; }
+}
+
+/* ── Landscape mobile (short viewport, e.g. iPhone landscape ~ 844×390) ──
+ *
+ * The default tablet (max-width: 1024px) and mobile-portrait
+ * (max-width: 720px) breakpoints both move the info panel UNDER the
+ * entry grid, which works on tall portrait viewports but wastes the
+ * one thing landscape phones have plenty of (horizontal width) and
+ * starves the entry grid of the one thing they have very little of
+ * (vertical height) — a 390-px tall viewport gets ~250 px of body
+ * height, of which 32-36 dvh is reserved for the info panel,
+ * leaving ~150 px for the entry grid (≈ 1 row visible).
+ *
+ * On landscape phones we instead keep the desktop 3-column layout
+ * (tabs · entries · info) but compact every element so the whole
+ * panel fits without scrolling and the player can see all three
+ * regions at once. The dramatic-stage tagline is hidden because the
+ * header alone already takes ~28 px on a 390-px tall window.        */
+@media (max-height: 520px) and (orientation: landscape) {
+  .diary-overlay { padding: 4px; }
+  .diary-panel {
+    padding: 6px 12px 8px;
+    height: 100dvh;
+    width: 100vw;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+  .diary-head { margin-bottom: 4px; }
+  .diary-title { font-size: 12px; letter-spacing: 1px; margin-bottom: 0; }
+  .diary-tagline { display: none; }
+  .diary-close { width: 26px; height: 26px; font-size: 18px; top: 0; }
+  .diary-body {
+    grid-template-columns: 96px minmax(0, 1fr) 240px;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .diary-col-tabs {
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+  .diary-tab {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 4px;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+  }
+  .diary-tab-glyph { font-size: 18px; }
+  .diary-tab-label { font-size: 9px; letter-spacing: 0.3px; line-height: 1.1; }
+  .diary-col-info {
+    grid-column: auto;
+    max-height: none;
+    padding: 8px 10px;
+  }
+  .diary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding-bottom: 0;
+  }
+  .diary-entry { padding: 6px 4px 8px; min-height: 76px; gap: 4px; }
+  .diary-entry-icon { width: 44px; height: 44px; padding: 2px; }
+  .diary-entry-bestiary .diary-entry-icon { width: 80px; height: 80px; padding: 3px; }
+  .diary-entry-name { font-size: 8px; letter-spacing: 0.3px; }
+  .diary-entry-glyph { font-size: 24px; }
+  .diary-info-head { padding-bottom: 6px; margin-bottom: 6px; }
+  .diary-info-name { font-size: 11px; letter-spacing: 0.5px; }
+  .diary-info-sprite { width: 56px; height: 56px; }
+  .diary-info-glyph { font-size: 32px; }
+  .diary-info-section-label { font-size: 8px; margin-top: 6px; margin-bottom: 4px; }
+  .diary-info-desc { font-size: 13px; line-height: 1.25; margin-bottom: 6px; }
+  .diary-info-features { font-size: 13px; line-height: 1.25; margin-bottom: 6px; }
+}
+
+/* Even shorter landscape (≤ 360 px tall — e.g. some Android phones in
+ * landscape with a system-bar visible). Drop the tabs column to icons
+ * only so the entry grid + info panel get the maximum width. */
+@media (max-height: 380px) and (orientation: landscape) {
+  .diary-body {
+    grid-template-columns: 56px minmax(0, 1fr) 200px;
+  }
+  .diary-tab-label { display: none; }
+  .diary-tab { padding: 6px 2px; }
+  .diary-tab-glyph { font-size: 20px; }
 }

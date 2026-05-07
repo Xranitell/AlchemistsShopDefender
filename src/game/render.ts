@@ -511,13 +511,18 @@ function drawTowerBody(ctx: CanvasRenderingContext2D, state: GameState, t: Tower
   const willPaint = isPaintedTurretSheetReady();
   const liftY = willPaint ? PAINTED_TURRET_LIFT_Y : 0;
 
-  // Mirror the painted stand so non-aura turrets visually face away
-  // from the mannequin: stands on the right of the dais point right,
-  // stands on the left point left. Aura towers (Сторожевой фонарь)
-  // are symmetric and idle-rotate `aimAngle`, so we leave them
-  // un-flipped to keep the lantern reading the same on both sides.
+  // Mirror the painted stand so non-aura turrets visually face *away*
+  // from the mannequin (per design request, May 2026). The painted
+  // sprites are drawn with their business-end / barrel pointing LEFT
+  // by default, so:
+  //   - stands on the LEFT of the mannequin stay un-flipped → barrel
+  //     keeps pointing left, i.e. away from the centre.
+  //   - stands on the RIGHT of the mannequin get flipped → barrel
+  //     now points right, i.e. away from the centre.
+  // Aura towers (Сторожевой фонарь) are symmetric and idle-rotate via
+  // `aimAngle`, so we leave them un-flipped on both sides.
   const facesAwayLeft =
-    t.kind.behavior !== 'aura' && t.pos.x < state.mannequin.pos.x;
+    t.kind.behavior !== 'aura' && t.pos.x > state.mannequin.pos.x;
   const usingPainted = drawTurret(
     ctx,
     t.pos.x,
