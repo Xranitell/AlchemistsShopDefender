@@ -90,21 +90,65 @@ export class DiaryOverlay {
 
     const panel = document.createElement('div');
     panel.className = 'diary-panel';
+    // Layered backdrop, painted from back to front so the rays / sparks /
+    // sigil from `dramaticStage` sit on top of the warm candle pools and
+    // the drifting runes float between them and the chrome.
+    panel.appendChild(buildDiaryAtmosphere());
+    panel.appendChild(buildDiaryRunes(8));
     panel.appendChild(buildDramaticStage({ density: 'standard' }));
     wrap.appendChild(panel);
 
     // ── Header (glitch title + tagline + close button) ─────────────────
+    // The header has three visual layers stacked horizontally:
+    //   1. Left flourish — a small pixel diamond mirrored from the right.
+    //   2. The title stack — backdrop ⚗ glyph (slowly rotating), the
+    //      glitch-animated title, a thin golden rule, and the tagline.
+    //   3. Right flourish — same as the left, not mirrored.
+    // The close button stays absolutely positioned to the top-right of
+    // the header so the new flourishes don't compete with it for space.
     const header = document.createElement('div');
     header.className = 'diary-head';
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'diary-head-row';
+
+    const flourishL = document.createElement('span');
+    flourishL.className = 'diary-title-flourish diary-title-flourish-l';
+    flourishL.setAttribute('aria-hidden', 'true');
+    headerRow.appendChild(flourishL);
+
+    const stack = document.createElement('div');
+    stack.className = 'diary-head-stack';
+
+    const glyph = document.createElement('span');
+    glyph.className = 'diary-title-glyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.textContent = '⚗';
+    stack.appendChild(glyph);
+
     const title = document.createElement('h2');
     title.className = 'diary-title';
     appendGlitchTitleChars(title, t('ui.diary.title'));
-    header.appendChild(title);
+    stack.appendChild(title);
+
+    const rule = document.createElement('span');
+    rule.className = 'diary-title-rule';
+    rule.setAttribute('aria-hidden', 'true');
+    stack.appendChild(rule);
 
     const tagline = document.createElement('div');
     tagline.className = 'diary-tagline';
     tagline.textContent = t('ui.diary.tagline');
-    header.appendChild(tagline);
+    stack.appendChild(tagline);
+
+    headerRow.appendChild(stack);
+
+    const flourishR = document.createElement('span');
+    flourishR.className = 'diary-title-flourish diary-title-flourish-r';
+    flourishR.setAttribute('aria-hidden', 'true');
+    headerRow.appendChild(flourishR);
+
+    header.appendChild(headerRow);
 
     const close = document.createElement('button');
     close.type = 'button';
@@ -756,4 +800,56 @@ function bakedTowerSprite(sprites: Sprites, id: string): BakedSprite | null {
     case 'watch_tower': return sprites.towerNeedler; // shares visual with needler
     default: return null;
   }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Decorative backdrop layers
+// ────────────────────────────────────────────────────────────────────────
+
+/** Diary atmosphere — corner candle pools, a cool arcane pool, a soft
+ *  mist band drifting near the bottom edge, and a global vignette. The
+ *  layer is purely cosmetic (`pointer-events: none`), z-indexed at 0
+ *  so the rays / sparks / sigil from `buildDramaticStage` paint on
+ *  top, and the body / header chrome (z-index 2/3) stays fully
+ *  interactive. Mirrors the language of the main-menu atmosphere so
+ *  the diary reads as part of the same world. */
+function buildDiaryAtmosphere(): HTMLElement {
+  const layer = document.createElement('div');
+  layer.className = 'diary-atmosphere';
+  layer.setAttribute('aria-hidden', 'true');
+  layer.innerHTML = `
+    <span class="diary-atmo-pool diary-atmo-pool-warm-tl"></span>
+    <span class="diary-atmo-pool diary-atmo-pool-warm-br"></span>
+    <span class="diary-atmo-pool diary-atmo-pool-cool-bl"></span>
+    <span class="diary-atmo-mist"></span>
+    <span class="diary-atmo-vignette"></span>
+  `;
+  return layer;
+}
+
+/** Pool of decorative «alchemic rune» glyphs that drift slowly upward
+ *  through the diary panel. The glyphs are intentionally low-opacity
+ *  and each gets a randomised x / delay / duration / size / rotation
+ *  so the layer never visibly loops. Curated unicode symbols (mercury,
+ *  saturn, alembic, sun, moon, …) read as «runes» without carrying any
+ *  semantic meaning. */
+function buildDiaryRunes(count: number): HTMLElement {
+  const RUNE_GLYPHS = ['☿', '♄', '♃', '♅', '⚗', '⚛', '✦', '✧', '☉', '☽', '⚝', '✶'];
+  const TONES: Array<'gold' | 'cyan' | 'violet'> = ['gold', 'cyan', 'violet'];
+  const layer = document.createElement('div');
+  layer.className = 'diary-runes';
+  layer.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < count; i++) {
+    const r = document.createElement('span');
+    const tone = TONES[i % TONES.length];
+    r.className = `diary-rune diary-rune-${tone}`;
+    r.textContent = RUNE_GLYPHS[Math.floor(Math.random() * RUNE_GLYPHS.length)]!;
+    r.style.setProperty('--x', `${Math.round(Math.random() * 100)}%`);
+    r.style.setProperty('--delay', `${(Math.random() * 18).toFixed(2)}s`);
+    r.style.setProperty('--dur', `${(22 + Math.random() * 16).toFixed(2)}s`);
+    r.style.setProperty('--size', `${(28 + Math.random() * 32).toFixed(0)}px`);
+    r.style.setProperty('--rot', `${(Math.random() * 360).toFixed(0)}deg`);
+    layer.appendChild(r);
+  }
+  return layer;
 }
