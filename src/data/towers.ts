@@ -34,19 +34,21 @@ export const TOWERS: Record<string, TowerKind> = {
     // Long arc: outranges every other turret so the splash zone can
     // cover most of an entrance corridor from the back rune.
     range: 360,
-    // One shot every ~3.3 seconds. The mortar is positioned as a
-    // "siege" piece — it rarely fires, but every shell deletes a
-    // packed cluster.
-    fireRate: 0.30,
+    // One shot every ~6.7 seconds (half the previous cadence). The
+    // mortar is now an arena-scale siege piece — it fires very rarely,
+    // but every shell wipes the entire battlefield, so the long
+    // cooldown keeps it from trivialising waves.
+    fireRate: 0.15,
     // Slow shell so the player can read it travelling — important
     // visual since the splash can wipe an entire wave when it lands.
     projectileSpeed: 320,
-    // Significantly wider splash than before (60 → 140). The visual
-    // ring now coincides with what `applyAreaDamage` already used.
-    splashRadius: 140,
+    // Arena-spanning splash. The 1280×720 arena's diagonal is
+    // ~1469 px, so 1500 ensures every enemy on the map is caught
+    // in the blast regardless of where the mortar fires from.
+    splashRadius: 1500,
     element: 'fire',
     color: '#ff8c5a',
-    desc: 'Редкие, но мощные снаряды по большой площади. Идеальна против плотных групп.',
+    desc: 'Стреляет очень редко, но взрыв накрывает всю карту. Идеальна против больших волн.',
   },
   mercury_sprayer: {
     id: 'mercury_sprayer',

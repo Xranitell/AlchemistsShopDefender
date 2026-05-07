@@ -1,4 +1,4 @@
-import type { GameState } from './state';
+import type { GameState, Tower, Enemy } from './state';
 import { getActiveEffect } from './overload';
 import { getSprites } from '../render/sprites';
 import { drawSprite, drawSpriteRotated, type BakedSprite } from '../render/sprite';
@@ -43,7 +43,7 @@ import { drawScorchDecals, updateScorchDecals } from '../render/scorchDecals';
 import { applyBloom } from '../render/bloom';
 import type { DifficultyMode } from '../data/difficulty';
 import { DIFFICULTY_MODES } from '../data/difficulty';
-import { getAurasBuffing, watchTowerSlotOrder, watchTowerBuffCount } from './tower';
+import { getAurasBuffing } from './tower';
 
 function difficultyAuraColor(mode: DifficultyMode): string | null {
   if (mode === 'normal') return null;
@@ -144,8 +144,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawFirePools(ctx, state);
   drawReactionPools(ctx, state);
   drawGoldPickups(ctx, state);
-  drawEnemies(ctx, state);
-  drawTowers(ctx, state);
+  // Floor decals for every tower (range rings, drop shadows, lantern
+  // halos, EMP rings, level pips) are drawn first so they sit
+  // underneath every body. The combined pass that follows interleaves
+  // tower bodies and enemy sprites by feet-Y so an enemy in front of a
+  // tower visually overlaps it, while an enemy behind it gets covered
+  // by the pedestal.
+  drawTowerFloors(ctx, state);
+  drawSortedEntities(ctx, state);
   drawMannequin(ctx, state);
   drawPotionBlasts(ctx, state);
   drawProjectiles(ctx, state);
@@ -363,247 +369,276 @@ function drawDangerRim(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
-function drawTowers(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const s = getSprites();
-  for (const t of state.towers) {
-    // Range indicator when shop is open on this rune — iso-plane ellipse so
-    // it visually lies on the floor.
-    if (state.activeRunePoint === t.runePointId) {
-      const R = t.kind.range * state.modifiers.towerRangeMult;
-      ctx.save();
-      ctx.strokeStyle = `rgba(125, 249, 255, 0.18)`;
-      ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(t.pos.x, t.pos.y, R, R * 0.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Drop shadow under base. Painted stands are drawn lifted off the
-    // floor (see PAINTED_TURRET_LIFT_Y), so the shadow stays at the
-    // rune position to read as a cast on the floor below the floating
-    // stand. The shadow grows slightly + softens when lifted so it
-    // reads as a projection rather than a footprint.
-    const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
-    const willPaint = isPaintedTurretSheetReady();
-    const liftY = willPaint ? PAINTED_TURRET_LIFT_Y : 0;
-    const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
-    const shadowH = willPaint ? 9 : 7;
-    const shadowAlpha = willPaint ? 0.32 : 0.42;
-    drawShadow(ctx, t.pos.x, t.pos.y + 6, shadowW, shadowH, shadowAlpha);
-
-    // Base glow (cached halo to avoid per-frame gradient allocation).
-    drawRadialGlow(
-      ctx,
-      { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
-      t.pos.x,
-      t.pos.y,
-      0.08,
-    );
-
-    // Painted turret stand — replaces the previous baked pixel-art
-    // base + rotating barrel pair. The painted sprite includes its
-    // own machinery on top so the rotating-barrel pass is dropped;
-    // aim direction is still readable through projectile spawn
-    // direction + the muzzle flash below.
-    //
-    // Falls back to the baked sprite while the painted sheet PNG is
-    // still loading so towers don't pop in invisibly on the first
-    // frame after placement. The painted stand is drawn lifted by
-    // PAINTED_TURRET_LIFT_Y so the rune chalk circle below stays
-    // visible (and clickable for the upgrade popup).
-    // Mirror the painted stand so non-aura turrets visually face away
-    // from the mannequin: stands on the right of the dais point right,
-    // stands on the left point left. Aura towers (Сторожевой фонарь)
-    // are symmetric and idle-rotate `aimAngle`, so we leave them
-    // un-flipped to keep the lantern reading the same on both sides.
-    const facesAwayLeft =
-      t.kind.behavior !== 'aura' && t.pos.x < state.mannequin.pos.x;
-    const usingPainted = drawTurret(
-      ctx,
-      t.pos.x,
-      t.pos.y - liftY,
-      t.kind.id,
-      { scale: TOWER_PAINTED_SCALE, flipX: facesAwayLeft },
-    );
-    if (!usingPainted) {
-      let base: BakedSprite = s.towerNeedler;
-      let barrel: BakedSprite = s.towerNeedlerBarrel;
-      if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
-      else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
-      else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
-      else if (t.kind.id === 'ether_coil') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
-      else if (t.kind.id === 'watch_tower') { base = s.towerNeedler; barrel = s.towerNeedlerBarrel; }
-      drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
-      drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
-    }
-
-    // Painted-mode "tower top" anchor — the painted stand is drawn
-    // bottom-anchored at (pos.x, pos.y - liftY), so the machinery on
-    // top lands at roughly y - liftY - painted.height. Procedural
-    // sparkles / flames / muzzle flashes that previously sat on top of
-    // the small pixel-art sprite need to be lifted by the same amount
-    // when the painted sheet is in use; baked-fallback frames keep the
-    // original offsets.
-    const topY = usingPainted ? t.pos.y - liftY - painted.height + 12 : t.pos.y - 6;
-    const muzzleReach = usingPainted ? Math.max(28, painted.width * 0.55) : 24;
-
-    // Эфирная катушка: pulsing arcane halo above the coil to read it as
-    // distinct from the mercury sprayer it visually re-uses. The
-    // painted Tesla coil already paints its own electricity, so the
-    // procedural sparks are skipped in painted mode (they'd crowd the
-    // top of the coil with double sparkles).
-    if (t.kind.id === 'ether_coil' && !usingPainted) {
-      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
-      ctx.save();
-      ctx.globalAlpha = 0.55 + pulse * 0.35;
-      ctx.fillStyle = '#a78bfa';
-      // Two stacked diamond pixels above the head to suggest a static spark.
-      ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 26 - pulse * 4), 4, 4);
-      ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 4), 2, 4);
-      ctx.restore();
-    }
-
-    // Сторожевой фонарь: lantern halo + slow aura pulse on the floor so the
-    // player can see who's being buffed. Color matches the tower hue.
-    // The painted lantern already has its own flame in the spritesheet
-    // so the procedural pixel flame is skipped in painted mode; the
-    // floor aura ring (a gameplay buff indicator) is always drawn.
-    if (t.kind.id === 'watch_tower') {
-      const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 1.5);
-      ctx.save();
-      // Slot-based aura: instead of a range ring (which would lie about
-      // who is actually buffed), draw glowing thread-lines from the
-      // lantern's rune to each rune slot it currently lights up. The
-      // line fades in/out with the lantern's pulse so the link reads
-      // as living energy rather than a static effect range.
-      const totalSlots = state.runePoints.length;
-      const order = watchTowerSlotOrder(t.runePointId, totalSlots);
-      const reach = watchTowerBuffCount(t.level);
-      ctx.strokeStyle = `rgba(255, 209, 102, ${0.18 + pulse * 0.14})`;
-      ctx.lineWidth = 1.2;
-      for (let i = 0; i < Math.min(reach, order.length); i++) {
-        const slotId = order[i]!;
-        const rp = state.runePoints[slotId];
-        if (!rp) continue;
-        ctx.beginPath();
-        ctx.moveTo(t.pos.x, t.pos.y);
-        ctx.lineTo(rp.pos.x, rp.pos.y);
-        ctx.stroke();
-        // Soft anchor halo on the lit slot.
-        ctx.beginPath();
-        ctx.arc(rp.pos.x, rp.pos.y, 4 + pulse * 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      if (!usingPainted) {
-        // Lantern flame on top of the small pixel-art lantern.
-        ctx.fillStyle = '#ffd166';
-        ctx.globalAlpha = 0.85;
-        ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 30 - pulse * 2), 4, 5);
-        ctx.fillStyle = '#ffe6a3';
-        ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 2), 2, 3);
-      }
-      ctx.restore();
-    }
-
-    // Сторожевой фонарь buff indicator: every tower currently within a
-    // lantern's K-nearest set gets a small floor halo + a faint warm
-    // pulse around its pedestal so the player can read at a glance who
-    // is being amplified. Skip aura towers themselves (they're the
-    // source). The halo colour matches the lantern's flame so the link
-    // is visually obvious. The work is gated on `getAurasBuffing`
-    // returning a non-empty list so the common no-lantern case is free.
-    if (t.kind.behavior !== 'aura') {
-      const sources = getAurasBuffing(state, t.id);
-      if (sources.length > 0) {
-        const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
-        ctx.save();
-        ctx.strokeStyle = `rgba(255, 209, 102, ${0.32 + pulse * 0.18})`;
-        ctx.lineWidth = 1.5;
-        const haloR = Math.max(22, painted.width * 0.42);
-        ctx.beginPath();
-        ctx.ellipse(t.pos.x, t.pos.y + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        // Soft inner fill so the halo reads even on busy biome floors.
-        ctx.fillStyle = `rgba(255, 230, 163, ${0.06 + pulse * 0.04})`;
-        ctx.beginPath();
-        ctx.ellipse(t.pos.x, t.pos.y + 4, haloR * 0.85, haloR * 0.42, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Two tiny "fireflies" rotating around the lifted body to read
-        // as captured aura motes when the painted lantern is on screen.
-        if (usingPainted) {
-          const orbitR = haloR * 0.38;
-          const ang = state.worldTime * 1.6 + t.id;
-          const bodyY = t.pos.y - liftY - painted.height * 0.5;
-          ctx.fillStyle = '#ffd166';
-          ctx.globalAlpha = 0.75;
-          for (let k = 0; k < 2; k++) {
-            const a = ang + k * Math.PI;
-            const fx = Math.round(t.pos.x + Math.cos(a) * orbitR);
-            const fy = Math.round(bodyY + Math.sin(a) * orbitR * 0.5);
-            ctx.fillRect(fx - 1, fy - 1, 3, 3);
-          }
-        }
-        ctx.restore();
-      }
-    }
-
-    // EMP / stun overlay: while `disabledTimer > 0` the tower has been
-    // shut off by a sapper EMP attach or golem death pulse. Paint a
-    // cyan glitch ring + sparks on top of the tower so the silence is
-    // legible. Kept simple — a flickering arc on the pedestal and a
-    // floating "OFFLINE" tag — to avoid masking the painted tower body.
-    if (t.disabledTimer > 0) {
-      const blink = (Math.floor(state.worldTime * 16) % 2) === 0 ? 1 : 0.55;
-      ctx.save();
-      ctx.strokeStyle = `rgba(125, 249, 255, ${0.55 * blink})`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.ellipse(t.pos.x, t.pos.y + 4, 26, 12, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      // Tiny static "sparks" rotating around the body.
-      ctx.fillStyle = `rgba(125, 249, 255, ${0.7 * blink})`;
-      const spinAng = state.worldTime * 6 + t.id;
-      for (let k = 0; k < 3; k++) {
-        const a = spinAng + (k * Math.PI * 2) / 3;
-        const sx = Math.round(t.pos.x + Math.cos(a) * 22);
-        const sy = Math.round(t.pos.y - 22 + Math.sin(a) * 6);
-        ctx.fillRect(sx - 1, sy - 1, 2, 2);
-      }
-      ctx.restore();
-    }
-
-    // Muzzle flash when recently fired. Anchored to the painted-tower
-    // top (where the barrel / spout actually sits) when painted, or
-    // the pixel-art barrel y when falling back.
-    if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura' && t.disabledTimer <= 0) {
-      const flashX = t.pos.x + Math.cos(t.aimAngle) * muzzleReach;
-      const flashY = topY + Math.sin(t.aimAngle) * muzzleReach;
-      ctx.save();
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
-                       t.kind.id === 'mercury_sprayer' ? '#7df9ff' :
-                       t.kind.id === 'ether_coil' ? '#a78bfa' :
-                       t.kind.id === 'mortar' ? '#ff8c3a' : '#ffd166';
-      ctx.fillRect(Math.round(flashX - 3), Math.round(flashY - 3), 6, 6);
-      ctx.restore();
-    }
-
-    // Level pips: small brass dots beneath the base. Painted pedestals
-    // are now drawn lifted off the floor — keep the pips by the rune
-    // (just below the cast shadow) so they read as a label for the rune
-    // slot itself; baked-fallback rendering keeps the tight 8 px spacing
-    // hugging the small pixel sprite's base.
-    const pipY = usingPainted ? Math.round(t.pos.y + 16) : t.pos.y + 29;
-    for (let i = 0; i < t.level; i++) {
-      ctx.fillStyle = COLORS.brassHi;
-      ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);
-      ctx.fillStyle = COLORS.brass;
-      ctx.fillRect(t.pos.x - 10 + i * 8, pipY + 4, 4, 1);
-    }
+/** Floor decals for one tower: range indicator, drop shadow, base glow,
+ *  the lantern buff halo (if active), the EMP / disabled ring, and the
+ *  level pips beneath the pedestal. Drawn before any tower body or
+ *  enemy sprite so floor effects always sit underneath everything else
+ *  in the scene. The body sprite is drawn separately by
+ *  `drawTowerBody`, which is interleaved with enemy sprites by the
+ *  combined depth-sort pass in `drawSortedEntities`. */
+function drawTowerFloor(ctx: CanvasRenderingContext2D, state: GameState, t: Tower): void {
+  // Range indicator when shop is open on this rune — iso-plane ellipse so
+  // it visually lies on the floor.
+  if (state.activeRunePoint === t.runePointId) {
+    const R = t.kind.range * state.modifiers.towerRangeMult;
+    ctx.save();
+    ctx.strokeStyle = `rgba(125, 249, 255, 0.18)`;
+    ctx.fillStyle = `rgba(125, 249, 255, 0.04)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(t.pos.x, t.pos.y, R, R * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
+
+  // Drop shadow. The painted stand is now planted directly on the rune
+  // (PAINTED_TURRET_LIFT_Y = 0), so the shadow sits just under the
+  // pedestal as a normal floor cast instead of a "floating" projection.
+  const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
+  const willPaint = isPaintedTurretSheetReady();
+  const shadowW = willPaint ? painted.width * 0.50 : painted.width * 0.42;
+  const shadowH = willPaint ? 9 : 7;
+  const shadowAlpha = willPaint ? 0.32 : 0.42;
+  drawShadow(ctx, t.pos.x, t.pos.y + 6, shadowW, shadowH, shadowAlpha);
+
+  // Base glow (cached halo to avoid per-frame gradient allocation).
+  drawRadialGlow(
+    ctx,
+    { radius: 28, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+    t.pos.x,
+    t.pos.y,
+    0.08,
+  );
+
+  // Сторожевой фонарь buff indicator (floor part). The body part —
+  // bloom + fireflies — is drawn in `drawTowerBody`. Layers drawn here:
+  //   1. Outer expanding "ping" ring — slow, ramps and fades.
+  //   2. Bright floor halo at the lantern colour.
+  //   3. Inner radial gradient spotlight under the tower.
+  if (t.kind.behavior !== 'aura' && getAurasBuffing(state, t.id).length > 0) {
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
+    const haloR = Math.max(30, painted.width * 0.55);
+    ctx.save();
+
+    const ringPhase = (state.worldTime * 0.9 + t.id * 0.13) % 1;
+    const ringR = haloR * (1.0 + ringPhase * 0.8);
+    const ringAlpha = 0.42 * (1 - ringPhase);
+    ctx.strokeStyle = `rgba(255, 218, 130, ${ringAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(t.pos.x, t.pos.y + 4, ringR, ringR * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(255, 209, 102, ${0.55 + pulse * 0.30})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(t.pos.x, t.pos.y + 4, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const halox = t.pos.x;
+    const haloy = t.pos.y + 4;
+    const haloFill = ctx.createRadialGradient(halox, haloy, 0, halox, haloy, haloR);
+    haloFill.addColorStop(0, `rgba(255, 230, 163, ${0.32 + pulse * 0.18})`);
+    haloFill.addColorStop(0.6, `rgba(255, 209, 102, ${0.16 + pulse * 0.10})`);
+    haloFill.addColorStop(1, `rgba(255, 209, 102, 0)`);
+    ctx.fillStyle = haloFill;
+    ctx.beginPath();
+    ctx.ellipse(halox, haloy, haloR, haloR * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // EMP / stun overlay (floor part). The static sparks rotating around
+  // the body are drawn in `drawTowerBody`. The flickering cyan ellipse
+  // sits flat on the floor as a "tower offline" indicator.
+  if (t.disabledTimer > 0) {
+    const blink = (Math.floor(state.worldTime * 16) % 2) === 0 ? 1 : 0.55;
+    ctx.save();
+    ctx.strokeStyle = `rgba(125, 249, 255, ${0.55 * blink})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(t.pos.x, t.pos.y + 4, 26, 12, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Level pips: small brass dots beneath the pedestal base, on the
+  // floor. Painted pedestals are now planted directly on the rune
+  // (PAINTED_TURRET_LIFT_Y = 0), so pips render just under the cast
+  // shadow; the pixel-art fallback keeps its tighter offset.
+  const pipY = willPaint ? Math.round(t.pos.y + 16) : t.pos.y + 29;
+  for (let i = 0; i < t.level; i++) {
+    ctx.fillStyle = COLORS.brassHi;
+    ctx.fillRect(t.pos.x - 10 + i * 8, pipY, 4, 4);
+    ctx.fillStyle = COLORS.brass;
+    ctx.fillRect(t.pos.x - 10 + i * 8, pipY + 4, 4, 1);
+  }
+}
+
+/** Tower body + body-mounted UI for one tower: the painted pedestal +
+ *  machinery (or pixel-art fallback), per-tower body sparkles (ether
+ *  coil arcs, lantern flame, buff bloom + fireflies), and the muzzle
+ *  flash on recent fire. Drawn from `drawSortedEntities` so the body
+ *  is correctly z-ordered against enemy sprites: enemies that are in
+ *  front of the tower (closer to the camera in iso-projection) draw on
+ *  top, enemies behind it draw underneath. Floor decals are handled by
+ *  the prior `drawTowerFloor` pass. */
+function drawTowerBody(ctx: CanvasRenderingContext2D, state: GameState, t: Tower): void {
+  const s = getSprites();
+  const painted = getTurretFootprint(t.kind.id, TOWER_PAINTED_SCALE);
+  const willPaint = isPaintedTurretSheetReady();
+  const liftY = willPaint ? PAINTED_TURRET_LIFT_Y : 0;
+
+  // Mirror the painted stand so non-aura turrets visually face away
+  // from the mannequin: stands on the right of the dais point right,
+  // stands on the left point left. Aura towers (Сторожевой фонарь)
+  // are symmetric and idle-rotate `aimAngle`, so we leave them
+  // un-flipped to keep the lantern reading the same on both sides.
+  const facesAwayLeft =
+    t.kind.behavior !== 'aura' && t.pos.x < state.mannequin.pos.x;
+  const usingPainted = drawTurret(
+    ctx,
+    t.pos.x,
+    t.pos.y - liftY,
+    t.kind.id,
+    { scale: TOWER_PAINTED_SCALE, flipX: facesAwayLeft },
+  );
+  if (!usingPainted) {
+    let base: BakedSprite = s.towerNeedler;
+    let barrel: BakedSprite = s.towerNeedlerBarrel;
+    if (t.kind.id === 'mortar') { base = s.towerMortar; barrel = s.towerMortarBarrel; }
+    else if (t.kind.id === 'mercury_sprayer') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+    else if (t.kind.id === 'acid_injector') { base = s.towerAcid; barrel = s.towerAcidBarrel; }
+    else if (t.kind.id === 'ether_coil') { base = s.towerMercury; barrel = s.towerMercuryBarrel; }
+    else if (t.kind.id === 'watch_tower') { base = s.towerNeedler; barrel = s.towerNeedlerBarrel; }
+    drawSprite(ctx, base, t.pos.x, t.pos.y, TOWER_SCALE);
+    drawSpriteRotated(ctx, barrel, t.pos.x, t.pos.y - 6, t.aimAngle, TOWER_SCALE);
+  }
+
+  // Painted-mode "tower top" anchor — the painted stand is drawn
+  // bottom-anchored at (pos.x, pos.y - liftY), so the machinery on
+  // top lands at roughly y - liftY - painted.height. Procedural
+  // sparkles / flames / muzzle flashes that sit on top of the small
+  // pixel-art sprite are lifted by the same amount when painted; the
+  // baked-fallback frames keep the original offsets.
+  const topY = usingPainted ? t.pos.y - liftY - painted.height + 12 : t.pos.y - 6;
+  const muzzleReach = usingPainted ? Math.max(28, painted.width * 0.55) : 24;
+
+  // Эфирная катушка: pulsing arcane sparkle above the pixel-art
+  // fallback coil. Painted Tesla coil already paints its own
+  // electricity, so we skip this in painted mode.
+  if (t.kind.id === 'ether_coil' && !usingPainted) {
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 6);
+    ctx.save();
+    ctx.globalAlpha = 0.55 + pulse * 0.35;
+    ctx.fillStyle = '#a78bfa';
+    ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 26 - pulse * 4), 4, 4);
+    ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 4), 2, 4);
+    ctx.restore();
+  }
+
+  // Сторожевой фонарь fallback flame on top of the small pixel-art
+  // lantern. The painted lantern already carries its own flame in the
+  // sheet so it's skipped in painted mode.
+  if (t.kind.id === 'watch_tower' && !usingPainted) {
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 1.5);
+    ctx.save();
+    ctx.fillStyle = '#ffd166';
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(Math.round(t.pos.x - 2), Math.round(t.pos.y - 30 - pulse * 2), 4, 5);
+    ctx.fillStyle = '#ffe6a3';
+    ctx.fillRect(Math.round(t.pos.x - 1), Math.round(t.pos.y - 32 - pulse * 2), 2, 3);
+    ctx.restore();
+  }
+
+  // Сторожевой фонарь buff indicator (body part). Floor halos are
+  // drawn in `drawTowerFloor`; the body parts here are the warm bloom
+  // over the painted body and the orbiting fireflies / rising sparks.
+  if (t.kind.behavior !== 'aura' && usingPainted && getAurasBuffing(state, t.id).length > 0) {
+    const pulse = 0.5 + 0.5 * Math.sin(state.worldTime * 2.4 + t.id);
+    const haloR = Math.max(30, painted.width * 0.55);
+    const bodyY = t.pos.y - liftY - painted.height * 0.5;
+    ctx.save();
+
+    // Warm radial bloom over the painted body — drawn with `lighter`
+    // blend so the painted pixels themselves take on a gold tint
+    // while the buff is active.
+    const bloomR = Math.max(painted.width, painted.height) * 0.7;
+    const bloomAlpha = 0.30 + pulse * 0.25;
+    const bloom = ctx.createRadialGradient(t.pos.x, bodyY, 0, t.pos.x, bodyY, bloomR);
+    bloom.addColorStop(0, `rgba(255, 230, 163, ${bloomAlpha})`);
+    bloom.addColorStop(0.55, `rgba(255, 200, 100, ${bloomAlpha * 0.45})`);
+    bloom.addColorStop(1, `rgba(255, 200, 100, 0)`);
+    const prevComp = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = bloom;
+    ctx.beginPath();
+    ctx.arc(t.pos.x, bodyY, bloomR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = prevComp;
+
+    // Four orbiting "fireflies" so motion reads as a swarm.
+    const orbitR = haloR * 0.55;
+    const ang = state.worldTime * 1.6 + t.id;
+    ctx.fillStyle = '#ffe6a3';
+    ctx.globalAlpha = 0.9;
+    for (let k = 0; k < 4; k++) {
+      const a = ang + (k * Math.PI) / 2;
+      const fx = Math.round(t.pos.x + Math.cos(a) * orbitR);
+      const fy = Math.round(bodyY + Math.sin(a) * orbitR * 0.5);
+      ctx.fillRect(fx - 1, fy - 1, 3, 3);
+    }
+
+    // Two rising sparks above the tower so the buff reads from any
+    // viewing distance.
+    const sparkPhase = (state.worldTime * 0.7 + t.id * 0.21) % 1;
+    const sparkY = bodyY - painted.height * 0.4 - sparkPhase * 24;
+    const sparkAlpha = 0.85 * (1 - sparkPhase);
+    ctx.globalAlpha = sparkAlpha;
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(Math.round(t.pos.x - 6), Math.round(sparkY), 2, 2);
+    ctx.fillRect(Math.round(t.pos.x + 4), Math.round(sparkY + 4), 2, 2);
+
+    ctx.restore();
+  }
+
+  // EMP body sparks rotating around the upper body. The flickering
+  // floor ellipse is drawn in `drawTowerFloor`.
+  if (t.disabledTimer > 0) {
+    const blink = (Math.floor(state.worldTime * 16) % 2) === 0 ? 1 : 0.55;
+    ctx.save();
+    ctx.fillStyle = `rgba(125, 249, 255, ${0.7 * blink})`;
+    const spinAng = state.worldTime * 6 + t.id;
+    for (let k = 0; k < 3; k++) {
+      const a = spinAng + (k * Math.PI * 2) / 3;
+      const sx = Math.round(t.pos.x + Math.cos(a) * 22);
+      const sy = Math.round(t.pos.y - 22 + Math.sin(a) * 6);
+      ctx.fillRect(sx - 1, sy - 1, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  // Muzzle flash when recently fired.
+  if (t.fireTimer < 0.08 && t.kind.behavior !== 'aura' && t.disabledTimer <= 0) {
+    const flashX = t.pos.x + Math.cos(t.aimAngle) * muzzleReach;
+    const flashY = topY + Math.sin(t.aimAngle) * muzzleReach;
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = t.kind.id === 'acid_injector' ? '#d2f55a' :
+                     t.kind.id === 'mercury_sprayer' ? '#7df9ff' :
+                     t.kind.id === 'ether_coil' ? '#a78bfa' :
+                     t.kind.id === 'mortar' ? '#ff8c3a' : '#ffd166';
+    ctx.fillRect(Math.round(flashX - 3), Math.round(flashY - 3), 6, 6);
+    ctx.restore();
+  }
+}
+
+/** Loop helper: invokes `drawTowerFloor` for every tower so all floor
+ *  decals are flushed before the depth-sorted body pass. */
+function drawTowerFloors(ctx: CanvasRenderingContext2D, state: GameState): void {
+  for (const t of state.towers) drawTowerFloor(ctx, state, t);
 }
 
 function drawMannequin(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -803,306 +838,336 @@ function drawMannequinShieldBubble(
   ctx.restore();
 }
 
-function drawEnemies(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const s = getSprites();
-  const difAura = difficultyAuraColor(state.difficulty);
-  // Reference point for facing: enemies move toward the mannequin, so any
-  // enemy whose mannequin sits to its LEFT should be drawn flipped (the
-  // painted spritesheets all face right by default).
-  const targetX = state.mannequin.pos.x;
-  // Painter's-algorithm depth sort: enemies whose feet (sprite bottom
-  // edge) sit further down the screen render on top of enemies whose
-  // feet sit higher up. This keeps a small slime that's standing in
-  // front of a boss visually in front of it instead of getting buried
-  // under the boss's silhouette. We use the same `pos.y + radius * 0.65`
-  // offset that drawShadow uses as each enemy's foot position, and
-  // tie-break with the spawn id so equal-y enemies don't flicker.
-  const sorted = state.enemies.slice().sort((a, b) => {
-    const aBottom = a.pos.y + a.kind.radius * 0.65;
-    const bBottom = b.pos.y + b.kind.radius * 0.65;
-    if (aBottom !== bBottom) return aBottom - bBottom;
-    return a.id - b.id;
-  });
-  for (const e of sorted) {
-    // Drop shadow
-    drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
+/** Render a single enemy's body + status overlays + HP bar. The
+ *  per-frame state (sprite atlas, difficulty aura colour, mannequin x
+ *  for facing) is hoisted into the caller (`drawSortedEntities`) and
+ *  passed in so the function stays cheap to invoke per-entity inside
+ *  the depth-sorted loop. */
+function drawSingleEnemy(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  e: Enemy,
+  s: ReturnType<typeof getSprites>,
+  difAura: string | null,
+  targetX: number,
+): void {
+  // Drop shadow
+  drawShadow(ctx, e.pos.x, e.pos.y + e.kind.radius * 0.65, e.kind.radius * 0.85, e.kind.radius * 0.3);
 
-    // Difficulty aura — a soft tinted ellipse under the enemy so buffed
-    // dungeons read at a glance. Pulses slightly with worldTime.
-    if (difAura) {
-      const pulse = 0.75 + Math.sin(state.worldTime * 3 + e.id) * 0.15;
-      ctx.save();
-      ctx.globalAlpha = 0.35 * pulse;
-      ctx.fillStyle = difAura;
-      ctx.beginPath();
-      ctx.ellipse(
+  // Difficulty aura — a soft tinted ellipse under the enemy so buffed
+  // dungeons read at a glance. Pulses slightly with worldTime.
+  if (difAura) {
+    const pulse = 0.75 + Math.sin(state.worldTime * 3 + e.id) * 0.15;
+    ctx.save();
+    ctx.globalAlpha = 0.35 * pulse;
+    ctx.fillStyle = difAura;
+    ctx.beginPath();
+    ctx.ellipse(
+      e.pos.x,
+      e.pos.y + e.kind.radius * 0.65,
+      e.kind.radius * 1.05,
+      e.kind.radius * 0.45,
+      0, 0, Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Shield glow for enemies that still have an unbroken one-hit shield.
+  if (e.shieldCharges > 0) {
+    ctx.save();
+    ctx.strokeStyle = '#ffd166';
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Elite glow: colored aura around the enemy based on elite mod type.
+  if (e.elite) {
+    const eliteDef = ELITE_MODS[e.elite];
+    const pulse = 0.55 + Math.sin(state.worldTime * 4 + e.id * 1.7) * 0.2;
+    // Ethereal: fade glow when phased out.
+    const alpha = e.elite === 'ethereal' && e.etherealActive ? 0.15 : 0.4;
+    ctx.save();
+    ctx.globalAlpha = alpha * pulse;
+    ctx.strokeStyle = eliteDef.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Ethereal phase-out transparency.
+  if (e.elite === 'ethereal' && e.etherealActive) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+  }
+
+  // Choose baked-sprite fallback + matching animation row by enemy kind.
+  // The sheet-based row drives the 4-frame walk cycle when its image is
+  // ready; until then we drop back to the baked pixel-art `sprite`.
+  let sprite = s.slime;
+  let anim: AnimRow | undefined = ENEMY_ANIMS[e.kind.id];
+  let bob = 0;
+  if (e.kind.id === 'rat') {
+    sprite = e.id % 3 === 0 ? s.crystalSpider : s.spider;
+    bob = Math.round(Math.sin(state.worldTime * 18 + e.id) * 1);
+  } else if (e.kind.id === 'flying_flask') {
+    sprite = s.flyingFlask;
+    bob = Math.round(Math.sin(state.worldTime * 10 + e.id) * 2);
+  } else if (e.kind.id === 'shaman') {
+    sprite = s.shaman;
+    bob = Math.round(Math.sin(state.worldTime * 3 + e.id) * 1);
+  } else if (e.kind.id === 'boss_rat_king') {
+    sprite = s.ratKing;
+    bob = Math.round(Math.sin(state.worldTime * 2 + e.id) * 1);
+  } else if (e.kind.id === 'sapper') {
+    sprite = s.sapper;
+    // Jitter hard if the fuse is burning down, otherwise a slight waddle.
+    bob = e.sapperFuse > 0
+      ? Math.round(Math.sin(state.worldTime * 40 + e.id) * 2)
+      : Math.round(Math.sin(state.worldTime * 6 + e.id) * 1);
+  } else if (e.kind.id === 'boss_homunculus') {
+    sprite = s.homunculus;
+    bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
+  } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
+    sprite = s.slimeBoss;
+    // Boss kinds without a dedicated row (e.g. future bosses) reuse the
+    // miniboss slime row; if even that's missing the fallback path is fine.
+    if (!anim) anim = ENEMY_ANIMS['miniboss_slime'];
+    bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
+  } else if (e.kind.id === 'golem') {
+    sprite = s.golem;
+    bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
+  } else {
+    bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
+  }
+
+  // Boss visual distinction: pulsing red/purple glow + crown marker
+  if (e.kind.isBoss) {
+    const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
+    drawRadialGlow(
+      ctx,
+      {
+        radius: 64,
+        inner: 'rgba(255, 50, 50, 0.6)',
+        mid: 'rgba(180, 40, 120, 0.3)',
+        midStop: 0.5,
+        outer: 'rgba(180, 40, 120, 0)',
+      },
+      e.pos.x,
+      e.pos.y,
+      0.35 * bPulse,
+      e.kind.radius * 2.2,
+    );
+
+    // Crown symbol above boss
+    ctx.save();
+    ctx.font = `${Math.round(e.kind.radius * 0.7)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.9;
+    ctx.fillText('👑', e.pos.x, e.pos.y - e.kind.radius - 6 + bob);
+    ctx.restore();
+  }
+
+  // Animation FPS scales with the enemy's base speed so a sprinter's walk
+  // cycle plays faster than a stomper's. The sapper's "armed" state spikes
+  // the rate to read as panicked sparking. A small per-enemy phase offset
+  // (`e.id * 0.137`) keeps clusters of the same kind from marching in
+  // perfect lock-step.
+  let fps = enemyAnimFps(e.kind.speed);
+  if (e.kind.id === 'sapper' && e.sapperFuse > 0) fps *= 2.2;
+  const frameIndex = Math.floor(state.worldTime * fps + e.id * 0.137);
+
+  // Painted sprites are anchored at the frame's body-mass centre + bottom,
+  // so we draw them onto the SHADOW centre (e.pos.y + r*0.65) — that puts
+  // the creature's feet on the ellipse instead of floating above it.
+  // The baked-pixel-art fallback already bakes its own shadow row into the
+  // sprite, so it stays drawn at e.pos.y when the sheet hasn't loaded.
+  const groundY = e.pos.y + e.kind.radius * 0.65;
+  // Flip when the mannequin is to the enemy's left. A 4 px deadband stops
+  // jitter for enemies passing directly over the mannequin centre line.
+  const flipX = targetX < e.pos.x - 4;
+  const drewAnim = anim
+    ? drawAnimFrame(ctx, anim, frameIndex, e.pos.x, groundY + bob, { flipX })
+    : false;
+  if (!drewAnim) {
+    drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
+  }
+
+  // Close ethereal phase-out transparency.
+  if (e.elite === 'ethereal' && e.etherealActive) {
+    ctx.restore();
+  }
+
+  // White hit flash + impact particles
+  if (e.hitFlash > 0) {
+    const flashAlpha = Math.min(0.85, e.hitFlash * 4);
+    if (drewAnim && anim) {
+      // Painted sprites need an offscreen-mask tint — see
+      // paintAnimFrameTint comment for why source-atop on the main
+      // canvas would leak across the floor.
+      paintAnimFrameTint(
+        ctx,
+        anim,
+        frameIndex,
         e.pos.x,
-        e.pos.y + e.kind.radius * 0.65,
-        e.kind.radius * 1.05,
-        e.kind.radius * 0.45,
-        0, 0, Math.PI * 2,
+        groundY + bob,
+        COLORS.whiteSoft,
+        flashAlpha,
+        { flipX },
       );
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Shield glow for enemies that still have an unbroken one-hit shield.
-    if (e.shieldCharges > 0) {
+    } else {
       ctx.save();
-      ctx.strokeStyle = '#ffd166';
-      ctx.globalAlpha = 0.8;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 4, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = flashAlpha;
+      ctx.fillStyle = COLORS.whiteSoft;
+      ctx.fillRect(
+        e.pos.x - sprite.anchor.x * SPRITE_SCALE,
+        e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
+        sprite.width * SPRITE_SCALE,
+        sprite.height * SPRITE_SCALE,
+      );
       ctx.restore();
     }
 
-    // Elite glow: colored aura around the enemy based on elite mod type.
+    // Spawn impact sparks on fresh hit
+    if (e.hitFlash > 0.18) {
+      spawnBurst(e.pos.x, e.pos.y, 4, ['#fff', '#ffd166', '#ff8c3a'], 60, 0.3, 2, 80);
+    }
+  }
+
+  // Status overlays with enhanced VFX
+  if (e.status.burnTime > 0) {
+    // Fire particles rising
+    ctx.fillStyle = COLORS.fireA;
+    ctx.fillRect(e.pos.x - 1, e.pos.y - e.kind.radius - 6, 2, 2);
+    ctx.fillStyle = COLORS.fireB;
+    ctx.fillRect(e.pos.x - 2, e.pos.y - e.kind.radius - 4, 4, 2);
+    if (Math.random() < 0.4) {
+      spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
+    }
+    // Under-glow (cached halo).
+    drawRadialGlow(
+      ctx,
+      { radius: 32, inner: 'rgba(255, 140, 58, 0.4)', outer: 'rgba(255, 140, 58, 0)' },
+      e.pos.x,
+      e.pos.y,
+      0.15,
+      e.kind.radius * 2,
+    );
+  }
+  if (e.status.slowTime > 0) {
+    ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
+    ctx.stroke();
+    // Frost shimmer (cached halo).
+    drawRadialGlow(
+      ctx,
+      { radius: 24, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
+      e.pos.x,
+      e.pos.y,
+      0.1,
+      e.kind.radius * 1.5,
+    );
+  }
+  if (e.status.armorBreakTime > 0) {
+    ctx.strokeStyle = `rgba(210, 245, 90, 0.6)`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // HP bar (+ optional bonus shield bar above it for cursed-extra shielded
+  // enemies). The shield bar shrinks left-to-right as it gets soaked.
+  if (e.hp < e.maxHp || e.extraShield > 0) {
+    const w = Math.max(20, e.kind.radius * 2.4);
+    const x = Math.round(e.pos.x - w / 2);
+    const y = Math.round(e.pos.y - e.kind.radius - 10);
+    ctx.fillStyle = '#0d0a14';
+    ctx.fillRect(x - 1, y - 1, w + 2, 6);
+    ctx.fillStyle = COLORS.stoneDark;
+    ctx.fillRect(x, y, w, 4);
+    ctx.fillStyle = e.kind.isBoss ? COLORS.fireC : COLORS.fireB;
+    ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
+    ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
+    ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
+
+    if (e.extraShield > 0 && e.extraShieldMax > 0) {
+      const shieldFrac = e.extraShield / e.extraShieldMax;
+      const sy = y - 4;
+      ctx.fillStyle = '#0d0a14';
+      ctx.fillRect(x - 1, sy - 1, w + 2, 4);
+      ctx.fillStyle = 'rgba(125, 200, 255, 0.85)';
+      ctx.fillRect(x, sy, Math.round(shieldFrac * w), 2);
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.85)';
+      ctx.fillRect(x, sy, Math.round(shieldFrac * w), 1);
+    }
+
+    // Elite badge above HP bar.
     if (e.elite) {
       const eliteDef = ELITE_MODS[e.elite];
-      const pulse = 0.55 + Math.sin(state.worldTime * 4 + e.id * 1.7) * 0.2;
-      // Ethereal: fade glow when phased out.
-      const alpha = e.elite === 'ethereal' && e.etherealActive ? 0.15 : 0.4;
-      ctx.save();
-      ctx.globalAlpha = alpha * pulse;
-      ctx.strokeStyle = eliteDef.color;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Ethereal phase-out transparency.
-    if (e.elite === 'ethereal' && e.etherealActive) {
-      ctx.save();
-      ctx.globalAlpha = 0.35;
-    }
-
-    // Choose baked-sprite fallback + matching animation row by enemy kind.
-    // The sheet-based row drives the 4-frame walk cycle when its image is
-    // ready; until then we drop back to the baked pixel-art `sprite`.
-    let sprite = s.slime;
-    let anim: AnimRow | undefined = ENEMY_ANIMS[e.kind.id];
-    let bob = 0;
-    if (e.kind.id === 'rat') {
-      sprite = e.id % 3 === 0 ? s.crystalSpider : s.spider;
-      bob = Math.round(Math.sin(state.worldTime * 18 + e.id) * 1);
-    } else if (e.kind.id === 'flying_flask') {
-      sprite = s.flyingFlask;
-      bob = Math.round(Math.sin(state.worldTime * 10 + e.id) * 2);
-    } else if (e.kind.id === 'shaman') {
-      sprite = s.shaman;
-      bob = Math.round(Math.sin(state.worldTime * 3 + e.id) * 1);
-    } else if (e.kind.id === 'boss_rat_king') {
-      sprite = s.ratKing;
-      bob = Math.round(Math.sin(state.worldTime * 2 + e.id) * 1);
-    } else if (e.kind.id === 'sapper') {
-      sprite = s.sapper;
-      // Jitter hard if the fuse is burning down, otherwise a slight waddle.
-      bob = e.sapperFuse > 0
-        ? Math.round(Math.sin(state.worldTime * 40 + e.id) * 2)
-        : Math.round(Math.sin(state.worldTime * 6 + e.id) * 1);
-    } else if (e.kind.id === 'boss_homunculus') {
-      sprite = s.homunculus;
-      bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
-    } else if (e.kind.id === 'miniboss_slime' || e.kind.isBoss) {
-      sprite = s.slimeBoss;
-      // Boss kinds without a dedicated row (e.g. future bosses) reuse the
-      // miniboss slime row; if even that's missing the fallback path is fine.
-      if (!anim) anim = ENEMY_ANIMS['miniboss_slime'];
-      bob = Math.round(Math.sin(state.worldTime * 1.8 + e.id) * 1);
-    } else if (e.kind.id === 'golem') {
-      sprite = s.golem;
-      bob = Math.round(Math.sin(state.worldTime * 2.5 + e.id) * 1);
-    } else {
-      bob = Math.round(Math.sin(state.worldTime * 4 + e.id) * 1);
-    }
-
-    // Boss visual distinction: pulsing red/purple glow + crown marker
-    if (e.kind.isBoss) {
-      const bPulse = 0.6 + Math.sin(state.worldTime * 3.5 + e.id) * 0.25;
-      drawRadialGlow(
-        ctx,
-        {
-          radius: 64,
-          inner: 'rgba(255, 50, 50, 0.6)',
-          mid: 'rgba(180, 40, 120, 0.3)',
-          midStop: 0.5,
-          outer: 'rgba(180, 40, 120, 0)',
-        },
-        e.pos.x,
-        e.pos.y,
-        0.35 * bPulse,
-        e.kind.radius * 2.2,
-      );
-
-      // Crown symbol above boss
-      ctx.save();
-      ctx.font = `${Math.round(e.kind.radius * 0.7)}px serif`;
-      ctx.textAlign = 'center';
-      ctx.globalAlpha = 0.9;
-      ctx.fillText('👑', e.pos.x, e.pos.y - e.kind.radius - 6 + bob);
-      ctx.restore();
-    }
-
-    // Animation FPS scales with the enemy's base speed so a sprinter's walk
-    // cycle plays faster than a stomper's. The sapper's "armed" state spikes
-    // the rate to read as panicked sparking. A small per-enemy phase offset
-    // (`e.id * 0.137`) keeps clusters of the same kind from marching in
-    // perfect lock-step.
-    let fps = enemyAnimFps(e.kind.speed);
-    if (e.kind.id === 'sapper' && e.sapperFuse > 0) fps *= 2.2;
-    const frameIndex = Math.floor(state.worldTime * fps + e.id * 0.137);
-
-    // Painted sprites are anchored at the frame's body-mass centre + bottom,
-    // so we draw them onto the SHADOW centre (e.pos.y + r*0.65) — that puts
-    // the creature's feet on the ellipse instead of floating above it.
-    // The baked-pixel-art fallback already bakes its own shadow row into the
-    // sprite, so it stays drawn at e.pos.y when the sheet hasn't loaded.
-    const groundY = e.pos.y + e.kind.radius * 0.65;
-    // Flip when the mannequin is to the enemy's left. A 4 px deadband stops
-    // jitter for enemies passing directly over the mannequin centre line.
-    const flipX = targetX < e.pos.x - 4;
-    const drewAnim = anim
-      ? drawAnimFrame(ctx, anim, frameIndex, e.pos.x, groundY + bob, { flipX })
-      : false;
-    if (!drewAnim) {
-      drawSprite(ctx, sprite, e.pos.x, e.pos.y + bob, SPRITE_SCALE);
-    }
-
-    // Close ethereal phase-out transparency.
-    if (e.elite === 'ethereal' && e.etherealActive) {
-      ctx.restore();
-    }
-
-    // White hit flash + impact particles
-    if (e.hitFlash > 0) {
-      const flashAlpha = Math.min(0.85, e.hitFlash * 4);
-      if (drewAnim && anim) {
-        // Painted sprites need an offscreen-mask tint — see
-        // paintAnimFrameTint comment for why source-atop on the main
-        // canvas would leak across the floor.
-        paintAnimFrameTint(
-          ctx,
-          anim,
-          frameIndex,
-          e.pos.x,
-          groundY + bob,
-          COLORS.whiteSoft,
-          flashAlpha,
-          { flipX },
-        );
-      } else {
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.globalAlpha = flashAlpha;
-        ctx.fillStyle = COLORS.whiteSoft;
-        ctx.fillRect(
-          e.pos.x - sprite.anchor.x * SPRITE_SCALE,
-          e.pos.y + bob - sprite.anchor.y * SPRITE_SCALE,
-          sprite.width * SPRITE_SCALE,
-          sprite.height * SPRITE_SCALE,
-        );
-        ctx.restore();
-      }
-
-      // Spawn impact sparks on fresh hit
-      if (e.hitFlash > 0.18) {
-        spawnBurst(e.pos.x, e.pos.y, 4, ['#fff', '#ffd166', '#ff8c3a'], 60, 0.3, 2, 80);
-      }
-    }
-
-    // Status overlays with enhanced VFX
-    if (e.status.burnTime > 0) {
-      // Fire particles rising
-      ctx.fillStyle = COLORS.fireA;
-      ctx.fillRect(e.pos.x - 1, e.pos.y - e.kind.radius - 6, 2, 2);
-      ctx.fillStyle = COLORS.fireB;
-      ctx.fillRect(e.pos.x - 2, e.pos.y - e.kind.radius - 4, 4, 2);
-      if (Math.random() < 0.4) {
-        spawnTrail(e.pos.x + (Math.random() - 0.5) * 8, e.pos.y - e.kind.radius, FIRE_COLORS[Math.floor(Math.random() * 3)]!, 1.5);
-      }
-      // Under-glow (cached halo).
-      drawRadialGlow(
-        ctx,
-        { radius: 32, inner: 'rgba(255, 140, 58, 0.4)', outer: 'rgba(255, 140, 58, 0)' },
-        e.pos.x,
-        e.pos.y,
-        0.15,
-        e.kind.radius * 2,
-      );
-    }
-    if (e.status.slowTime > 0) {
-      ctx.strokeStyle = `rgba(189, 246, 255, 0.6)`;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 3, 0, Math.PI * 2);
-      ctx.stroke();
-      // Frost shimmer (cached halo).
-      drawRadialGlow(
-        ctx,
-        { radius: 24, inner: 'rgba(125, 249, 255, 0.3)', outer: 'rgba(125, 249, 255, 0)' },
-        e.pos.x,
-        e.pos.y,
-        0.1,
-        e.kind.radius * 1.5,
-      );
-    }
-    if (e.status.armorBreakTime > 0) {
-      ctx.strokeStyle = `rgba(210, 245, 90, 0.6)`;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.kind.radius + 5, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    // HP bar (+ optional bonus shield bar above it for cursed-extra shielded
-    // enemies). The shield bar shrinks left-to-right as it gets soaked.
-    if (e.hp < e.maxHp || e.extraShield > 0) {
-      const w = Math.max(20, e.kind.radius * 2.4);
-      const x = Math.round(e.pos.x - w / 2);
-      const y = Math.round(e.pos.y - e.kind.radius - 10);
-      ctx.fillStyle = '#0d0a14';
-      ctx.fillRect(x - 1, y - 1, w + 2, 6);
-      ctx.fillStyle = COLORS.stoneDark;
-      ctx.fillRect(x, y, w, 4);
-      ctx.fillStyle = e.kind.isBoss ? COLORS.fireC : COLORS.fireB;
-      ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 4);
-      ctx.fillStyle = e.kind.isBoss ? COLORS.fireA : COLORS.fireA;
-      ctx.fillRect(x, y, Math.round((e.hp / e.maxHp) * w), 1);
-
-      if (e.extraShield > 0 && e.extraShieldMax > 0) {
-        const shieldFrac = e.extraShield / e.extraShieldMax;
-        const sy = y - 4;
-        ctx.fillStyle = '#0d0a14';
-        ctx.fillRect(x - 1, sy - 1, w + 2, 4);
-        ctx.fillStyle = 'rgba(125, 200, 255, 0.85)';
-        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 2);
-        ctx.fillStyle = 'rgba(220, 240, 255, 0.85)';
-        ctx.fillRect(x, sy, Math.round(shieldFrac * w), 1);
-      }
-
-      // Elite badge above HP bar.
-      if (e.elite) {
-        const eliteDef = ELITE_MODS[e.elite];
-        ctx.font = '8px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = eliteDef.color;
-        ctx.fillText(eliteDef.badge, e.pos.x, y - 3);
-      }
-    } else if (e.elite) {
-      // Even at full HP, show the badge so elites are identifiable.
-      const eliteDef = ELITE_MODS[e.elite];
-      const y = Math.round(e.pos.y - e.kind.radius - 6);
       ctx.font = '8px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = eliteDef.color;
-      ctx.fillText(eliteDef.badge, e.pos.x, y);
+      ctx.fillText(eliteDef.badge, e.pos.x, y - 3);
     }
+  } else if (e.elite) {
+    // Even at full HP, show the badge so elites are identifiable.
+    const eliteDef = ELITE_MODS[e.elite];
+    const y = Math.round(e.pos.y - e.kind.radius - 6);
+    ctx.font = '8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = eliteDef.color;
+    ctx.fillText(eliteDef.badge, e.pos.x, y);
+  }
+}
+
+/** Combined depth-sorted pass for tower bodies and enemy sprites.
+ *  Builds an interleaved list of both, sorted by feet-Y (the painter's-
+ *  algorithm convention used elsewhere in this renderer), then draws
+ *  each entity's body in order. Tower bodies use `drawTowerBody`;
+ *  enemies use `drawSingleEnemy`. Floor decals (drop shadows, range
+ *  rings, lantern halos, EMP rings, etc.) for towers are drawn earlier
+ *  by `drawTowerFloors`, before this pass, so the floor effects always
+ *  sit underneath everything else.
+ *
+ *  Tower "feet" are at `t.pos.y` — the rune the tower was summoned on,
+ *  which is now the literal floor-anchor of the painted pedestal
+ *  (PAINTED_TURRET_LIFT_Y = 0). Enemy "feet" are at
+ *  `pos.y + radius * 0.65` (matches `drawShadow`). Equal-y entities
+ *  tie-break on spawn id so depth doesn't flicker between frames. */
+function drawSortedEntities(ctx: CanvasRenderingContext2D, state: GameState): void {
+  type Item = { feetY: number; tieId: number; tower?: Tower; enemy?: Enemy };
+  const items: Item[] = [];
+  for (const t of state.towers) {
+    items.push({ feetY: t.pos.y, tieId: t.id, tower: t });
+  }
+  for (const e of state.enemies) {
+    items.push({ feetY: e.pos.y + e.kind.radius * 0.65, tieId: e.id, enemy: e });
+  }
+  items.sort((a, b) => {
+    if (a.feetY !== b.feetY) return a.feetY - b.feetY;
+    return a.tieId - b.tieId;
+  });
+
+  // Per-frame setup hoisted out of the per-enemy loop.
+  const s = getSprites();
+  const difAura = difficultyAuraColor(state.difficulty);
+  const targetX = state.mannequin.pos.x;
+
+  for (const item of items) {
+    if (item.tower) drawTowerBody(ctx, state, item.tower);
+    else if (item.enemy) drawSingleEnemy(ctx, state, item.enemy, s, difAura, targetX);
   }
 }
 
