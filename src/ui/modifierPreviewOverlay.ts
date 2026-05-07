@@ -3,7 +3,7 @@ import { mutatorCountForDifficulty } from '../data/mutators';
 import { contractCountForDifficulty } from '../data/contracts';
 import { blessingChoiceCount, curseChoiceCount } from '../data/blessings';
 import { t, tWithFallback } from '../i18n';
-import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
+import { appendGlitchTitleChars, buildDramaticStage, fitSingleLineText } from './dramaticStage';
 
 export class ModifierPreviewOverlay {
   private root: HTMLElement;
@@ -148,6 +148,7 @@ export class ModifierPreviewOverlay {
 
     this.root.appendChild(panel);
     this.root.classList.add('visible');
+    fitSingleLineText(h);
   }
 
   hide(): void {
