@@ -2483,17 +2483,20 @@ body {
 .mm-alchemist-image {
   left: 50%;
   bottom: 2%;
-  /* `width: auto; height: 98%` previously let the image extend past
-     the container width when the container was narrower than the
-     sprite's painted bounds — clipping the right-arm flask on small
-     columns. With both axes capped via `max-*` and `auto` natural
-     sizing, the browser preserves the sprite's aspect ratio while
-     keeping the whole figure (including outstretched arms) inside
-     the box. */
+  /* The source PNG (608×860) paints the left-arm blue flask right up
+     against x=0 of the canvas (zero left-padding inside the sprite),
+     while the right side has ~3% breathing room. Rendering with
+     `max-width: 100%` puts the flask flush against the image's left
+     edge, which the player reads as "обрублен слева" — clipped. We
+     cap `max-width` below 100% so the flask always has visible margin
+     to its left, and nudge `left` slightly past 50% to compensate for
+     the sprite's asymmetric painted center (~48.6% of the canvas) so
+     the figure reads as visually centered in the box. Aspect ratio is
+     preserved via `width: auto; height: auto` + `max-height: 98%`. */
   width: auto;
   height: auto;
-  max-width: 100%;
-  max-height: 98%;
+  max-width: 88%;
+  max-height: 96%;
   transform: translateX(-50%);
   filter:
     drop-shadow(0 20px 18px rgba(0, 0, 0, 0.58))
@@ -11497,10 +11500,16 @@ body {
 /* Mannequin — landscape-mobile rules at line 8671 / 9846 either hide
    or aggressively shrink the silhouette. In fit-mode we always show
    it at design size; the global transform scales it down with the
-   rest of the menu. */
+   rest of the menu.
+   `width: auto` previously collapsed to 0 because every child of the
+   display is absolutely positioned (no flex children to size against),
+   leaving the center column empty on phone-emulator viewports. Pin
+   `width: 100%` so the box fills the center column, and rely on
+   `aspect-ratio: 1/1` + the column's `min-width: 200px` to size it. */
 :root.viewport-fitted .main-menu .mm-mannequin-display {
   display: flex;
-  width: auto;
+  width: 100%;
+  max-width: min(100%, 460px);
   max-height: none;
   transform: none;
 }
@@ -11634,20 +11643,23 @@ body {
       claims the whole column instead of fighting for ~200px.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Left column: scroll instead of clipping if cards still exceed the
-   column. Cards shrink to their content size rather than stretching to
-   fill (the previous default `flex: 1 1 0` distribution made the
-   single-slot Brewery as tall as the multi-card Lab). */
+/* Left column: cards SHRINK to share the available column height
+   instead of overflowing into a scroll view. The previous
+   `overflow-y: auto` + `flex: 0 0 auto` combo let cards keep their
+   natural design size and the bottom ones (Loadout / Diary) ended up
+   off-screen on phone-emulator viewports — the player saw a partial
+   stack with a thin scrollbar instead of "the menu just scaled". With
+   `flex: 1 1 0` + `min-height: 0` the four cards distribute the
+   remaining body height evenly and stay fully visible together. */
 :root.viewport-fitted .main-menu .mm-col-left {
   min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-shop-card,
 :root.viewport-fitted .main-menu .mm-col-left .mm-lab-card,
 :root.viewport-fitted .main-menu .mm-col-left .mm-loadout-card,
 :root.viewport-fitted .main-menu .mm-col-left .mm-diary-card {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-height: 0;
 }
 
@@ -13537,7 +13549,16 @@ body {
 .diary-tab-label {
   text-align: center;
   line-height: 1.2;
-  word-break: break-word;
+  /* Russian tab names ("АЛХИМИЯ", "СИНЕРГИИ", "БЕСТИАРИЙ", "СТОЙКИ")
+     are single un-spaced words — `word-break: break-word` was splitting
+     them at arbitrary character boundaries when the column was narrow,
+     producing ugly two-line breaks like "АЛХИМ\nИЯ". Force single-line
+     and ellipsize so labels stay readable; the column itself widens on
+     responsive tiers when there isn't enough horizontal room. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Entry grid */

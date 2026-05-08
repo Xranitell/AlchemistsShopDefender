@@ -133,9 +133,38 @@ export class MainMenu {
     const body = document.createElement('div');
     body.className = 'mm-body';
 
-    // ─ Left column: Crafting (Shop) + Laboratory + Daily rewards calendar ─
+    // ─ Left column: Diary + Crafting (Shop) + Laboratory + Loadout ─
+    //
+    // The Alchemist's Diary card sits at the top of the column per
+    // user request — it's the primary "reference" entry the player
+    // reaches for and should be the first thing they see in the left
+    // stack, above Brewery / Laboratory / Loadout.
     const leftCol = document.createElement('div');
     leftCol.className = 'mm-col mm-col-left';
+
+    // Alchemist's Diary card — title-on-top + animated book-prop body so
+    // it reads as a sibling of the Laboratory card rather than a generic
+    // strip. The book art is sampled from `public/sprites/props.png`
+    // (closed spellbook, frame index 1) via a CSS background-position.
+    // Built first so it appears at the top of the left column.
+    const diaryBtn = document.createElement('button');
+    diaryBtn.type = 'button';
+    diaryBtn.className = 'mm-card mm-diary-card';
+    diaryBtn.dataset.tutorialTarget = 'menu-diary';
+    const diaryTitle = document.createElement('div');
+    diaryTitle.className = 'mm-card-title';
+    diaryTitle.innerHTML = `<span>${t('ui.menu.diary')}</span>`;
+    diaryBtn.appendChild(diaryTitle);
+    const diaryBody = document.createElement('div');
+    diaryBody.className = 'mm-diary-body';
+    diaryBody.innerHTML = `
+      <span class="mm-diary-halo" aria-hidden="true"></span>
+      <span class="mm-diary-book" aria-hidden="true"></span>
+      <span class="mm-diary-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    `;
+    diaryBtn.appendChild(diaryBody);
+    diaryBtn.addEventListener('click', opts.onDiary);
+    leftCol.appendChild(diaryBtn);
 
     // Crafting card. Empty potion slots show a faded silhouette of an
     // unidentified vial so it's immediately obvious what the section is
@@ -206,29 +235,6 @@ export class MainMenu {
     // dedicated loadout picker. Mirrors the laboratory card visually so
     // both «meta state» cards live side-by-side in the left column.
     leftCol.appendChild(buildLoadoutCard(opts.meta, opts.onLoadout));
-
-    // Alchemist's Diary card — title-on-top + animated book-prop body so
-    // it reads as a sibling of the Laboratory card rather than a generic
-    // strip. The book art is sampled from `public/sprites/props.png`
-    // (closed spellbook, frame index 1) via a CSS background-position.
-    const diaryBtn = document.createElement('button');
-    diaryBtn.type = 'button';
-    diaryBtn.className = 'mm-card mm-diary-card';
-    diaryBtn.dataset.tutorialTarget = 'menu-diary';
-    const diaryTitle = document.createElement('div');
-    diaryTitle.className = 'mm-card-title';
-    diaryTitle.innerHTML = `<span>${t('ui.menu.diary')}</span>`;
-    diaryBtn.appendChild(diaryTitle);
-    const diaryBody = document.createElement('div');
-    diaryBody.className = 'mm-diary-body';
-    diaryBody.innerHTML = `
-      <span class="mm-diary-halo" aria-hidden="true"></span>
-      <span class="mm-diary-book" aria-hidden="true"></span>
-      <span class="mm-diary-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    `;
-    diaryBtn.appendChild(diaryBody);
-    diaryBtn.addEventListener('click', opts.onDiary);
-    leftCol.appendChild(diaryBtn);
 
     body.appendChild(leftCol);
 
