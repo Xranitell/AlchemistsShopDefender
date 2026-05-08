@@ -2439,11 +2439,11 @@ body {
  */
 .mm-mannequin-display {
   width: min(100%, 460px);
-  /* Match the alchemist sprite (331×355, aspect 0.932) so the
+  /* Match the alchemist sprite (480×476, aspect 1.008) so the
      container scales by width with a fixed aspect ratio and the
      full figure including outstretched flask arms + flask smoke
      plumes is always visible without cropping. */
-  aspect-ratio: 331 / 355;
+  aspect-ratio: 480 / 476;
   display: flex;
   align-items: center;
   justify-content: center;
