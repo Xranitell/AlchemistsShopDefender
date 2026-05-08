@@ -6513,8 +6513,13 @@ body {
   /* The chest celebration is a tightly-paced reveal — there's no real
    * scroll content here and the inner chest-stage already sizes itself
    * to fit. Override the generic .panel scroll cap so the gold rays
-   * never trigger an ugly side scrollbar on shorter viewports. */
-  overflow: visible;
+   * never trigger an ugly side scrollbar on shorter viewports.
+   *
+   * Clip the radial gold rays to the panel bounds so the glow never
+   * bleeds outside the reward modal (the rays are 460×460 absolute, so
+   * on a narrower panel they would otherwise paint over the surrounding
+   * dim backdrop). */
+  overflow: hidden;
   max-height: none;
 }
 /* Pixel-art gold corner ornaments — kept from the previous design but

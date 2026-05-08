@@ -1,5 +1,5 @@
 import type { GameState } from './state';
-import { newId, ENDLESS_MODIFIER_POOL } from './state';
+import { newId, spawnFloatingText, ENDLESS_MODIFIER_POOL } from './state';
 import { newStatus, type EnemyKind } from './types';
 import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
@@ -9,7 +9,9 @@ import { abilityTierFor, EPIC_ONLY_ENEMY_ABILITIES, type EnemyAbility } from '..
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
 import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
-import { rerollWaveMutators } from './world';
+import { rerollWaveMutators, addEndlessDungeonLaw } from './world';
+import { MUTATOR_BY_ID } from '../data/mutators';
+import { t } from '../i18n';
 import { shakeCamera } from '../engine/shake';
 import { spawnShockwave } from '../render/shockwaves';
 
@@ -353,6 +355,7 @@ export function spawnEnemy(
       ? 0.6 + state.rng.range(0, 0.9)
       : 0,
     attachedTowerId: -1,
+    summonedByBossId: -1,
   });
 }
 
@@ -442,6 +445,23 @@ export function confirmEndlessModifier(state: GameState): void {
         state.difficultyModifier.abilities.push('dash_back_on_hit');
       }
       break;
+  }
+
+  // Each completed 15-wave cycle in endless mode also stamps a fresh
+  // dungeon law on top of the cumulative modifier list. The player
+  // gets a quick floating-text confirmation on the mannequin so the new
+  // law isn't a silent power-creep.
+  const newLawId = addEndlessDungeonLaw(state);
+  if (newLawId) {
+    const def = MUTATOR_BY_ID[newLawId];
+    if (def) {
+      spawnFloatingText(
+        state,
+        `${def.icon} ${t(def.i18nName)}`,
+        state.mannequin.pos,
+        def.color,
+      );
+    }
   }
 
   state.pendingEndlessModifier = null;

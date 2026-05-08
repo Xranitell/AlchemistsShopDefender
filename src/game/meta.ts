@@ -352,7 +352,9 @@ export function calcRunEssence(
   //   Wave 15 victory + 140 kills →  15*3 + 140*0.2 + 4 + 15 ≈ 92 blue
   let blue = Math.floor(waveReached * 3 + totalKills * 0.2 + 4);
   if (victory) blue += 15;
-  blue = Math.round(blue * mult * diffMult);
+  // Per-run blue essence is reduced by 20% across the board so progression
+  // pacing stays in line with the rebalanced meta tree.
+  blue = Math.round(blue * mult * diffMult * 0.8);
 
   // Ancient essence: difficulty-scaled base (Normal 1, Epic 2, Ancient 4)
   // only on a full victory, +1 if you also cleared past wave 12. Ancient
@@ -371,13 +373,16 @@ export function calcRunEssence(
   //   *next* Ancient run instead of grinding Epic in between).
   // Keys are awarded only on a full victory — they're a clearance prize,
   // not a progress reward. Defeats give no keys.
+  // A victorious run drops exactly one key in the matching tier so
+  // unlocking the next dungeon takes a deliberate clearance, not a
+  // single farm run that mints multiple keys at once.
   let epicKeys = 0;
   let ancientKeys = 0;
   if (victory) {
     if (difficulty === 'normal') {
-      epicKeys = 1 + Math.max(0, Math.floor(waveReached / 5));
+      epicKeys = 1;
     } else if (difficulty === 'epic') {
-      ancientKeys = 1 + Math.max(0, Math.floor(waveReached / 5));
+      ancientKeys = 1;
     } else if (difficulty === 'ancient') {
       ancientKeys = 1;
     }

@@ -434,16 +434,10 @@ export class PauseStatsOverlay {
       });
     }
 
-    // Abilities from difficulty
-    if (dm.abilities.length > 0) {
-      for (const ab of dm.abilities) {
-        lines.push({
-          label: abilityLabel(ab),
-          value: '✦',
-          kind: 'debuff',
-        });
-      }
-    }
+    // Per-creature abilities (split_on_death, aura_heal, …) are deliberately
+    // NOT surfaced here. The pause panel only lists *global* buffs / debuffs
+    // — cards, dungeon laws, blessings, contracts and endless modifiers.
+    // Creature-specific behaviours show up in the bestiary instead.
 
     return lines;
   }
@@ -674,19 +668,9 @@ interface ContractStat {
   condition: string;
 }
 
-function abilityLabel(ab: string): string {
-  switch (ab) {
-    case 'split_on_death': return tWithFallback('ui.pause.ability.split', 'Деление при смерти');
-    case 'dash_back_on_hit': return tWithFallback('ui.pause.ability.dash', 'Рывок назад при ударе');
-    case 'one_hit_shield': return tWithFallback('ui.pause.ability.shield', 'Одноразовый щит');
-    case 'explode_on_death': return tWithFallback('ui.pause.ability.explode', 'EMP-выброс при смерти');
-    case 'aura_heal': return tWithFallback('ui.pause.ability.aura_heal', 'Аура лечения');
-    case 'zigzag_dash': return tWithFallback('ui.pause.ability.zigzag_dash', 'Резкий рывок вперёд');
-    case 'disable_tower_on_contact': return tWithFallback('ui.pause.ability.disable_tower_on_contact', 'EMP на стойках');
-    case 'stun_towers_on_death': return tWithFallback('ui.pause.ability.stun_towers_on_death', 'EMP-импульс при смерти');
-    // Unknown ability id — fall back to the generic `ui.ability.<id>`
-    // dictionary so even abilities added by future content patches show
-    // up translated instead of as a raw key.
-    default: return tWithFallback(`ui.ability.${ab}`, ab);
-  }
-}
+// `abilityLabel` was previously used to print per-creature ability rows
+// in the enemy section of the pause panel. Those rows have been removed
+// (the panel now lists only global buffs from cards, dungeon laws,
+// blessings and contracts) so the helper is intentionally dropped to
+// keep the file lean. The bestiary still owns per-creature ability
+// labels via its own translation tables.

@@ -121,6 +121,12 @@ export interface Enemy {
    *  While latched the sapper freezes in place, drains the tower's
    *  `disabledTimer`, and detonates after the regular fuse expires. */
   attachedTowerId: number;
+  /** Set to the spawning boss's `id` when this enemy was summoned by the
+   *  homunculus (or any other boss that gains the same hook in the
+   *  future). The boss heals a small amount when an enemy carrying its
+   *  id dies, regardless of who landed the killing blow. -1 = not a
+   *  boss-summoned minion. */
+  summonedByBossId: number;
 }
 
 export type TargetingMode = 'nearest' | 'strongest' | 'fastest' | 'debuffed' | 'first';

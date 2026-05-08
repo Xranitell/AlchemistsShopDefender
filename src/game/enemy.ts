@@ -440,10 +440,12 @@ function updateHomunculus(state: GameState, e: Enemy, dt: number): void {
   }
 
   // Tick the minion-summon timer. Phase 1 summons the fastest, phase 3 slowest
-  // (the boss is already brutal from the speed buff).
+  // (the boss is already brutal from the speed buff). Periods are
+  // tuned wider than the original 3/3.5/4.5 so the player isn't drowning
+  // in continuous slime / rat / sapper waves while juggling the boss.
   e.minionSummonTimer -= dt;
   if (e.minionSummonTimer <= 0) {
-    const period = e.bossPhase === 1 ? 3 : e.bossPhase === 2 ? 3.5 : 4.5;
+    const period = e.bossPhase === 1 ? 6 : e.bossPhase === 2 ? 7 : 9;
     e.minionSummonTimer = period;
     summonHomunculusMinions(state, e);
   }
@@ -467,6 +469,12 @@ function summonHomunculusMinions(state: GameState, e: Enemy): void {
       y: e.pos.y + Math.sin(angle) * r,
     };
     spawnEnemy(state, kind, pos);
+    // Tag the freshly-spawned minion with its summoner so the boss can
+    // claw HP back when this minion dies later. `spawnEnemy` always
+    // pushes the new entity to the end of the list, so tagging the
+    // tail is correct even with concurrent on-spawn hooks.
+    const summoned = state.enemies[state.enemies.length - 1];
+    if (summoned) summoned.summonedByBossId = e.id;
   }
   spawnFloatingText(state, t('floating.summon'), e.pos, '#c084fc');
 }
@@ -706,6 +714,13 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   // controls the children count and how deep splits chain — Ancient lets
   // the first generation of children also split once more (max gen 2),
   // base / Epic only allows generation 0 to split.
+  //
+  // Children are scattered as a small explosion: angles are evenly
+  // distributed around the parent (with per-slot jitter so the ring
+  // doesn't read as a perfect geometric pattern) and the radius is
+  // significantly larger than before so a single AoE potion can no
+  // longer wipe the whole brood while it's still clustered on the
+  // parent's death pixel.
   const splitMaxGen = e.abilityTier === 'ancient' ? 2 : 1;
   if (e.abilities.includes('split_on_death') && e.splitGeneration < splitMaxGen) {
     const baseCount =
@@ -716,14 +731,46 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
         : (e.splitGeneration === 0 ? 2 : 1);
     const slime = ENEMIES['slime'];
     if (slime) {
+      const angleStart = state.rng.range(0, Math.PI * 2);
+      const slice = (Math.PI * 2) / baseCount;
       for (let i = 0; i < baseCount; i++) {
-        const angle = state.rng.range(0, Math.PI * 2);
-        const r = 14 + state.rng.range(0, 8);
+        const angle = angleStart + slice * i + state.rng.range(-0.35, 0.35);
+        const r = 56 + state.rng.range(0, 28);
         const pos = {
           x: e.pos.x + Math.cos(angle) * r,
           y: e.pos.y + Math.sin(angle) * r,
         };
         spawnEnemy(state, slime, pos, e.splitGeneration + 1);
+      }
+      // Visual flair: small shockwave so the scatter reads as an
+      // explosion outwards, not a teleport-in.
+      spawnShockwave(
+        e.pos.x,
+        e.pos.y,
+        e.kind.radius * 0.4,
+        e.kind.radius * 4.5,
+        'rgba(127, 201, 127, 0.85)',
+        0.3,
+        3,
+      );
+    }
+  }
+
+  // Final-boss synergy: if this enemy was summoned by an alive boss
+  // (homunculus today), the boss claws back a small chunk of HP per
+  // dead minion regardless of who killed it. Capped at the boss's
+  // `maxHp` so it can't overshoot the bar. Floating text is rendered
+  // on the boss so the player can read the cause-and-effect.
+  if (e.summonedByBossId >= 0) {
+    const boss = state.enemies.find(
+      (other) => other.id === e.summonedByBossId && other.hp > 0,
+    );
+    if (boss) {
+      const before = boss.hp;
+      boss.hp = Math.min(boss.maxHp, boss.hp + 3);
+      const healed = boss.hp - before;
+      if (healed > 0) {
+        spawnFloatingText(state, `+${healed}`, boss.pos, '#7fc97f');
       }
     }
   }
