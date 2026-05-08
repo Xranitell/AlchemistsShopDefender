@@ -2439,7 +2439,10 @@ body {
  */
 .mm-mannequin-display {
   width: min(100%, 460px);
-  aspect-ratio: 1 / 1;
+  /* Match the prepared alchemist sprite (678×493). The container
+     scales by width with a fixed aspect ratio so the full figure
+     (including outstretched flask arms) is always visible. */
+  aspect-ratio: 678 / 493;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2481,23 +2484,15 @@ body {
   z-index: 1;
 }
 .mm-alchemist-image {
-  left: 50%;
-  bottom: 2%;
-  /* The source PNG (608×860) paints the left-arm blue flask right up
-     against x=0 of the canvas (zero left-padding inside the sprite),
-     while the right side has ~3% breathing room. Rendering with
-     `max-width: 100%` puts the flask flush against the image's left
-     edge, which the player reads as "обрублен слева" — clipped. We
-     cap `max-width` below 100% so the flask always has visible margin
-     to its left, and nudge `left` slightly past 50% to compensate for
-     the sprite's asymmetric painted center (~48.6% of the canvas) so
-     the figure reads as visually centered in the box. Aspect ratio is
-     preserved via `width: auto; height: auto` + `max-height: 98%`. */
-  width: auto;
+  /* Scale to fill the container width; the container's fixed
+     aspect-ratio (678/493) matches the sprite so no clipping occurs.
+     Using `width: 100%` with `height: auto` preserves the sprite's
+     natural proportions — the entire figure including both flask arms
+     is always fully visible. */
+  left: 0;
+  bottom: 0;
+  width: 100%;
   height: auto;
-  max-width: 88%;
-  max-height: 96%;
-  transform: translateX(-50%);
   filter:
     drop-shadow(0 20px 18px rgba(0, 0, 0, 0.58))
     drop-shadow(0 0 14px rgba(255, 142, 44, 0.42));
@@ -13471,7 +13466,10 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 160px 1fr 340px;
+  /* Tabs column widened from 160px to 180px so the longest Russian
+     label ("БЕСТИАРИЙ" — 9 chars in Press Start 2P) always fits
+     without truncation. */
+  grid-template-columns: 180px 1fr 340px;
   gap: 14px;
   overflow: hidden;
 }
@@ -13550,15 +13548,13 @@ body {
   text-align: center;
   line-height: 1.2;
   /* Russian tab names ("АЛХИМИЯ", "СИНЕРГИИ", "БЕСТИАРИЙ", "СТОЙКИ")
-     are single un-spaced words — `word-break: break-word` was splitting
-     them at arbitrary character boundaries when the column was narrow,
-     producing ugly two-line breaks like "АЛХИМ\nИЯ". Force single-line
-     and ellipsize so labels stay readable; the column itself widens on
-     responsive tiers when there isn't enough horizontal room. */
+     are single un-spaced words. The previous `text-overflow: ellipsis`
+     truncated longer labels into "СИНЕРГ..." / "БЕСТИА..." instead of
+     making the column wider — fixed by widening the tabs column at
+     every responsive tier (see `.diary-col-tabs` min-width and the
+     breakpoints below) so the full label always fits. `nowrap` keeps
+     the text on a single line so we never split a word mid-character. */
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 /* Entry grid */
@@ -14219,7 +14215,8 @@ body {
  * on the left as a tall column of icon-over-label tiles. */
 @media (max-width: 1024px) {
   .diary-body {
-    grid-template-columns: 130px 1fr;
+    /* 150px (was 130px) so "БЕСТИАРИЙ" fits at 11px Press Start 2P. */
+    grid-template-columns: 150px 1fr;
     grid-template-rows: minmax(0, 1fr) auto;
   }
   .diary-col-info {
@@ -14272,6 +14269,10 @@ body {
     font-size: 9px;
   }
   .diary-tab-glyph { font-size: 18px; }
+  /* Mobile portrait tabs scroll horizontally — give each tab enough
+     min-width that the longest Russian label fits on one line. */
+  .diary-tab { min-width: 96px; }
+  .diary-tab-label { font-size: 9px; letter-spacing: 0.5px; }
   .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .diary-col-info {
     max-height: 36dvh;
@@ -14332,7 +14333,7 @@ body {
   .diary-title-flourish { display: none; }
   .diary-close { width: 26px; height: 26px; font-size: 18px; top: 0; }
   .diary-body {
-    grid-template-columns: 96px minmax(0, 1fr) 240px;
+    grid-template-columns: 120px minmax(0, 1fr) 240px;
     grid-template-rows: minmax(0, 1fr);
     gap: 8px;
   }
