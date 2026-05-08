@@ -470,6 +470,12 @@ export function applyRunMutators(state: GameState): void {
  *  revert ONLY undoes the multipliers/additions the mutator itself made,
  *  and never touches anything else on `state`. */
 export function rerollWaveMutators(state: GameState): void {
+  // Endless accumulates one fresh dungeon law per 15-wave cycle (see
+  // `addEndlessDungeonLaw`) and never rotates them per wave — leave the
+  // active list and applied multipliers in place. Daily mode currently
+  // never rolls mutators, but we early-return here too so a future Daily
+  // mutator pass can use the same cumulative semantics without churn.
+  if (state.difficulty === 'endless' || state.difficulty === 'daily') return;
   const count = mutatorCountForDifficulty(state.difficulty);
   // Revert the previously-active mutators, regardless of whether we are
   // about to roll new ones. This way switching off Epic mid-run (not a
@@ -491,6 +497,29 @@ export function rerollWaveMutators(state: GameState): void {
     if (!def) continue;
     def.apply(state);
   }
+}
+
+/** Pick a fresh dungeon law that is not already active and apply it
+ *  permanently to `state`. Used by endless mode each time the player
+ *  finishes a 15-wave cycle so the run gets harder by stacking laws on
+ *  top of the existing endless modifiers. Returns the id that was
+ *  applied, or `null` if every mutator is already active.
+ *
+ *  Unlike `rerollWaveMutators` this NEVER reverts — endless laws are
+ *  meant to compound across cycles. */
+export function addEndlessDungeonLaw(state: GameState): MutatorId | null {
+  const available = MUTATORS.filter(
+    (m) => !state.activeMutatorIds.includes(m.id),
+  );
+  if (available.length === 0) return null;
+  const pool = state.rng.shuffle(available.map((m) => m.id));
+  const pickedId = pool[0];
+  if (!pickedId) return null;
+  const def = MUTATOR_BY_ID[pickedId];
+  if (!def) return null;
+  state.activeMutatorIds.push(pickedId);
+  def.apply(state);
+  return pickedId;
 }
 
 /** Roll N distinct run contracts for the given difficulty (2 in Epic, 3 in
