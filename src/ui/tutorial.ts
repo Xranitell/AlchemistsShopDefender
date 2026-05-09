@@ -19,7 +19,7 @@ export type TutorialEventKind =
   | 'mannequinShopOpened';
 
 /** Trigger kinds that map to panel-bound walkthroughs (non-wave). */
-type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen';
+type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen' | 'settingsOpen';
 
 interface ResolvedTarget {
   /** Centre of the spotlight, in viewport pixels. */
@@ -239,7 +239,11 @@ class TutorialController {
   }
 
   private isSequenceStep(step: TutorialStep): boolean {
-    return step.trigger.kind === 'pauseOpen' || step.trigger.kind === 'mainMenuOpen';
+    return (
+      step.trigger.kind === 'pauseOpen' ||
+      step.trigger.kind === 'mainMenuOpen' ||
+      step.trigger.kind === 'settingsOpen'
+    );
   }
 
   /** Pop steps off the queue until we find one whose target resolves,
