@@ -12,7 +12,7 @@
  *  - alch_dome   — Купол алхимика: 6s strong shield on the mannequin.
  *  - frost_nova  — Морозная вспышка: full freeze on every enemy for 3s.
  *  - vortex      — Алхимический вихрь: pulls enemies toward the mannequin
- *                  and damages everything caught in the rim.
+ *                  and damages everything in range.
  *
  * Aura modules
  * ------------

@@ -5,7 +5,7 @@ import type { Element } from '../game/types';
 /**
  * Per-run "contracts" — small optional goals rolled at the start of an Epic
  * (2 contracts) or Ancient (3 contracts) run. Each contract is a tiny side
- * objective ("kill 50 slimes", "don't take damage in waves 3..5", etc.) that
+ * objective ("kill 30 slimes", "don't take damage in waves 3..5", etc.) that
  * pays out a *bonus* on top of the regular run rewards if completed.
  *
  * Design notes:
