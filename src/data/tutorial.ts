@@ -34,7 +34,15 @@ export type TutorialTrigger =
   | { kind: 'pauseOpen' }
   /** Played by `tutorial.startSequence('mainMenuOpen', …)` when the
    *  player lands on the main menu for the first time. */
-  | { kind: 'mainMenuOpen' };
+  | { kind: 'mainMenuOpen' }
+  /** Played by `tutorial.startSequence('settingsOpen', …)` when the
+   *  player opens the settings panel for the first time. Walks them
+   *  through the audio / language / motion / stats / reset rows so they
+   *  know where to find the animation toggle on phones (the most-asked
+   *  performance setting) and where their long-term progress numbers
+   *  live. Same `next`-driven sequence semantics as the other panel
+   *  walkthroughs. */
+  | { kind: 'settingsOpen' };
 
 export type TutorialDismiss =
   /** Player threw a vial (mouse press in arena). */
@@ -271,6 +279,58 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     trigger: { kind: 'mainMenuOpen' },
     text: 'Готов? Жми «В БОЙ», выбирай сложность и начинай забег. Удачи!',
     target: { kind: 'hud', selector: '[data-tutorial-target="menu-battle"]', arrow: 'down' },
+    dismiss: { kind: 'next' },
+  },
+
+  // ── Settings walkthrough (first time the player opens the settings
+  //    panel from the main menu / pause / boot menu — whichever surfaces
+  //    the gear icon first). Same sequence semantics as pause / main-
+  //    menu — `next` everywhere, skip cancels the rest. We deliberately
+  //    surface the *animation* row early because the most-asked phone
+  //    perf complaint ("game lags on Android") is solved by switching it
+  //    to "Минимум", and players struggle to find that toggle without a
+  //    pointer.
+  {
+    id: 'settings-intro',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Это панель настроек: здесь можно подстроить громкость, язык, анимации и проверить статистику. Тут же кнопка сброса прогресса.',
+    target: { kind: 'centered' },
+    dismiss: { kind: 'next' },
+    showSkip: true,
+  },
+  {
+    id: 'settings-audio',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Звук — два ползунка: «Эффекты» (выстрелы, взрывы, клики UI) и «Музыка» (фоновая мелодия в забеге и меню). Изменения применяются на лету; смело двигай прямо во время игры.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="settings-audio"]', arrow: 'right' },
+    dismiss: { kind: 'next' },
+  },
+  {
+    id: 'settings-language',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Язык интерфейса. Сейчас доступны русский и английский — переключение мгновенное, перезапуск не требуется.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="settings-language"]', arrow: 'right' },
+    dismiss: { kind: 'next' },
+  },
+  {
+    id: 'settings-motion',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Анимации: «Авто» — по системным настройкам устройства, «Минимум» — отключает декоративные эффекты (рекомендуется на телефоне, если игра подтормаживает), «Полные» — все эффекты включены. Это самый важный пункт для слабых устройств.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="settings-motion"]', arrow: 'right' },
+    dismiss: { kind: 'next' },
+  },
+  {
+    id: 'settings-stats',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Статистика — твой долгосрочный прогресс: количество забегов, лучшая волна, накопленные эссенции и ключи. Эти числа сохраняются между сессиями.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="settings-stats"]', arrow: 'right' },
+    dismiss: { kind: 'next' },
+  },
+  {
+    id: 'settings-reset',
+    trigger: { kind: 'settingsOpen' },
+    text: 'Сброс прогресса полностью обнуляет сохранение: эссенции, ключи, рецепты, бестиарий и все таланты. Откатить нельзя — кнопка перед этим показывает подтверждение.',
+    target: { kind: 'hud', selector: '[data-tutorial-target="settings-reset"]', arrow: 'right' },
     dismiss: { kind: 'next' },
   },
 ];

@@ -572,6 +572,14 @@ export const EN: Record<string, string> = {
   'tutorial.menu-daily': 'Daily rewards. Come back once a day to claim gold, keys and essence. The "Claim!" button is live while the "!" badge is showing.',
   'tutorial.menu-battle': 'Ready? Hit "TO BATTLE", pick a difficulty and start the run. Good luck!',
 
+  // Settings walkthrough
+  'tutorial.settings-intro': 'This is the settings panel: tune volume, language and animation strength, and check long-term stats. The progress-reset button lives here too.',
+  'tutorial.settings-audio': 'Audio — two sliders: "SFX" (shots, blasts, UI clicks) and "Music" (background score in runs and menus). Changes apply live; feel free to drag mid-run.',
+  'tutorial.settings-language': 'Interface language. Russian and English are available — switching is instant, no reload needed.',
+  'tutorial.settings-motion': 'Animations: "Auto" follows the device\u2019s system setting, "Minimal" disables decorative effects (recommended on phones if the game lags), "Full" turns everything on. This is the single most impactful toggle for low-end devices.',
+  'tutorial.settings-stats': 'Stats — your long-term progress: total runs, best wave, accumulated essence and keys. These numbers persist across sessions.',
+  'tutorial.settings-reset': 'Progress reset wipes the entire save: essence, keys, recipes, bestiary and every talent. Cannot be undone — the button shows a confirm prompt first.',
+
   // ── Floating text & misc ─────────────────────────────────────────────
   'floating.overload': 'OVERLOAD!',
   'floating.repair': 'REPAIR',

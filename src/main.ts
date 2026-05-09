@@ -1968,18 +1968,49 @@ function showBattlePass(): void {
 }
 
 function showSettings(): void {
+  // When the player exits the settings panel via the close button, the
+  // back action, or the reset confirm, we want any in-flight settings
+  // tutorial sequence to disappear too — otherwise the player would see
+  // a tooltip pointing at a torn-down section. Treat any close as a
+  // dismiss for the settings walkthrough; once dismissed once, the meta-
+  // save flag flips and we never re-pop it.
+  const dismissSettingsTutorial = (): void => {
+    const wasSequenceRunning = tutorial.isSequenceActive();
+    tutorial.cancelSequence('settingsOpen');
+    if (wasSequenceRunning && !meta.settingsTutorialDone) {
+      meta.settingsTutorialDone = true;
+      saveMeta(meta);
+    }
+  };
   settingsOverlay.show({
     meta,
     onClose: () => {
+      dismissSettingsTutorial();
       settingsOverlay.hide();
       showMainMenu();
     },
     onReset: () => {
+      dismissSettingsTutorial();
       settingsOverlay.hide();
       meta = loadMeta();
       showMainMenu();
     },
   });
+  // First-time settings walkthrough — fires once per save. Targets that
+  // resolve (audio / language / motion / stats / reset) play in order;
+  // the controller silently skips any whose target isn't in the DOM.
+  if (!meta.settingsTutorialDone) {
+    tutorial.startSequence('settingsOpen', {
+      onComplete: () => {
+        meta.settingsTutorialDone = true;
+        saveMeta(meta);
+      },
+      onSkip: () => {
+        meta.settingsTutorialDone = true;
+        saveMeta(meta);
+      },
+    });
+  }
 }
 
 // `showReviveOverlay()` previously rendered the "Манекен разрушен!"

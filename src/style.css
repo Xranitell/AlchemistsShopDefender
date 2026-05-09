@@ -4235,11 +4235,15 @@ body {
    rules at all times during a run. */
 .hud-run-sidebar {
   position: absolute;
-  /* Anchored to the LEFT edge of the screen, below the wave/difficulty
-     cluster, so the player can read the active rules at all times. */
+  /* Anchored to the LEFT edge of the screen, just below the wave / break
+     timer so the rules panel hugs the timer instead of leaving a tall
+     empty band underneath. The previous 200 px top anchor kept the
+     sidebar floating mid-screen on phones, where the wave stack is much
+     shorter. Sitting flush under the timer lets the panel claim the full
+     remaining left-rail height for blessings / laws / contracts. */
   left: 18px;
-  top: 200px;
-  max-height: calc(100vh - 280px);
+  top: 110px;
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -4250,6 +4254,12 @@ body {
   /* Hide the scrollbar chrome on overflow without disabling scroll. */
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 209, 102, 0.4) transparent;
+  /* Allow finger-flick scrolling on phones — the global
+     `body { touch-action: none }` would otherwise eat the gesture and
+     long-running modifier lists (Endless rounds, Ancient mode) would
+     silently clip off the bottom. */
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .hud-run-sidebar.collapsed {
   overflow: visible;
@@ -11037,9 +11047,12 @@ body {
   .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
   .hud-run-sidebar {
     left: 6px;
-    top: 152px;
+    /* Sit flush under the wave/break timer cluster — on phone the
+       cluster is much shorter than on desktop, so the previous 152 px
+       anchor left a visible gap. */
+    top: 88px;
     max-width: 168px;
-    max-height: calc(100vh - 240px);
+    max-height: calc(100vh - 160px);
     gap: 5px;
   }
   .hud-run-section { gap: 2px; }
@@ -11744,6 +11757,40 @@ body {
   min-height: 0;
 }
 
+/* Short / phone canvases (height < 620): the four left-column cards
+   (Diary + Brewery + Lab + Loadout) cumulatively need ~520 design-px
+   of vertical room, but the body's allotted height after the title /
+   currency rows is only ~410-440 design-px. The fix the user explicitly
+   asked for ("look like desktop, fit via scaling") is to render the
+   stack at its desktop dimensions then scale the *whole column* down
+   to fit the available height — the cards inside keep stretching via
+   `flex: 1 1 0` exactly like on desktop, but the visible result is the
+   desktop layout shrunk to ~85 %.
+
+   `transform: scale()` is preferred to `zoom` because `zoom` is non-
+   standard and Yandex's WebView intermittently ignores it. We bump
+   `height` and `flex-basis` by 1/scale so the pre-scale layout box is
+   ~17 % larger than the body slot — after scaling, the visible column
+   lands back at the body's natural height/width and the centre / right
+   columns keep their original anchor.
+
+   Targets both the narrow-width design (1024×576) and the wide-short
+   tier (1280×576) — they hit the same height squeeze; only the desktop
+   1280×720 reference has enough vertical room to skip the down-scale. */
+:root.viewport-fitted .main-menu .mm-col-left {
+  --mm-col-left-scale: 0.85;
+  transform: scale(var(--mm-col-left-scale));
+  transform-origin: top left;
+  /* Render the column at 1/scale times the target visual height so all
+     four flex-stretched cards have desktop-sized room before the scale
+     compresses them back into the body. */
+  height: calc(100% / var(--mm-col-left-scale));
+  /* Compensate width similarly so the visible column reads at ~28 % of
+     body width on screen rather than ~24 % after scaling. */
+  flex: 0 0 calc(28% / var(--mm-col-left-scale));
+  max-width: none;
+}
+
 /* Card content fills its allocated body so the empty band the user
    reported inside Brewery / Lab / Diary cards disappears even when
    the column is tall. */
@@ -12094,6 +12141,35 @@ body {
    pair lands within the narrow canvas. */
 :root.viewport-fitted-narrow .pause-stats-inner { width: 540px; }
 :root.viewport-fitted-narrow .pause-stats-side  { width: 360px; }
+
+/* Side-panel rows on narrow phone canvases: the default row layout
+   puts the effect text (`.ps-value`, e.g. "-20% vial cooldown") on the
+   left and the icon + name (`.ps-label`, e.g. "⚡ Quick Hand") on the
+   right. The 360-px side panel can't fit both pieces on one line for
+   most blessings / dungeon laws, so the label wraps awkwardly into
+   "⚡ Quick" / "Hand" stacks (see GH issue from XranitellA, screenshot
+   1). Stack the two pieces vertically — label header on top, effect
+   text indented below — so each piece gets the full panel width and
+   reads as a single row of meaning. The inner-panel rows stay on the
+   horizontal "value | label" grid because the wider 540 px inner
+   panel doesn't have the wrap problem. */
+:root.viewport-fitted-narrow .pause-stats-side .ps-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 0;
+}
+:root.viewport-fitted-narrow .pause-stats-side .ps-row .ps-value {
+  min-width: 0;
+  text-align: left;
+  padding-left: 18px;
+  font-size: 18px;
+}
+:root.viewport-fitted-narrow .pause-stats-side .ps-row .ps-label {
+  white-space: normal;
+  word-break: break-word;
+  font-weight: bold;
+}
 
 /* Restore typography — all visual scaling is now done by the parent
    transform, so each row reads at the *same* visual ratio as the rest of

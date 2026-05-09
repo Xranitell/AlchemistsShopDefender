@@ -37,20 +37,27 @@ export class SettingsOverlay {
     // Audio section: SFX + music volume sliders. Edits flow straight through
     // to the audio engine in real-time, then persist via saveMeta() so the
     // chosen levels survive a reload.
-    body.appendChild(buildAudioSection(opts.meta));
+    const audioSection = buildAudioSection(opts.meta);
+    audioSection.dataset.tutorialTarget = 'settings-audio';
+    body.appendChild(audioSection);
 
     // Language section (PR-9 i18n).
-    body.appendChild(buildLanguageSection(opts.meta));
+    const languageSection = buildLanguageSection(opts.meta);
+    languageSection.dataset.tutorialTarget = 'settings-language';
+    body.appendChild(languageSection);
 
     // Motion / animation section. Lets the player override the OS
     // `prefers-reduced-motion` query in either direction. Default for new
     // saves is `'minimal'` on touch devices (Android phones never set
     // the OS query) and `'auto'` on desktop / iOS.
-    body.appendChild(buildMotionSection(opts.meta));
+    const motionSection = buildMotionSection(opts.meta);
+    motionSection.dataset.tutorialTarget = 'settings-motion';
+    body.appendChild(motionSection);
 
     // Stats section
     const stats = document.createElement('div');
     stats.className = 'settings-section';
+    stats.dataset.tutorialTarget = 'settings-stats';
     stats.innerHTML = `
       <h3>${t('ui.settings.stats')}</h3>
       <div class="settings-stat">${t('ui.settings.stat.runs')}<strong>${opts.meta.totalRuns}</strong></div>
@@ -65,6 +72,7 @@ export class SettingsOverlay {
     // Reset section
     const resetSection = document.createElement('div');
     resetSection.className = 'settings-section settings-danger';
+    resetSection.dataset.tutorialTarget = 'settings-reset';
     const resetBtn = document.createElement('button');
     resetBtn.className = 'settings-reset-btn';
     resetBtn.textContent = t('ui.settings.reset');

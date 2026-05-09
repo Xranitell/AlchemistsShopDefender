@@ -82,6 +82,11 @@ export interface MetaSave {
   /** Set once the player has seen the main-menu walkthrough. Same idea
    *  as `pauseTutorialDone` but for the between-runs main menu. */
   menuTutorialDone: boolean;
+  /** Set once the player has seen the settings-panel walkthrough. Same
+   *  idea as `pauseTutorialDone` but for the settings overlay; surfaces
+   *  the animation toggle (the most-asked phone-perf setting) and the
+   *  reset-progress button to first-time players. */
+  settingsTutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
   /** True once the player has explicitly picked a locale via the in-game
@@ -146,6 +151,7 @@ export function newMetaSave(): MetaSave {
     tutorialDone: false,
     pauseTutorialDone: false,
     menuTutorialDone: false,
+    settingsTutorialDone: false,
     locale: defaultLocale(),
     localeUserChoice: false,
     epicMastery: 0,
@@ -279,6 +285,13 @@ export function loadMeta(): MetaSave {
         : (data.totalRuns ?? 0) > 0,
       menuTutorialDone: typeof data.menuTutorialDone === 'boolean'
         ? data.menuTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players who have already finished a run have
+      // discovered the settings UI on their own — don't pop the
+      // walkthrough at them retroactively. New saves get `false` so the
+      // walkthrough plays exactly once when they first open settings.
+      settingsTutorialDone: typeof data.settingsTutorialDone === 'boolean'
+        ? data.settingsTutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
       // Existing saves without the explicit-choice flag are treated as
