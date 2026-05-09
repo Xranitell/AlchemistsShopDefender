@@ -91,7 +91,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'normal',
     name: 'Обычное подземелье',
     shortName: 'Обычный',
-    flavor: 'Стандартные волны. У каждого монстра — своя способность.',
+    flavor: 'Стандартные волны и базовые награды. У каждого монстра — своя способность.',
     keyCost: 'none',
     modifier: {
       hpMult: 1,
@@ -102,7 +102,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     },
     previewLines: [
       'Стандартные характеристики врагов',
-      'У каждого монстра — своя способность',
+      'Базовые способности у каждого вида монстров',
       'Не требует ключа',
     ],
     color: '#7fc97f',
@@ -111,7 +111,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'epic',
     name: 'Эпическое подземелье',
     shortName: 'Эпический',
-    flavor: 'Враги крепче и опаснее, способности усилены.',
+    flavor: 'Враги крепче и опаснее; их способности усилены.',
     keyCost: 'epic',
     modifier: {
       hpMult: 1.3,
@@ -123,7 +123,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     previewLines: [
       '+30% здоровья врагов',
       '+15% скорости и урона',
-      'Способности монстров усилены',
+      'Усиленные способности монстров',
       '×1.5 синей эссенции, ×2 древней',
       'Победа: +1 эпич. мастерство (+2% эссенции навсегда)',
     ],
@@ -133,7 +133,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'ancient',
     name: 'Древнее подземелье',
     shortName: 'Древний',
-    flavor: 'Закалённые враги — способности раскрываются полностью.',
+    flavor: 'Закалённые враги: способности раскрываются полностью.',
     keyCost: 'ancient',
     modifier: {
       hpMult: 1.6,
@@ -145,7 +145,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     previewLines: [
       '+60% здоровья врагов',
       '+25% скорости, +30% урона',
-      'Способности монстров получают древние механики',
+      'Древние версии способностей монстров',
       '×2.5 синей эссенции, ×4 древней, +1 древн. ключ за победу',
       'Победа: +1 древн. мастерство (+3% эссенции навсегда)',
     ],
@@ -155,7 +155,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'endless',
     name: 'Бесконечный режим',
     shortName: 'Бесконечный',
-    flavor: 'Волны идут по кругу с нарастающей сложностью.',
+    flavor: 'Волны повторяются по кругу, а сложность постепенно растёт.',
     keyCost: 'none',
     modifier: {
       hpMult: 1,
@@ -166,7 +166,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     },
     previewLines: [
       'Волны повторяются по кругу',
-      'Сложность растёт линейно с каждой волной',
+      'Сложность растёт с каждой волной',
       'Не требует ключа',
     ],
     color: '#8ecae6',
@@ -175,7 +175,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
     id: 'daily',
     name: 'Дневной эксперимент',
     shortName: 'Дневной',
-    flavor: 'Фиксированный seed дня — у всех одинаковый забег.',
+    flavor: 'Фиксированный seed дня: у всех игроков одинаковый забег.',
     keyCost: 'none',
     modifier: {
       hpMult: 1,
@@ -185,7 +185,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
       abilities: [...ALL_ENEMY_ABILITIES],
     },
     previewLines: [
-      'Уникальное событие на каждый день недели',
+      'Уникальное событие каждого дня недели',
       'Бесконечные волны, общий лидерборд за день',
       'Сбрасывается в 00:00 МСК',
     ],

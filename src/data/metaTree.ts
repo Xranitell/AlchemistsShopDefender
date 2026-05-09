@@ -263,7 +263,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Вулканический рецепт',
-        desc: '+огонь к каждому 4-му броску склянки и +50% урона горения',
+        desc: 'Каждый 4-й бросок склянки поджигает цель; +50% к урону горения',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'potionLeavesFire', value: 1 },
@@ -274,7 +274,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Прицельный бросок II',
-        desc: '+5% бонус ручного попадания склянками',
+        desc: '+5% к бонусу ручного попадания склянками',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'potionAimBonus', value: 0.05 },
@@ -282,7 +282,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Эхо взрыва II',
-        desc: '+8% шанс микровзрыва склянки',
+        desc: '+8% к шансу микровзрыва склянки',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'potionEchoChance', value: 0.08 },
@@ -290,7 +290,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Стихийный резонанс II',
-        desc: '+10% урона элементальным реакциям',
+        desc: '+10% к урону стихийных реакций',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'reactionDamage', value: 1.10 },
@@ -301,7 +301,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Резонансный порошок',
-        desc: '+10% урона элементальным реакциям',
+        desc: '+10% к урону стихийных реакций',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'reactionDamage', value: 1.10 },
@@ -309,7 +309,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Бронебойные склянки',
-        desc: '+10% бронепробития склянок и стоек',
+        desc: '+10% к пробитию брони склянок и стоек',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'armorPen', value: 0.10 },
@@ -317,7 +317,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Совершенный состав',
-        desc: '+20% урона склянок',
+        desc: '+20% к урону склянок',
         cost: 98,
         currency: 'blue',
         effect: { kind: 'potionDamage', value: 1.20 },
@@ -325,7 +325,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Алхимический скол',
-        desc: '+5% шанса критического удара (×2 урон)',
+        desc: '+5% к шансу критического удара (×2 урон)',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'critChance', value: 0.05 },
@@ -333,7 +333,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Широкий всплеск III',
-        desc: '+5% радиус взрыва склянок',
+        desc: '+5% к радиусу взрыва склянок',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'potionRadius', value: 1.05 },
@@ -344,7 +344,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Концентрат III',
-        desc: '+5% урона склянок',
+        desc: '+5% к урону склянок',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'potionDamage', value: 1.05 },
@@ -352,7 +352,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Прицельный бросок',
-        desc: '+5% бонус ручного попадания',
+        desc: '+5% к бонусу ручного попадания',
         cost: 21,
         currency: 'blue',
         effect: { kind: 'potionAimBonus', value: 0.05 },
@@ -360,7 +360,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Широкий всплеск II',
-        desc: '+5% радиус взрыва склянок',
+        desc: '+5% к радиусу взрыва склянок',
         cost: 21,
         currency: 'blue',
         effect: { kind: 'potionRadius', value: 1.05 },
@@ -368,7 +368,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Стихийный резонанс',
-        desc: '+10% урона элементальным реакциям',
+        desc: '+10% к урону стихийных реакций',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'reactionDamage', value: 1.10 },
@@ -376,7 +376,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Эхо взрыва',
-        desc: '+8% шанс микровзрыва склянки',
+        desc: '+8% к шансу микровзрыва склянки',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'potionEchoChance', value: 0.08 },
@@ -387,7 +387,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Тонкий помол II',
-        desc: '+5% радиус взрыва склянок',
+        desc: '+5% к радиусу взрыва склянок',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'potionRadius', value: 1.05 },
@@ -395,7 +395,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Концентрат II',
-        desc: '+5% урона склянок',
+        desc: '+5% к урону склянок',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'potionDamage', value: 1.05 },
@@ -403,7 +403,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Тяжёлый состав',
-        desc: '+15% урона и +10% радиус взрыва склянок',
+        desc: '+15% к урону и +10% к радиусу взрыва склянок',
         cost: 82,
         currency: 'blue',
         effect: { kind: 'potionDamage', value: 1.15 },
@@ -412,7 +412,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Быстрые руки II',
-        desc: '−4% откат склянок',
+        desc: '−4% к откату склянок',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'potionCooldown', value: 0.96 },
@@ -420,7 +420,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Запальный клапан',
-        desc: '+4% шанс микровзрыва склянки',
+        desc: '+4% к шансу микровзрыва склянки',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'potionEchoChance', value: 0.04 },
@@ -431,7 +431,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Концентрат',
-        desc: '+5% урона склянок',
+        desc: '+5% к урону склянок',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'potionDamage', value: 1.05 },
@@ -439,7 +439,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Широкий всплеск',
-        desc: '+5% радиус взрыва склянок',
+        desc: '+5% к радиусу взрыва склянок',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'potionRadius', value: 1.05 },
@@ -447,7 +447,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Быстрые руки',
-        desc: '−4% откат склянок',
+        desc: '−4% к откату склянок',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'potionCooldown', value: 0.96 },
@@ -482,7 +482,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Чертёж Архимастера',
-        desc: '+10% урона и +10% дальности стоек',
+        desc: '+10% к урону и +10% к дальности стоек',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'towerDamage', value: 1.10 },
@@ -496,7 +496,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Открытая руническая точка β',
-        desc: '+1 руническая точка стойки',
+        desc: '+1 руническая точка для стойки',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'runePointUnlock', value: 2 },
@@ -504,7 +504,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Перегрузная катушка II',
-        desc: '+25 макс. заряда Перегруза',
+        desc: '+25 к максимуму заряда Перегрузки',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'overloadMaxCharge', value: 25 },
@@ -512,7 +512,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Усиленные дюзы IV',
-        desc: '+5% урона стоек',
+        desc: '+5% к урону стоек',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.05 },
@@ -526,7 +526,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Оптика IV',
-        desc: '+5% дальности стоек',
+        desc: '+5% к дальности стоек',
         cost: 36,
         currency: 'blue',
         effect: { kind: 'towerRange', value: 1.05 },
@@ -534,7 +534,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Стартовый разряд',
-        desc: '+1 стартовый уровень первой стойки',
+        desc: 'Первая стойка строится на 1 уровень выше',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'towerStartLevel', value: 2 },
@@ -542,7 +542,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Полный арсенал',
-        desc: '+15% урона и +10% дальность стоек',
+        desc: '+15% к урону и +10% к дальности стоек',
         cost: 105,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.15 },
@@ -551,7 +551,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Скидка на стойки',
-        desc: '−10 золота на первую стойку',
+        desc: '−10 золота к стоимости первой стойки',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'towerDiscount', value: 10 },
@@ -559,7 +559,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Калибровка ствола',
-        desc: '+5% скорости стрельбы стоек',
+        desc: '+5% к скорострельности стоек',
         cost: 36,
         currency: 'blue',
         effect: { kind: 'towerFireRate', value: 1.05 },
@@ -571,7 +571,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Усиленные дюзы III',
-        desc: '+5% урона стоек',
+        desc: '+5% к урону стоек',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.05 },
@@ -579,7 +579,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Открытая руническая точка α',
-        desc: '+1 руническая точка стойки',
+        desc: '+1 руническая точка для стойки',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'runePointUnlock', value: 1 },
@@ -587,7 +587,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Перегрузная катушка',
-        desc: '+15 макс. заряда Перегруза',
+        desc: '+15 к максимуму заряда Перегрузки',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'overloadMaxCharge', value: 15 },
@@ -595,7 +595,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Ускоренный заряд',
-        desc: '+8% скорости заряда Перегруза',
+        desc: '+8% к скорости заряда Перегрузки',
         cost: 21,
         currency: 'blue',
         effect: { kind: 'overloadRate', value: 1.08 },
@@ -603,7 +603,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Оптика III',
-        desc: '+5% дальности стоек',
+        desc: '+5% к дальности стоек',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'towerRange', value: 1.05 },
@@ -614,7 +614,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Перегрузная катушка III',
-        desc: '+15 макс. заряда Перегруза',
+        desc: '+15 к максимуму заряда Перегрузки',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'overloadMaxCharge', value: 15 },
@@ -622,7 +622,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Усиленные дюзы II',
-        desc: '+5% урона стоек',
+        desc: '+5% к урону стоек',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.05 },
@@ -630,7 +630,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Мастерская Архимастера',
-        desc: '+10% урон и +5% скорострельность стоек',
+        desc: '+10% к урону и +5% к скорострельности стоек',
         cost: 90,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.10 },
@@ -639,7 +639,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Оптика II',
-        desc: '+5% дальности стоек',
+        desc: '+5% к дальности стоек',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'towerRange', value: 1.05 },
@@ -647,7 +647,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Смазанные шестерни II',
-        desc: '+4% скорострельности стоек',
+        desc: '+4% к скорострельности стоек',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'towerFireRate', value: 1.04 },
@@ -658,7 +658,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Усиленные дюзы',
-        desc: '+5% урона стоек',
+        desc: '+5% к урону стоек',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'towerDamage', value: 1.05 },
@@ -666,7 +666,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Смазанные шестерни',
-        desc: '+4% скорострельности стоек',
+        desc: '+4% к скорострельности стоек',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'towerFireRate', value: 1.04 },
@@ -674,7 +674,7 @@ const TOWER_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Точная оптика',
-        desc: '+5% дальности стоек',
+        desc: '+5% к дальности стоек',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'towerRange', value: 1.05 },
@@ -705,7 +705,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Шипастый голем',
-        desc: 'Враги получают 3 урона при атаке Манекена и +30 макс. ХП',
+        desc: 'Враги получают 3 урона при атаке Манекена; +30 макс. ХП Манекена',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'thornyShell', value: 1 },
@@ -717,7 +717,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Полевой ремонт',
-        desc: '+2 ХП/сек регенерации Манекена вне боя',
+        desc: 'Манекен восстанавливает +2 ХП/сек вне боя',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 2 },
@@ -725,7 +725,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Шипастый каркас II',
-        desc: '+3 урона врагу при атаке Манекена',
+        desc: 'Враг получает +3 урона при атаке Манекена',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'thornyShell', value: 1 },
@@ -733,7 +733,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны II',
-        desc: '+25 ХП щит в начале босс-волны',
+        desc: 'Щит на +25 ХП в начале босс-волны',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -744,7 +744,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Боевой ремонт',
-        desc: '+1 ХП/сек регенерации Манекена вне боя',
+        desc: 'Манекен восстанавливает +1 ХП/сек вне боя',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 1 },
@@ -760,7 +760,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Усиленный корпус',
-        desc: '+25 ХП и +5% брони Манекена',
+        desc: '+25 ХП и +5% к броне Манекена',
         cost: 90,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 25 },
@@ -769,7 +769,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Железная обшивка III',
-        desc: '+3% брони Манекена',
+        desc: '+3% к броне Манекена',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'armor', value: 0.03 },
@@ -777,7 +777,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны III',
-        desc: '+25 ХП щит в начале босс-волны',
+        desc: 'Щит на +25 ХП в начале босс-волны',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -788,7 +788,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Авто-ремонт',
-        desc: '+1 ХП/сек регенерации Манекена вне боя',
+        desc: 'Манекен восстанавливает +1 ХП/сек вне боя',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 1 },
@@ -796,7 +796,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Шипастый каркас',
-        desc: '+3 урона врагу при атаке Манекена',
+        desc: 'Враг получает +3 урона при атаке Манекена',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'thornyShell', value: 1 },
@@ -804,7 +804,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны',
-        desc: '+25 ХП щит в начале босс-волны',
+        desc: 'Щит на +25 ХП в начале босс-волны',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -812,7 +812,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Эссенциальная жатва',
-        desc: '+25% Синей Эссенции за забег',
+        desc: '+25% синей эссенции за забег',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'essenceBonus', value: 1.25 },
@@ -820,7 +820,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Золотая жила',
-        desc: '+10% золота с врагов',
+        desc: '+10% к золоту с врагов',
         cost: 24,
         currency: 'blue',
         effect: { kind: 'goldDrop', value: 1.10 },
@@ -831,7 +831,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Лёгкий ход',
-        desc: '+10% радиус подбора лута',
+        desc: '+10% к радиусу подбора лута',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'lootRadius', value: 1.10 },
@@ -847,7 +847,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Стальная клёпка',
-        desc: '+25 ХП и +3% брони Манекена',
+        desc: '+25 ХП и +3% к броне Манекена',
         cost: 82,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 25 },
@@ -856,7 +856,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Железная обшивка II',
-        desc: '+3% брони Манекена',
+        desc: '+3% к броне Манекена',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'armor', value: 0.03 },
@@ -891,7 +891,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Железная обшивка',
-        desc: '+3% брони Манекена',
+        desc: '+3% к броне Манекена',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'armor', value: 0.03 },
