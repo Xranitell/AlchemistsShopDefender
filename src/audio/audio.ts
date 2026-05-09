@@ -51,12 +51,11 @@ const RATE_LIMIT_PER_ID = 6;
 
 /** Linear-amplitude cap applied at the music slider's max position.
  *
- * The bundled ambient mp3 (`The Copper Crucible`) was mastered hot enough
- * that a raw 1.0 gain on top of `masterGain = 0.85` drowned out every
- * SFX channel and felt 3-4× louder than what users actually wanted.
- * Tested comfortable maximum sat around the 18 % mark on the old linear
- * slider, so we anchor the new slider's 100 % to roughly that level
- * (slight headroom for players who actually want it loud). */
+ * The procedurally-generated menu / battle MP3 tracks are mastered at a
+ * conservative peak (~-2.5 dB), but a raw 1.0 gain on top of
+ * `masterGain = 0.85` would still drown SFX during dense combat.
+ * Capping at 0.22 keeps the music bed comfortably below the SFX mix;
+ * the player perceives 100 % on the slider as "comfortable max". */
 const MUSIC_MAX_GAIN = 0.22;
 
 /** Map a 0..1 slider value to the actual gain node value. Linear scaling
@@ -91,13 +90,12 @@ export class AudioEngine {
   private music: { track: MusicTrack; nodes: AudioNode[]; stopAt: number } | null = null;
   private musicLoopTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Looping HTMLAudioElement used for the sample-based ambient track
-   *  (`The Copper Crucible`). Routed through a MediaElementAudioSourceNode
-   *  so it shares the music gain bus and the user volume slider works.
-   *  Kept null until the first time we play a sample-based track. */
-  private ambientEl: HTMLAudioElement | null = null;
-  private ambientNode: MediaElementAudioSourceNode | null = null;
-  /** Tracks which sample track is currently selected (or null). Lets the
+  /** Per-track looping HTMLAudioElements for sample-based music.
+   *  Each track gets its own element (and MediaElementAudioSourceNode)
+   *  because the Web Audio spec only allows createMediaElementSource
+   *  once per element. Map is populated lazily on first play. */
+  private sampleElements: Map<string, { el: HTMLAudioElement; node: MediaElementAudioSourceNode }> = new Map();
+  /** Tracks which sample track is currently audible (or null). Lets the
    *  engine skip redundant assignments and stop / resume cleanly. */
   private currentSampleTrack: MusicTrack = null;
 
@@ -256,12 +254,12 @@ export class AudioEngine {
   /** Switch the ambient music loop. Pass null to stop.
    *
    *  Track routing:
-   *    - 'menu' / 'battle' → looping MP3 ambient (`audio/ambient.mp3`).
-   *      The user explicitly asked for The Copper Crucible to be the
-   *      ambient track for both the main menu and the active run.
-   *    - 'boss'            → procedural synth loop (kept for contrast —
-   *      we still want a tense, dissonant track during boss waves).
-   *    - null              → stop everything. */
+   *    - 'menu'   → looping MP3 (`audio/menu.mp3`) — soft, mellow lo-fi.
+   *    - 'battle' → looping MP3 (`audio/battle.mp3`) — lo-fi with a
+   *      combat motif, deeper bass, subtle percussion.
+   *    - 'boss'   → procedural synth loop (kept for contrast — we still
+   *      want a tense, dissonant track during boss waves).
+   *    - null     → stop everything. */
   playMusic(track: MusicTrack): void {
     if (!this.ctx || !this.musicGain) return;
     if (track === null) {
@@ -313,47 +311,61 @@ export class AudioEngine {
   }
 
   private stopSampleMusic(): void {
-    if (this.ambientEl) {
-      try {
-        this.ambientEl.pause();
-        this.ambientEl.currentTime = 0;
-      } catch {
-        // ignore
+    if (this.currentSampleTrack) {
+      const entry = this.sampleElements.get(this.currentSampleTrack);
+      if (entry) {
+        try {
+          entry.el.pause();
+          entry.el.currentTime = 0;
+        } catch {
+          // ignore
+        }
       }
     }
     this.currentSampleTrack = null;
   }
 
-  /** Start (or resume) the looping MP3 ambient. The same audio element is
-   *  reused across menu ↔ battle transitions — we don't restart playback
-   *  when switching from menu to battle so the loop stays seamless across
-   *  scene changes. */
+  /** Per-track MP3 filenames served from `public/audio/`. */
+  private static readonly SAMPLE_TRACK_FILES: Record<string, string> = {
+    menu: 'audio/menu.mp3',
+    battle: 'audio/battle.mp3',
+  };
+
+  /** Start (or switch to) the looping MP3 for a given sample-backed track.
+   *  Each track id gets its own HTMLAudioElement + MediaElementAudioSourceNode
+   *  so switching between menu ↔ battle doesn't need to reload the file or
+   *  juggle a single element. */
   private startSampleMusic(track: MusicTrack): void {
-    if (!this.ctx || !this.musicGain) return;
-    if (!this.ambientEl) {
-      const el = new Audio('audio/ambient.mp3');
-      el.loop = true;
-      el.preload = 'auto';
-      // crossOrigin not required — file is same-origin from public/.
-      this.ambientEl = el;
-      try {
-        this.ambientNode = this.ctx.createMediaElementSource(el);
-        this.ambientNode.connect(this.musicGain);
-      } catch {
-        // Some browsers throw if createMediaElementSource is called twice
-        // on the same element — we already guarded with `!this.ambientEl`,
-        // but swallow defensively anyway.
+    if (!this.ctx || !this.musicGain || !track) return;
+    if (this.currentSampleTrack === track) {
+      const entry = this.sampleElements.get(track);
+      if (entry && !entry.el.paused) return;
+    }
+    // Pause the outgoing track first (if different).
+    if (this.currentSampleTrack && this.currentSampleTrack !== track) {
+      const prev = this.sampleElements.get(this.currentSampleTrack);
+      if (prev) {
+        try { prev.el.pause(); prev.el.currentTime = 0; } catch { /* ignore */ }
       }
     }
-    if (this.currentSampleTrack === track && !this.ambientEl.paused) {
-      // Already playing this exact sample track — keep the loop running.
-      return;
+    // Lazily create the element for this track.
+    if (!this.sampleElements.has(track)) {
+      const src = AudioEngine.SAMPLE_TRACK_FILES[track] ?? `audio/${track}.mp3`;
+      const el = new Audio(src);
+      el.loop = true;
+      el.preload = 'auto';
+      try {
+        const node = this.ctx.createMediaElementSource(el);
+        node.connect(this.musicGain);
+        this.sampleElements.set(track, { el, node });
+      } catch {
+        // createMediaElementSource edge cases — swallow defensively.
+        return;
+      }
     }
     this.currentSampleTrack = track;
-    // play() returns a Promise that rejects if autoplay is blocked. We
-    // already gate `playMusic` on `ensureStarted` (which itself only fires
-    // from a user gesture), but swallow defensively.
-    void this.ambientEl.play().catch(() => {});
+    const entry = this.sampleElements.get(track)!;
+    void entry.el.play().catch(() => {});
   }
 
   // ---------------------------------------------------------------------
