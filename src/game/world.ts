@@ -354,13 +354,15 @@ export function dailyBoardId(): string {
 
 /** Apply passive biome modifiers to the state. Call once after
  *  `buildInitialState` + `applyMetaUpgrades` so they stack on top of
- *  meta progression. */
+ *  meta progression. Biome stat tweaks (Crypt -15% tower range, Foundry
+ *  +5% fire damage) were retired in favour of biomes-as-mood-only; the
+ *  function is kept as the integration point so re-enabling per-biome
+ *  effects later doesn't require touching every caller. With all
+ *  current biomes set to the neutral preset, every multiplication below
+ *  is a no-op. */
 export function applyBiomeModifiers(state: GameState): void {
   const bm = BIOMES[state.biomeId].modifier;
-  // Crypt: reduce tower range (simulates reduced visibility).
   state.modifiers.towerRangeMult *= bm.visionRangeMult;
-  // Foundry: +5% fire damage for player (potionDamageMult used for fire
-  // vials), and enemy fire damage is scaled by the difficulty modifier.
   if (bm.fireDamageMult !== 1) {
     state.modifiers.potionDamageMult *= bm.fireDamageMult;
     state.difficultyModifier.damageMult *= bm.fireDamageMult;
