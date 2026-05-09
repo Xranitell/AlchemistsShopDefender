@@ -70,15 +70,15 @@ export const ALL_ENEMY_ABILITIES: EnemyAbility[] = [
   'dash_back_on_hit',
   'explode_on_death',
   'aura_heal',
-  // Rats zig-zag on every difficulty — it's their signature behaviour
-  // so even Обычный players see the new movement pattern.
+  // Rats surge forward on every difficulty — it's their signature behaviour
+  // so even Обычный players see the close-the-gap movement pattern.
   'zigzag_dash',
 ];
 
 /** Abilities that only attach when the enemy is spawned in
  *  Эпический or Древний. They stack on top of the kind's base ability
  *  rather than replacing it: an Эпический rat keeps the on-hit
- *  back-dash AND now also zig-zags, an Эпический sapper keeps the
+ *  back-dash AND now also surges forward, an Эпический sapper keeps the
  *  detonation fuse AND now also disables towers it touches, etc. */
 export const EPIC_ONLY_ENEMY_ABILITIES: EnemyAbility[] = [
   'disable_tower_on_contact',
