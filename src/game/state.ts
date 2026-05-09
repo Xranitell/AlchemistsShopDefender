@@ -473,9 +473,9 @@ export interface EndlessModifier {
 }
 
 export const ENDLESS_MODIFIER_POOL: EndlessModifier[] = [
-  { id: 'hp_x125',         label: 'Живучесть',       desc: '+25% ХП врагов' },
-  { id: 'speed_x110',      label: 'Прыткость',       desc: '+10% скорость врагов' },
-  { id: 'gold_minus10',    label: 'Скупость',         desc: '−10% золота' },
+  { id: 'hp_x125',         label: 'Живучесть',       desc: '+25% к ХП врагов' },
+  { id: 'speed_x110',      label: 'Прыткость',       desc: '+10% к скорости врагов' },
+  { id: 'gold_minus10',    label: 'Скупость',         desc: '−10% к золоту' },
   { id: 'extra_enemies',   label: 'Подкрепление',     desc: '+2 врага в каждой волне' },
   { id: 'elites_on_normal', label: 'Элитный патруль', desc: 'Элиты на обычных волнах' },
 ];
@@ -545,11 +545,10 @@ export interface GameState {
   /** When `difficulty === 'daily'`, the rotating event id selected for
    *  today's MSK weekday. Drives event-specific gameplay & visual flags. */
   dailyEventId: DailyEventId | null;
-  /** Wave-rotating "dungeon law" mutators — re-rolled before every wave in
-   *  Epic (1) and Ancient (2). Empty in Normal / Endless / Daily. The order
-   *  in this array is also the apply-order; later entries stack on top of
-   *  earlier ones. Reverted via each mutator's explicit `revert` function
-   *  when the next wave rolls a fresh set. */
+  /** Active dungeon-law mutators. Epic/Ancient re-roll them before every wave;
+   *  Endless stacks new laws permanently after 15-wave cycles. Empty in
+   *  Normal / Daily. The order in this array is also the apply-order; later
+   *  entries stack on top of earlier ones. */
   activeMutatorIds: MutatorId[];
   /** Run contracts ("заказы") rolled at run start — 2 in Epic, 3 in Ancient.
    *  Empty in Normal / Endless / Daily. Each contract pays a bonus reward

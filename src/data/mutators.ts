@@ -1,7 +1,7 @@
 // ── Run Mutators (Закон Подземелья) ────────────────────────────────────
 //
-// A small pool of run-wide modifiers ("dungeon laws") that are rolled at
-// run start for Epic (1 mutator) and Ancient (2 mutators). Each mutator is
+// A small pool of wave modifiers ("dungeon laws") that are re-rolled before
+// each Epic (1 mutator) and Ancient (2 mutators) wave. Each mutator is
 // a clean trade-off — a buff paired with a drawback — designed to nudge
 // the player into a different build for that run without overwhelming
 // existing difficulty multipliers.
@@ -10,7 +10,7 @@
 // (`state.modifiers`, `state.difficultyModifier`, `state.metaOverloadRateMult`)
 // rather than introducing a new per-mutator effect pipeline. This keeps
 // the patch surface tiny and means every mutator is "free" in terms of
-// runtime cost — they are applied once at run start.
+// runtime cost — they are applied on roll and reverted before the next roll.
 
 import type { GameState } from '../game/state';
 
@@ -36,13 +36,10 @@ export interface MutatorDef {
   i18nFlavor: string;
   /** i18n keys for the bullet-list of effects (buff line then drawback). */
   i18nLines: string[];
-  /** Applied once at run start, after meta upgrades, biome modifiers and
-   *  daily-event modifiers (when applicable). Mutates `state` directly. */
+  /** Applies this law to the active wave state. Mutates `state` directly. */
   apply: (state: GameState) => void;
-  /** Inverse of `apply`. Called when the wave-rotating mutator is
-   *  swapped out at the start of a new wave. Must precisely undo the
-   *  multipliers/additions made by `apply` so card picks acquired
-   *  during the wave aren't clobbered. */
+  /** Inverse of `apply`. Called when the wave-rotating law is swapped out.
+   *  Must precisely undo only this law's multipliers/additions. */
   revert: (state: GameState) => void;
 }
 

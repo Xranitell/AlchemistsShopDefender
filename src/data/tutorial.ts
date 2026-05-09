@@ -94,7 +94,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'w1-aim-bonus',
     trigger: { kind: 'firstManualHit' },
-    text: 'Точное попадание ручным броском даёт +20% урона. Выбирай момент и целься точнее.',
+    text: 'Точное попадание ручным броском даёт +20% к урону. Выбирай момент и целься точнее.',
     target: { kind: 'centered' },
     dismiss: { kind: 'auto', afterMs: 4500 },
   },

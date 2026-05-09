@@ -6,7 +6,7 @@
  *    seven tiers (1 – 3 – 3 – 5 – 3 – 3 – 1). The lone bottom node of every
  *    tree is its `root` (always allocated for free); the lone top node is the
  *    tree's `keystone` (powerful, paid in Древняя Эссенция).
- *  - The three tree branches are: «Мастер колб» (potions), «Мастер стоек»
+ *  - The three tree branches are: «Мастер склянок» (potions), «Мастер стоек»
  *    (engineering / towers) and «Выживаемость» (survival / mannequin).
  *  - Allocation rule unchanged: a node becomes available once at least one of
  *    its neighbours is allocated. Roots are pre-allocated, so every tree has
@@ -73,7 +73,7 @@ export type MetaEffect =
   | { kind: 'critChance'; value: number }; // additive: +X% per-shot crit chance
 
 const BRANCH_NAMES: Record<MetaBranch, string> = {
-  potions: 'Мастер колб',
+  potions: 'Мастер склянок',
   engineering: 'Мастер стоек',
   survival: 'Выживаемость',
 };
@@ -252,7 +252,7 @@ function buildTreeNodes(def: TreeDef): MetaUpgrade[] {
   return nodes;
 }
 
-// ────────── Tree 1: Мастер колб (Potion Master) ──────────
+// ────────── Tree 1: Мастер склянок (Potion Master) ──────────
 
 const POTION_TREE: TreeDef = {
   prefix: 'pm',
@@ -520,7 +520,7 @@ const TOWER_TREE: TreeDef = {
     ],
     // Tier 2 — 5 cells. The two wing slots used to host extra
     // runePointUnlock talents (δ / ε); with only 2 locked runes left
-    // they now grant extra range / fire-rate so the build path still
+    // they now grant extra range / fire rate so the build path still
     // pays out the same number of stat upgrades.
     [
       {

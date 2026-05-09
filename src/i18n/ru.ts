@@ -242,8 +242,8 @@ export const RU: Record<string, string> = {
   'ui.pause.exitToMenu': 'Выйти в меню',
 
   // ── Dungeon-law announcement toast ──────────────────────────────────
-  'ui.lawAnnounce.title': 'Закон подземелья изменился',
-  'ui.lawAnnounce.subtitle': 'С этой волны действуют новые правила.',
+  'ui.lawAnnounce.title': 'Новый закон подземелья',
+  'ui.lawAnnounce.subtitle': 'С этой волны действует новый модификатор.',
 
   // ── Pause stats overlay ─────────────────────────────────────────────
   'ui.pause.title': 'Пауза',
@@ -353,7 +353,7 @@ export const RU: Record<string, string> = {
   'ui.meta.kind.small': 'Малый узел',
   'ui.meta.kind.notable': 'Заметный узел',
   'ui.meta.kind.keystone': 'Краеугольный камень',
-  'ui.meta.branch.potions': 'Мастер колб',
+  'ui.meta.branch.potions': 'Мастер склянок',
   'ui.meta.branch.engineering': 'Мастер стоек',
   'ui.meta.branch.survival': 'Выживаемость',
   // ── Meta-progression talent tree nodes ─────────────────────────────
@@ -528,8 +528,8 @@ export const RU: Record<string, string> = {
   'ui.rune.bonus.normal': 'без бонусов',
   'ui.rune.bonus.reinforced': '+20% к урону стойки',
   'ui.rune.bonus.unstable': 'каждые 4 сек +40% к урону / +40% к скорострельности / +30% к дальности',
-  'ui.rune.bonus.resonant': '+10% дальности; реакции рядом мощнее',
-  'ui.rune.bonus.defensive': '+20% дальности, −5% скорострел.',
+  'ui.rune.bonus.resonant': '+10% к дальности; реакции рядом мощнее',
+  'ui.rune.bonus.defensive': '+20% к дальности, −5% к скорострельности',
   'ui.tower.targeting.nearest': 'Ближайший',
   'ui.tower.targeting.strongest': 'Сильнейший',
   'ui.tower.targeting.fastest': 'Быстрейший',
@@ -554,7 +554,7 @@ export const RU: Record<string, string> = {
   'tutorial.pause-unique': 'Уникальные эффекты — стихии и редкие синергии от карт. Здесь видно, чем именно бьют твои склянки и стойки.',
   'tutorial.pause-enemy-stats': 'Модификаторы врагов от выбранной сложности: ХП, скорость и урон. Способности отдельных врагов смотри в Дневнике алхимика.',
   'tutorial.pause-blessings': 'Дар алхимика — благословение и проклятие, которые ты выбрал перед стартом Эпического или Древнего забега.',
-  'tutorial.pause-mutators': 'Закон подземелья — модификатор волны. В Эпическом и Древнем забеге он меняет условия боя.',
+  'tutorial.pause-mutators': 'Закон подземелья — модификатор текущей волны. В Эпическом и Древнем забеге он меняется перед каждой волной.',
   'tutorial.pause-contracts': 'Контракты — цели забега. Прогресс и награды отображаются здесь же; провал не завершает забег, но отменяет приз.',
   'tutorial.pause-endless': 'В Бесконечном режиме сложность растёт после 15-й волны; все активные модификаторы показаны здесь.',
   'tutorial.pause-exit': 'Кнопка «Выйти в меню» досрочно завершает забег. Потраченный эпический или древний ключ при этом не возвращается.',
@@ -641,19 +641,19 @@ Object.assign(RU, {
   'cards.curse_flammable_mix.name': 'Договор Пламени',
   'cards.curse_flammable_mix.desc': 'Огненная лужа от склянок (8 урона/сек, 3 сек) · +15% к урону склянок · +15% к ХП врагов.',
   'cards.curse_unstable_flask.name': 'Нестабильная колба (проклятая)',
-  'cards.curse_unstable_flask.desc': '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу склянок · +20% к откату склянок.',
+  'cards.curse_unstable_flask.desc': '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу взрыва склянок · +20% к откату склянок.',
   'cards.curse_frost_brew.name': 'Морозный обет',
-  'cards.curse_frost_brew.desc': 'Стихия Мороза ко всем склянкам · +15% к радиусу склянок · +15% к ХП врагов.',
+  'cards.curse_frost_brew.desc': 'Стихия Мороза ко всем склянкам · +15% к радиусу взрыва склянок · +15% к ХП врагов.',
   'cards.curse_acid_brew.name': 'Кислотный пакт',
   'cards.curse_acid_brew.desc': 'Стихия Кислоты ко всем склянкам (−50% брони цели на 4 сек) · +15% к урону склянок · +15% к ХП врагов.',
   'cards.curse_mercury_brew.name': 'Ртутный обет',
-  'cards.curse_mercury_brew.desc': 'Стихия Ртути ко всем склянкам · +13% к урону и +10% к радиусу склянок · −25% к золоту.',
+  'cards.curse_mercury_brew.desc': 'Стихия Ртути ко всем склянкам · +13% к урону и +10% к радиусу взрыва склянок · −25% к золоту.',
   'cards.curse_aether_brew.name': 'Эфирный заговор',
   'cards.curse_aether_brew.desc': 'Стихия Эфира ко всем склянкам (открывает стихийные реакции) · +20% к урону склянок · +20% к ХП врагов.',
   'cards.curse_mutagen_brew.name': 'Мутагенное проклятие',
   'cards.curse_mutagen_brew.desc': 'Яд от склянок (4 урона/сек, 5 сек, игнорирует броню) · +18% к урону склянок · +20% к ХП врагов.',
   'cards.curse_triple_throw.name': 'Тройной обет',
-  'cards.curse_triple_throw.desc': 'Веер из 3 склянок каждые 8 сек · −10% к откату склянок · −20% к радиусу склянок.',
+  'cards.curse_triple_throw.desc': 'Веер из 3 склянок каждые 8 сек · −10% к откату склянок · −20% к радиусу взрыва склянок.',
   'cards.curse_crossfire.name': 'Перекрёстный огонь (проклятый)',
   'cards.curse_crossfire.desc': '+30% к урону стоек по горящим врагам · +10% к урону стоек · +15% к скорости врагов.',
   'cards.curse_mercury_coating.name': 'Ртутное покрытие (проклятое)',
@@ -919,14 +919,14 @@ Object.assign(RU, {
   'ui.dailyEvent.chaos.line.gold': '+60% к золоту',
 
   // ── Run Mutators («Закон Подземелья») ───────────────────────────────
-  // Random run-wide modifiers rolled on Epic (1) and Ancient (2) starts.
+  // Random wave modifiers rolled before each Epic (1) and Ancient (2) wave.
   // Each mutator pairs a buff with a drawback so the run forces a build
   // adaptation rather than a flat numeric boost. The HUD shows tiny
   // ribbons under the difficulty badge; the modifier-preview overlay
   // mentions how many laws will roll for the chosen difficulty.
   'ui.mutator.label': 'Закон',
-  'ui.mutator.previewEpic': 'Закон подземелья: перед забегом действует 1 случайный закон.',
-  'ui.mutator.previewAncient': 'Закон подземелья: перед забегом действуют 2 случайных закона.',
+  'ui.mutator.previewEpic': 'Закон подземелья: перед каждой волной действует 1 случайный закон.',
+  'ui.mutator.previewAncient': 'Закон подземелья: перед каждой волной действуют 2 случайных закона.',
 
   'ui.mutator.fog.name': 'Туман',
   'ui.mutator.fog.flavor': 'Дальность стоек ограничена.',
