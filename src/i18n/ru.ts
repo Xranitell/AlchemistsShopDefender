@@ -180,7 +180,7 @@ export const RU: Record<string, string> = {
   'ui.difficulty.endless.flavor': 'Волны повторяются по кругу, а сложность постепенно растёт.',
   'ui.difficulty.daily.name': 'Дневной эксперимент',
   'ui.difficulty.daily.short': 'Дневной',
-  'ui.difficulty.daily.flavor': 'Фиксированный seed дня: у всех игроков одинаковый забег.',
+  'ui.difficulty.daily.flavor': 'Фиксированный seed дня и событие недели: у всех игроков одинаковый забег.',
 
   // ── Modifier preview ─────────────────────────────────────────────────
   'ui.preview.subtitle': 'Враги получат следующие модификаторы:',
@@ -555,8 +555,8 @@ export const RU: Record<string, string> = {
   'tutorial.pause-enemy-stats': 'Модификаторы врагов от выбранной сложности: ХП, скорость и урон. Способности отдельных врагов смотри в Дневнике алхимика.',
   'tutorial.pause-blessings': 'Дар алхимика — благословение и проклятие, которые ты выбрал перед стартом Эпического или Древнего забега.',
   'tutorial.pause-mutators': 'Закон подземелья — модификатор текущей волны. В Эпическом и Древнем забеге он меняется перед каждой волной.',
-  'tutorial.pause-contracts': 'Контракты — цели забега. Прогресс и награды отображаются здесь же; провал не завершает забег, но отменяет приз.',
-  'tutorial.pause-endless': 'В Бесконечном режиме сложность растёт после 15-й волны; все активные модификаторы показаны здесь.',
+  'tutorial.pause-contracts': 'Контракты — цели Эпического и Древнего забегов. Прогресс и награды отображаются здесь же; провал не завершает забег, но отменяет приз.',
+  'tutorial.pause-endless': 'В Бесконечном режиме после каждого 15-волнового круга добавляются новые модификаторы; все активные показаны здесь.',
   'tutorial.pause-exit': 'Кнопка «Выйти в меню» досрочно завершает забег. Потраченный эпический или древний ключ при этом не возвращается.',
   // Main-menu walkthrough
   'tutorial.menu-intro': 'Это главное меню: здесь ты готовишься к забегу и забираешь награды между ними.',
@@ -640,7 +640,7 @@ Object.assign(RU, {
   // Cursed cards
   'cards.curse_flammable_mix.name': 'Договор Пламени',
   'cards.curse_flammable_mix.desc': 'Огненная лужа от склянок (8 урона/сек, 3 сек) · +15% к урону склянок · +15% к ХП врагов.',
-  'cards.curse_unstable_flask.name': 'Нестабильная колба (проклятая)',
+  'cards.curse_unstable_flask.name': 'Нестабильная склянка (проклятая)',
   'cards.curse_unstable_flask.desc': '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу взрыва склянок · +20% к откату склянок.',
   'cards.curse_frost_brew.name': 'Морозный обет',
   'cards.curse_frost_brew.desc': 'Стихия Мороза ко всем склянкам · +15% к радиусу взрыва склянок · +15% к ХП врагов.',
@@ -876,7 +876,7 @@ Object.assign(RU, {
   'ui.dailyEvent.boss.name': 'День боссов',
   'ui.dailyEvent.boss.flavor': 'Только боссовые волны — проверь сборку на прочность.',
   'ui.dailyEvent.boss.desc': 'Обычные волны заменены чередой боссовых стычек. Каждая волна требует запаса урона и контроля.',
-  'ui.dailyEvent.boss.line.waves': 'Только волны 5, 10, 15 + финальный босс (циклически)',
+  'ui.dailyEvent.boss.line.waves': 'Только боссовые волны 5, 10 и 15 (циклически)',
   'ui.dailyEvent.boss.line.stats': '+20% к здоровью, +10% к скорости, +10% к урону врагов',
   'ui.dailyEvent.boss.line.gold': '+50% к золоту с врагов',
 
@@ -885,7 +885,7 @@ Object.assign(RU, {
   'ui.dailyEvent.speedrun.flavor': 'Враги ускорены с самого старта.',
   'ui.dailyEvent.speedrun.desc': 'Враги бегут быстрее обычного — реагировать нужно молниеносно.',
   'ui.dailyEvent.speedrun.line.speed': '+50% к скорости врагов',
-  'ui.dailyEvent.speedrun.line.gold': '+30% к золоту',
+  'ui.dailyEvent.speedrun.line.gold': '+30% к золоту с врагов',
 
   // Thursday — Glass Cannon
   'ui.dailyEvent.glass_cannon.name': 'Стеклянная пушка',
@@ -893,7 +893,7 @@ Object.assign(RU, {
   'ui.dailyEvent.glass_cannon.desc': 'Склянки и враги наносят вдвое больше урона, а запас ХП у обеих сторон снижен. Один прорыв может закончить забег.',
   'ui.dailyEvent.glass_cannon.line.dmg': '×2 к урону склянок и врагов',
   'ui.dailyEvent.glass_cannon.line.hp': '−50% к ХП манекена и врагов',
-  'ui.dailyEvent.glass_cannon.line.gold': '+40% к золоту',
+  'ui.dailyEvent.glass_cannon.line.gold': '+40% к золоту с врагов',
 
   // Friday — Horde
   'ui.dailyEvent.horde.name': 'Толпа',
@@ -901,7 +901,7 @@ Object.assign(RU, {
   'ui.dailyEvent.horde.desc': 'В каждой волне на 50% больше врагов. Они слабее, но удержать линию сложнее.',
   'ui.dailyEvent.horde.line.count': '+50% к числу врагов в волне',
   'ui.dailyEvent.horde.line.hp': '−20% к ХП врагов',
-  'ui.dailyEvent.horde.line.gold': '+30% к золоту',
+  'ui.dailyEvent.horde.line.gold': '+30% к золоту с врагов',
 
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Изобилие',
@@ -909,14 +909,14 @@ Object.assign(RU, {
   'ui.dailyEvent.abundance.desc': 'Щедрые награды, прочный Манекен и более высокий урон от склянок. Комфортный день для экспериментов с билдами.',
   'ui.dailyEvent.abundance.line.hp': '+50% макс. ХП Манекена',
   'ui.dailyEvent.abundance.line.dmg': '+25% к урону склянок',
-  'ui.dailyEvent.abundance.line.gold': '+50% к золоту',
+  'ui.dailyEvent.abundance.line.gold': '+50% к золоту с врагов',
 
   // Sunday — Chaos
   'ui.dailyEvent.chaos.name': 'Хаос',
   'ui.dailyEvent.chaos.flavor': 'Никто не знает, что будет дальше.',
   'ui.dailyEvent.chaos.desc': 'Случайный модификатор бесконечного режима активен с самого начала забега.',
   'ui.dailyEvent.chaos.line.mod': 'Случайный модификатор активирован сразу',
-  'ui.dailyEvent.chaos.line.gold': '+60% к золоту',
+  'ui.dailyEvent.chaos.line.gold': '+60% к золоту с врагов',
 
   // ── Run Mutators («Закон Подземелья») ───────────────────────────────
   // Random wave modifiers rolled before each Epic (1) and Ancient (2) wave.
@@ -933,7 +933,7 @@ Object.assign(RU, {
   'ui.mutator.fog.line.range': '−25% к дальности стоек',
   'ui.mutator.fog.line.gold': '+30% к золоту с врагов',
 
-  'ui.mutator.fragile_flasks.name': 'Хрупкие колбы',
+  'ui.mutator.fragile_flasks.name': 'Хрупкие склянки',
   'ui.mutator.fragile_flasks.flavor': 'Сильнее бьют, но взрыв уже.',
   'ui.mutator.fragile_flasks.line.dmg': '+30% к урону склянок',
   'ui.mutator.fragile_flasks.line.radius': '−25% к радиусу взрыва склянок',
@@ -1020,7 +1020,7 @@ Object.assign(RU, {
   'ui.curse.tagline': 'ЦЕНА ДАРА',
 
   'ui.blessing.alchemy_grip.name': 'Хватка алхимика',
-  'ui.blessing.alchemy_grip.flavor': 'Тяжелее колба — крепче удар.',
+  'ui.blessing.alchemy_grip.flavor': 'Тяжелее склянка — крепче удар.',
   'ui.blessing.alchemy_grip.effect': '+25% к урону склянок',
   'ui.blessing.glassblower.name': 'Стеклодув',
   'ui.blessing.glassblower.flavor': 'Шире осколки — шире брызги.',
@@ -1044,7 +1044,7 @@ Object.assign(RU, {
   'ui.blessing.greedy_reaper.flavor': 'Каждое убийство — горсть монет.',
   'ui.blessing.greedy_reaper.effect': '+30% к золоту с врагов',
 
-  'ui.curse.fragile_flasks_curse.name': 'Хрупкие колбы',
+  'ui.curse.fragile_flasks_curse.name': 'Хрупкие склянки',
   'ui.curse.fragile_flasks_curse.flavor': 'Стекло крошится до удара.',
   'ui.curse.fragile_flasks_curse.effect': '−20% к урону склянок',
   'ui.curse.foggy_runes.name': 'Туманные руны',

@@ -145,7 +145,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   //    button. Closing the pause panel cancels the rest of the sequence.
   //
   //    Some sections are rendered conditionally inside the pause overlay
-  //    (contracts only show up on Daily, blessings on Epic / Ancient,
+  //    (contracts only show up on Epic / Ancient, blessings on Epic / Ancient,
   //    etc.). Steps with optional targets fall back to a centered tip
   //    when the targeted element isn't on-screen.
   {
@@ -194,14 +194,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'pause-contracts',
     trigger: { kind: 'pauseOpen' },
-    text: 'Контракты — цели забега. Прогресс и награды отображаются здесь же; провал не завершает забег, но отменяет приз.',
+    text: 'Контракты — цели Эпического и Древнего забегов. Прогресс и награды отображаются здесь же; провал не завершает забег, но отменяет приз.',
     target: { kind: 'hud', selector: '[data-tutorial-target="pause-contracts"]', arrow: 'left' },
     dismiss: { kind: 'next' },
   },
   {
     id: 'pause-endless',
     trigger: { kind: 'pauseOpen' },
-    text: 'В Бесконечном режиме сложность растёт после 15-й волны; все активные модификаторы показаны здесь.',
+    text: 'В Бесконечном режиме после каждого 15-волнового круга добавляются новые модификаторы; все активные показаны здесь.',
     target: { kind: 'hud', selector: '[data-tutorial-target="pause-endless"]', arrow: 'left' },
     dismiss: { kind: 'next' },
   },

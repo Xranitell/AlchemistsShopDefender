@@ -106,7 +106,7 @@ export interface Enemy {
   shieldRegenTimer: number;
   /** Rat-only (when carrying `zigzag_dash`): seconds until the next
    *  zig-zag impulse. While `zigzagTimer > 0` the rat moves along
-   *  `zigzagDir` perpendicular to the manequin axis instead of
+   *  `zigzagDir` perpendicular to the mannequin axis instead of
    *  straight at it. */
   zigzagTimer: number;
   /** Direction multiplier for the active zig-zag burst (+1 = right,

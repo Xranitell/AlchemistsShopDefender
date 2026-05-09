@@ -28,7 +28,7 @@ export type EnemyAbility =
   // Sappers latch onto the closest tower if they reach point-blank
   // range and EMP-disable it for several seconds before exploding,
   // applied on Эпический+ to make sapper waves a tower-protection
-  // problem rather than just a manequin-damage one.
+  // problem rather than just a mannequin-damage one.
   | 'disable_tower_on_contact'
   // Golems release a stun pulse on death that briefly silences nearby
   // towers, applied on Эпический+ so killing the front-liner has a
