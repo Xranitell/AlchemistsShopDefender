@@ -548,7 +548,7 @@ export const EN: Record<string, string> = {
   'ui.tutorial.done': 'Done',
   'tutorial.w1-throw': 'Hold LMB to aim, then release — the mannequin throws a vial.',
   'tutorial.w1-aim-bonus': 'A precise manual throw deals +20% damage. Time your shot and aim carefully.',
-  'tutorial.w2-cards': 'Nice! Every 3 waves you pick an upgrade card — effects stack and create synergies.',
+  'tutorial.cursed-cards': 'Cursed cards: each one bundles a strong effect with 1–2 extra random tweaks — those extras can be either bonuses or drawbacks. Read every line on the card; if the downsides look too painful, hit «Skip» instead.',
   'tutorial.w2-mannequin-shop': 'During prep, click the mannequin to open repair and shield options. Spend gold to restore HP or add a temporary 10-second shield.',
   'tutorial.w3-rune': 'Click a rune next to the mannequin to build a combat tower. Towers can only be built and upgraded during prep between waves.',
   'tutorial.w3-upgrade': 'Click a built tower to upgrade it. This is usually cheaper than building a new one and is also only available during prep.',
@@ -916,14 +916,13 @@ Object.assign(EN, {
   'ui.dailyEvent.horde.line.hp': '−20% enemy HP',
   'ui.dailyEvent.horde.line.gold': '+30% gold from enemies',
 
-  // Saturday — Abundance
-  'ui.dailyEvent.abundance.name': 'Abundance',
-  'ui.dailyEvent.abundance.flavor': 'Pockets stuffed with gold.',
-  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger vial damage. Every prep window also drops a bonus pile of gold into your purse — a comfortable day for build experiments.',
-  'ui.dailyEvent.abundance.line.hp': '+50% mannequin max HP',
-  'ui.dailyEvent.abundance.line.dmg': '+25% vial damage',
-  'ui.dailyEvent.abundance.line.bonus': '+25 gold at the start of every prep',
-  'ui.dailyEvent.abundance.line.gold': '+50% gold from enemies',
+  // Saturday — Cursed Day
+  'ui.dailyEvent.all_cursed.name': 'Cursed Day',
+  'ui.dailyEvent.all_cursed.flavor': 'Every deal is a deal with the dark.',
+  'ui.dailyEvent.all_cursed.desc': 'Every upgrade card offered between waves is cursed: a strong effect bundled with 1–2 random extras that can be either bonuses or drawbacks. No regular cards today — pick carefully or skip.',
+  'ui.dailyEvent.all_cursed.line.cursed': 'Every regular and "bonus" wave only offers cursed cards',
+  'ui.dailyEvent.all_cursed.line.skip': 'The "Skip" button is always available — you don\'t have to take the curse',
+  'ui.dailyEvent.all_cursed.line.gold': '+20% gold from enemies',
 
   // Sunday — Chaos
   'ui.dailyEvent.chaos.name': 'Chaos',

@@ -18,7 +18,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Игломет',
     cost: 60,
     damage: 6,
-    range: 220,
+    range: 330,
     fireRate: 2.4,
     projectileSpeed: 540,
     splashRadius: 0,
@@ -40,7 +40,7 @@ export const TOWERS: Record<string, TowerKind> = {
     // is in range. The shell still arcs and travels visibly, so a
     // far-side target gets a long flight time — the player reads the
     // shell crossing the screen and can plan around it.
-    range: 1500,
+    range: 2250,
     // One shot every ~8.9 seconds. The
     // mortar is a siege piece: it fires very rarely, but every shell
     // can land anywhere on the map, so the long cooldown keeps it
@@ -62,7 +62,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Ртутный распылитель',
     cost: 90,
     damage: 4,
-    range: 200,
+    range: 300,
     fireRate: 1.8,
     projectileSpeed: 420,
     splashRadius: 45,
@@ -75,7 +75,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Кислотный инжектор',
     cost: 100,
     damage: 8,
-    range: 240,
+    range: 360,
     fireRate: 1.2,
     projectileSpeed: 480,
     splashRadius: 0,
@@ -88,7 +88,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Эфирная катушка',
     cost: 130,
     damage: 7,
-    range: 230,
+    range: 345,
     fireRate: 1.4,
     projectileSpeed: 0,
     splashRadius: 0,
@@ -102,7 +102,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Сторожевой фонарь',
     cost: 80,
     damage: 0,
-    range: 200,
+    range: 300,
     fireRate: 0,
     projectileSpeed: 0,
     splashRadius: 0,

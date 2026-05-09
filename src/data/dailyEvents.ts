@@ -18,7 +18,7 @@ export type DailyEventId =
   | 'speedrun'
   | 'glass_cannon'
   | 'horde'
-  | 'abundance'
+  | 'all_cursed'
   | 'chaos';
 
 export interface DailyEventDef {
@@ -46,7 +46,7 @@ export interface DailyEventDef {
   spawnCountMult?: number;
   /** Halve the player's mannequin HP at run start (Glass Cannon). */
   playerHpMult?: number;
-  /** Multiplier applied to thrown-vial damage (Glass Cannon / Abundance). */
+  /** Multiplier applied to thrown-vial damage (e.g. Glass Cannon). */
   playerDamageMult?: number;
   /** Activate a "fog of war" / dark vignette in the renderer (Night Mode). */
   nightMode?: boolean;
@@ -56,9 +56,9 @@ export interface DailyEventDef {
    *  instead of just one. Used by the new "Хаос" event where the run
    *  starts under several twists at once. Defaults to 1 when omitted. */
   chaosModifierCount?: number;
-  /** Bonus gold injected at the start of each prep window. Used by the
-   *  Abundance event so the player feels the "carmans full of gold"
-   *  fantasy in addition to the +50% drop multiplier. */
+  /** Bonus gold injected at the start of each prep window. Reserved for
+   *  events that want a flat-gold drip on top of the multiplier-based
+   *  goldMult; currently unused. */
   bonusGoldPerWave?: number;
   /** Multiplier applied to the prep-window timer (and therefore to the
    *  perceived spawn cadence on the upcoming wave). <1 shortens the prep,
@@ -68,6 +68,11 @@ export interface DailyEventDef {
    *  the Boss event so the "every wave is a boss wave" twist is felt
    *  even after the boss-wave list loops. */
   miniBossEveryWave?: boolean;
+  /** Force EVERY upgrade-card draft of the run to roll from the cursed
+   *  pool, regardless of which wave just ended. Used by the
+   *  «Проклятый день» daily event so the run effectively turns into
+   *  a long string of curse-or-skip decisions. */
+  forceCursedCards?: boolean;
 }
 
 export const DAILY_EVENTS: DailyEventDef[] = [
@@ -201,29 +206,31 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     spawnCountMult: 1.5,
   },
   {
-    id: 'abundance',
+    // «Проклятый день» — every upgrade-card draft is forced into the
+    // cursed pool. Replaces the previous «Изобилие» event on Saturdays.
+    // The run keeps neutral combat stats but every offering bundles a
+    // strong unique with 1–2 random extras (positive OR negative), so
+    // the player has to weigh every draft against the skip pill.
+    id: 'all_cursed',
     weekday: 6, // Saturday
-    i18nName: 'ui.dailyEvent.abundance.name',
-    i18nFlavor: 'ui.dailyEvent.abundance.flavor',
-    i18nDescription: 'ui.dailyEvent.abundance.desc',
+    i18nName: 'ui.dailyEvent.all_cursed.name',
+    i18nFlavor: 'ui.dailyEvent.all_cursed.flavor',
+    i18nDescription: 'ui.dailyEvent.all_cursed.desc',
     i18nLines: [
-      'ui.dailyEvent.abundance.line.hp',
-      'ui.dailyEvent.abundance.line.dmg',
-      'ui.dailyEvent.abundance.line.bonus',
-      'ui.dailyEvent.abundance.line.gold',
+      'ui.dailyEvent.all_cursed.line.cursed',
+      'ui.dailyEvent.all_cursed.line.skip',
+      'ui.dailyEvent.all_cursed.line.gold',
     ],
-    icon: '✨',
-    color: '#7df9ff',
+    icon: '💀',
+    color: '#c084fc',
     modifier: {
       hpMult: 1,
       speedMult: 1,
       damageMult: 1,
-      goldMult: 1.5,
+      goldMult: 1.2,
       abilities: [],
     },
-    playerHpMult: 1.5,
-    playerDamageMult: 1.25,
-    bonusGoldPerWave: 25,
+    forceCursedCards: true,
   },
   {
     id: 'chaos',

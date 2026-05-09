@@ -21,7 +21,7 @@ import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier, INITIAL_PREP_DURATION } from './game/wave';
-import { applyCard, beginNewDraft, isCursedWave, rerollForAd, rerollForGold, rollCardOptions } from './game/cards';
+import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions, shouldDraftCursed } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { tickShake, resetShake } from './engine/shake';
 import { resetShockwaves } from './render/shockwaves';
@@ -757,7 +757,7 @@ function announceNewDungeonLawIfChanged(prev: readonly string[]): void {
 function renderCardOverlay(): void {
   const options = state.cardChoice.options;
   const idx = state.waveState.currentIndex;
-  const cursed = isCursedWave(idx + 1);
+  const cursed = shouldDraftCursed(state);
   const title = cursed
     ? t('ui.cards.cursedTitle', { n: idx + 1 })
     : t('ui.cards.waveCleared', { n: idx + 1 });
@@ -808,6 +808,24 @@ function renderCardOverlay(): void {
       },
     } : undefined,
   });
+
+  // First-time cursed-card walkthrough — single-step explainer that fires
+  // the very first time the player sees a cursed draft. Independent of
+  // the wave-based FTUE so it also surfaces during the new
+  // «Проклятый день» daily event for veteran players who never met a
+  // cursed offering before.
+  if (cursed && !meta.cursedTutorialDone) {
+    tutorial.startSequence('cursedDraft', {
+      onComplete: () => {
+        meta.cursedTutorialDone = true;
+        saveMeta(meta);
+      },
+      onSkip: () => {
+        meta.cursedTutorialDone = true;
+        saveMeta(meta);
+      },
+    });
+  }
 }
 
 function showEndlessModifierOverlay(): void {
