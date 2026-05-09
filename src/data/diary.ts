@@ -6,7 +6,7 @@
 // content change.
 //
 // • `ELEMENT_ENTRIES` — the seven elements that show up in tower /
-//   potion descriptions, with a short lore line and a list of features
+//   vial descriptions, with a short lore line and a list of features
 //   (reactions, status effects, recommended pairings).
 // • `BESTIARY_ENTRIES` — every enemy that the player can encounter, with
 //   a short flavour line and a list of behavioural features. The kill

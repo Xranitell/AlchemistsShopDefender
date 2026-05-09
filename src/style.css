@@ -391,7 +391,7 @@ body {
   /* Wrapper itself isn't interactive — only the BATTLE CTA and potion
      slots inside are. Keeping `pointer-events: none` on the column
      means finger taps on the gaps between the hint text, CTA, and
-     potion belt fall through to the canvas (so potion throws / rune
+     potion belt fall through to the canvas (so vial throws / rune
      clicks aimed at the centre-bottom area still register). */
   pointer-events: none;
 }
@@ -5887,7 +5887,7 @@ body {
   /* Bar wrapper itself isn't interactive — only the individual potion
      slots are. `pointer-events: none` here makes the 8 px gaps between
      slots fall through to the canvas so a finger tap that lands on a
-     gap (common on phones) triggers a potion throw instead of being
+     gap (common on phones) triggers a vial throw instead of being
      swallowed by the wrapper. */
   pointer-events: none;
   margin-top: 2px;
