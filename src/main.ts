@@ -463,7 +463,7 @@ function tick(dt: number): void {
   // Camera shake and screen-flash are purely visual decay timers — they
   // don't interact with the simulation, and freezing them while a
   // tutorial tooltip is up causes a stuck-shake bug: any shake that was
-  // already in flight (e.g. from the player's last potion impact right
+  // already in flight (e.g. from the player's last vial impact right
   // before the tutorial pop) keeps full envelope magnitude indefinitely
   // because `timeLeft` never decrements. Tick them regardless of the
   // tutorial freeze so they fade out on their normal schedule.
@@ -484,7 +484,7 @@ function tick(dt: number): void {
 
   // Click handling. The first frame of a press handles UI: rune points,
   // mannequin popup, etc. Subsequent held frames during a wave keep firing
-  // potions ("hold to throw") so the player doesn't have to spam-click.
+  // vials ("hold to throw") so the player doesn't have to spam-click.
   if (interactive && input.state.mousePressedThisFrame) {
     const worldClick = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
     handleClick(worldClick);
@@ -497,7 +497,7 @@ function tick(dt: number): void {
   ) {
     const worldAt = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
     // Don't auto-fire if the cursor is hovering a clickable game object —
-    // otherwise pressing on a rune / the mannequin would also throw a potion.
+    // otherwise pressing on a rune / the mannequin would also throw a vial.
     if (!isHoveringInteractive(worldAt)) {
       state.manualFireRequested = true;
     }
@@ -683,8 +683,8 @@ function handleClick(at: { x: number; y: number }): void {
   // only available during the preparation phase — repairing or buying a
   // shield mid-wave was never a designed loop and made the popup pop
   // open every time the player tapped near the centre of the arena to
-  // throw a potion. During a wave, fall through so the click becomes a
-  // potion throw / shop close as usual.
+  // throw a vial. During a wave, fall through so the click becomes a
+  // vial throw / shop close as usual.
   if (
     state.phase === 'preparing'
     && dist(at, state.mannequin.pos) < mannequinHitRadius()
@@ -695,7 +695,7 @@ function handleClick(at: { x: number; y: number }): void {
     return;
   }
 
-  // Otherwise, throw potion (only during wave or just before).
+  // Otherwise, throw a vial (only during wave or just before).
   if (state.phase === 'wave') {
     state.manualFireRequested = true;
   }

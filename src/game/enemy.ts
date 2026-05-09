@@ -718,7 +718,7 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   // Children are scattered as a small explosion: angles are evenly
   // distributed around the parent (with per-slot jitter so the ring
   // doesn't read as a perfect geometric pattern) and the radius is
-  // significantly larger than before so a single AoE potion can no
+  // significantly larger than before so a single AoE vial can no
   // longer wipe the whole brood while it's still clustered on the
   // parent's death pixel.
   const splitMaxGen = e.abilityTier === 'ancient' ? 2 : 1;

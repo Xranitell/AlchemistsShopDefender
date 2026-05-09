@@ -506,8 +506,8 @@ export function updateTowers(state: GameState, dt: number): void {
  *
  *  Reaction-spam guard: only the *primary* target carries the coil's full
  *  `aether` element so it can mark the enemy for follow-up Spark Cascade
- *  reactions when the player throws a fire potion. Hop targets take their
- *  damage as `'neutral'` so a single fire potion lobbed at a cluster of
+ *  reactions when the player throws a fire vial. Hop targets take their
+ *  damage as `'neutral'` so a single fire vial lobbed at a cluster of
  *  tesla'd enemies doesn't detonate three simultaneous Spark Cascades —
  *  one per pre-marked enemy — that previously melted even the fattest
  *  rivals in a single throw. The visual / audio of the chain stays the

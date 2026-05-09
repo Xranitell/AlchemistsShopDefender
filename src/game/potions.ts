@@ -205,7 +205,7 @@ export function goldMultiplier(state: GameState): number {
 }
 
 /** Consume a single storm charge if any, returning the damage multiplier
- *  to apply (1 if no charge). Called once per thrown potion. */
+ *  to apply (1 if no charge). Called once per thrown vial. */
 export function consumeStormCharge(state: GameState): number {
   if (state.stormCharges <= 0) return 1;
   state.stormCharges -= 1;

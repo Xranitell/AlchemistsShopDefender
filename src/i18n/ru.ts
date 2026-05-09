@@ -1211,7 +1211,7 @@ Object.assign(RU, {
   'diary.bestiary.sapper.features.2': 'Эпический/Древний: цепляется к ближайшей стойке и отключает её на 3–4 сек до взрыва.',
   'diary.bestiary.sapper.tier.normal': 'Подрывается на манекене за 1.5 сек.',
   'diary.bestiary.sapper.tier.epic': 'Цепляется к ближайшей стойке и отключает её ЭМИ-импульсом на 3 сек до подрыва.',
-  'diary.bestiary.sapper.tier.ancient': 'Дольше отключает стойку (4 сек), а взрыв оставляет ядовитую лужу.',
+  'diary.bestiary.sapper.tier.ancient': 'Дольше отключает стойку (4 сек), а взрыв оставляет огненную лужу.',
   'diary.bestiary.miniboss_slime.flavor': 'Огромный комок слизи, отъевшийся на павших собратьях.',
   'diary.bestiary.miniboss_slime.features.0': 'При смерти взрывом разбрасывает целую волну обычных слизней.',
   'diary.bestiary.miniboss_slime.features.1': 'Очень большой запас ХП.',
