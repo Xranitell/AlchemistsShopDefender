@@ -217,6 +217,28 @@ function requestFullscreenOnMobile(): void {
 ['pointerdown', 'touchstart'].forEach((evt) => {
   window.addEventListener(evt, requestFullscreenOnMobile, { once: true, passive: true });
 });
+
+// Global delegated UI click / hover SFX. Every <button> in the DOM
+// (menu, HUD, overlays, shops …) gets a satisfying click on press and
+// a subtle hover tick on pointer-enter — no need to wire each handler
+// individually.  The audio engine's per-id rate limiter silences any
+// duplicate calls that existing manual `playSfx` sites may still emit.
+document.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest?.('button');
+  if (btn) audio.playSfx('uiClick');
+}, { passive: true });
+// `pointerover` bubbles (unlike `mouseenter`) so a single document-level
+// listener catches every hover. We deduplicate per-button via the
+// `relatedTarget` check so dragging the cursor across child elements
+// inside the same button doesn't retrigger the tick.
+document.addEventListener('pointerover', (e) => {
+  const btn = (e.target as HTMLElement).closest?.('button');
+  if (!btn) return;
+  const from = (e as PointerEvent).relatedTarget as HTMLElement | null;
+  if (from && btn.contains(from)) return;
+  audio.playSfx('uiHover');
+}, { passive: true });
+
 const input = new Input(canvas);
 const overlay = new CardOverlay(overlayRoot);
 const metaOverlay = new MetaOverlay(overlayRoot);

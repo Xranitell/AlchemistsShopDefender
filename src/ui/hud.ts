@@ -447,10 +447,15 @@ export class Hud {
 
     if (state.gold !== this.prevGold) {
       this.goldLabel.textContent = `${state.gold}`;
+      // Only flash on gain — losses (paying for a tower) shouldn't read as
+      // a positive cue. The `prevGold === -1` sentinel covers the very first
+      // frame so we don't pulse on initial population.
+      if (this.prevGold >= 0 && state.gold > this.prevGold) pulseValue(this.goldLabel);
       this.prevGold = state.gold;
     }
     if (state.essence !== this.prevEssence) {
       this.essenceLabel.textContent = `${state.essence}`;
+      if (this.prevEssence >= 0 && state.essence > this.prevEssence) pulseValue(this.essenceLabel);
       this.prevEssence = state.essence;
     }
 
@@ -470,6 +475,7 @@ export class Hud {
     }
     if (waveText !== this.prevWaveValue) {
       this.waveValue.textContent = waveText;
+      if (this.prevWaveValue !== '') pulseValue(this.waveValue);
       this.prevWaveValue = waveText;
     }
 
@@ -873,6 +879,21 @@ export function roundIconButton(extraClass: string): HTMLDivElement {
 // `hud-sprite` class so existing CSS selectors keep working.
 function spriteEl(sprite: import('../render/sprite').BakedSprite, scale: number): HTMLCanvasElement {
   return spriteIcon(sprite, { scale, extraClass: 'hud-sprite' });
+}
+
+/** Toggle the `.value-pulse` class to flash a HUD number on change. The
+ *  CSS keyframe runs once and the listener auto-removes the class so the
+ *  next mutation can re-trigger it. */
+function pulseValue(el: HTMLElement): void {
+  el.classList.remove('value-pulse');
+  // Force reflow so re-adding the class re-runs the animation.
+  void el.offsetWidth;
+  el.classList.add('value-pulse');
+  el.addEventListener(
+    'animationend',
+    () => el.classList.remove('value-pulse'),
+    { once: true },
+  );
 }
 
 function activeModuleShortLabel(id: string): string {

@@ -4242,7 +4242,7 @@ body {
      shorter. Sitting flush under the timer lets the panel claim the full
      remaining left-rail height for blessings / laws / contracts. */
   left: 18px;
-  top: 110px;
+  top: 140px;
   max-height: calc(100vh - 200px);
   overflow-y: auto;
   display: flex;
@@ -11050,9 +11050,9 @@ body {
     /* Sit flush under the wave/break timer cluster — on phone the
        cluster is much shorter than on desktop, so the previous 152 px
        anchor left a visible gap. */
-    top: 88px;
+    top: 112px;
     max-width: 168px;
-    max-height: calc(100vh - 160px);
+    max-height: calc(100vh - 180px);
     gap: 5px;
   }
   .hud-run-section { gap: 2px; }
@@ -15129,4 +15129,156 @@ body {
 :root.motion-reduced .mm-runes,
 :root.motion-reduced .mm-atmo-mist {
   display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   GLOBAL UI MICRO-ANIMATIONS
+
+   Per-request "make all elements feel alive — simple but pleasant".
+   Adds three layers of feedback that apply automatically across the
+   whole UI without per-screen rewires:
+
+     • button hover  — gentle lift + brightness bump
+     • button active — subtle press-in scale-down
+     • overlay entry — fade + small rise when an overlay becomes visible
+     • stagger entry — cascading rise for grouped items inside an overlay
+       (opt-in via `.anim-stagger-in > *`)
+     • value pulse   — flash for HUD numbers when they change
+       (opt-in via toggling `.value-pulse` from JS)
+
+   All defaults use `:where(...)` so any existing per-component hover or
+   active rule keeps priority — we only fill in the gap for buttons that
+   had no hover feedback before. The existing `:root.motion-reduced`
+   accessibility toggle (and the OS `prefers-reduced-motion: reduce`
+   media query) silences every animation here so the chrome stays still
+   for players who asked for it.
+   ════════════════════════════════════════════════════════════════════ */
+
+:where(button) {
+  transition:
+    transform 140ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter    140ms ease,
+    box-shadow 160ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+@media (hover: hover) {
+  :where(button:not(:disabled)):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06) saturate(1.04);
+  }
+}
+:where(button:not(:disabled)):active {
+  transform: translateY(0) scale(0.97);
+  filter: brightness(0.94);
+  transition-duration: 60ms;
+}
+
+/* Overlay fade-in. The `.visible` class is toggled by every overlay
+   (CardOverlay, MetaOverlay, BlessingOverlay, …) via
+   `root.classList.add('visible')`, so this single rule covers every
+   panel the player sees. */
+@keyframes ui-overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ui-panel-rise-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+#overlay.visible {
+  animation: ui-overlay-fade-in 180ms ease-out both;
+}
+/* Panels inside the overlay rise on entry. Limited to the centred panel
+   variants — the fullscreen main menu / meta-tree have their own bespoke
+   intros and aren't included so we don't double-animate them. */
+#overlay.visible > .panel,
+#overlay.visible > .difficulty-panel,
+#overlay.visible > .crafting-panel,
+#overlay.visible > .endless-mod-panel,
+#overlay.visible > .revive-panel {
+  animation: ui-panel-rise-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Stagger entry — apply `.anim-stagger-in` to a flex/grid container and
+   each child fades+rises with a 50 ms cascade. */
+@keyframes ui-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-stagger-in > * {
+  animation: ui-stagger-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.anim-stagger-in > *:nth-child(1)  { animation-delay:  30ms; }
+.anim-stagger-in > *:nth-child(2)  { animation-delay:  80ms; }
+.anim-stagger-in > *:nth-child(3)  { animation-delay: 130ms; }
+.anim-stagger-in > *:nth-child(4)  { animation-delay: 180ms; }
+.anim-stagger-in > *:nth-child(5)  { animation-delay: 230ms; }
+.anim-stagger-in > *:nth-child(6)  { animation-delay: 280ms; }
+.anim-stagger-in > *:nth-child(7)  { animation-delay: 330ms; }
+.anim-stagger-in > *:nth-child(8)  { animation-delay: 380ms; }
+.anim-stagger-in > *:nth-child(9)  { animation-delay: 430ms; }
+.anim-stagger-in > *:nth-child(10) { animation-delay: 480ms; }
+
+/* Value pulse — toggle `.value-pulse` on a HUD number to flash it on
+   change. JS sites add the class, then remove it on `animationend`. */
+@keyframes ui-value-pulse {
+  0%   { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 0 currentColor); }
+  35%  { transform: scale(1.15); filter: brightness(1.45) drop-shadow(0 0 6px currentColor); }
+  100% { transform: scale(1);    filter: brightness(1) drop-shadow(0 0 0 currentColor); }
+}
+.value-pulse {
+  animation: ui-value-pulse 320ms ease-out both;
+  transform-origin: center;
+  display: inline-block;
+}
+
+/* HUD potion slot — a tiny float + rim shimmer when a potion becomes
+   ready (i.e. the slot loses `:disabled`). Uses an idle "breath" so the
+   slot reads as "ready to use" without screaming at the player. */
+.hud-potion-slot:not(:disabled) {
+  animation: ui-value-pulse 800ms ease-out;
+}
+
+/* ── Reduced-motion guards ───────────────────────────────────────────
+   Both the in-app `.motion-reduced` toggle and the OS-level
+   `prefers-reduced-motion: reduce` query disable the additions above.
+*/
+:root.motion-reduced :where(button) { transition: none; }
+:root.motion-reduced :where(button:not(:disabled)):hover,
+:root.motion-reduced :where(button:not(:disabled)):active {
+  transform: none;
+  filter: none;
+}
+:root.motion-reduced #overlay.visible,
+:root.motion-reduced #overlay.visible > .panel,
+:root.motion-reduced #overlay.visible > .difficulty-panel,
+:root.motion-reduced #overlay.visible > .crafting-panel,
+:root.motion-reduced #overlay.visible > .endless-mod-panel,
+:root.motion-reduced #overlay.visible > .revive-panel,
+:root.motion-reduced .anim-stagger-in > *,
+:root.motion-reduced .value-pulse,
+:root.motion-reduced .hud-potion-slot:not(:disabled) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button) { transition: none; }
+  :where(button:not(:disabled)):hover,
+  :where(button:not(:disabled)):active {
+    transform: none;
+    filter: none;
+  }
+  #overlay.visible,
+  #overlay.visible > .panel,
+  #overlay.visible > .difficulty-panel,
+  #overlay.visible > .crafting-panel,
+  #overlay.visible > .endless-mod-panel,
+  #overlay.visible > .revive-panel,
+  .anim-stagger-in > *,
+  .value-pulse,
+  .hud-potion-slot:not(:disabled) {
+    animation: none;
+  }
 }
