@@ -71,7 +71,7 @@ export const BLESSINGS: BlessingDef[] = [
     i18nFlavor: 'ui.blessing.alchemy_grip.flavor',
     i18nEffect: 'ui.blessing.alchemy_grip.effect',
     apply: (state) => {
-      // Heavier potion strikes — pairs well with builds that lean on
+      // Heavier vial strikes — pairs well with builds that lean on
       // direct mannequin throws over tower DPS.
       state.modifiers.potionDamageMult *= 1.25;
     },

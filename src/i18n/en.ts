@@ -179,7 +179,7 @@ export const EN: Record<string, string> = {
   'ui.difficulty.endless.flavor': 'Waves loop, and difficulty rises over time.',
   'ui.difficulty.daily.name': 'Daily Event',
   'ui.difficulty.daily.short': 'Daily',
-  'ui.difficulty.daily.flavor': 'A fixed daily seed: every player gets the same run.',
+  'ui.difficulty.daily.flavor': 'A fixed daily seed and weekday event: every player gets the same run.',
 
   // ── Exit-to-menu confirm (from the pause overlay) ───────────────────
   'ui.exitConfirm.title': 'Exit to menu?',
@@ -554,8 +554,8 @@ export const EN: Record<string, string> = {
   'tutorial.pause-enemy-stats': 'Enemy modifiers from the selected difficulty: HP, speed and damage. Per-enemy abilities are listed in the Alchemist’s Diary.',
   'tutorial.pause-blessings': 'Alchemist\u2019s Gift is the blessing and curse picked before an Epic or Ancient run.',
   'tutorial.pause-mutators': 'Dungeon Law is the current wave modifier. In Epic and Ancient runs it changes before each wave.',
-  'tutorial.pause-contracts': 'Contracts are run goals. Progress and rewards are shown here; failing one does not end the run, but cancels the prize.',
-  'tutorial.pause-endless': 'In Endless mode, difficulty rises after wave 15; all active modifiers are listed here.',
+  'tutorial.pause-contracts': 'Contracts are Epic and Ancient run goals. Progress and rewards are shown here; failing one does not end the run, but cancels the prize.',
+  'tutorial.pause-endless': 'In Endless mode, each 15-wave loop adds new modifiers; all active modifiers are listed here.',
   'tutorial.pause-exit': 'The "Exit to menu" button ends the run early. Any Epic or Ancient key spent at run start does not come back.',
   // Main-menu walkthrough
   'tutorial.menu-intro': 'This is the main menu: prepare for runs and collect rewards between them.',
@@ -635,8 +635,8 @@ Object.assign(EN, {
   // Cursed cards — unique effect + epic stats + drawback.
   'cards.curse_flammable_mix.name': 'Pact of Flame',
   'cards.curse_flammable_mix.desc': 'Burning puddle from potions (8 dmg/s for 3 s) · +15% potion damage · +15% enemy HP.',
-  'cards.curse_unstable_flask.name': 'Unstable Flask (Cursed)',
-  'cards.curse_unstable_flask.desc': '+50% chance of a secondary micro-blast (+50% extra dmg) · +13% potion blast radius · +20% potion cooldown.',
+  'cards.curse_unstable_flask.name': 'Unstable Vial (Cursed)',
+  'cards.curse_unstable_flask.desc': '+50% chance of a secondary micro-blast (+50% extra dmg) · +13% vial blast radius · +20% vial cooldown.',
   'cards.curse_frost_brew.name': 'Frostbound Vow',
   'cards.curse_frost_brew.desc': 'Frost element on all potions · +15% potion blast radius · +15% enemy HP.',
   'cards.curse_acid_brew.name': 'Acid Pact',
@@ -828,9 +828,9 @@ Object.assign(EN, {
 
   // Potions — names + descriptions
   'craft.potion.rage.name': 'Rage potion',
-  'craft.potion.rage.desc': '+30% flask damage for 25 seconds.',
+  'craft.potion.rage.desc': '+30% vial damage for 25 seconds.',
   'craft.potion.haste.name': 'Haste potion',
-  'craft.potion.haste.desc': '−40% flask cooldown for 25 seconds.',
+  'craft.potion.haste.desc': '−40% vial cooldown for 25 seconds.',
   'craft.potion.mech.name': "Mechanic's potion",
   'craft.potion.mech.desc': '+30% tower fire rate for 30 seconds.',
   'craft.potion.scope.name': "Scope potion",
@@ -842,7 +842,7 @@ Object.assign(EN, {
   'craft.potion.berserk.name': 'Berserk potion',
   'craft.potion.berserk.desc': '+25% tower damage and +10% incoming damage for 25 seconds.',
   'craft.potion.storm.name': 'Alchemy storm',
-  'craft.potion.storm.desc': 'The next 5 flasks deal ×1.6 damage.',
+  'craft.potion.storm.desc': 'The next 5 vials deal ×1.6 damage.',
   'craft.potion.frostMist.name': 'Ice fog',
   'craft.potion.frostMist.desc': 'Slows all enemies by 50% for 12 seconds.',
   'craft.potion.greed.name': 'Greed elixir',
@@ -872,7 +872,7 @@ Object.assign(EN, {
   'ui.dailyEvent.boss.name': 'Boss Day',
   'ui.dailyEvent.boss.flavor': 'Boss waves only — test whether your build can hold.',
   'ui.dailyEvent.boss.desc': 'Regular waves are replaced with a chain of boss encounters. Every wave demands enough damage and control.',
-  'ui.dailyEvent.boss.line.waves': 'Only waves 5, 10, 15 + final boss (looping)',
+  'ui.dailyEvent.boss.line.waves': 'Only boss waves 5, 10 and 15 (looping)',
   'ui.dailyEvent.boss.line.stats': '+20% health, +10% speed, +10% damage',
   'ui.dailyEvent.boss.line.gold': '+50% gold from enemies',
 
@@ -881,15 +881,15 @@ Object.assign(EN, {
   'ui.dailyEvent.speedrun.flavor': 'Enemies are accelerated from the start.',
   'ui.dailyEvent.speedrun.desc': 'Enemies run faster than usual — you need lightning-fast reactions.',
   'ui.dailyEvent.speedrun.line.speed': '+50% enemy speed',
-  'ui.dailyEvent.speedrun.line.gold': '+30% gold',
+  'ui.dailyEvent.speedrun.line.gold': '+30% gold from enemies',
 
   // Thursday — Glass Cannon
   'ui.dailyEvent.glass_cannon.name': 'Glass Cannon',
   'ui.dailyEvent.glass_cannon.flavor': 'Hit harder — and break easier.',
-  'ui.dailyEvent.glass_cannon.desc': 'Flasks and enemies deal double damage, while both sides have reduced HP. One breakthrough can end the run.',
-  'ui.dailyEvent.glass_cannon.line.dmg': '×2 flask and enemy damage',
+  'ui.dailyEvent.glass_cannon.desc': 'Vials and enemies deal double damage, while both sides have reduced HP. One breakthrough can end the run.',
+  'ui.dailyEvent.glass_cannon.line.dmg': '×2 vial and enemy damage',
   'ui.dailyEvent.glass_cannon.line.hp': '−50% mannequin and enemy HP',
-  'ui.dailyEvent.glass_cannon.line.gold': '+40% gold',
+  'ui.dailyEvent.glass_cannon.line.gold': '+40% gold from enemies',
 
   // Friday — Horde
   'ui.dailyEvent.horde.name': 'Horde',
@@ -897,22 +897,22 @@ Object.assign(EN, {
   'ui.dailyEvent.horde.desc': 'Every wave has 50% more enemies. They are weaker, but holding the line is harder.',
   'ui.dailyEvent.horde.line.count': '+50% enemies per wave',
   'ui.dailyEvent.horde.line.hp': '−20% enemy HP',
-  'ui.dailyEvent.horde.line.gold': '+30% gold',
+  'ui.dailyEvent.horde.line.gold': '+30% gold from enemies',
 
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Abundance',
   'ui.dailyEvent.abundance.flavor': 'Pockets stuffed with gold.',
-  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger flask damage. A comfortable day for build experiments.',
+  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger vial damage. A comfortable day for build experiments.',
   'ui.dailyEvent.abundance.line.hp': '+50% mannequin max HP',
-  'ui.dailyEvent.abundance.line.dmg': '+25% flask damage',
-  'ui.dailyEvent.abundance.line.gold': '+50% gold',
+  'ui.dailyEvent.abundance.line.dmg': '+25% vial damage',
+  'ui.dailyEvent.abundance.line.gold': '+50% gold from enemies',
 
   // Sunday — Chaos
   'ui.dailyEvent.chaos.name': 'Chaos',
   'ui.dailyEvent.chaos.flavor': 'No-one knows what comes next.',
   'ui.dailyEvent.chaos.desc': 'A random endless-mode modifier is active from the start of the run.',
   'ui.dailyEvent.chaos.line.mod': 'Random modifier active immediately',
-  'ui.dailyEvent.chaos.line.gold': '+60% gold',
+  'ui.dailyEvent.chaos.line.gold': '+60% gold from enemies',
 
   // ── Run Mutators ("Dungeon Law") ────────────────────────────────────
   'ui.mutator.label': 'Law',
@@ -924,10 +924,10 @@ Object.assign(EN, {
   'ui.mutator.fog.line.range': '−25% tower range',
   'ui.mutator.fog.line.gold': '+30% gold drops',
 
-  'ui.mutator.fragile_flasks.name': 'Fragile Flasks',
+  'ui.mutator.fragile_flasks.name': 'Fragile Vials',
   'ui.mutator.fragile_flasks.flavor': 'Hit harder, splash tighter.',
-  'ui.mutator.fragile_flasks.line.dmg': '+30% potion damage',
-  'ui.mutator.fragile_flasks.line.radius': '−25% potion blast radius',
+  'ui.mutator.fragile_flasks.line.dmg': '+30% vial damage',
+  'ui.mutator.fragile_flasks.line.radius': '−25% vial blast radius',
 
   'ui.mutator.steady_aim.name': 'Steady Aim',
   'ui.mutator.steady_aim.flavor': 'Slower, heavier shots.',
@@ -1011,8 +1011,8 @@ Object.assign(EN, {
   'ui.curse.tagline': 'PRICE OF THE BOON',
 
   'ui.blessing.alchemy_grip.name': "Alchemist's Grip",
-  'ui.blessing.alchemy_grip.flavor': 'Heavier flasks, deadlier strikes.',
-  'ui.blessing.alchemy_grip.effect': '+25% potion damage',
+  'ui.blessing.alchemy_grip.flavor': 'Heavier vials, deadlier strikes.',
+  'ui.blessing.alchemy_grip.effect': '+25% vial damage',
   'ui.blessing.glassblower.name': 'Glassblower',
   'ui.blessing.glassblower.flavor': 'Wider shatter, broader splash.',
   'ui.blessing.glassblower.effect': '+20% potion blast radius',
@@ -1035,9 +1035,9 @@ Object.assign(EN, {
   'ui.blessing.greedy_reaper.flavor': 'Every kill bleeds gold.',
   'ui.blessing.greedy_reaper.effect': '+30% gold drops',
 
-  'ui.curse.fragile_flasks_curse.name': 'Brittle Flasks',
+  'ui.curse.fragile_flasks_curse.name': 'Brittle Vials',
   'ui.curse.fragile_flasks_curse.flavor': 'Glass cracks before it strikes.',
-  'ui.curse.fragile_flasks_curse.effect': '−20% potion damage',
+  'ui.curse.fragile_flasks_curse.effect': '−20% vial damage',
   'ui.curse.foggy_runes.name': 'Foggy Runes',
   'ui.curse.foggy_runes.flavor': 'The runes blur in the haze.',
   'ui.curse.foggy_runes.effect': '−20% tower range',
