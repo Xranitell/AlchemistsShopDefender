@@ -410,38 +410,66 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
     state.modifiers.potionDamageMult *= ev.playerDamageMult;
   }
 
-  // Chaos: roll a random endless modifier and apply it immediately so the
-  // run starts under its effect. We don't surface the selector overlay —
-  // the player already saw the day's preview on the menu.
+  // Chaos: roll one or more random endless modifiers and apply them
+  // immediately so the run starts under their combined effect. We don't
+  // surface the selector overlay — the player already saw the day's
+  // preview on the menu.
   if (ev.chaosModifier) {
     const pool = ENDLESS_MODIFIER_POOL;
-    const idx = state.rng.int(0, pool.length);
-    const pick = pool[idx];
-    if (pick) {
-      state.endlessModifiers.push(pick);
-      switch (pick.id) {
-        case 'hp_x125':
-          state.difficultyModifier.hpMult += 0.25;
-          break;
-        case 'speed_x110':
-          state.difficultyModifier.speedMult += 0.10;
-          break;
-        case 'gold_minus10':
-          state.difficultyModifier.goldMult *= 0.90;
-          break;
-        case 'extra_enemies':
-          // Handled at spawn time via the endlessModifiers list.
-          break;
-        case 'elites_on_normal':
-          if (!state.difficultyModifier.abilities.includes('one_hit_shield')) {
-            state.difficultyModifier.abilities.push('one_hit_shield');
-          }
-          if (!state.difficultyModifier.abilities.includes('dash_back_on_hit')) {
-            state.difficultyModifier.abilities.push('dash_back_on_hit');
-          }
-          break;
-      }
+    const requested = Math.max(1, ev.chaosModifierCount ?? 1);
+    const count = Math.min(requested, pool.length);
+    // Pick `count` distinct modifiers without replacement so the same
+    // modifier never stacks twice on the run.
+    const pickedIds = new Set<string>();
+    const picks: typeof pool = [];
+    // Random sample first, then top up linearly so we always end up with
+    // the requested count even if RNG keeps colliding.
+    for (let attempts = 0; attempts < pool.length * 4 && picks.length < count; attempts++) {
+      const idx = state.rng.int(0, pool.length);
+      const candidate = pool[idx];
+      if (!candidate || pickedIds.has(candidate.id)) continue;
+      pickedIds.add(candidate.id);
+      picks.push(candidate);
     }
+    for (const candidate of pool) {
+      if (picks.length >= count) break;
+      if (pickedIds.has(candidate.id)) continue;
+      pickedIds.add(candidate.id);
+      picks.push(candidate);
+    }
+    for (const pick of picks) {
+      state.endlessModifiers.push(pick);
+      applyEndlessModifierToState(state, pick.id);
+    }
+  }
+}
+
+/** Apply a single endless-modifier id's stat / ability tweaks onto the
+ *  active state. Mirrors `confirmEndlessModifier` in `wave.ts` but kept
+ *  local to the daily-event apply path so multiple modifiers can be
+ *  layered on without surfacing the selector UI. */
+function applyEndlessModifierToState(state: GameState, id: string): void {
+  switch (id) {
+    case 'hp_x125':
+      state.difficultyModifier.hpMult += 0.25;
+      break;
+    case 'speed_x110':
+      state.difficultyModifier.speedMult += 0.10;
+      break;
+    case 'gold_minus10':
+      state.difficultyModifier.goldMult *= 0.90;
+      break;
+    case 'extra_enemies':
+      // Handled at spawn time via the endlessModifiers list.
+      break;
+    case 'elites_on_normal':
+      if (!state.difficultyModifier.abilities.includes('one_hit_shield')) {
+        state.difficultyModifier.abilities.push('one_hit_shield');
+      }
+      if (!state.difficultyModifier.abilities.includes('dash_back_on_hit')) {
+        state.difficultyModifier.abilities.push('dash_back_on_hit');
+      }
+      break;
   }
 }
 

@@ -136,10 +136,12 @@ export function newMetaSave(): MetaSave {
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
     selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
-    // Default music volume held to a quiet 25% of master so the
-    // soundtrack sits clearly behind SFX without the player having to
-    // dial it down on first launch.
-    musicVolume: 0.25,
+    // Default music slider sits at 100 %. The audio engine internally
+    // caps slider = 1.0 to a comfortable amplitude (`MUSIC_MAX_GAIN`),
+    // so the soundtrack still sits behind SFX without the player having
+    // to dial it down on first launch — they'd just hear the slider as
+    // a normalised "100 % = comfortable max" knob now.
+    musicVolume: 1.0,
     motionMode: defaultMotionModeForNewSave(),
     tutorialDone: false,
     pauseTutorialDone: false,
@@ -256,7 +258,7 @@ export function loadMeta(): MetaSave {
         ? (data.selectedAuraModule as string)
         : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
-      musicVolume: clampVolume(data.musicVolume, 0.25),
+      musicVolume: clampVolume(data.musicVolume, 1.0),
       // Migration: pre-motion-mode saves had no setting. Carry over the
       // platform default so existing Android players who had been
       // suffering through the full animation set quietly fall to

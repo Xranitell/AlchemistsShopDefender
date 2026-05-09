@@ -148,6 +148,11 @@ export const RU: Record<string, string> = {
   'ui.settings.stat.ancientKeys': 'Древние ключи: ',
   'ui.settings.reset': 'Сбросить прогресс',
   'ui.settings.resetConfirm': 'Сбросить весь прогресс? Это действие нельзя отменить.',
+  'ui.resetConfirm.title': 'Сбросить прогресс?',
+  'ui.resetConfirm.body': 'Все мета-улучшения, ключи, эссенция и таланты будут утеряны без возможности восстановить.',
+  'ui.resetConfirm.warning': 'Это действие нельзя отменить.',
+  'ui.resetConfirm.cancel': 'Отмена',
+  'ui.resetConfirm.confirm': 'Сбросить',
   'ui.settings.close': 'Закрыть',
   'ui.settings.audio': 'Звук',
   'ui.settings.sfx': 'Эффекты',
@@ -870,52 +875,60 @@ Object.assign(RU, {
   'ui.dailyEvent.night.flavor': 'Свет потушен — арена в темноте.',
   'ui.dailyEvent.night.desc': 'Видимость снижена до светового круга вокруг манекена. Враги подкрадываются из тьмы — играй на слух и реакцию.',
   'ui.dailyEvent.night.line.vis': 'Тёмная виньетка вокруг арены',
+  'ui.dailyEvent.night.line.empOnContact': 'Враги при контакте на пару секунд гасят стойку (EMP)',
   'ui.dailyEvent.night.line.gold': '+40% к золоту с врагов',
 
   // Tuesday — Boss day (former Boss Challenge)
   'ui.dailyEvent.boss.name': 'День боссов',
-  'ui.dailyEvent.boss.flavor': 'Только боссовые волны — проверь сборку на прочность.',
-  'ui.dailyEvent.boss.desc': 'Обычные волны заменены чередой боссовых стычек. Каждая волна требует запаса урона и контроля.',
+  'ui.dailyEvent.boss.flavor': 'Каждая волна — босс. Проверь сборку на прочность.',
+  'ui.dailyEvent.boss.desc': 'Обычные волны заменены чередой боссовых стычек, а в каждой обычной волне дополнительно появляется мини-босс. Всё подсвечено целебной аурой, чтобы вы не отвлекались.',
   'ui.dailyEvent.boss.line.waves': 'Только боссовые волны 5, 10 и 15 (циклически)',
+  'ui.dailyEvent.boss.line.miniBoss': 'В каждой обычной волне появляется мини-босс',
+  'ui.dailyEvent.boss.line.heal': 'Боссы окружены аурой лечения',
   'ui.dailyEvent.boss.line.stats': '+20% к здоровью, +10% к скорости, +10% к урону врагов',
   'ui.dailyEvent.boss.line.gold': '+50% к золоту с врагов',
 
   // Wednesday — Speedrun
   'ui.dailyEvent.speedrun.name': 'Гонка на время',
   'ui.dailyEvent.speedrun.flavor': 'Враги ускорены с самого старта.',
-  'ui.dailyEvent.speedrun.desc': 'Враги бегут быстрее обычного — реагировать нужно молниеносно.',
+  'ui.dailyEvent.speedrun.desc': 'Враги бегут быстрее обычного и регулярно делают зигзаг-рывок. Окно подготовки между волнами укорочено — реагировать нужно молниеносно.',
   'ui.dailyEvent.speedrun.line.speed': '+50% к скорости врагов',
+  'ui.dailyEvent.speedrun.line.dash': 'Все враги делают резкий рывок вперёд',
+  'ui.dailyEvent.speedrun.line.prep': '−40% к длительности подготовки между волнами',
   'ui.dailyEvent.speedrun.line.gold': '+30% к золоту с врагов',
 
   // Thursday — Glass Cannon
   'ui.dailyEvent.glass_cannon.name': 'Стеклянная пушка',
   'ui.dailyEvent.glass_cannon.flavor': 'Бьёшь сильнее — но и сам хрупче.',
-  'ui.dailyEvent.glass_cannon.desc': 'Склянки и враги наносят вдвое больше урона, а запас ХП у обеих сторон снижен. Один прорыв может закончить забег.',
+  'ui.dailyEvent.glass_cannon.desc': 'Склянки и враги наносят вдвое больше урона, а запас ХП у обеих сторон снижен. Каждая смерть оставляет EMP-импульс, гасящий стойки рядом.',
   'ui.dailyEvent.glass_cannon.line.dmg': '×2 к урону склянок и врагов',
   'ui.dailyEvent.glass_cannon.line.hp': '−50% к ХП манекена и врагов',
+  'ui.dailyEvent.glass_cannon.line.stun': 'Гибнущие враги выпускают EMP-импульс по ближайшим стойкам',
   'ui.dailyEvent.glass_cannon.line.gold': '+40% к золоту с врагов',
 
   // Friday — Horde
   'ui.dailyEvent.horde.name': 'Толпа',
   'ui.dailyEvent.horde.flavor': 'Их слишком много.',
-  'ui.dailyEvent.horde.desc': 'В каждой волне на 50% больше врагов. Они слабее, но удержать линию сложнее.',
+  'ui.dailyEvent.horde.desc': 'В каждой волне на 50% больше врагов. Они слабее, но при попадании отскакивают назад — сцепить взрывы сложнее.',
   'ui.dailyEvent.horde.line.count': '+50% к числу врагов в волне',
+  'ui.dailyEvent.horde.line.dashBack': 'Враги отскакивают назад при попадании склянки',
   'ui.dailyEvent.horde.line.hp': '−20% к ХП врагов',
   'ui.dailyEvent.horde.line.gold': '+30% к золоту с врагов',
 
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Изобилие',
   'ui.dailyEvent.abundance.flavor': 'Карманы трещат от золота.',
-  'ui.dailyEvent.abundance.desc': 'Щедрые награды, прочный Манекен и более высокий урон от склянок. Комфортный день для экспериментов с билдами.',
+  'ui.dailyEvent.abundance.desc': 'Щедрые награды, прочный Манекен и более высокий урон от склянок. В начале каждой подготовки в казну падает бонусное золото — комфортный день для экспериментов с билдами.',
   'ui.dailyEvent.abundance.line.hp': '+50% макс. ХП Манекена',
   'ui.dailyEvent.abundance.line.dmg': '+25% к урону склянок',
+  'ui.dailyEvent.abundance.line.bonus': '+25 золота в начале каждой подготовки',
   'ui.dailyEvent.abundance.line.gold': '+50% к золоту с врагов',
 
   // Sunday — Chaos
   'ui.dailyEvent.chaos.name': 'Хаос',
   'ui.dailyEvent.chaos.flavor': 'Никто не знает, что будет дальше.',
-  'ui.dailyEvent.chaos.desc': 'Случайный модификатор бесконечного режима активен с самого начала забега.',
-  'ui.dailyEvent.chaos.line.mod': 'Случайный модификатор активирован сразу',
+  'ui.dailyEvent.chaos.desc': 'С самого старта забега сразу активны три случайных модификатора бесконечного режима — комбинации каждый день уникальны.',
+  'ui.dailyEvent.chaos.line.mod': 'Сразу активны 3 случайных модификатора',
   'ui.dailyEvent.chaos.line.gold': '+60% к золоту с врагов',
 
   // ── Run Mutators («Закон Подземелья») ───────────────────────────────

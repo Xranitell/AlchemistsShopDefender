@@ -70,10 +70,10 @@ export class SettingsOverlay {
     resetBtn.textContent = t('ui.settings.reset');
     resetBtn.addEventListener('click', () => {
       audio.playSfx('uiClick');
-      if (confirm(t('ui.settings.resetConfirm'))) {
+      openResetConfirmDialog(panel, () => {
         resetMeta();
         opts.onReset();
-      }
+      });
     });
     resetSection.appendChild(resetBtn);
     body.appendChild(resetSection);
@@ -254,4 +254,72 @@ function buildVolumeSlider(opts: {
   row.appendChild(slider);
   row.appendChild(valueLabel);
   return row;
+}
+
+/** Custom in-app confirmation dialog for the destructive "Reset progress"
+ *  action. Replaces the native `window.confirm()` so the prompt matches the
+ *  game's pixel-art chrome and works inside Yandex Games where the native
+ *  modal can be suppressed or themed inconsistently. Mirrors the structure
+ *  of `pause-exit-confirm` (see `pauseStatsOverlay.ts`) and reuses the same
+ *  CSS family of classes via the `.pause-exit-*` overlay style. */
+function openResetConfirmDialog(host: HTMLElement, onConfirm: () => void): void {
+  // Don't stack a second dialog if the player double-clicks the reset
+  // button before the first has resolved.
+  if (host.querySelector('.pause-exit-confirm.settings-reset-confirm') !== null) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pause-exit-confirm settings-reset-confirm';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'pause-exit-dialog';
+
+  const title = document.createElement('div');
+  title.className = 'pause-exit-title';
+  title.textContent = t('ui.resetConfirm.title');
+  dialog.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'pause-exit-body';
+  body.textContent = t('ui.resetConfirm.body');
+  dialog.appendChild(body);
+
+  const warn = document.createElement('div');
+  warn.className = 'pause-exit-warning';
+  warn.textContent = t('ui.resetConfirm.warning');
+  dialog.appendChild(warn);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'pause-exit-buttons';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'pause-exit-btn pause-exit-stay';
+  cancelBtn.textContent = t('ui.resetConfirm.cancel');
+  cancelBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+    host.classList.remove('confirming-reset');
+  });
+  buttons.appendChild(cancelBtn);
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'pause-exit-btn pause-exit-confirm-btn';
+  confirmBtn.textContent = t('ui.resetConfirm.confirm');
+  confirmBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+    host.classList.remove('confirming-reset');
+    onConfirm();
+  });
+  buttons.appendChild(confirmBtn);
+
+  dialog.appendChild(buttons);
+  overlay.appendChild(dialog);
+  host.appendChild(overlay);
+  host.classList.add('confirming-reset');
+
+  // Default focus on the safer cancel button so a stray Enter keypress
+  // doesn't wipe the player's account.
+  requestAnimationFrame(() => cancelBtn.focus());
 }

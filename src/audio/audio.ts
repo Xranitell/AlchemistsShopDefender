@@ -49,6 +49,25 @@ interface SfxOptions {
 const RATE_LIMIT_WINDOW_MS = 100;
 const RATE_LIMIT_PER_ID = 6;
 
+/** Linear-amplitude cap applied at the music slider's max position.
+ *
+ * The bundled ambient mp3 (`The Copper Crucible`) was mastered hot enough
+ * that a raw 1.0 gain on top of `masterGain = 0.85` drowned out every
+ * SFX channel and felt 3-4× louder than what users actually wanted.
+ * Tested comfortable maximum sat around the 18 % mark on the old linear
+ * slider, so we anchor the new slider's 100 % to roughly that level
+ * (slight headroom for players who actually want it loud). */
+const MUSIC_MAX_GAIN = 0.22;
+
+/** Map a 0..1 slider value to the actual gain node value. Linear scaling
+ *  capped at `MUSIC_MAX_GAIN` so the slider behaves like a real volume
+ *  knob: 0 % silent, 50 % half-volume, 100 % comfortable max — never
+ *  earsplitting. Kept as a free function so both `applyGains()` and the
+ *  initial gain assignment in `ensureStarted()` agree. */
+function musicSliderToGain(slider: number): number {
+  return MUSIC_MAX_GAIN * clamp01(slider);
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -56,10 +75,15 @@ export class AudioEngine {
   private musicGain: GainNode | null = null;
 
   /** Persisted user volumes (0..1). Apply on top of the per-channel gain.
-   *  Music defaults to 0.7× the previous baseline so the menu loop and
-   *  battle ambient track no longer drown out SFX on a fresh save. */
+   *  These represent the slider's raw position; the music slider goes
+   *  through `musicSliderToGain()` before being written to the gain node
+   *  so the bundled ambient track stays inside a comfortable amplitude
+   *  range even at slider = 100 %. Default music slider is 1.0 — with
+   *  `MUSIC_MAX_GAIN = 0.22` that lands close to the previous (loudest
+   *  comfortable) listening position; players who want it quieter just
+   *  drag the slider down. */
   private sfxVolume = 0.6;
-  private musicVolume = 0.25;
+  private musicVolume = 1.0;
   private muted = false;
 
   /** Currently scheduled music: source nodes + the track id. Switching a
@@ -134,7 +158,7 @@ export class AudioEngine {
     this.sfxGain.connect(this.masterGain);
 
     this.musicGain = ctx.createGain();
-    this.musicGain.gain.value = this.musicVolume;
+    this.musicGain.gain.value = musicSliderToGain(this.musicVolume);
     this.musicGain.connect(this.masterGain);
 
     this.noiseBuffer = makeNoiseBuffer(ctx, 0.4);
@@ -345,7 +369,7 @@ export class AudioEngine {
     this.sfxGain.gain.cancelScheduledValues(t);
     this.sfxGain.gain.setTargetAtTime(this.sfxVolume, t, 0.02);
     this.musicGain.gain.cancelScheduledValues(t);
-    this.musicGain.gain.setTargetAtTime(this.musicVolume, t, 0.02);
+    this.musicGain.gain.setTargetAtTime(musicSliderToGain(this.musicVolume), t, 0.02);
   }
 
   private allowFire(id: SfxId): boolean {
