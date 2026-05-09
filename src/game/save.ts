@@ -1,8 +1,6 @@
 import {
   DEFAULT_ACTIVE_MODULE,
-  DEFAULT_AURA_MODULE,
   isActiveModule,
-  isAuraModule,
 } from '../data/modules';
 import {
   ALL_INGREDIENT_IDS,
@@ -61,10 +59,11 @@ export interface MetaSave {
   bonusRerolls: number;
   // Crafting level (shop upgrades)
   craftingLevel: number;
-  /** Mannequin module loadout (GDD §11.2). One active + one aura. Defaults
-   *  preserve pre-loadout behaviour: lightning Overload + magnet aura. */
+  /** Mannequin Overload selection (GDD §11.2). The previous "Aura"
+   *  passive slot was removed in the Overload-only redesign — we keep a
+   *  single active ability that the player triggers when the Overload
+   *  bar is full. */
   selectedActiveModule: string;
-  selectedAuraModule: string;
   /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
   sfxVolume: number;
   musicVolume: number;
@@ -139,7 +138,6 @@ export function newMetaSave(): MetaSave {
     bonusRerolls: 0,
     craftingLevel: 1,
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
-    selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
     // Default music slider sits at 100 %. The audio engine internally
     // caps slider = 1.0 to a comfortable amplitude (`MUSIC_MAX_GAIN`),
@@ -254,15 +252,12 @@ export function loadMeta(): MetaSave {
       bpClaimedPremium: Array.isArray(data.bpClaimedPremium) ? data.bpClaimedPremium : [],
       bonusRerolls: data.bonusRerolls ?? 0,
       craftingLevel: data.craftingLevel ?? 1,
-      // Migration: existing saves predate the loadout. Default to the
-      // pre-loadout behaviour (lightning + magnet) and validate against the
-      // current module catalog so removed ids fall back gracefully.
+      // Migration: pre-Overload-redesign saves stored a separate aura id;
+      // it's silently dropped here. Pre-loadout saves had no module field
+      // at all and fall back to the default Overload (lightning).
       selectedActiveModule: isActiveModule(data.selectedActiveModule ?? '')
         ? (data.selectedActiveModule as string)
         : DEFAULT_ACTIVE_MODULE,
-      selectedAuraModule: isAuraModule(data.selectedAuraModule ?? '')
-        ? (data.selectedAuraModule as string)
-        : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
       musicVolume: clampVolume(data.musicVolume, 1.0),
       // Migration: pre-motion-mode saves had no setting. Carry over the

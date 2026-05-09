@@ -570,18 +570,6 @@ function tick(dt: number): void {
       }
     }
 
-    // Vital Pulse aura — heals the mannequin while a wave is in progress.
-    // The trickle is intentionally small (1 HP/s) so it stacks meaningfully
-    // with Auto-Repair without trivialising tougher waves.
-    if (state.phase === 'wave' && state.modifiers.vitalPulseRegen && !state.revivePaused) {
-      if (state.mannequin.hp < state.mannequin.maxHp) {
-        state.mannequin.hp = Math.min(
-          state.mannequin.maxHp,
-          state.mannequin.hp + 1 * dt,
-        );
-      }
-    }
-
     // Run-contract bookkeeping: track the highest gold balance ever seen
     // during the run for the gold-hoarder contract. Cheap — a single
     // numeric compare per frame.

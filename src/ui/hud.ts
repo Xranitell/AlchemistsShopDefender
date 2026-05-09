@@ -879,10 +879,12 @@ function activeModuleShortLabel(id: string): string {
   switch (id) {
     case 'lightning': return t('ui.hud.module.lightning');
     case 'chronos': return t('ui.hud.module.chronos');
-    case 'transmute': return t('ui.hud.module.transmute');
     case 'alch_dome': return t('ui.hud.module.alch_dome');
     case 'frost_nova': return t('ui.hud.module.frost_nova');
     case 'vortex': return t('ui.hud.module.vortex');
+    case 'meteor_shower': return t('ui.hud.module.meteor_shower');
+    case 'death_mark': return t('ui.hud.module.death_mark');
+    case 'element_prism': return t('ui.hud.module.element_prism');
     default: return '';
   }
 }

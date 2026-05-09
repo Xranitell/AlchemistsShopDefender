@@ -297,11 +297,10 @@ export function buildInitialState(
     tempShieldTime: 0,
     tempShieldReduction: 0,
     golemHeartCharges: 0,
-    // Default loadout — overwritten by `applyMetaUpgrades` at run start.
+    // Default Overload — overwritten by `applyMetaUpgrades` at run start.
     activeModuleId: 'lightning',
-    auraModuleId: 'ether_amp',
-    transmuteTimer: 0,
-    transmuteGoldMult: 1,
+    deathMarks: [],
+    meteorImpacts: [],
     reviveUsed: false,
     revivePaused: false,
     // Crafted potions (loaded from MetaSave.inventory at run start)
