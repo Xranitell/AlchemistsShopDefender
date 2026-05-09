@@ -82,9 +82,9 @@ export class ModifierPreviewOverlay {
       li.textContent = tWithFallback(`ui.preview.${opts.mode}.line${i}`, def.previewLines[i]!);
       list.appendChild(li);
     }
-    // Mention the random "dungeon law" mutator(s) that will roll for this
-    // run — the actual roll happens at run start, so we only advertise the
-    // count here, not the picks.
+    // Mention the random "dungeon law" mutator(s) that re-roll before waves.
+    // The actual picks happen in wave flow, so we only advertise the count
+    // here, not the picks.
     const mutCount = mutatorCountForDifficulty(opts.mode);
     if (mutCount > 0) {
       const li = document.createElement('li');

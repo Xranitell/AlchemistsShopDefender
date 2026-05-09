@@ -47,7 +47,7 @@ import { metaNodeName, metaNodeDesc } from '../data/metaTree';
 import { buildDramaticStage, appendGlitchTitleChars } from './dramaticStage';
 
 const BRANCH_COLORS: Record<MetaBranch, string> = {
-  potions: '#c084fc',     // purple — Мастер колб
+  potions: '#c084fc',     // purple — Мастер склянок
   engineering: '#ff8c5a', // orange — Мастер стоек
   survival: '#a3e36a',    // green  — Выживаемость
 };

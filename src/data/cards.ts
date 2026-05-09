@@ -280,13 +280,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_unstable_flask',
     name: 'Нестабильная колба (проклятая)',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу склянок · +20% к откату склянок.',
+    desc: '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу взрыва склянок · +20% к откату склянок.',
   },
   {
     id: 'curse_frost_brew',
     name: 'Морозный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Мороза ко всем склянкам · +15% к радиусу склянок · +15% к ХП врагов.',
+    desc: '+стихия Мороза ко всем склянкам · +15% к радиусу взрыва склянок · +15% к ХП врагов.',
   },
   {
     id: 'curse_acid_brew',
@@ -298,7 +298,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_mercury_brew',
     name: 'Ртутный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Ртути ко всем склянкам · +13% к урону и +10% к радиусу склянок · −25% к золоту.',
+    desc: '+стихия Ртути ко всем склянкам · +13% к урону и +10% к радиусу взрыва склянок · −25% к золоту.',
   },
   {
     id: 'curse_aether_brew',
@@ -316,7 +316,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_triple_throw',
     name: 'Тройной обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+веер из 3 склянок каждые 8 с · −10% к откату склянок · −20% к радиусу склянок.',
+    desc: '+веер из 3 склянок каждые 8 с · −10% к откату склянок · −20% к радиусу взрыва склянок.',
   },
 
   // Engineering / towers
