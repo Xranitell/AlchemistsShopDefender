@@ -9,12 +9,9 @@ import { spriteIcon } from '../render/spriteIcon';
 import { masteryEssenceMult } from '../game/meta';
 import {
   ACTIVE_MODULES,
-  AURA_MODULES,
   isActiveModule,
-  isAuraModule,
   moduleName,
   type ActiveModuleId,
-  type AuraModuleId,
 } from '../data/modules';
 import { moduleGlyph } from './loadoutOverlay';
 
@@ -722,9 +719,9 @@ function shopBackdropSVG(): string {
  * the player will fight on. See the `centerCol` block above. */
 
 
-/** Builds the «Снаряжение Манекена» card on the main menu — a compact
- *  read-only widget that shows the currently-equipped active module and
- *  aura side-by-side. Click opens the dedicated loadout picker overlay. */
+/** Builds the «Перегрузка» card on the main menu — a compact read-only
+ *  widget that shows the currently-equipped Overload ability. Click
+ *  opens the dedicated loadout picker overlay. */
 function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
   const card = document.createElement('button');
   card.type = 'button';
@@ -742,12 +739,8 @@ function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
   const activeId = isActiveModule(meta.selectedActiveModule)
     ? (meta.selectedActiveModule as ActiveModuleId)
     : (Object.keys(ACTIVE_MODULES)[0] as ActiveModuleId);
-  const auraId = isAuraModule(meta.selectedAuraModule)
-    ? (meta.selectedAuraModule as AuraModuleId)
-    : (Object.keys(AURA_MODULES)[0] as AuraModuleId);
 
-  slots.appendChild(buildLoadoutSlot('active', activeId));
-  slots.appendChild(buildLoadoutSlot('aura', auraId));
+  slots.appendChild(buildLoadoutSlot(activeId));
   card.appendChild(slots);
 
   const hint = document.createElement('div');
@@ -759,30 +752,28 @@ function buildLoadoutCard(meta: MetaSave, onOpen: () => void): HTMLElement {
   return card;
 }
 
-/** One inline `[icon] [name]` slot inside the loadout widget, tagged
- *  with the slot kind so CSS can colour the rim differently for active
- *  vs aura. */
-function buildLoadoutSlot(slot: 'active' | 'aura', id: string): HTMLElement {
+/** Inline `[icon] [name]` slot inside the loadout widget. The previous
+ *  Aura sub-slot was removed in the Overload-only redesign — only one
+ *  ability is equipped at a time. */
+function buildLoadoutSlot(id: string): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.className = `mm-loadout-slot mm-loadout-slot-${slot}`;
+  wrap.className = 'mm-loadout-slot mm-loadout-slot-active';
 
   const ico = document.createElement('span');
   ico.className = 'mm-loadout-slot-icon';
-  ico.textContent = moduleGlyph(slot, id);
+  ico.textContent = moduleGlyph(id);
   wrap.appendChild(ico);
 
   const text = document.createElement('span');
   text.className = 'mm-loadout-slot-text';
   const tag = document.createElement('span');
   tag.className = 'mm-loadout-slot-tag';
-  tag.textContent = slot === 'active'
-    ? t('ui.menu.loadoutActiveTag')
-    : t('ui.menu.loadoutAuraTag');
+  tag.textContent = t('ui.menu.loadoutActiveTag');
   text.appendChild(tag);
 
   const name = document.createElement('span');
   name.className = 'mm-loadout-slot-name';
-  const def = slot === 'active' ? ACTIVE_MODULES[id as ActiveModuleId] : AURA_MODULES[id as AuraModuleId];
+  const def = ACTIVE_MODULES[id as ActiveModuleId];
   name.textContent = def ? moduleName(def) : '—';
   text.appendChild(name);
   wrap.appendChild(text);

@@ -7,15 +7,8 @@ import {
 } from '../data/metaTree';
 import {
   ACTIVE_MODULES,
-  AURA_MODULES,
   DEFAULT_ACTIVE_MODULE,
-  DEFAULT_AURA_MODULE,
-  ETHER_AMP_FIRE_RATE,
-  ELEM_RESON_DAMAGE,
-  GOLD_AURA_MULT,
-  LONG_RANGE_MULT,
   isActiveModule,
-  isAuraModule,
 } from '../data/modules';
 import type { MetaSave } from './save';
 import type { GameState } from './state';
@@ -57,48 +50,21 @@ export function applyMetaUpgrades(state: GameState, meta: MetaSave): void {
   applyModuleLoadout(state, meta);
 }
 
-/** Mirror the chosen module loadout into the run state and apply the aura's
- *  passive effects. Active modules don't apply anything until Overload is
- *  triggered — they're handled by `tryActivateOverload` reading
- *  `state.activeModuleId`. */
+/** Mirror the chosen Overload selection into the run state. Overloads
+ *  are *active*: they don't apply anything until the player triggers the
+ *  Overload bar — the actual effect is dispatched by
+ *  `tryActivateOverload` reading `state.activeModuleId`. The previous
+ *  passive Aura slot was removed in the Overload-only redesign. */
 export function applyModuleLoadout(state: GameState, meta: MetaSave): void {
   const active = isActiveModule(meta.selectedActiveModule)
     ? meta.selectedActiveModule
     : DEFAULT_ACTIVE_MODULE;
-  const aura = isAuraModule(meta.selectedAuraModule)
-    ? meta.selectedAuraModule
-    : DEFAULT_AURA_MODULE;
   state.activeModuleId = active;
-  state.auraModuleId = aura;
-
-  const m = state.modifiers;
-  switch (aura) {
-    case 'ether_amp':
-      m.towerFireRateMult *= ETHER_AMP_FIRE_RATE;
-      break;
-    case 'thorn_shell':
-      m.thornyShell = true;
-      break;
-    case 'elem_reson':
-      m.reactionDamageMult *= ELEM_RESON_DAMAGE;
-      break;
-    case 'vital_pulse':
-      // Layered with the Auto-Repair meta upgrade — both stack additively.
-      m.vitalPulseRegen = true;
-      break;
-    case 'gold_aura':
-      m.goldDropMult *= GOLD_AURA_MULT;
-      break;
-    case 'long_range':
-      m.towerRangeMult *= LONG_RANGE_MULT;
-      break;
-  }
 }
 
-/** Lookup a module by id from either pool. */
-export function getModuleDef(id: string): { name: string; desc: string; slot: 'active' | 'aura' } | null {
+/** Lookup an Overload module by id. */
+export function getModuleDef(id: string): { name: string; desc: string } | null {
   if (id in ACTIVE_MODULES) return ACTIVE_MODULES[id as keyof typeof ACTIVE_MODULES];
-  if (id in AURA_MODULES) return AURA_MODULES[id as keyof typeof AURA_MODULES];
   return null;
 }
 

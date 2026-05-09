@@ -289,6 +289,33 @@ export interface ChainBolt {
   hop: number;
 }
 
+/** Death Mark Overload fuse: tracks one marked enemy that will detonate
+ *  when its `delay` elapses, dealing AoE damage based on the enemy's
+ *  current HP (see `tickDeathMarks` in game/overload.ts). */
+export interface DeathMarkFuse {
+  id: number;
+  enemyId: number;
+  delay: number;
+  /** Cached pos for the VFX ring even if the enemy dies early. */
+  pos: Vec2;
+  /** Pulse phase used by render.ts to animate the ring. */
+  age: number;
+}
+
+/** Meteor Shower Overload impact: queued by `runMeteorShower`, ticked
+ *  down by `tickMeteorImpacts` and detonated when `delay <= 0`. Each
+ *  impact carries its own splash radius / damage for symmetry with the
+ *  visual. */
+export interface MeteorImpact {
+  id: number;
+  pos: Vec2;
+  delay: number;
+  damage: number;
+  radius: number;
+  /** Total time the meteor was scheduled for; used for the streak VFX. */
+  total: number;
+}
+
 /** Short-lived shockwave / glow drawn at a vial's impact site so the
  *  player can see the actual splash radius the area-damage check used.
  *  Spawned by `resolveImpact` on every vial landing (including echo
@@ -338,9 +365,6 @@ export interface Modifiers {
   towerSyncVolley: boolean;
   lootRadiusMult: number;
   thornyShell: boolean;
-  /** Set by the Vital Pulse aura: while true the mannequin regenerates
-   *  HP every second during waves. */
-  vitalPulseRegen: boolean;
   goldDropMult: number;
   fireRubyCounter: number;
   fireRubyActive: boolean;
@@ -400,7 +424,6 @@ export const newModifiers = (): Modifiers => ({
   towerSyncVolley: false,
   lootRadiusMult: 1,
   thornyShell: false,
-  vitalPulseRegen: false,
   goldDropMult: 1,
   fireRubyCounter: 0,
   fireRubyActive: false,
@@ -584,15 +607,18 @@ export interface GameState {
    *  lethal hit to the mannequin is converted into a 1-HP survival + a strong
    *  6-second shield. Set to 1 when the card is picked, decremented to 0 on use. */
   golemHeartCharges: number;
-  /** Mannequin module loadout for THIS run. Mirrored from the meta save at
-   *  run start; cards (e.g. `chronos`) may temporarily override the active
-   *  slot for the duration of the run. */
+  /** Mannequin Overload selection for THIS run. Mirrored from the meta
+   *  save at run start; cards (e.g. `chronos`) may temporarily override
+   *  the slot for the duration of the run. The previous separate
+   *  `auraModuleId` slot has been removed: passive auras were dropped in
+   *  favour of a single, more impactful Overload choice. */
   activeModuleId: string;
-  auraModuleId: string;
-  /** Трансмутация active-module timer (seconds). While >0 enemy gold drops
-   *  are multiplied by `transmuteGoldMult`. */
-  transmuteTimer: number;
-  transmuteGoldMult: number;
+  /** Active Death Mark fuses spawned by the death_mark Overload. Each entry
+   *  is consumed after its delay elapses by `tickDeathMarks`. */
+  deathMarks: DeathMarkFuse[];
+  /** Pending meteor impacts queued by the meteor_shower Overload. Each
+   *  meteor lands at its scheduled time and is removed after detonating. */
+  meteorImpacts: MeteorImpact[];
   /** Whether the player has already used the revive-via-ad option this run. */
   reviveUsed: boolean;
   /** While true, the world is frozen (e.g. waiting for a rewarded ad). */

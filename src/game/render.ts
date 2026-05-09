@@ -157,6 +157,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawPotionBlasts(ctx, state);
   drawProjectiles(ctx, state);
   drawChainBolts(ctx, state);
+  drawDeathMarks(ctx, state);
+  drawMeteorImpacts(ctx, state);
   // Update and draw particle system. Use real frame delta derived from
   // worldTime so particles stay frame-rate independent. Clamp the delta to
   // avoid huge jumps after tab-switch / pause; a missed frame should never
@@ -1284,6 +1286,77 @@ function drawPotionBlasts(ctx: CanvasRenderingContext2D, state: GameState): void
     ctx.stroke();
   }
   ctx.globalCompositeOperation = prevComp;
+  ctx.restore();
+}
+
+/** Death Mark Overload: pulsing red ring around marked enemies. The ring
+ *  contracts as the fuse runs out, so the player sees the detonation
+ *  approaching even mid-combat. */
+function drawDeathMarks(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.deathMarks.length === 0) return;
+  ctx.save();
+  for (const dm of state.deathMarks) {
+    const fuse = Math.max(0, dm.delay);
+    // 1 at spawn → 0 at detonation
+    const t = Math.min(1, fuse / 2);
+    const pulse = 0.5 + 0.5 * Math.sin(dm.age * 12);
+    const baseR = 22 + 10 * pulse;
+    const r = baseR * (0.6 + 0.4 * t);
+    ctx.strokeStyle = `rgba(255, 80, 110, ${0.55 + 0.35 * pulse})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.ellipse(dm.pos.x, dm.pos.y, r, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner shrinking marker so the player can read time-to-boom.
+    ctx.strokeStyle = `rgba(255, 200, 220, ${0.5 * pulse})`;
+    ctx.lineWidth = 1.4;
+    const ir = r * (0.35 + 0.25 * (1 - t));
+    ctx.beginPath();
+    ctx.ellipse(dm.pos.x, dm.pos.y, ir, ir * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Meteor Shower Overload: streak of fire descending from above the
+ *  impact point. After the meteor lands `MeteorImpact` is removed by
+ *  `tickMeteorImpacts`; the impact ring itself is rendered via the
+ *  shockwave / scorch decal layer triggered inside `applyDamageToEnemy`'s
+ *  fire branch, so this only needs to draw the in-flight streak. */
+function drawMeteorImpacts(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.meteorImpacts.length === 0) return;
+  ctx.save();
+  const prev = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+  for (const m of state.meteorImpacts) {
+    const fuse = Math.max(0, m.delay);
+    // Estimate the meteor's vertical position above its impact point.
+    // We don't have a proper "meteor entity" — just a queued impact —
+    // so render a comet streak whose tail length grows with `fuse` and
+    // whose tip closes in on the target as the fuse runs out.
+    const fall = Math.min(1, fuse / 0.6);
+    const tipY = m.pos.y - 360 * fall;
+    const tailLen = 60 + 200 * fall;
+    const grad = ctx.createLinearGradient(m.pos.x, tipY - tailLen, m.pos.x, tipY);
+    grad.addColorStop(0, 'rgba(255, 90, 30, 0)');
+    grad.addColorStop(0.6, 'rgba(255, 140, 60, 0.55)');
+    grad.addColorStop(1, 'rgba(255, 220, 160, 0.95)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 6 * (1 - fall * 0.5);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(m.pos.x, tipY - tailLen);
+    ctx.lineTo(m.pos.x, tipY);
+    ctx.stroke();
+    // Glowing target reticle on the ground until the meteor lands.
+    const targetAlpha = 0.4 + 0.4 * Math.abs(Math.sin(m.total * 12 + fuse * 18));
+    ctx.strokeStyle = `rgba(255, 130, 70, ${targetAlpha})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(m.pos.x, m.pos.y, m.radius, m.radius * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = prev;
   ctx.restore();
 }
 

@@ -1,38 +1,35 @@
-// ── Mannequin loadout picker (active module + aura) ─────────────────
+// ── Mannequin Overload picker ───────────────────────────────────────
 //
-// Stand-alone overlay that lets the player pick:
-//   • one Active module  (consumes the Overload bar when triggered)
-//   • one Aura module    (persistent passive)
+// Stand-alone overlay that lets the player pick a single Overload
+// ability. The Overload bar charges during waves and is consumed when
+// the player triggers it; each ability does something *unique* (chain
+// lightning, full freeze, meteor shower, …) instead of a flat stat
+// boost.
 //
-// Up until now, both slots lived inside the laboratory's meta tree
-// overlay on a thin side rail — easy to miss, especially on small
-// viewports. They've been pulled into their own dedicated panel which
-// is opened from a new "Снаряжение" widget on the main menu.
+// Up until now the loadout had a second, passive "Aura" slot, but the
+// passive +N-to-stat feel made the choice forgettable: the player just
+// took whichever aura was strongest for their build and never thought
+// about it again. The slot was removed in this redesign — only the
+// Overload remains, and the pool was widened with three new abilities
+// (Звездопад / Метка смерти / Призма стихий).
 //
 // Visual treatment matches the defeat / blessing / dungeon-entry family
 // (`dramaticStage` helper, glitch title, pulsing tagline, gold/amber
 // palette) so the whole "important moment" surface set reads as one.
 //
-// Picking a module persists immediately (`saveMeta` is called via the
+// Picking an ability persists immediately (`saveMeta` is called via the
 // host's `onChange` callback) and the panel re-renders to update the
 // `selected` highlight; there's no separate confirm step. Closing the
 // panel returns the player to the main menu.
-//
-// The aura section gets a cyan accent on its title and a cyan
-// "selected" rim so the two slots are visually distinguishable at a
-// glance, while still living under the same warm body.
 
 import { audio } from '../audio/audio';
 import { t } from '../i18n';
 import {
   ACTIVE_MODULES,
-  AURA_MODULES,
   isActiveModule,
-  isAuraModule,
   moduleName,
   moduleDesc,
   type ActiveModuleId,
-  type AuraModuleId,
   type ModuleDef,
 } from '../data/modules';
 import type { MetaSave } from '../game/save';
@@ -41,25 +38,16 @@ import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 export const ACTIVE_MODULE_ICONS: Record<string, string> = {
   lightning: '⚡',
   chronos: '⏳',
-  transmute: '⛁',
   alch_dome: '⛨',
   frost_nova: '❄',
   vortex: '🌀',
+  meteor_shower: '☄',
+  death_mark: '💀',
+  element_prism: '🔮',
 };
 
-export const AURA_MODULE_ICONS: Record<string, string> = {
-  ether_amp: '✦',
-  thorn_shell: '🜨',
-  elem_reson: '◎',
-  vital_pulse: '♥',
-  gold_aura: '🜚',
-  long_range: '➶',
-};
-
-export function moduleGlyph(slot: 'active' | 'aura', id: string): string {
-  return slot === 'active'
-    ? ACTIVE_MODULE_ICONS[id] ?? '⚡'
-    : AURA_MODULE_ICONS[id] ?? '◯';
+export function moduleGlyph(id: string): string {
+  return ACTIVE_MODULE_ICONS[id] ?? '⚡';
 }
 
 interface ShowOpts {
@@ -106,23 +94,12 @@ export class LoadoutOverlay {
     head.appendChild(sub);
     panel.appendChild(head);
 
-    // ─── Body: two sections, each with a 3-col module grid ───────────
+    // ─── Body: single section with the Overload module grid ──────────
     const body = document.createElement('div');
     body.className = 'lo-body';
     const renderAll = () => {
       body.innerHTML = '';
       body.appendChild(this.buildSection({
-        slot: 'active',
-        label: t('ui.meta.activeModule'),
-        meta: opts.meta,
-        onPick: () => {
-          opts.onSave();
-          renderAll();
-        },
-      }));
-      body.appendChild(this.buildSection({
-        slot: 'aura',
-        label: t('ui.meta.auraModule'),
         meta: opts.meta,
         onPick: () => {
           opts.onSave();
@@ -154,43 +131,31 @@ export class LoadoutOverlay {
   }
 
   private buildSection(opts: {
-    slot: 'active' | 'aura';
-    label: string;
     meta: MetaSave;
     onPick: () => void;
   }): HTMLElement {
     const sec = document.createElement('div');
-    sec.className = `lo-section lo-section-${opts.slot}`;
-
-    const heading = document.createElement('div');
-    heading.className = 'lo-section-title';
-    heading.textContent = opts.label;
-    sec.appendChild(heading);
+    // The pre-redesign overlay had two sections (active + aura) so the
+    // section headings were necessary. After the Aura slot was removed
+    // we keep the section wrapper for layout consistency but drop the
+    // heading — the dramatic-stage panel title already says «Перегрузка».
+    sec.className = 'lo-section lo-section-active lo-section-solo';
 
     const grid = document.createElement('div');
     grid.className = 'lo-grid';
     sec.appendChild(grid);
 
-    const pool = opts.slot === 'active' ? ACTIVE_MODULES : AURA_MODULES;
-    const currentRaw = opts.slot === 'active'
-      ? opts.meta.selectedActiveModule
-      : opts.meta.selectedAuraModule;
-    const valid = opts.slot === 'active'
-      ? isActiveModule(currentRaw)
-      : isAuraModule(currentRaw);
-    const current = valid ? currentRaw : Object.keys(pool)[0]!;
+    const currentRaw = opts.meta.selectedActiveModule;
+    const current = isActiveModule(currentRaw)
+      ? currentRaw
+      : (Object.keys(ACTIVE_MODULES)[0] as string);
 
-    for (const def of Object.values(pool) as ModuleDef[]) {
+    for (const def of Object.values(ACTIVE_MODULES) as ModuleDef[]) {
       grid.appendChild(this.buildCard({
-        slot: opts.slot,
         def,
         isSelected: def.id === current,
         onPick: () => {
-          if (opts.slot === 'active') {
-            opts.meta.selectedActiveModule = def.id as ActiveModuleId;
-          } else {
-            opts.meta.selectedAuraModule = def.id as AuraModuleId;
-          }
+          opts.meta.selectedActiveModule = def.id as ActiveModuleId;
           audio.playSfx('uiClick');
           opts.onPick();
         },
@@ -201,7 +166,6 @@ export class LoadoutOverlay {
   }
 
   private buildCard(opts: {
-    slot: 'active' | 'aura';
     def: ModuleDef;
     isSelected: boolean;
     onPick: () => void;
@@ -210,7 +174,6 @@ export class LoadoutOverlay {
     card.type = 'button';
     card.className = 'lo-card';
     if (opts.isSelected) card.classList.add('selected');
-    if (opts.slot === 'aura') card.classList.add('lo-card-aura');
 
     // Decorative shimmer that animates on hover, mirroring the blessing
     // picker.
@@ -221,7 +184,7 @@ export class LoadoutOverlay {
 
     const ico = document.createElement('div');
     ico.className = 'lo-card-icon';
-    ico.textContent = moduleGlyph(opts.slot, opts.def.id);
+    ico.textContent = moduleGlyph(opts.def.id);
     card.appendChild(ico);
 
     const name = document.createElement('div');
