@@ -86,6 +86,13 @@ export interface MetaSave {
    *  the animation toggle (the most-asked phone-perf setting) and the
    *  reset-progress button to first-time players. */
   settingsTutorialDone: boolean;
+  /** Set once the player has seen the cursed-card walkthrough — the
+   *  one-shot tooltip that explains how cursed drafts work the first
+   *  time one appears. Independent of the wave-based FTUE so it still
+   *  fires for veteran players the first time they meet a cursed
+   *  draft (e.g. the new «Проклятый день» daily event, or wave 3 of
+   *  any non-FTUE run). */
+  cursedTutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
   /** True once the player has explicitly picked a locale via the in-game
@@ -150,6 +157,7 @@ export function newMetaSave(): MetaSave {
     pauseTutorialDone: false,
     menuTutorialDone: false,
     settingsTutorialDone: false,
+    cursedTutorialDone: false,
     locale: defaultLocale(),
     localeUserChoice: false,
     epicMastery: 0,
@@ -287,6 +295,13 @@ export function loadMeta(): MetaSave {
       // walkthrough plays exactly once when they first open settings.
       settingsTutorialDone: typeof data.settingsTutorialDone === 'boolean'
         ? data.settingsTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players with at least one finished run have
+      // almost certainly already met a cursed draft on their own (every
+      // 3rd wave is cursed) — don't replay the explainer at them. Brand
+      // new saves get `false` so the walkthrough plays exactly once.
+      cursedTutorialDone: typeof data.cursedTutorialDone === 'boolean'
+        ? data.cursedTutorialDone
         : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
       // Existing saves without the explicit-choice flag are treated as

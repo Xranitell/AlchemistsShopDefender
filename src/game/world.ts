@@ -399,8 +399,8 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
   state.spawnCountMult = ev.spawnCountMult ?? 1;
   state.nightModeActive = !!ev.nightMode;
 
-  // Glass Cannon / Abundance: scale the player's HP pool. <1 weakens (Glass
-  // Cannon), >1 buffs (Abundance). Vial damage mult is handled below.
+  // Glass Cannon and similar: scale the player's HP pool. <1 weakens (Glass
+  // Cannon); >1 would buff. Vial damage mult is handled below.
   if (ev.playerHpMult && ev.playerHpMult !== 1) {
     state.mannequin.maxHp = Math.max(1, Math.round(state.mannequin.maxHp * ev.playerHpMult));
     state.mannequin.hp = state.mannequin.maxHp;

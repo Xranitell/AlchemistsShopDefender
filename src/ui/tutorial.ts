@@ -19,7 +19,7 @@ export type TutorialEventKind =
   | 'mannequinShopOpened';
 
 /** Trigger kinds that map to panel-bound walkthroughs (non-wave). */
-type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen' | 'settingsOpen';
+type SequenceTriggerKind = 'pauseOpen' | 'mainMenuOpen' | 'settingsOpen' | 'cursedDraft';
 
 interface ResolvedTarget {
   /** Centre of the spotlight, in viewport pixels. */
@@ -242,7 +242,8 @@ class TutorialController {
     return (
       step.trigger.kind === 'pauseOpen' ||
       step.trigger.kind === 'mainMenuOpen' ||
-      step.trigger.kind === 'settingsOpen'
+      step.trigger.kind === 'settingsOpen' ||
+      step.trigger.kind === 'cursedDraft'
     );
   }
 

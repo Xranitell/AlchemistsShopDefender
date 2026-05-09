@@ -6,6 +6,7 @@ import {
   normalCardPool,
 } from '../data/cards';
 import { cursedExtraPool, getCursedExtra } from '../data/cursedExtras';
+import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import type { CardDef, Rarity } from './types';
 import type { GameState } from './state';
 
@@ -30,6 +31,18 @@ export function isCursedWave(currentWave: number): boolean {
   return currentWave > 0 && currentWave % 3 === 0;
 }
 
+/** True when the *active* run should treat the upcoming draft as cursed.
+ *  Combines the wave-based rule above with the «Проклятый день» daily
+ *  event flag, which forces every draft into the cursed pool regardless
+ *  of wave number. Callers should prefer this over `isCursedWave` when
+ *  they have a `GameState` in hand. */
+export function shouldDraftCursed(state: GameState): boolean {
+  const wave = state.waveState.currentIndex + 1;
+  if (isCursedWave(wave)) return true;
+  const ev = state.dailyEventId ? DAILY_EVENT_BY_ID[state.dailyEventId] : null;
+  return Boolean(ev?.forceCursedCards);
+}
+
 /**
  * Roll the 3 cards offered after the current wave. Implements GDD §8.3 rules:
  *  - on cursed waves (every 3rd wave), the entire offer is drawn from the
@@ -52,7 +65,7 @@ export function rollCardOptions(state: GameState): CardDef[] {
   const currentWave = state.waveState.currentIndex + 1; // 1-based
   const taken = new Set(cc.pickedIds);
 
-  const cursed = isCursedWave(currentWave);
+  const cursed = shouldDraftCursed(state);
 
   // Choose the appropriate base pool.
   let pool = (cursed ? cursedCardPool() : normalCardPool()).filter((c) => !taken.has(c.id));

@@ -42,7 +42,13 @@ export type TutorialTrigger =
    *  performance setting) and where their long-term progress numbers
    *  live. Same `next`-driven sequence semantics as the other panel
    *  walkthroughs. */
-  | { kind: 'settingsOpen' };
+  | { kind: 'settingsOpen' }
+  /** Played by `tutorial.startSequence('cursedDraft', …)` the first time
+   *  the player is offered a cursed-card draft (every-3rd-wave special
+   *  offering, or every wave on the «Проклятый день» daily event).
+   *  One-shot walkthrough explaining that cursed cards bundle a strong
+   *  bonus with a hard drawback and that you can skip them. */
+  | { kind: 'cursedDraft' };
 
 export type TutorialDismiss =
   /** Player threw a vial (mouse press in arena). */
@@ -107,13 +113,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     dismiss: { kind: 'auto', afterMs: 4500 },
   },
   {
-    id: 'w2-cards',
-    trigger: { kind: 'firstCardPicked' },
-    text: 'Отлично! Каждые 3 волны выбирай карту улучшения — эффекты складываются и образуют синергии.',
-    target: { kind: 'centered' },
-    dismiss: { kind: 'auto', afterMs: 4500 },
-  },
-  {
     // Repair / shield panel — fires the first time the player has
     // the prep window before wave 2, after the throw + manual-hit
     // tutorials have introduced combat. Mannequin clicks only open
@@ -126,18 +125,35 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     dismiss: { kind: 'mannequinShopOpened' },
   },
   {
+    // Tower placement / upgrade tutorials — surface during the very
+    // first prep window (before wave 1) so newcomers learn how to
+    // build defenders before the first slime hits the dais. The id
+    // still reads `w3-*` for save / i18n stability — the wave it fires
+    // on lives in `trigger.wave` below.
     id: 'w3-rune',
-    trigger: { kind: 'prepStart', wave: 3 },
+    trigger: { kind: 'prepStart', wave: 1 },
     text: 'Кликни по руне рядом с манекеном, чтобы поставить боевую стойку. Стойки можно строить и улучшать только во время подготовки — между волнами.',
     target: { kind: 'rune' },
     dismiss: { kind: 'towerPlaced' },
   },
   {
     id: 'w3-upgrade',
-    trigger: { kind: 'prepStart', wave: 3 },
+    trigger: { kind: 'prepStart', wave: 1 },
     text: 'Кликни по построенной стойке, чтобы улучшить её. Обычно это дешевле, чем ставить новую, и тоже доступно только во время подготовки.',
     target: { kind: 'firstTower' },
     dismiss: { kind: 'towerUpgraded' },
+  },
+  {
+    // Cursed-cards walkthrough — single-step sequence kicked off by
+    // `tutorial.startSequence('cursedDraft', …)` the first time the
+    // player is offered a cursed draft (every 3rd wave normally, or
+    // every wave during the «Проклятый день» daily event).
+    id: 'cursed-cards',
+    trigger: { kind: 'cursedDraft' },
+    text: 'Проклятые карты: каждая даёт сильный эффект и в придачу 1–2 случайных дополнения — они могут быть как плюсами, так и минусами. Читай все строки карты: если минусы окажутся слишком больными, лучше нажми «Пропустить».',
+    target: { kind: 'centered' },
+    dismiss: { kind: 'next' },
+    showSkip: true,
   },
   {
     id: 'w5-boss',
