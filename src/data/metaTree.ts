@@ -263,7 +263,7 @@ const POTION_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Вулканический рецепт',
-        desc: 'Каждый 4-й бросок склянки поджигает цель; +50% к урону горения',
+        desc: 'Склянки оставляют огненные лужи',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'potionLeavesFire', value: 1 },
@@ -705,7 +705,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Шипастый голем',
-        desc: 'Враги получают 3 урона при атаке Манекена; +30 макс. ХП Манекена',
+        desc: 'Враги получают 8 ответного урона при касании Манекена; +30 макс. ХП Манекена',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'thornyShell', value: 1 },
@@ -725,7 +725,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Шипастый каркас II',
-        desc: 'Враг получает +3 урона при атаке Манекена',
+        desc: 'Враг получает 8 ответного урона при касании Манекена',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'thornyShell', value: 1 },
@@ -733,7 +733,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны II',
-        desc: 'Щит на +25 ХП в начале босс-волны',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -777,7 +777,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны III',
-        desc: 'Щит на +25 ХП в начале босс-волны',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -796,7 +796,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Шипастый каркас',
-        desc: 'Враг получает +3 урона при атаке Манекена',
+        desc: 'Враг получает 8 ответного урона при касании Манекена',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'thornyShell', value: 1 },
@@ -804,7 +804,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны',
-        desc: 'Щит на +25 ХП в начале босс-волны',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },

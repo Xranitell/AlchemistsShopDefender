@@ -54,13 +54,13 @@ export const ACTIVE_MODULES: Record<ActiveModuleId, ModuleDef> = {
     id: 'lightning',
     slot: 'active',
     name: 'Громоотвод',
-    desc: 'Поражает молнией до 6 врагов в радиусе, сначала боссов.',
+    desc: 'Поражает молнией до 6 врагов в радиусе 380, сначала боссов.',
   },
   chronos: {
     id: 'chronos',
     slot: 'active',
     name: 'Хронос',
-    desc: 'Замедляет всех врагов на 60% на 5 сек.',
+    desc: 'Замедляет всех врагов до 40% скорости на 5 сек.',
   },
   transmute: {
     id: 'transmute',
@@ -84,7 +84,7 @@ export const ACTIVE_MODULES: Record<ActiveModuleId, ModuleDef> = {
     id: 'vortex',
     slot: 'active',
     name: 'Алхимический вихрь',
-    desc: 'Тянет врагов в радиусе к манекену и наносит урон по площади.',
+    desc: 'Стягивает врагов в радиусе 260 к Манекену и наносит 30 урона по площади.',
   },
 };
 
@@ -99,7 +99,7 @@ export const AURA_MODULES: Record<AuraModuleId, ModuleDef> = {
     id: 'thorn_shell',
     slot: 'aura',
     name: 'Шипастая оболочка',
-    desc: 'Враги, ударившие манекен, получают 8 ответного урона.',
+    desc: 'Враги получают 8 ответного урона при касании Манекена.',
   },
   elem_reson: {
     id: 'elem_reson',
