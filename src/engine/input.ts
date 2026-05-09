@@ -145,7 +145,7 @@ export class Input {
       // When a fullscreen overlay is open the canvas is hidden behind it
       // (see `#app:has(#overlay.visible) #hud { display: none }` rule).
       // Forwarding the touch as a game press while also preventing default
-      // would (a) trigger a phantom potion throw in the obscured arena and
+      // would (a) trigger a phantom vial throw in the obscured arena and
       // (b) block native vertical pan inside scrollable overlay panels
       // such as the brewery recipe list. Bail out of both behaviours.
       if (isInsideOverlay(e.target as HTMLElement | null)) return;

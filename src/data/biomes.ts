@@ -2,8 +2,8 @@
 //
 // Each biome defines a visual palette for floor/walls/particles and a set of
 // passive gameplay modifiers that apply for the entire run. The workshop is
-// neutral (default), the crypt reduces vision range at night but grants ether
-// resistance, and the foundry boosts fire damage for both enemies and player.
+// neutral (default), the crypt reduces vision range, and the foundry boosts
+// fire damage for both enemies and player.
 
 export type BiomeId = 'workshop' | 'crypt' | 'foundry';
 
@@ -27,11 +27,11 @@ export interface BiomePalette {
 export interface BiomeModifier {
   /** Multiplier on fire damage dealt by enemies AND player (foundry). */
   fireDamageMult: number;
-  /** Multiplier on aether/ether resistance for enemies (crypt). */
+  /** Retained biome-data field; current gameplay does not apply it. */
   etherResistMult: number;
   /** Multiplier on mannequin/tower vision/range (crypt night penalty). */
   visionRangeMult: number;
-  /** Flat bonus gold per wave clear (workshop neutral). */
+  /** Retained biome-data field; current gameplay does not apply it. */
   bonusGoldPerWave: number;
 }
 
@@ -98,7 +98,7 @@ export const BIOMES: Record<BiomeId, BiomeDef> = {
     },
     modifier: {
       fireDamageMult: 1,
-      etherResistMult: 0.80,   // enemies take 20% less aether damage
+      etherResistMult: 0.80,
       visionRangeMult: 0.85,   // reduced tower range (night)
       bonusGoldPerWave: 0,
     },

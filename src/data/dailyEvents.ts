@@ -46,7 +46,7 @@ export interface DailyEventDef {
   spawnCountMult?: number;
   /** Halve the player's mannequin HP at run start (Glass Cannon). */
   playerHpMult?: number;
-  /** Multiplier applied to thrown-potion damage (Glass Cannon / Abundance). */
+  /** Multiplier applied to thrown-vial damage (Glass Cannon / Abundance). */
   playerDamageMult?: number;
   /** Activate a "fog of war" / dark vignette in the renderer (Night Mode). */
   nightMode?: boolean;

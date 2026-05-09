@@ -24,7 +24,7 @@ export type TutorialTrigger =
    *  require between-wave interaction (e.g. tower placement) surface when
    *  the player can actually act on them. */
   | { kind: 'prepStart'; wave: number }
-  /** Play once the player lands their first manual-aim hit (potion). */
+  /** Play once the player lands their first manual-aim vial hit. */
   | { kind: 'firstManualHit' }
   /** Play once the player picks their first card after wave 1. */
   | { kind: 'firstCardPicked' }
@@ -37,7 +37,7 @@ export type TutorialTrigger =
   | { kind: 'mainMenuOpen' };
 
 export type TutorialDismiss =
-  /** Player threw a potion (mouse press in arena). */
+  /** Player threw a vial (mouse press in arena). */
   | { kind: 'manualThrow' }
   /** Manual-aim hit landed. */
   | { kind: 'manualHit' }

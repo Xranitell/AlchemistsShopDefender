@@ -195,7 +195,7 @@ export const MUTATORS: MutatorDef[] = [
       'ui.mutator.swift_throws.line.dmg',
     ],
     apply: (state) => {
-      // Faster potions, weaker per-throw — rewards spammy, accurate play.
+      // Faster vials, weaker per-throw — rewards spammy, accurate play.
       state.modifiers.potionCooldownMult *= 0.75;
       state.modifiers.potionDamageMult *= 0.80;
     },

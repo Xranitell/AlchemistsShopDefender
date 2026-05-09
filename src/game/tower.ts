@@ -468,7 +468,7 @@ export function updateTowers(state: GameState, dt: number): void {
     };
     if (t.kind.id === 'mortar') {
       // Mortar fires a parabolic shell — see `fireMortarShell` for the
-      // siege-style impact (flask shockwave + fire pool).
+      // siege-style impact (vial shockwave + fire pool).
       fireMortarShell(state, fromPos, target, stats.damage, t.kind.splashRadius, t.kind.projectileSpeed, t.kind.element);
       if (state.modifiers.towerSyncVolley && t.shotCount % 4 === 0) {
         fireMortarShell(state, fromPos, target, stats.damage, t.kind.splashRadius, t.kind.projectileSpeed, t.kind.element);
