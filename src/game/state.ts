@@ -231,12 +231,12 @@ export interface Projectile {
   /** Element tag applied on hit. */
   element: Element;
   life: number;
-  /** Whether this potion should leave a fire pool on impact (Flammable Mix). */
+  /** Whether this vial should leave a fire pool on impact (Flammable Mix). */
   leaveFire: boolean;
-  /** Whether potion should fire a secondary mini-explosion shortly after. */
+  /** Whether a vial should fire a secondary mini-explosion shortly after. */
   echoExplosion: boolean;
   bonusFromManualAim: boolean;
-  /** Parabolic-arc fields (only populated for thrown potions). */
+  /** Parabolic-arc fields (only populated for thrown vials). */
   arc?: {
     start: Vec2;
     target: Vec2;
@@ -292,9 +292,9 @@ export interface ChainBolt {
   hop: number;
 }
 
-/** Short-lived shockwave / glow drawn at a potion's impact site so the
+/** Short-lived shockwave / glow drawn at a vial's impact site so the
  *  player can see the actual splash radius the area-damage check used.
- *  Spawned by `resolveImpact` on every potion landing (including echo
+ *  Spawned by `resolveImpact` on every vial landing (including echo
  *  secondaries). Visual only — `applyAreaDamage` already resolved the
  *  hit before the blast was queued. */
 export interface PotionBlast {
@@ -309,7 +309,7 @@ export interface PotionBlast {
   /** Original lifetime — needed to compute the expansion / fade
    *  envelope independently of `time`'s shrinking value. */
   maxTime: number;
-  /** Element of the parent potion. Used to tint the ring (fire =
+  /** Element of the parent vial. Used to tint the ring (fire =
    *  orange, frost = cyan, mercury = silver, …). */
   element: import('./types').Element;
   /** True for echo-secondary blasts so the renderer can draw a softer
@@ -323,9 +323,9 @@ export interface Modifiers {
   potionCooldownMult: number;
   potionEchoExplode: number;
   potionLeavesFire: boolean;
-  /** Card-driven elemental conversion of the base potion. Highest-priority
+  /** Card-driven elemental conversion of the base vial. Highest-priority
    *  flag wins (frost > acid > mercury > fire > neutral). The default
-   *  potion is `neutral`; `potionLeavesFire` and `fireRubyActive` still
+   *  vial is `neutral`; `potionLeavesFire` and `fireRubyActive` still
    *  layer on top to leave a fire pool. */
   potionFrostActive: boolean;
   potionAcidActive: boolean;
@@ -353,12 +353,12 @@ export interface Modifiers {
   /** Reactions also charge Overload (+10) when crown_of_elements is active. */
   reactionOverloadCharge: number;
   /** Triple Throw card: every `tripleThrowInterval` seconds the mannequin
-   *  spawns a 3-potion fan toward the nearest enemy. 0 = inactive. */
+   *  spawns a 3-vial fan toward the nearest enemy. 0 = inactive. */
   tripleThrowActive: boolean;
   tripleThrowTimer: number;
   tripleThrowInterval: number;
-  /** Salamander legendary: forces every potion to be fire-element and leaves
-   *  a fire pool. Cooldown is increased once at apply-time (mq.basePotionCooldown ×= 1.20). */
+  /** Salamander legendary: forces every vial to be fire-element and leaves
+   *  a fire pool. Cooldown is increased once at apply-time (mq.basePotionCooldown ×= 1.25). */
   salamanderActive: boolean;
   /** Archmaster legendary: new towers spawn at +1 level (min 2) and cost +25%. */
   archmasterActive: boolean;
@@ -496,8 +496,8 @@ export interface GameState {
   /** Visual-only chain-lightning segments (Эфирная катушка). Updated in lockstep
    *  with the rest of the world; damage is applied at spawn-time. */
   chainBolts: ChainBolt[];
-  /** Active potion-impact shockwaves — visual rings drawn at the
-   *  splash radius for ~0.5 s after every potion landing. See
+  /** Active vial-impact shockwaves — visual rings drawn at the
+   *  splash radius for ~0.5 s after every vial landing. See
    *  `PotionBlast` for the per-blast fields. */
   potionBlasts: PotionBlast[];
   reactionPools: ReactionPool[];
@@ -534,7 +534,7 @@ export interface GameState {
   metaAuraRadiusMult: number;
   /** Multiplier applied to enemy armour: 0 = no penetration, 1 = full ignore. */
   metaArmorPen: number;
-  /** Per-shot crit chance (0..1) for both potions and tower projectiles. */
+  /** Per-shot crit chance (0..1) for both vials and tower projectiles. */
   metaCritChance: number;
   // --- Difficulty / dungeon mode ---
   /** Which dungeon difficulty was picked for this run. */
@@ -609,7 +609,7 @@ export interface GameState {
    *  ≤ 0 are removed. Recipes that grant charges (Алхимическая буря) live in
    *  their own counter, not in this list. */
   activePotions: ActivePotion[];
-  /** Charges for the «Алхимическая буря» recipe — each thrown potion consumes
+  /** Charges for the «Алхимическая буря» recipe — each thrown vial consumes
    *  one charge and gets `stormChargeMult`× damage. */
   stormCharges: number;
   stormChargeMult: number;
