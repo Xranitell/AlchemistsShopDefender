@@ -62,7 +62,7 @@ const PLUS_IS_NEGATIVE: RegExp[] = [
   /\btower\s+cost\b/i,
   /(?:^|\s)откат\s+(?:склянок|ст(?:оек|ойк[аиу]))/i,
   /(?:^|\s)перезарядк[аи]\s+(?:склянок|ст(?:оек|ойк[аиу]))/i,
-  /\b(?:potion|tower)\s+cooldown\b/i,
+  /\b(?:potion|vial|tower)\s+cooldown\b/i,
 
   // Generic catch-alls — only fire when none of the more specific rules
   // match. Keep these last so they don't shadow good detections.
@@ -93,7 +93,7 @@ const MINUS_IS_NEGATIVE: RegExp[] = [
   /скорость\s+атаки\s+ст(?:оек|ойк[аиу])/i,
   /золот[ао]/i,
   // Player-side stat reductions (English).
-  /\bpotion\s+(?:damage|radius)\b/i,
+  /\b(?:potion|vial)\s+(?:damage|radius)\b/i,
   /\btower\s+(?:damage|range|fire[\s-]?rate)\b/i,
   /\bgold\b/i,
   /\breaction\s+damage\b/i,
@@ -118,7 +118,7 @@ export function classifyBullet(text: string): EffectPolarity {
  *  numeric value. Source descriptions occasionally prefix unique effects
  *  with "+" (e.g. "+стихия Ртути ко всем склянкам") to mark them as
  *  additive, but the sign reads as a typo when no quantity follows. We keep
- *  the "+" for signed numeric bonuses ("+15% урон склянок",
+ *  the "+" for signed numeric bonuses ("+15% к урону склянок",
  *  "+25 макс. ХП Манекена") so the value chip still highlights. */
 function stripLeadingTextualPlus(text: string): string {
   if (!text.startsWith('+')) return text;
@@ -172,7 +172,7 @@ export function cardBullets(card: CardDef): CardBullet[] {
 //    rarity (common < rare < epic < legendary). No unique effects, no
 //    drawbacks. Offered on regular waves.
 //
-//  • Cursed cards  — combine a unique effect (e.g. "потионы становятся
+//  • Cursed cards  — combine a unique effect (e.g. "склянки становятся
 //    эфирными") with one or two epic-tier stat bonuses AND a debuff that
 //    weakens the player or buffs enemies. Offered on every 3rd wave
 //    (wave 3, 6, 9, …).
@@ -184,7 +184,7 @@ export function cardBullets(card: CardDef): CardBullet[] {
 // — NORMAL CARDS — pure stat bumps, magnitudes scaled by rarity ─────────────
 
 const NORMAL_CARDS: CardDef[] = [
-  // Potion damage
+  // Vial damage
   { id: 'pdmg_c', name: 'Тяжёлый состав I', category: 'recipe', rarity: 'common',
     desc: '+8% к урону склянок.' },
   { id: 'pdmg_r', name: 'Тяжёлый состав II', category: 'recipe', rarity: 'rare',
@@ -194,7 +194,7 @@ const NORMAL_CARDS: CardDef[] = [
   { id: 'pdmg_l', name: 'Тяжёлый состав IV', category: 'recipe', rarity: 'legendary',
     desc: '+40% к урону склянок.' },
 
-  // Potion radius
+  // Vial radius
   { id: 'prad_c', name: 'Широкий всплеск I', category: 'recipe', rarity: 'common',
     desc: '+8% к радиусу взрыва склянок.' },
   { id: 'prad_r', name: 'Широкий всплеск II', category: 'recipe', rarity: 'rare',
@@ -204,7 +204,7 @@ const NORMAL_CARDS: CardDef[] = [
   { id: 'prad_l', name: 'Широкий всплеск IV', category: 'recipe', rarity: 'legendary',
     desc: '+35% к радиусу взрыва склянок.' },
 
-  // Potion cooldown reduction
+  // Vial cooldown reduction
   { id: 'pcd_c', name: 'Алхимический хват I', category: 'recipe', rarity: 'common',
     desc: '−6% к откату склянок.' },
   { id: 'pcd_r', name: 'Алхимический хват II', category: 'recipe', rarity: 'rare',
@@ -278,7 +278,7 @@ const CURSED_CARDS: CardDef[] = [
   },
   {
     id: 'curse_unstable_flask',
-    name: 'Нестабильная колба (проклятая)',
+    name: 'Нестабильная склянка (проклятая)',
     category: 'recipe', rarity: 'epic', isCursed: true,
     desc: '+50% к шансу вторичного микровзрыва (+50% доп. урона) · +13% к радиусу взрыва склянок · +20% к откату склянок.',
   },
@@ -456,7 +456,7 @@ export const CARD_SYNERGIES: Record<string, string[]> = {
   curse_golem_heart: ['curse_thorny_shell'],
   // Crown / unique reagents
   curse_crown_of_elements: ['curse_acid_prism', 'curse_aether_engine', 'curse_fire_ruby', 'curse_mercury_ring'],
-  // Potion utility
+  // Vial utility
   curse_triple_throw: ['curse_unstable_flask'],
   curse_unstable_flask: ['curse_triple_throw'],
 };

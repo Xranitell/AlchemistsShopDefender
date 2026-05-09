@@ -96,7 +96,7 @@ export const BLESSINGS: BlessingDef[] = [
     i18nFlavor: 'ui.blessing.quick_hand.flavor',
     i18nEffect: 'ui.blessing.quick_hand.effect',
     apply: (state) => {
-      // Faster potion cooldown (lower mult = faster).
+      // Faster vial cooldown (lower mult = faster).
       state.modifiers.potionCooldownMult *= 0.80;
     },
   },

@@ -13,7 +13,7 @@ export type DifficultyMode = 'normal' | 'epic' | 'ancient' | 'endless' | 'daily'
 export type EnemyAbility =
   // Slimes split into a smaller version on death.
   | 'split_on_death'
-  // Golems gain a one-hit shield that absorbs the first potion landing on them.
+  // Golems gain a one-hit shield that absorbs the first vial landing on them.
   | 'one_hit_shield'
   // Rats leap back a bit when they take a hit so they are harder to chain.
   | 'dash_back_on_hit'
