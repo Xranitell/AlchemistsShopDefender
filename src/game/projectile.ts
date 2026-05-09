@@ -21,12 +21,12 @@ import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
  *  are exempt to keep phase transitions intact. */
 const FROST_EXECUTE_THRESHOLD = 0.25;
 
-/** Pick the element of a thrown potion based on currently-active recipe
- *  modifiers. Cards can layer multiple flags on the same potion — we resolve
+/** Pick the element of a thrown vial based on currently-active recipe
+ *  modifiers. Cards can layer multiple flags on the same vial — we resolve
  *  with a fixed priority so the most "specialised" recipe wins. */
 function selectPotionElement(state: GameState): Element {
   const m = state.modifiers;
-  // Salamander legendary forces every potion to be fire-element regardless of
+  // Salamander legendary forces every vial to be fire-element regardless of
   // any other recipe layered on top.
   if (m.salamanderActive) return 'fire';
   if (m.potionFrostActive) return 'frost';
@@ -69,9 +69,9 @@ export function fireTowerProjectile(
 }
 
 /** Lobs a mortar shell on a parabolic arc toward the target's current
- *  position. The shell behaves like a thrown potion: it cannot be
+ *  position. The shell behaves like a thrown vial: it cannot be
  *  intercepted in flight, lands at the predicted point, and detonates
- *  with a flask-style shockwave + a burning fire-pool. Used exclusively
+ *  with a vial-style shockwave + a burning fire-pool. Used exclusively
  *  by the mortar tower so its silhouette / impact reads as siege
  *  artillery instead of a sniper rifle. */
 export function fireMortarShell(
@@ -97,7 +97,7 @@ export function fireMortarShell(
     1.1 * speedScale,
     Math.max(0.55 * speedScale, (d / 700) * speedScale),
   );
-  // Tall arc: mortar shells fly higher than thrown flasks so the shadow
+  // Tall arc: mortar shells fly higher than thrown vials so the shadow
   // sweeps across the floor.
   const peakHeight = Math.min(170, 80 + d * 0.18);
   state.projectiles.push({
@@ -131,11 +131,11 @@ export function throwPotion(
     * potionDamageMultiplier(state) * stormMult;
   const radius = m.basePotionRadius * state.modifiers.potionRadiusMult;
 
-  // Parabolic arc: potion follows a ballistic curve from the alchemist to the
+  // Parabolic arc: the vial follows a ballistic curve from the alchemist to the
   // aim point, landing in `duration` seconds. Flight time scales mildly with
   // distance so short tosses feel snappy and long ones feel hefty.
   //
-  // Launch the flask from the mannequin's chest (≈ half the rendered
+  // Launch the vial from the mannequin's chest (≈ half the rendered
   // sprite height above the feet anchor) instead of straight from the
   // ground, so the throw visually leaves from the hand rather than
   // teleporting up out of the floor.
@@ -186,7 +186,7 @@ export function updateProjectiles(state: GameState, dt: number): void {
     let hit: Enemy | null = null;
 
     if (p.arc) {
-      // Parabolic flight (potions and mortar shells): interpolate along
+      // Parabolic flight (vials and mortar shells): interpolate along
       // the ground plane while tracking a vertical (z) height offset
       // used only for rendering. The projectile is "in the air" and
       // will not collide with enemies until it lands at `t === 1`.
@@ -253,7 +253,7 @@ export function updateProjectiles(state: GameState, dt: number): void {
   }
   for (let i = remove.length - 1; i >= 0; i--) state.projectiles.splice(remove[i]!, 1);
 
-  // Tick the potion-impact shockwave VFX (visual-only; damage was
+  // Tick the vial-impact shockwave VFX (visual-only; damage was
   // already resolved at spawn time inside `resolveImpact`). Ringed
   // entries that have run out of life are spliced out so the array
   // stays bounded.
@@ -266,19 +266,19 @@ export function updateProjectiles(state: GameState, dt: number): void {
 
 function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
   // Mortar shells use the parabolic-arc pipeline, so we treat any
-  // arc-tagged tower projectile as a "siege impact" — same flask-style
-  // shockwave, glass-shatter SFX and camera shake as a thrown potion.
+  // arc-tagged tower projectile as a "siege impact" — same vial-style
+  // shockwave, glass-shatter SFX and camera shake as a thrown vial.
   // Linear tower projectiles (needler, acid, mercury) keep the
   // muzzle-flash-only behaviour.
   const isMortarShell = p.kind === 'tower' && !!p.arc;
   if ((p.kind === 'potion' || isMortarShell) && !p.echoExplosion) {
-    // Potion / mortar glass-shatter on landing. Echo-secondary blasts
+    // Vial / mortar glass-shatter on landing. Echo-secondary blasts
     // deliberately skip the SFX so the rate-limit stays kind to
     // chained reactions.
     audio.playSfx('potionImpact');
   }
   // Spawn the impact-shockwave VFX so the player can see the splash
-  // zone the area-damage check actually used. Potions and mortar shells
+  // zone the area-damage check actually used. Vials and mortar shells
   // both get a ring; linear tower projectiles (needler, acid) skip it
   // because they have no splash radius and a 0-radius ring would just
   // be a flash on top of the existing muzzle-flash sparkles.
@@ -294,17 +294,17 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
     });
   }
   // Camera shake for splash impacts: scaled by splash radius so a wide
-  // potion explosion / mortar shell shakes harder than a single-target
+  // vial explosion / mortar shell shakes harder than a single-target
   // needler. Linear tower projectiles still skip the shake — they fire
   // on every cooldown and constant shake reads as jitter rather than
-  // weight. Echo secondaries from the player's own potions get a
+  // weight. Echo secondaries from the player's own vials get a
   // softer kick to avoid double-thump on chain reactions.
   if (p.splashRadius > 0 && (p.kind === 'potion' || isMortarShell)) {
     const base = Math.min(5, 1.5 + p.splashRadius / 40);
     const mag = p.echoExplosion ? base * 0.5 : base;
     shakeCamera(mag, 0.16);
   }
-  // Did this potion actually land on top of (or touching) an enemy? The
+  // Did this vial actually land on top of (or touching) an enemy? The
   // tutorial fires its "manual aim bonus" hint only on the first such hit.
   if (p.kind === 'potion' && p.bonusFromManualAim) {
     const closest = nearestEnemy(state, at, Math.max(p.splashRadius, 14));
@@ -319,9 +319,9 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
   }
 
   if (p.leaveFire && (p.kind === 'potion' || isMortarShell)) {
-    // Potion fire pools scale with the brewing-mult so flammable-mix
-    // potions hit harder; mortar shells are siege weapons and get a
-    // flat baseline DPS (independent of the player's potion stats) so
+    // Vial fire pools scale with the brewing-mult so flammable-mix
+    // vials hit harder; mortar shells are siege weapons and get a
+    // flat baseline DPS (independent of the player's vial stats) so
     // their pool reads as the *tower's* contribution rather than the
     // alchemist's. Slightly tighter radius than the splash so the
     // visual fire fits inside the shockwave ring.
@@ -487,7 +487,7 @@ export function applyDamageToEnemy(
     }
   }
 
-  // Frost finisher rule: the ice flask never one-shots a healthy target.
+  // Frost finisher rule: the ice vial never one-shots a healthy target.
   // If pre-hit HP is already below the execute threshold, frost shatters
   // the enemy outright; otherwise damage is clamped so frost can never
   // bring HP below the threshold in a single tick. Bosses are exempt so

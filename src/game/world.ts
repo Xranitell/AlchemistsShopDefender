@@ -361,7 +361,7 @@ export function applyBiomeModifiers(state: GameState): void {
   // Crypt: reduce tower range (simulates reduced visibility).
   state.modifiers.towerRangeMult *= bm.visionRangeMult;
   // Foundry: +5% fire damage for player (potionDamageMult used for fire
-  // potions), and enemy fire damage is scaled by the difficulty modifier.
+  // vials), and enemy fire damage is scaled by the difficulty modifier.
   if (bm.fireDamageMult !== 1) {
     state.modifiers.potionDamageMult *= bm.fireDamageMult;
     state.difficultyModifier.damageMult *= bm.fireDamageMult;
@@ -401,7 +401,7 @@ export function applyDailyEventModifiers(state: GameState, ev: DailyEventDef): v
   state.nightModeActive = !!ev.nightMode;
 
   // Glass Cannon / Abundance: scale the player's HP pool. <1 weakens (Glass
-  // Cannon), >1 buffs (Abundance). Potion damage mult is handled below.
+  // Cannon), >1 buffs (Abundance). Vial damage mult is handled below.
   if (ev.playerHpMult && ev.playerHpMult !== 1) {
     state.mannequin.maxHp = Math.max(1, Math.round(state.mannequin.maxHp * ev.playerHpMult));
     state.mannequin.hp = state.mannequin.maxHp;

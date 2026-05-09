@@ -94,9 +94,9 @@ export interface Enemy {
   /** Strength tier for the enemy's signature ability. `base` keeps the
    *  default mechanics, `epic` amplifies them (more children on split,
    *  bigger explosion radius, etc.) and `ancient` adds an extra layer
-   *  on top (split children also split, exploding flasks leave a
-   *  poison pool, etc.). Set once at spawn time from the active
-   *  difficulty (see `abilityTierFor`). */
+   *  on top (split children also split, sappers disable towers longer
+   *  and leave a fire pool, etc.). Set once at spawn time from the
+   *  active difficulty (see `abilityTierFor`). */
   abilityTier: 'base' | 'epic' | 'ancient';
   /** Shaman-only: seconds until the next aura-heal pulse. The pulse
    *  itself is handled in `enemy.ts` once the timer hits zero. */
@@ -104,17 +104,14 @@ export interface Enemy {
   /** Golem-only: seconds remaining until the one-hit shield regenerates
    *  another charge (epic / ancient only). 0 when no regen is queued. */
   shieldRegenTimer: number;
-  /** Rat-only (when carrying `zigzag_dash`): seconds until the next
-   *  zig-zag impulse. While `zigzagTimer > 0` the rat moves along
-   *  `zigzagDir` perpendicular to the mannequin axis instead of
-   *  straight at it. */
+  /** Rat-only (when carrying `zigzag_dash`): seconds left in the active
+   *  forward sprint. While `zigzagTimer > 0` the rat doubles its speed
+   *  toward the mannequin. */
   zigzagTimer: number;
-  /** Direction multiplier for the active zig-zag burst (+1 = right,
-   *  -1 = left). Flipped at the end of each burst so the rat alternates
-   *  side every dash, producing the visible zig-zag pattern. */
+  /** Legacy direction multiplier from the old zig-zag dash. Kept on the
+   *  type to avoid reshaping saved/spawned enemy objects. */
   zigzagDir: 1 | -1;
-  /** Cooldown until the next zig-zag burst can start. Lets the player
-   *  see distinct dashes instead of a continuous wave. */
+  /** Cooldown until the next forward sprint can start. */
   zigzagCooldown: number;
   /** Sapper-only (Эпический+ when carrying `disable_tower_on_contact`):
    *  the tower-id this sapper has latched onto. -1 when not latched.

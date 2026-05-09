@@ -1202,7 +1202,7 @@ Object.assign(EN, {
   'diary.bestiary.sapper.features.2': 'Epic/Ancient: latches onto the nearest tower and disables it for 3–4 sec before exploding.',
   'diary.bestiary.sapper.tier.normal': 'Detonates on the mannequin in ~1.5 sec.',
   'diary.bestiary.sapper.tier.epic': 'Latches onto the nearest tower and disables it with EMP for 3 sec before detonation.',
-  'diary.bestiary.sapper.tier.ancient': 'Disables the tower for 4 sec, and the blast leaves a poison pool.',
+  'diary.bestiary.sapper.tier.ancient': 'Disables the tower for 4 sec, and the blast leaves a fire pool.',
   'diary.bestiary.miniboss_slime.flavor': 'A massive slime blob, fattened on its fallen kin.',
   'diary.bestiary.miniboss_slime.features.0': 'Explodes on death, scattering a full wave of regular slimes.',
   'diary.bestiary.miniboss_slime.features.1': 'Huge HP pool.',

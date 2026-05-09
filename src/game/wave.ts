@@ -272,9 +272,9 @@ export function spawnEnemy(
   let maxHp = Math.round(kind.hp * mod.hpMult * waveHpScale(state));
   // Tier the abilities scale on. Epic amplifies the base behaviour
   // (more children on split, larger explosion, etc.); Ancient layers an
-  // extra mechanic on top (children can split once more, exploded
-  // flasks drop a poison pool, etc.). Defaults to `base` for normal /
-  // endless / daily so every monster still gets its signature ability.
+  // extra mechanic on top (children can split once more, sappers disable
+  // towers longer and leave a fire pool, etc.). Defaults to `base` for
+  // normal / endless / daily so every monster still gets its signature ability.
   const tier = abilityTierFor(state.difficulty);
   // Эпический+ gives every kind its base abilities AND any kind-specific
   // epic ability on top — sapper EMP, golem stun pulse, etc. The base
@@ -347,8 +347,8 @@ export function spawnEnemy(
       ? 0.5 + state.rng.range(0, 1.0)
       : 0,
     shieldRegenTimer: 0,
-    // Zig-zag dash bookkeeping. The cooldown is staggered so a pack of
-    // rats spawned together don't all dash on the same frame.
+    // Rat sprint bookkeeping. The cooldown is staggered so a pack of rats
+    // spawned together don't all surge forward on the same frame.
     zigzagTimer: 0,
     zigzagDir: state.rng.range(0, 1) < 0.5 ? -1 : 1,
     zigzagCooldown: abilities.includes('zigzag_dash')
@@ -396,10 +396,9 @@ function pickEnemyAbilities(kindId: string, abilities: EnemyAbility[]): EnemyAbi
         if (kindId === 'shaman') out.push(a);
         break;
       case 'zigzag_dash':
-        // Rats and the rat-king both move in zig-zag — the boss reads
-        // as a giant version of the same pattern, so the player's
-        // existing intuition for "this thing weaves left/right"
-        // carries over to the wave it shows up on.
+        // Rats and the rat-king both surge forward in short bursts, so
+        // the boss reads as a giant version of the same "close the gap"
+        // threat the player already knows from regular rats.
         if (kindId === 'rat' || kindId === 'boss_rat_king') out.push(a);
         break;
       case 'disable_tower_on_contact':

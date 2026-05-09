@@ -1242,7 +1242,7 @@ function drawChainBolts(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.restore();
 }
 
-/** Render the 0.5-second potion-impact shockwaves. Each blast traces
+/** Render the 0.5-second vial-impact shockwaves. Each blast traces
  *  the *exact* splash radius the area-damage check used so the player
  *  can read which enemies got caught in the blast. Drawn flat on the
  *  iso-floor (rx = radius, ry = radius * 0.5) under the projectile /
@@ -1337,7 +1337,7 @@ function drawMortarTargetReticles(ctx: CanvasRenderingContext2D, state: GameStat
   ctx.restore();
 }
 
-/** RGB triplet (without alpha) for the potion-impact ring/glow tint
+/** RGB triplet (without alpha) for the vial-impact ring/glow tint
  *  per element. Picked to match the existing `deathRingColor` palette
  *  so reaction effects share a visual language across the renderer. */
 function potionBlastTint(element: import('./state').PotionBlast['element']): string {
@@ -1367,13 +1367,13 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: GameState): void 
 
     if (p.kind === 'potion' || (p.kind === 'tower' && p.arc)) {
       // Arc height (z) is a visual-only offset so the projectile reads
-      // as airborne. Both thrown potions and mortar shells take this
+      // as airborne. Both thrown vials and mortar shells take this
       // path — only the sprite / size differs.
       const z = p.arc?.height ?? 0;
       const drawX = p.pos.x;
       const drawY = p.pos.y - z;
 
-      // Mortar shells are large iron spheres; thrown potions are small
+      // Mortar shells are large iron spheres; thrown vials are small
       // bottles. The shadow / trail scale with the projectile silhouette
       // so the player can read incoming siege fire at a glance.
       const isMortar = p.kind === 'tower';

@@ -21,9 +21,8 @@ export type EnemyAbility =
   | 'explode_on_death'
   // Shamans heal nearby enemies on a timer.
   | 'aura_heal'
-  // Rats sprint in a periodic zig-zag — alternating left / right
-  // perpendicular dashes — so chain-volley towers can't pre-fire a
-  // straight line through them.
+  // Rats periodically surge forward, briefly doubling their speed toward
+  // the mannequin so slow rat packs can still close the gap.
   | 'zigzag_dash'
   // Sappers latch onto the closest tower if they reach point-blank
   // range and EMP-disable it for several seconds before exploding,
@@ -197,7 +196,7 @@ export const DIFFICULTY_MODES: Record<DifficultyMode, DifficultyModeDef> = {
  *  applied to each enemy spawned in that mode. `base` keeps the default
  *  mechanics, `epic` amplifies them (e.g. larger splash, more children),
  *  and `ancient` adds an extra layer of behaviour on top (e.g. minis
- *  split once more, exploding flasks leave a poison pool). */
+ *  split once more, sappers disable towers longer and leave a fire pool). */
 export function abilityTierFor(mode: DifficultyMode): 'base' | 'epic' | 'ancient' {
   if (mode === 'epic') return 'epic';
   if (mode === 'ancient') return 'ancient';
