@@ -23,37 +23,37 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_pdmg_10',
     polarity: 'pos',
-    label: '+5% урона склянок',
+    label: '+5% к урону склянок',
     apply: (s) => { s.modifiers.potionDamageMult *= 1.05; },
   },
   {
     id: 'extra_tdmg_10',
     polarity: 'pos',
-    label: '+5% урона стоек',
+    label: '+5% к урону стоек',
     apply: (s) => { s.modifiers.towerDamageMult *= 1.05; },
   },
   {
     id: 'extra_pcd_-10',
     polarity: 'pos',
-    label: '−5% откат склянок',
+    label: '−5% к откату склянок',
     apply: (s) => { s.modifiers.potionCooldownMult *= 0.95; },
   },
   {
     id: 'extra_trng_10',
     polarity: 'pos',
-    label: '+5% радиус стоек',
+    label: '+5% к дальности стоек',
     apply: (s) => { s.modifiers.towerRangeMult *= 1.05; },
   },
   {
     id: 'extra_tfr_10',
     polarity: 'pos',
-    label: '+5% скорость атаки стоек',
+    label: '+5% к скорострельности стоек',
     apply: (s) => { s.modifiers.towerFireRateMult *= 1.05; },
   },
   {
     id: 'extra_prad_10',
     polarity: 'pos',
-    label: '+5% радиус склянок',
+    label: '+5% к радиусу взрыва склянок',
     apply: (s) => { s.modifiers.potionRadiusMult *= 1.05; },
   },
   {
@@ -68,7 +68,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_gold_10',
     polarity: 'pos',
-    label: '+5% золота',
+    label: '+5% к золоту с врагов',
     apply: (s) => { s.modifiers.goldDropMult *= 1.05; },
   },
 
@@ -79,31 +79,31 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_hp_15',
     polarity: 'neg',
-    label: '+15% ХП врагов',
+    label: '+15% к ХП врагов',
     apply: (s) => { s.difficultyModifier.hpMult *= 1.15; },
   },
   {
     id: 'extra_enemy_speed_12',
     polarity: 'neg',
-    label: '+12% скорость врагов',
+    label: '+12% к скорости врагов',
     apply: (s) => { s.difficultyModifier.speedMult *= 1.12; },
   },
   {
     id: 'extra_gold_-15',
     polarity: 'neg',
-    label: '−15% золота',
+    label: '−15% к золоту с врагов',
     apply: (s) => { s.modifiers.goldDropMult *= 0.85; },
   },
   {
     id: 'extra_pcd_15',
     polarity: 'neg',
-    label: '+15% откат склянок',
+    label: '+15% к откату склянок',
     apply: (s) => { s.modifiers.potionCooldownMult *= 1.15; },
   },
   {
     id: 'extra_tcost_15',
     polarity: 'neg',
-    label: '+15% стоимость стоек',
+    label: '+15% к стоимости стоек',
     apply: (s) => { s.modifiers.towerCostMult *= 1.15; },
   },
   {
@@ -118,13 +118,13 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_pdmg_-15',
     polarity: 'neg',
-    label: '−15% урон склянок',
+    label: '−15% к урону склянок',
     apply: (s) => { s.modifiers.potionDamageMult *= 0.85; },
   },
   {
     id: 'extra_tdmg_-15',
     polarity: 'neg',
-    label: '−15% урон стоек',
+    label: '−15% к урону стоек',
     apply: (s) => { s.modifiers.towerDamageMult *= 0.85; },
   },
 
@@ -135,25 +135,25 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_dodge_15',
     polarity: 'neg',
-    label: '+15% шанс уворота врагов',
+    label: '+15% к шансу уворота врагов',
     apply: (s) => { s.modifiers.enemyDodgeChance += 0.15; },
   },
   {
     id: 'extra_enemy_shield_20',
     polarity: 'neg',
-    label: '+щит врагов 20% от ХП',
+    label: 'Враги получают щит на 20% от макс. ХП',
     apply: (s) => { s.modifiers.enemyExtraShieldFraction += 0.20; },
   },
   {
     id: 'extra_enemy_regen_3',
     polarity: 'neg',
-    label: '+регенерация врагов 3 ХП/с',
+    label: 'Враги восстанавливают 3 ХП/сек',
     apply: (s) => { s.modifiers.enemyRegenPerSec += 3; },
   },
   {
     id: 'extra_enemy_armor_10',
     polarity: 'neg',
-    label: '+10% брони врагов',
+    label: '+10% к броне врагов',
     apply: (s) => { s.modifiers.enemyArmorAdd += 0.10; },
   },
 ];
