@@ -10963,7 +10963,8 @@ body {
   .law-announce-card { padding: 12px 16px; }
 
   /* ── Pause-stats overlay ───────────────────────────────────────── */
-  .pause-stats-group { max-height: 94dvh; }
+  .pause-stats-overlay { padding: 6px; }
+  .pause-stats-group { max-height: 94dvh; max-width: 98vw; }
   .pause-stats-row { gap: 10px; }
   .pause-stats-inner,
   .pause-stats-side {
@@ -11035,15 +11036,74 @@ body {
   .hud-timer-label { font-size: 12px; }
   .hud-difficulty-badge { font-size: 9px; padding: 3px 8px; }
   .hud-run-sidebar {
-    left: 8px;
-    top: 170px;
-    max-width: 200px;
-    max-height: calc(100vh - 260px);
+    left: 6px;
+    top: 152px;
+    max-width: 168px;
+    max-height: calc(100vh - 240px);
+    gap: 5px;
   }
-  .hud-run-card { padding: 3px 5px; min-height: 28px; }
-  .hud-run-card-name { font-size: 8px; }
-  .hud-run-card-desc { font-size: 11px; }
-  .hud-run-card-icon { width: 18px; font-size: 14px; }
+  .hud-run-section { gap: 2px; }
+  .hud-run-section-title { font-size: 8px; letter-spacing: 0.6px; margin-bottom: 1px; }
+  .hud-run-card {
+    padding: 2px 4px;
+    min-height: 24px;
+    gap: 4px;
+    border-left-width: 2px;
+  }
+  .hud-run-card-name { font-size: 7px; letter-spacing: 0.3px; }
+  .hud-run-card-desc { font-size: 10px; line-height: 1.05; }
+  .hud-run-card-icon { width: 14px; font-size: 12px; }
+  .hud-run-sidebar-toggle { font-size: 7px; padding: 3px 6px; }
+}
+
+@media (max-width: 480px) {
+  /* Compact phones (≤480 CSS-px wide). The 700px-band rules already
+     shrank the run sidebar — here we trim the icon column off entirely
+     for the tightest layout so even 320 CSS-px viewports leave room for
+     the description text without wrapping into 4-line cards. */
+  .hud-run-sidebar { max-width: 144px; }
+  .hud-run-card-icon { width: 12px; font-size: 10px; }
+  .hud-run-card-desc { font-size: 9px; }
+  .hud-run-card-name { font-size: 6.5px; }
+}
+
+/* Portrait phones: the side-by-side pause-stats layout still spills off
+ * the right edge once both columns shrink to their min widths, so on
+ * narrow viewports we collapse the row into a vertical stack. The whole
+ * group then lives inside a single scroll container instead of two
+ * adjacent ones — keeps the close button reachable at the top regardless
+ * of how much content is below. */
+@media (max-width: 560px) {
+  .pause-stats-overlay { padding: 4px; align-items: flex-start; padding-top: 8px; }
+  .pause-stats-group { max-width: 100vw; max-height: 96dvh; }
+  .pause-stats-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    /* Allow the row itself to be the scroll surface on phones so users
+       only ever drag one viewport, never two side-by-side panes. */
+    overflow-y: auto;
+    max-height: calc(96dvh - 44px);
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  .pause-stats-inner,
+  .pause-stats-side {
+    width: 100% !important;
+    max-width: 100%;
+    /* Inner panels stop being scroll containers; the row above handles
+       overflow so we don't end up with nested scroll regions. */
+    max-height: none;
+    overflow: visible;
+    padding: 12px 14px 10px;
+  }
+  .pause-stats-header { padding: 0 4px 8px; }
+  .pause-stats-title { font-size: 14px; letter-spacing: 1.4px; }
+  .pause-stats-header .overlay-close {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
 }
 
 @media (orientation: landscape) and (max-height: 540px) {
@@ -11744,6 +11804,82 @@ body {
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
+}
+
+/* ── Phone polish for the main menu ────────────────────────────────
+ *
+ * On narrow / phone-class viewports the menu still rendered with three
+ * subtle bugs after the Phase 2 fit-mode pass:
+ *
+ *   1. The Lab card's talent tree SVG draws decorative halos / drop
+ *      shadows that overflow the SVG's viewBox, and the parent
+ *      `.mm-lab-tree` had `overflow: visible` so those glows leaked
+ *      outside the card border on the narrow design.
+ *   2. The Brewery card's 4-slot row sat ~14 design-px below its title,
+ *      leaving a tall awkward gap that pushed the loadout card
+ *      underneath partially off the bottom of the column once the
+ *      design scaled down.
+ *   3. The mannequin's loadout card has a 30 px icon column that, when
+ *      the left column is squeezed to 28 % of the narrow design (~287
+ *      design-px → ~140 CSS-px on a 360-wide phone), pushed the
+ *      "AKTИВ / АУРА" tag and the slot name past the card's right
+ *      edge.
+ *
+ * All three live inside the `:root.viewport-fitted-narrow` branch
+ * because the wide design (1280) doesn't suffer them — the column has
+ * room to breathe and the SVG halos don't reach the card border. */
+:root.viewport-fitted-narrow .main-menu .mm-col-left .mm-lab-card .mm-lab-tree {
+  overflow: hidden;
+}
+:root.viewport-fitted-narrow .main-menu .mm-col-left .mm-lab-card .mm-lab-tree-svg {
+  /* Pin the SVG to the container's height so node halos / drop shadows
+     can't push the diorama past the card frame. `width: auto` plus the
+     SVG's intrinsic aspect ratio (200/110) keeps it horizontally
+     centered without cropping content. */
+  max-height: 100%;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
+}
+:root.viewport-fitted-narrow .main-menu .mm-col-left .mm-shop-card .mm-shop-slots {
+  /* Lift the brewery row up so the 4 potion slots sit immediately under
+     the title — frees ~6 design-px below the row for the loadout card
+     when stacked in the same column. */
+  margin: -2px 0 0;
+  gap: 4px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-col-left .mm-shop-card .mm-shop-slot {
+  /* Shorter slots so the brewery card is a tighter band overall — the
+     potion silhouettes still read at this height because the slot art
+     is centered. */
+  height: 40px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-card {
+  /* Tighter loadout chrome so both AKTИВ + АУРА rows fit inside the
+     squeezed left column without their names ellipsis-truncating. */
+  padding: 6px 10px 8px;
+  gap: 3px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-slots {
+  gap: 4px;
+  margin: 2px 0 0;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-slot {
+  padding: 4px 8px;
+  gap: 6px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-slot-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-slot-tag {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+:root.viewport-fitted-narrow .main-menu .mm-loadout-slot-name {
+  font-size: 12px;
 }
 
 /* ════════════════════════════════════════════════════════════════════════

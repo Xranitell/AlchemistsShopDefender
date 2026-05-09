@@ -73,13 +73,23 @@ export function currentWaveDuration(state: GameState): number {
 export const PREP_DURATION = 25;
 export const INITIAL_PREP_DURATION = PREP_DURATION;
 
+/** Daily Event prep-window scaling. Defaults to 1 (no change); the
+ *  Speedrun event sets this to <1 so the prep timer ticks down faster
+ *  and the player gets less placement time between waves. */
+function dailyPrepMult(state: GameState): number {
+  if (state.difficulty !== 'daily' || !state.dailyEventId) return 1;
+  const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+  return ev?.prepDurationMult ?? 1;
+}
+
 /** Configured length of the upcoming pause (used while the game is in the
  *  'preparing' phase). Falls back to a sensible default when no wave has run
  *  yet (e.g. just after starting a new run). */
 export function currentPauseDuration(state: GameState): number {
   const idx = state.waveState.currentIndex;
-  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, PREP_DURATION);
-  return PREP_DURATION;
+  const scaled = PREP_DURATION * dailyPrepMult(state);
+  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, scaled);
+  return scaled;
 }
 
 export function startNextWave(state: GameState): void {
@@ -142,6 +152,18 @@ function doStartWave(state: GameState): void {
       });
     }
   }
+  // Daily Event "День боссов": after the boss-wave list has looped at
+  // least once, also drop a miniboss into every regular-feeling wave so
+  // the "every wave is a boss wave" promise stays true on repeats.
+  if (state.difficulty === 'daily' && state.dailyEventId) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    if (ev?.miniBossEveryWave && !def.isBoss && ENEMIES['miniboss_slime']) {
+      // Spawn the miniboss in the back half of the wave so the player has
+      // some time to soften up the smaller enemies first.
+      const t = Math.max(2, def.durationSec * 0.55);
+      extra.push({ kind: 'miniboss_slime', at: t, entrance: state.rng.int(0, 4) });
+    }
+  }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
 
   // Side-only spawn rule: collapse legacy top/bottom (entrances 0, 2)
@@ -197,12 +219,30 @@ function doStartWave(state: GameState): void {
 export function startPause(state: GameState): void {
   const ws = state.waveState;
   ws.pauseTime = 0;
-  ws.pauseDurationLeft = PREP_DURATION;
+  ws.pauseDurationLeft = PREP_DURATION * dailyPrepMult(state);
   state.entrances.forEach((e) => { e.active = false; });
   state.phase = 'preparing';
   // Re-roll the wave-rotating "dungeon laws" so the upcoming prep window
   // surfaces the next wave's mutators. No-op outside Epic / Ancient.
   rerollWaveMutators(state);
+
+  // Daily Event "Изобилие": gift a chunk of bonus gold every prep window
+  // so the player always has the budget to experiment with builds. Skip
+  // the very first prep (before any wave has been beaten) — the run-start
+  // gold grant already covers wave 1 placements.
+  if (state.difficulty === 'daily' && state.dailyEventId && ws.currentIndex >= 0) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    const bonus = ev?.bonusGoldPerWave ?? 0;
+    if (bonus > 0) {
+      state.gold += bonus;
+      spawnFloatingText(
+        state,
+        `+${bonus} G`,
+        { x: state.mannequin.pos.x, y: state.mannequin.pos.y - 12 },
+        '#ffd166',
+      );
+    }
+  }
 }
 
 export function updateWave(state: GameState, dt: number): void {

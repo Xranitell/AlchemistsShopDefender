@@ -52,6 +52,22 @@ export interface DailyEventDef {
   nightMode?: boolean;
   /** Trigger a random "rare" endless modifier roll at run start (Chaos). */
   chaosModifier?: boolean;
+  /** When `chaosModifier` is set, roll this many distinct endless modifiers
+   *  instead of just one. Used by the new "Хаос" event where the run
+   *  starts under several twists at once. Defaults to 1 when omitted. */
+  chaosModifierCount?: number;
+  /** Bonus gold injected at the start of each prep window. Used by the
+   *  Abundance event so the player feels the "carmans full of gold"
+   *  fantasy in addition to the +50% drop multiplier. */
+  bonusGoldPerWave?: number;
+  /** Multiplier applied to the prep-window timer (and therefore to the
+   *  perceived spawn cadence on the upcoming wave). <1 shortens the prep,
+   *  used by the speedrun event to keep the pressure on. */
+  prepDurationMult?: number;
+  /** Spawn an additional mini-boss in the middle of every wave. Used by
+   *  the Boss event so the "every wave is a boss wave" twist is felt
+   *  even after the boss-wave list loops. */
+  miniBossEveryWave?: boolean;
 }
 
 export const DAILY_EVENTS: DailyEventDef[] = [
@@ -63,6 +79,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nDescription: 'ui.dailyEvent.night.desc',
     i18nLines: [
       'ui.dailyEvent.night.line.vis',
+      'ui.dailyEvent.night.line.empOnContact',
       'ui.dailyEvent.night.line.gold',
     ],
     icon: '🌙',
@@ -72,7 +89,10 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       speedMult: 1,
       damageMult: 1,
       goldMult: 1.4,
-      abilities: [],
+      // Phantoms in the dark: every contact briefly EMPs the touched
+      // tower, so towers placed in shadowed lanes go dark periodically
+      // and the player has to rely on vials more than usual.
+      abilities: ['disable_tower_on_contact'],
     },
     nightMode: true,
   },
@@ -84,6 +104,8 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nDescription: 'ui.dailyEvent.boss.desc',
     i18nLines: [
       'ui.dailyEvent.boss.line.waves',
+      'ui.dailyEvent.boss.line.miniBoss',
+      'ui.dailyEvent.boss.line.heal',
       'ui.dailyEvent.boss.line.stats',
       'ui.dailyEvent.boss.line.gold',
     ],
@@ -94,9 +116,12 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       speedMult: 1.1,
       damageMult: 1.1,
       goldMult: 1.5,
-      abilities: [],
+      // Bosses radiate a healing aura — minions stick to them and the
+      // boss recovers HP if the player splits attention.
+      abilities: ['aura_heal'],
     },
     useBossWaves: true,
+    miniBossEveryWave: true,
   },
   {
     id: 'speedrun',
@@ -106,6 +131,8 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nDescription: 'ui.dailyEvent.speedrun.desc',
     i18nLines: [
       'ui.dailyEvent.speedrun.line.speed',
+      'ui.dailyEvent.speedrun.line.dash',
+      'ui.dailyEvent.speedrun.line.prep',
       'ui.dailyEvent.speedrun.line.gold',
     ],
     icon: '💨',
@@ -115,8 +142,11 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       speedMult: 1.5,
       damageMult: 1,
       goldMult: 1.3,
-      abilities: [],
+      // Even non-rat enemies surge forward unpredictably; the prep
+      // window is shorter so the player has less time to set up.
+      abilities: ['zigzag_dash'],
     },
+    prepDurationMult: 0.6,
   },
   {
     id: 'glass_cannon',
@@ -127,6 +157,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nLines: [
       'ui.dailyEvent.glass_cannon.line.dmg',
       'ui.dailyEvent.glass_cannon.line.hp',
+      'ui.dailyEvent.glass_cannon.line.stun',
       'ui.dailyEvent.glass_cannon.line.gold',
     ],
     icon: '⚡',
@@ -136,7 +167,10 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       speedMult: 1,
       damageMult: 2,
       goldMult: 1.4,
-      abilities: [],
+      // High risk on both sides: enemies take huge damage but explode
+      // back with a tower-stunning EMP, so chaining kills near a
+      // tower line costs you turret uptime.
+      abilities: ['stun_towers_on_death'],
     },
     playerHpMult: 0.5,
     playerDamageMult: 2,
@@ -149,6 +183,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nDescription: 'ui.dailyEvent.horde.desc',
     i18nLines: [
       'ui.dailyEvent.horde.line.count',
+      'ui.dailyEvent.horde.line.dashBack',
       'ui.dailyEvent.horde.line.hp',
       'ui.dailyEvent.horde.line.gold',
     ],
@@ -159,7 +194,9 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       speedMult: 1,
       damageMult: 1,
       goldMult: 1.3,
-      abilities: [],
+      // Stragglers in the horde dash back when hit, so blanket
+      // explosions are less effective than precise picks.
+      abilities: ['dash_back_on_hit'],
     },
     spawnCountMult: 1.5,
   },
@@ -172,6 +209,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     i18nLines: [
       'ui.dailyEvent.abundance.line.hp',
       'ui.dailyEvent.abundance.line.dmg',
+      'ui.dailyEvent.abundance.line.bonus',
       'ui.dailyEvent.abundance.line.gold',
     ],
     icon: '✨',
@@ -185,6 +223,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
     },
     playerHpMult: 1.5,
     playerDamageMult: 1.25,
+    bonusGoldPerWave: 25,
   },
   {
     id: 'chaos',
@@ -206,6 +245,7 @@ export const DAILY_EVENTS: DailyEventDef[] = [
       abilities: [],
     },
     chaosModifier: true,
+    chaosModifierCount: 3,
   },
 ];
 

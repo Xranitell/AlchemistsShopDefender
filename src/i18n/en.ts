@@ -147,6 +147,11 @@ export const EN: Record<string, string> = {
   'ui.settings.stat.ancientKeys': 'Ancient keys: ',
   'ui.settings.reset': 'Reset progress',
   'ui.settings.resetConfirm': 'Reset all progress? This cannot be undone.',
+  'ui.resetConfirm.title': 'Reset progress?',
+  'ui.resetConfirm.body': 'Every meta upgrade, key, essence and talent will be wiped — there is no recovery path.',
+  'ui.resetConfirm.warning': 'This cannot be undone.',
+  'ui.resetConfirm.cancel': 'Cancel',
+  'ui.resetConfirm.confirm': 'Reset',
   'ui.settings.close': 'Close',
   'ui.settings.audio': 'Audio',
   'ui.settings.sfx': 'Sound effects',
@@ -866,6 +871,7 @@ Object.assign(EN, {
   'ui.dailyEvent.night.flavor': 'The lights go out — the arena is in darkness.',
   'ui.dailyEvent.night.desc': 'Visibility is reduced to a light circle around the mannequin. Enemies sneak out of the dark — play by sound and reflex.',
   'ui.dailyEvent.night.line.vis': 'Dark vignette around the arena',
+  'ui.dailyEvent.night.line.empOnContact': 'Enemies briefly EMP-disable a tower they touch',
   'ui.dailyEvent.night.line.gold': '+40% gold from enemies',
 
   // Tuesday — Boss day (former Boss Challenge)
@@ -873,45 +879,52 @@ Object.assign(EN, {
   'ui.dailyEvent.boss.flavor': 'Boss waves only — test whether your build can hold.',
   'ui.dailyEvent.boss.desc': 'Regular waves are replaced with a chain of boss encounters. Every wave demands enough damage and control.',
   'ui.dailyEvent.boss.line.waves': 'Only boss waves 5, 10 and 15 (looping)',
+  'ui.dailyEvent.boss.line.miniBoss': 'Every regular wave also drops a mini-boss',
+  'ui.dailyEvent.boss.line.heal': 'Bosses are surrounded by a healing aura',
   'ui.dailyEvent.boss.line.stats': '+20% health, +10% speed, +10% damage',
   'ui.dailyEvent.boss.line.gold': '+50% gold from enemies',
 
   // Wednesday — Speedrun
   'ui.dailyEvent.speedrun.name': 'Time Trial',
   'ui.dailyEvent.speedrun.flavor': 'Enemies are accelerated from the start.',
-  'ui.dailyEvent.speedrun.desc': 'Enemies run faster than usual — you need lightning-fast reactions.',
+  'ui.dailyEvent.speedrun.desc': 'Enemies run faster than usual and surge forward unpredictably. The prep window between waves is shortened — you need lightning-fast reactions.',
   'ui.dailyEvent.speedrun.line.speed': '+50% enemy speed',
+  'ui.dailyEvent.speedrun.line.dash': 'All enemies surge forward unpredictably',
+  'ui.dailyEvent.speedrun.line.prep': '−40% prep duration between waves',
   'ui.dailyEvent.speedrun.line.gold': '+30% gold from enemies',
 
   // Thursday — Glass Cannon
   'ui.dailyEvent.glass_cannon.name': 'Glass Cannon',
   'ui.dailyEvent.glass_cannon.flavor': 'Hit harder — and break easier.',
-  'ui.dailyEvent.glass_cannon.desc': 'Vials and enemies deal double damage, while both sides have reduced HP. One breakthrough can end the run.',
+  'ui.dailyEvent.glass_cannon.desc': 'Vials and enemies deal double damage, while both sides have reduced HP. Each death also fires an EMP pulse that briefly silences nearby towers.',
   'ui.dailyEvent.glass_cannon.line.dmg': '×2 vial and enemy damage',
   'ui.dailyEvent.glass_cannon.line.hp': '−50% mannequin and enemy HP',
+  'ui.dailyEvent.glass_cannon.line.stun': 'Dying enemies fire an EMP pulse at nearby towers',
   'ui.dailyEvent.glass_cannon.line.gold': '+40% gold from enemies',
 
   // Friday — Horde
   'ui.dailyEvent.horde.name': 'Horde',
   'ui.dailyEvent.horde.flavor': 'Too many of them.',
-  'ui.dailyEvent.horde.desc': 'Every wave has 50% more enemies. They are weaker, but holding the line is harder.',
+  'ui.dailyEvent.horde.desc': 'Every wave has 50% more enemies. They are weaker but dash back when struck — chaining explosions is harder.',
   'ui.dailyEvent.horde.line.count': '+50% enemies per wave',
+  'ui.dailyEvent.horde.line.dashBack': 'Enemies dash back when hit by a vial',
   'ui.dailyEvent.horde.line.hp': '−20% enemy HP',
   'ui.dailyEvent.horde.line.gold': '+30% gold from enemies',
 
   // Saturday — Abundance
   'ui.dailyEvent.abundance.name': 'Abundance',
   'ui.dailyEvent.abundance.flavor': 'Pockets stuffed with gold.',
-  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger vial damage. A comfortable day for build experiments.',
+  'ui.dailyEvent.abundance.desc': 'Generous rewards, a sturdier mannequin and stronger vial damage. Every prep window also drops a bonus pile of gold into your purse — a comfortable day for build experiments.',
   'ui.dailyEvent.abundance.line.hp': '+50% mannequin max HP',
   'ui.dailyEvent.abundance.line.dmg': '+25% vial damage',
+  'ui.dailyEvent.abundance.line.bonus': '+25 gold at the start of every prep',
   'ui.dailyEvent.abundance.line.gold': '+50% gold from enemies',
 
   // Sunday — Chaos
   'ui.dailyEvent.chaos.name': 'Chaos',
   'ui.dailyEvent.chaos.flavor': 'No-one knows what comes next.',
-  'ui.dailyEvent.chaos.desc': 'A random endless-mode modifier is active from the start of the run.',
-  'ui.dailyEvent.chaos.line.mod': 'Random modifier active immediately',
+  'ui.dailyEvent.chaos.desc': 'Three random endless-mode modifiers are active from the very start of the run, so each Chaos day plays differently.',
+  'ui.dailyEvent.chaos.line.mod': '3 random modifiers active immediately',
   'ui.dailyEvent.chaos.line.gold': '+60% gold from enemies',
 
   // ── Run Mutators ("Dungeon Law") ────────────────────────────────────
