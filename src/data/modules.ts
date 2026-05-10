@@ -83,7 +83,7 @@ export const ACTIVE_MODULES: Record<ActiveModuleId, ModuleDef> = {
   death_mark: {
     id: 'death_mark',
     name: 'Метка смерти',
-    desc: 'Помечает 3 сильнейших не-боссов; через 2 сек они детонируют, нанося 60 % их текущего ХП по площади 160.',
+    desc: 'Помечает 3 сильнейших не-боссов; через 2 сек они детонируют, нанося 60 % их текущей Прочности по площади 160.',
   },
   element_prism: {
     id: 'element_prism',

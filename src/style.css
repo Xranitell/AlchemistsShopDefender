@@ -2772,8 +2772,8 @@ body {
 }
 .mm-daily-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
   margin: 6px 0 8px;
 }
 .mm-daily-cell {
@@ -2788,6 +2788,7 @@ body {
   align-items: center;
   gap: 2px;
   min-height: 56px;
+  min-width: 0;
   box-shadow:
     inset 0 0 0 1px rgba(210, 79, 28, 0.12),
     inset 0 1px 0 rgba(255, 209, 102, 0.04),
@@ -2821,7 +2822,15 @@ body {
 }
 .mm-daily-cell.today .mm-daily-day-label { color: #ff8c3a; }
 .mm-daily-icon { font-size: 18px; }
-.mm-daily-reward-label { font-size: 11px; color: var(--fg-dim); }
+.mm-daily-reward-label {
+  font-size: 10px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  letter-spacing: 0;
+}
 .mm-daily-claim {
   all: unset;
   display: block;
@@ -3081,14 +3090,14 @@ body {
 .daily-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 16px;
 }
 .daily-cell {
   background: linear-gradient(180deg, #303a58, #171d30);
   border: 3px solid #090b13;
   border-radius: 7px;
-  padding: 8px 5px;
+  padding: 8px 4px;
   text-align: center;
   font-family: 'VT323', monospace;
   display: flex;
@@ -3096,6 +3105,7 @@ body {
   align-items: center;
   gap: 3px;
   min-height: 86px;
+  min-width: 0;
   box-shadow:
     0 0 0 2px #59657f,
     inset 0 2px 0 rgba(255,255,255,0.1),
@@ -3130,7 +3140,15 @@ body {
   min-height: 32px;
 }
 .daily-icon .pixel-icon { display: block; }
-.daily-reward-label { font-size: 14px; color: var(--fg); }
+.daily-reward-label {
+  font-size: 12px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  letter-spacing: 0;
+}
 .daily-actions { display: flex; justify-content: center; }
 .daily-claim-btn {
   font-family: 'Press Start 2P', 'VT323', monospace;
@@ -14058,6 +14076,8 @@ body {
 .diary-stat-row-element {
   align-items: center;
   border-bottom: 1px dashed color-mix(in srgb, var(--element-color, #ffd166) 38%, transparent);
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 .diary-element-badge {
   /* `--element-color` is set on the parent .diary-stat-row-element
@@ -14087,6 +14107,8 @@ body {
     0 1px 0 #1a0e2a,
     0 0 6px color-mix(in srgb, var(--element-color) 60%, transparent);
   white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 100%;
 }
 .diary-element-badge-glyph {
   display: inline-flex;
@@ -14108,6 +14130,9 @@ body {
 .diary-element-badge-name {
   font-weight: 600;
   color: color-mix(in srgb, var(--element-color) 50%, #fff2c2);
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .diary-info-progress {
@@ -15175,20 +15200,16 @@ body {
   transition-duration: 60ms;
 }
 
-/* Overlay fade-in. The `.visible` class is toggled by every overlay
-   (CardOverlay, MetaOverlay, BlessingOverlay, …) via
-   `root.classList.add('visible')`, so this single rule covers every
-   panel the player sees. */
-@keyframes ui-overlay-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+/* Overlay panels animate in via the panel rise-in below. The overlay
+ * backdrop itself is no longer fade-animated because it caused a visual
+ * flash of the in-game scene (mannequin, towers, …) when switching
+ * between menus: every `.visible` toggle re-ran the fade and started
+ * the backdrop at opacity 0, briefly exposing the game canvas. The
+ * backdrop now appears instantly when `.visible` is set, while the
+ * inner panel still rises in for visual continuity. */
 @keyframes ui-panel-rise-in {
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
-#overlay.visible {
-  animation: ui-overlay-fade-in 180ms ease-out both;
 }
 /* Panels inside the overlay rise on entry. Limited to the centred panel
    variants — the fullscreen main menu / meta-tree have their own bespoke

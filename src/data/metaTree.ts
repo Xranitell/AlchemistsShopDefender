@@ -705,7 +705,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'keystone',
         name: 'Шипастый голем',
-        desc: 'Враги получают 8 ответного урона при касании Манекена; +30 макс. ХП Манекена',
+        desc: 'Враги получают 8 ответного урона при касании Манекена; +30 макс. Прочности Манекена',
         cost: 2,
         currency: 'ancient',
         effect: { kind: 'thornyShell', value: 1 },
@@ -717,7 +717,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Полевой ремонт',
-        desc: 'Манекен восстанавливает +2 ХП/сек вне боя',
+        desc: 'Манекен восстанавливает +2 Прочности/сек вне боя',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 2 },
@@ -733,7 +733,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны II',
-        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 Прочности',
         cost: 33,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -744,7 +744,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Боевой ремонт',
-        desc: 'Манекен восстанавливает +1 ХП/сек вне боя',
+        desc: 'Манекен восстанавливает +1 Прочности/сек вне боя',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 1 },
@@ -752,7 +752,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Прочный каркас III',
-        desc: '+20 макс. ХП Манекена',
+        desc: '+20 макс. Прочности Манекена',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 20 },
@@ -760,7 +760,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Усиленный корпус',
-        desc: '+25 ХП и +5% к броне Манекена',
+        desc: '+25 Прочности и +5% к броне Манекена',
         cost: 90,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 25 },
@@ -777,7 +777,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны III',
-        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 Прочности',
         cost: 30,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -788,7 +788,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Авто-ремонт',
-        desc: 'Манекен восстанавливает +1 ХП/сек вне боя',
+        desc: 'Манекен восстанавливает +1 Прочности/сек вне боя',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'autoRepair', value: 1 },
@@ -804,7 +804,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Щит босс-волны',
-        desc: 'В начале босс-волны Манекен восстанавливает до 25 ХП',
+        desc: 'В начале босс-волны Манекен восстанавливает до 25 Прочности',
         cost: 27,
         currency: 'blue',
         effect: { kind: 'bossShield', value: 25 },
@@ -839,7 +839,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Прочный каркас II',
-        desc: '+15 макс. ХП Манекена',
+        desc: '+15 макс. Прочности Манекена',
         cost: 18,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 15 },
@@ -847,7 +847,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'notable',
         name: 'Стальная клёпка',
-        desc: '+25 ХП и +3% к броне Манекена',
+        desc: '+25 Прочности и +3% к броне Манекена',
         cost: 82,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 25 },
@@ -875,7 +875,7 @@ const SURVIVAL_TREE: TreeDef = {
       {
         kind: 'small',
         name: 'Прочный каркас',
-        desc: '+10 макс. ХП Манекена',
+        desc: '+10 макс. Прочности Манекена',
         cost: 12,
         currency: 'blue',
         effect: { kind: 'maxHp', value: 10 },

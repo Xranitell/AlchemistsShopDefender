@@ -35,15 +35,15 @@ export interface CardBullet {
 // misclassifications turn drawbacks into buffs in the UI (e.g. green
 // `−30 max mannequin HP`).
 //
-// `+` is normally GOOD for the player (more damage / radius / ХП / gold);
+// `+` is normally GOOD for the player (more damage / radius / Прочности / gold);
 // these patterns mark a `+` bullet as a DRAWBACK because they buff enemies
 // or inflate cooldowns / costs.
 const PLUS_IS_NEGATIVE: RegExp[] = [
   // Enemy stat buffs (+ enemy HP / speed / damage / armor / dodge /
   // shield / regen). Match Russian "X врагов" and English "enemy X"
   // forms in one rule each.
-  /(?:ХП|HP)\s+врагов/i,
-  /\benem(?:y|ies)\s+(?:HP|ХП)\b/i,
+  /(?:Прочность|Прочности|HP)\s+врагов/i,
+  /\benem(?:y|ies)\s+(?:HP|Durability|Прочности|Прочность)\b/i,
   /скорость\s+врагов/i,
   /\benem(?:y|ies)\s+speed\b/i,
   /урон\s+врагов/i,
@@ -70,7 +70,7 @@ const PLUS_IS_NEGATIVE: RegExp[] = [
   /\bcooldown\b/i,
 ];
 
-// `−` is normally BAD for the player (less ХП / less damage / less gold);
+// `−` is normally BAD for the player (less Прочности / less damage / less gold);
 // these patterns mark a `−` bullet as a DRAWBACK because they reduce a
 // player-beneficial stat. Anything that ISN'T in this list is treated as
 // debuffing enemies (e.g. `−50% брони цели` is good for the player).
@@ -82,8 +82,9 @@ const PLUS_IS_NEGATIVE: RegExp[] = [
 // will never appear as a sub-fragment of a different real word).
 const MINUS_IS_NEGATIVE: RegExp[] = [
   // Mannequin / hero HP loss.
-  /макс\.?\s*(?:ХП|HP)\s+(?:Манекена|Mannequin)/i,
-  /\bmax\s+(?:mannequin\s+)?(?:ХП|HP)\b/i,
+  /макс\.?\s*(?:Прочности|Прочность|HP)\s+(?:Манекена|Mannequin)/i,
+  /\bmax\s+(?:mannequin\s+)?(?:Прочности|Прочность|HP|Durability)\b/i,
+  /\b(?:mannequin|max)\s+Durability\b/i,
   // Player-side stat reductions (Russian).
   /урон\s+склянок/i,
   /урон\s+стоек/i,
@@ -119,7 +120,7 @@ export function classifyBullet(text: string): EffectPolarity {
  *  with "+" (e.g. "+стихия Ртути ко всем склянкам") to mark them as
  *  additive, but the sign reads as a typo when no quantity follows. We keep
  *  the "+" for signed numeric bonuses ("+15% к урону склянок",
- *  "+25 макс. ХП Манекена") so the value chip still highlights. */
+ *  "+25 макс. Прочности Манекена") so the value chip still highlights. */
 function stripLeadingTextualPlus(text: string): string {
   if (!text.startsWith('+')) return text;
   const rest = text.slice(1).replace(/^\s+/, '');
@@ -137,7 +138,7 @@ function stripLeadingTextualPlus(text: string): string {
  *  is responsible for grouping by polarity.
  *
  *  Splits exclusively on the middle-dot (`·`) separator — never on `. ` or
- *  `; `, because Russian abbreviations like `макс. ХП Манекена` and
+ *  `; `, because Russian abbreviations like `макс. Прочности Манекена` and
  *  `доп. урона` would otherwise be torn in half (and the resulting
  *  fragment-classifier would lose the keyword and treat a drawback as a
  *  positive). All cards (and i18n descs) are authored with `·` as the
@@ -244,15 +245,15 @@ const NORMAL_CARDS: CardDef[] = [
   { id: 'trng_l', name: 'Расширенные линзы IV', category: 'engineering', rarity: 'legendary',
     desc: '+28% к дальности стоек.' },
 
-  // Mannequin ХП
+  // Mannequin Прочности
   { id: 'hp_c', name: 'Укреплённый каркас I', category: 'ritual', rarity: 'common',
-    desc: '+13 макс. ХП Манекена и +13 текущего ХП.' },
+    desc: '+13 макс. Прочности Манекена и +13 текущей Прочности.' },
   { id: 'hp_r', name: 'Укреплённый каркас II', category: 'ritual', rarity: 'rare',
-    desc: '+25 макс. ХП Манекена и +25 текущего ХП.' },
+    desc: '+25 макс. Прочности Манекена и +25 текущей Прочности.' },
   { id: 'hp_e', name: 'Укреплённый каркас III', category: 'ritual', rarity: 'epic',
-    desc: '+45 макс. ХП Манекена и +45 текущего ХП.' },
+    desc: '+45 макс. Прочности Манекена и +45 текущей Прочности.' },
   { id: 'hp_l', name: 'Укреплённый каркас IV', category: 'ritual', rarity: 'legendary',
-    desc: '+75 макс. ХП Манекена и +75 текущего ХП.' },
+    desc: '+75 макс. Прочности Манекена и +75 текущей Прочности.' },
 
   // Gold drop
   { id: 'gold_c', name: 'Золотая лихорадка I', category: 'ritual', rarity: 'common',
@@ -274,7 +275,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_flammable_mix',
     name: 'Договор Пламени',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+огненная лужа от склянок (8 урона/с, 3 с) · +15% к урону склянок · +15% к ХП врагов.',
+    desc: '+огненная лужа от склянок (8 урона/с, 3 с) · +15% к урону склянок · +15% к Прочности врагов.',
   },
   {
     id: 'curse_unstable_flask',
@@ -286,13 +287,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_frost_brew',
     name: 'Морозный обет',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Мороза ко всем склянкам · +15% к радиусу взрыва склянок · +15% к ХП врагов.',
+    desc: '+стихия Мороза ко всем склянкам · +15% к радиусу взрыва склянок · +15% к Прочности врагов.',
   },
   {
     id: 'curse_acid_brew',
     name: 'Кислотный пакт',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели на 4 с) · +15% к урону склянок · +15% к ХП врагов.',
+    desc: '+стихия Кислоты ко всем склянкам (−50% брони цели на 4 с) · +15% к урону склянок · +15% к Прочности врагов.',
   },
   {
     id: 'curse_mercury_brew',
@@ -304,13 +305,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_aether_brew',
     name: 'Эфирный заговор',
     category: 'recipe', rarity: 'legendary', isCursed: true,
-    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +20% к урону склянок · +20% к ХП врагов.',
+    desc: '+стихия Эфира ко всем склянкам (открывает реакции) · +20% к урону склянок · +20% к Прочности врагов.',
   },
   {
     id: 'curse_mutagen_brew',
     name: 'Мутагенное проклятие',
     category: 'recipe', rarity: 'epic', isCursed: true,
-    desc: '+яд от склянок (4 урона/с, 5 с, игнорирует броню) · +18% к урону склянок · +20% к ХП врагов.',
+    desc: '+яд от склянок (4 урона/с, 5 с, игнорирует броню) · +18% к урону склянок · +20% к Прочности врагов.',
   },
   {
     id: 'curse_triple_throw',
@@ -330,7 +331,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_mercury_coating',
     name: 'Ртутное покрытие (проклятое)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: '+20% к замедлению от стоек · +13% к скорострельности стоек · −30 макс. ХП Манекена.',
+    desc: '+20% к замедлению от стоек · +13% к скорострельности стоек · −30 макс. Прочности Манекена.',
   },
   {
     id: 'curse_acid_tips',
@@ -342,7 +343,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_synchronized_volley',
     name: 'Синхронный залп (проклятый)',
     category: 'engineering', rarity: 'epic', isCursed: true,
-    desc: 'Каждая 4-я атака стойки стреляет дважды · +10% к урону стоек · +20% к ХП врагов.',
+    desc: 'Каждая 4-я атака стойки стреляет дважды · +10% к урону стоек · +20% к Прочности врагов.',
   },
 
   // Rituals / Mannequin
@@ -350,13 +351,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_thorny_shell',
     name: 'Шипастая оболочка (проклятая)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: 'Враги получают 8 ответного урона при касании Манекена · +25 макс. ХП Манекена · −20% к золоту.',
+    desc: 'Враги получают 8 ответного урона при касании Манекена · +25 макс. Прочности Манекена · −20% к золоту.',
   },
   {
     id: 'curse_golem_heart',
     name: 'Сердце Голема (проклятое)',
     category: 'ritual', rarity: 'legendary', isCursed: true,
-    desc: '1 раз за забег спасает Манекен от смерти: 1 ХП + щит на 6 с · +38 макс. ХП · −30% к урону склянок.',
+    desc: '1 раз за забег спасает Манекен от смерти: 1 Прочности + щит на 6 с · +38 макс. Прочности · −30% к урону склянок.',
   },
 
   // Unique reagent effects (formerly «catalysts»)
@@ -370,13 +371,13 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_mercury_ring',
     name: 'Ртутный обруч (проклятый)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: 'Враги рядом с Манекеном движутся на 40% медленнее · +15% к золоту · +15% к ХП врагов.',
+    desc: 'Враги рядом с Манекеном движутся на 40% медленнее · +15% к золоту · +15% к Прочности врагов.',
   },
   {
     id: 'curse_acid_prism',
     name: 'Кислотная призма (проклятая)',
     category: 'ritual', rarity: 'epic', isCursed: true,
-    desc: '+13% к урону стихийных реакций · +13% к урону склянок · −35 макс. ХП Манекена.',
+    desc: '+13% к урону стихийных реакций · +13% к урону склянок · −35 макс. Прочности Манекена.',
   },
   {
     id: 'curse_aether_engine',
@@ -388,7 +389,7 @@ const CURSED_CARDS: CardDef[] = [
     id: 'curse_crown_of_elements',
     name: 'Корона стихий (проклятая)',
     category: 'ritual', rarity: 'legendary', isCursed: true,
-    desc: '+25% к урону реакций, +10 к Перегрузке · +20% к урону склянок · +20% к ХП врагов.',
+    desc: '+25% к урону реакций, +10 к Перегрузке · +20% к урону склянок · +20% к Прочности врагов.',
   },
 
   // Legendary brews / pacts

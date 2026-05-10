@@ -120,7 +120,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     // action is reachable.
     id: 'w2-mannequin-shop',
     trigger: { kind: 'prepStart', wave: 2 },
-    text: 'Во время подготовки кликни по манекену, чтобы открыть панель ремонта и щита. За золото можно восстановить ХП или поставить временный щит на 10 секунд.',
+    text: 'Во время подготовки кликни по манекену, чтобы открыть панель ремонта и щита. За золото можно восстановить Прочность или поставить временный щит на 10 секунд.',
     target: { kind: 'mannequin' },
     dismiss: { kind: 'mannequinShopOpened' },
   },
@@ -197,7 +197,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'pause-enemy-stats',
     trigger: { kind: 'pauseOpen' },
-    text: 'Модификаторы врагов от выбранной сложности: ХП, скорость и урон. Способности отдельных врагов смотри в Дневнике алхимика.',
+    text: 'Модификаторы врагов от выбранной сложности: Прочность, скорость и урон. Способности отдельных врагов смотри в Дневнике алхимика.',
     target: { kind: 'hud', selector: '[data-tutorial-target="pause-enemy-stats"]', arrow: 'right' },
     dismiss: { kind: 'next' },
   },

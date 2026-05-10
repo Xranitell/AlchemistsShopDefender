@@ -445,8 +445,8 @@ export class MainMenu {
     titleRow.innerHTML = `<span>📅</span><span class="mm-daily-header-text">${t('ui.daily.title')}</span>${indicator}`;
 
     const currentDay = opts.meta.dailyDay ?? 0;
-    const pageStart = Math.floor(currentDay / 9) * 9;
-    const pageNum = Math.floor(currentDay / 9) + 1;
+    const pageStart = Math.floor(currentDay / DAILY_CYCLE) * DAILY_CYCLE;
+    const pageNum = Math.floor(currentDay / DAILY_CYCLE) + 1;
     const badge = document.createElement('span');
     badge.className = 'mm-daily-week-badge';
     badge.textContent = t('ui.daily.week', { n: pageNum });
@@ -475,7 +475,7 @@ export class MainMenu {
     // drop the "Сегодня" label there.
     const highlightIdx = claimable ? currentDay : currentDay - 1;
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < DAILY_CYCLE; i++) {
       const dayIdx = pageStart + i;
       const reward = DAILY_REWARDS[dayIdx % DAILY_CYCLE];
       const cell = document.createElement('div');
