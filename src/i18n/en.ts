@@ -546,7 +546,7 @@ export const EN: Record<string, string> = {
   'ui.tutorial.ok': 'Got it',
   'ui.tutorial.next': 'Next',
   'ui.tutorial.done': 'Done',
-  'tutorial.w1-throw': 'Hold LMB to aim, then release — the mannequin throws a vial.',
+  'tutorial.w1-throw': 'Press and hold to aim, then release — the mannequin throws a vial.',
   'tutorial.w1-aim-bonus': 'A precise manual throw deals +20% damage. Time your shot and aim carefully.',
   'tutorial.cursed-cards': 'Cursed cards: each one bundles a strong effect with 1–2 extra random tweaks — those extras can be either bonuses or drawbacks. Read every line on the card; if the downsides look too painful, hit «Skip» instead.',
   'tutorial.w2-mannequin-shop': 'During prep, click the mannequin to open repair and shield options. Spend gold to restore HP or add a temporary 10-second shield.',
