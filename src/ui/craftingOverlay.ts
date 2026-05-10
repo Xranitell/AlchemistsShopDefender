@@ -35,6 +35,15 @@ import { buildDramaticStage, appendGlitchTitleChars } from './dramaticStage';
 
 export class CraftingOverlay {
   private root: HTMLElement;
+  // Live-updated section nodes so a successful brew can swap just the
+  // sections that actually changed (inventory + ingredients + recipes)
+  // instead of tearing down the whole panel. Re-rendering the panel
+  // restarts the dramatic-stage rays / sparks / glitch title and the
+  // panel-rise-in animation — the resulting visual flash on every
+  // craft was reported as uncomfortable flicker.
+  private invSection: HTMLElement | null = null;
+  private ingSection: HTMLElement | null = null;
+  private recSection: HTMLElement | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -51,6 +60,31 @@ export class CraftingOverlay {
   hide(): void {
     this.root.innerHTML = '';
     this.root.classList.remove('visible');
+    this.invSection = null;
+    this.ingSection = null;
+    this.recSection = null;
+  }
+
+  /** Targeted refresh after a successful brew: replace just the three
+   *  data-driven sections so counts and slots update without rebuilding
+   *  the panel header / dramatic stage backdrop (which would restart
+   *  the rotating rays + glitch title and read as a screen flicker). */
+  private refreshSections(opts: { meta: MetaSave; onClose: () => void }): void {
+    if (this.invSection) {
+      const next = this.buildInventorySection(opts);
+      this.invSection.replaceWith(next);
+      this.invSection = next;
+    }
+    if (this.ingSection) {
+      const next = this.buildIngredientsSection(opts);
+      this.ingSection.replaceWith(next);
+      this.ingSection = next;
+    }
+    if (this.recSection) {
+      const next = this.buildRecipesSection(opts);
+      this.recSection.replaceWith(next);
+      this.recSection = next;
+    }
   }
 
   private render(opts: { meta: MetaSave; onClose: () => void }): void {
@@ -94,15 +128,18 @@ export class CraftingOverlay {
     leftCol.className = 'craft-col craft-col-left';
 
     // Inventory section
-    leftCol.appendChild(this.buildInventorySection(opts));
+    this.invSection = this.buildInventorySection(opts);
+    leftCol.appendChild(this.invSection);
     // Ingredients section sits under the inventory
-    leftCol.appendChild(this.buildIngredientsSection(opts));
+    this.ingSection = this.buildIngredientsSection(opts);
+    leftCol.appendChild(this.ingSection);
 
     body.appendChild(leftCol);
 
     const rightCol = document.createElement('div');
     rightCol.className = 'craft-col craft-col-right';
-    rightCol.appendChild(this.buildRecipesSection(opts));
+    this.recSection = this.buildRecipesSection(opts);
+    rightCol.appendChild(this.recSection);
     body.appendChild(rightCol);
 
     panel.appendChild(body);
@@ -245,9 +282,11 @@ export class CraftingOverlay {
     }
     brewBtn.addEventListener('click', () => {
       if (brewPotion(opts.meta, recipe) >= 0) {
-        // Re-render so counts and slots update without losing the user's
-        // place at the top of the list.
-        this.render(opts);
+        // Targeted refresh — only rebuild the three data sections that
+        // actually changed. Keeping the panel + dramatic stage stable
+        // avoids restarting the rays/glitch entrance animations on
+        // every craft (which read as a jarring screen flicker).
+        this.refreshSections(opts);
       }
     });
     row.appendChild(brewBtn);

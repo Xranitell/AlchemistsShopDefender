@@ -87,6 +87,11 @@ export class Hud {
   private overloadLabel!: HTMLSpanElement;
   private overloadFill!: HTMLDivElement;
   private overloadModule!: HTMLSpanElement;
+  /** Numeric "57%" → "ГОТОВ" / "READY" readout shown inside the
+   *  overload button so the player has a concrete number for the
+   *  charge state in addition to the conic ring sweep. */
+  private overloadPercentLabel!: HTMLSpanElement;
+  private prevOverloadPercent = -1;
 
   // Center-bottom hint + skip-wave (only during preparing phase)
   private hint!: HTMLDivElement;
@@ -411,6 +416,13 @@ export class Hud {
     this.overloadFill = document.createElement('div');
     this.overloadFill.className = 'hud-overload-charge';
     this.overloadButton.appendChild(this.overloadFill);
+    // Live percent readout — hidden behind a class until `update()`
+    // populates it on the first frame so the layout doesn't jump
+    // when the value snaps from "" to "0%".
+    this.overloadPercentLabel = document.createElement('span');
+    this.overloadPercentLabel.className = 'hud-overload-percent';
+    this.overloadPercentLabel.textContent = '0%';
+    this.overloadButton.appendChild(this.overloadPercentLabel);
     this.overloadButton.addEventListener('click', () => this.handlers.onActivateOverload());
     rightButtons.appendChild(this.overloadButton);
 
@@ -443,6 +455,17 @@ export class Hud {
     if (odeg !== this.prevOverloadDeg) {
       this.overloadFill.style.background = `conic-gradient(var(--cool-glow) ${odeg}deg, transparent ${odeg}deg)`;
       this.prevOverloadDeg = odeg;
+    }
+    // Numeric readout. Quantise to whole percent so we don't churn
+    // the DOM on sub-percent meter ticks. Once full, swap the number
+    // for the localised "ГОТОВ"/"READY" word so the player has a
+    // crisp signal that the ability is now firable.
+    const opct = Math.min(100, Math.max(0, Math.round(ocharge * 100)));
+    if (opct !== this.prevOverloadPercent) {
+      this.overloadPercentLabel.textContent = opct >= 100
+        ? t('ui.hud.overloadReady')
+        : `${opct}%`;
+      this.prevOverloadPercent = opct;
     }
 
     if (state.gold !== this.prevGold) {

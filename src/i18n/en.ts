@@ -76,6 +76,7 @@ export const EN: Record<string, string> = {
   'ui.hud.module.element_prism': 'Prism',
   'ui.hud.magnet': 'MAGNET',
   'ui.hud.overload': 'OVERLOAD',
+  'ui.hud.overloadReady': 'READY!',
   'ui.hud.bossIncoming': '⚠ BOSS WAVE ⚠',
   'ui.hud.runSidebar.collapse': 'Collapse',
   'ui.hud.runSidebar.expand': 'Expand',
