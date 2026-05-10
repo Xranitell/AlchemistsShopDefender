@@ -19,29 +19,25 @@ export interface DailyReward {
   amount: number;
 }
 
-export const DAILY_CYCLE = 12;
+export const DAILY_CYCLE = 7;
 
-/** 12-day rotating cycle. Tier curve:
- *   - Day-1 / 8 give a small starter blue-essence drop.
- *   - Mid-cycle (4, 6, 9) hands out rerolls / epic keys to keep the
- *     run-prep loop interesting.
- *   - Days 7 and 12 are the week-1 / week-2 capstones — ancient essence
- *     and an ancient key respectively.
+/** 7-day rotating cycle (one reward per weekday). Tier curve:
+ *   - Days 1-2 hand out a small blue-essence starter drop.
+ *   - Day 3 introduces an ancient-essence trickle.
+ *   - Day 4 bumps the blue-essence payout.
+ *   - Day 5 grants an epic key for the run-prep loop.
+ *   - Day 6 doubles the ancient-essence drop as the mid-week reward.
+ *   - Day 7 is the weekly capstone — an ancient key.
  *  All amounts are intentionally below "single-run earn rate" so daily
  *  claims feel like a bonus, never a substitute for actually playing. */
 export const DAILY_REWARDS: DailyReward[] = [
   { day: 1, type: 'blue_essence', amount: 5 },
-  { day: 2, type: 'rerolls', amount: 1 },
-  { day: 3, type: 'blue_essence', amount: 8 },
-  { day: 4, type: 'epic_key', amount: 1 },
-  { day: 5, type: 'blue_essence', amount: 12 },
-  { day: 6, type: 'rerolls', amount: 2 },
-  { day: 7, type: 'ancient_essence', amount: 1 },
-  { day: 8, type: 'blue_essence', amount: 10 },
-  { day: 9, type: 'epic_key', amount: 1 },
-  { day: 10, type: 'blue_essence', amount: 15 },
-  { day: 11, type: 'rerolls', amount: 3 },
-  { day: 12, type: 'ancient_key', amount: 1 },
+  { day: 2, type: 'blue_essence', amount: 8 },
+  { day: 3, type: 'ancient_essence', amount: 1 },
+  { day: 4, type: 'blue_essence', amount: 12 },
+  { day: 5, type: 'epic_key', amount: 1 },
+  { day: 6, type: 'ancient_essence', amount: 2 },
+  { day: 7, type: 'ancient_key', amount: 1 },
 ];
 
 export function rewardLabel(r: DailyReward): string {

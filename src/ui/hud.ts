@@ -270,7 +270,7 @@ export class Hud {
     hpInner.className = 'hud-hp-inner';
     const hpTagLabel = document.createElement('div');
     hpTagLabel.className = 'hud-tag-label hud-hp-label';
-    hpTagLabel.textContent = 'HP';
+    hpTagLabel.textContent = t('ui.hud.hpLabel');
     const hpBar = document.createElement('div');
     hpBar.className = 'hud-bar hud-hp-bar';
     this.hpFill = document.createElement('div');
@@ -805,7 +805,7 @@ export class Hud {
     if (state.potionShieldHp > 0) {
       const r = POTION_BY_ID['stoneShield']!;
       chipsHtml +=
-        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}HP</span></span>`;
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}${t('ui.hud.shieldHp')}</span></span>`;
     }
     if (chipsHtml !== this.prevEffectsHtml) {
       this.effectsBar.innerHTML = chipsHtml;

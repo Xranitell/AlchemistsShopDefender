@@ -369,7 +369,7 @@ export class PauseStatsOverlay {
     p(tWithFallback('ui.pause.stat.towerCost', 'Стоимость стоек'), m.towerCostMult);
 
     // Mannequin
-    flat(tWithFallback('ui.pause.stat.maxHp', 'Макс. ХП'), mq.maxHp, 200);
+    flat(tWithFallback('ui.pause.stat.maxHp', 'Прочность Манекена'), mq.maxHp, 200);
 
     // Economy
     p(tWithFallback('ui.pause.stat.goldDrop', 'Золото с врагов'), m.goldDropMult);
@@ -419,7 +419,7 @@ export class PauseStatsOverlay {
       });
     };
 
-    addEnemy(tWithFallback('ui.pause.stat.enemyHp', 'ХП врагов'), dm.hpMult);
+    addEnemy(tWithFallback('ui.pause.stat.enemyHp', 'Прочность врагов'), dm.hpMult);
     addEnemy(tWithFallback('ui.pause.stat.enemySpeed', 'Скорость врагов'), dm.speedMult);
     addEnemy(tWithFallback('ui.pause.stat.enemyDamage', 'Урон врагов'), dm.damageMult);
 

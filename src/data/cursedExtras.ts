@@ -59,7 +59,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_hp_15',
     polarity: 'pos',
-    label: '+8 макс. ХП Манекена',
+    label: '+8 макс. Прочности Манекена',
     apply: (s) => {
       s.mannequin.maxHp += 8;
       s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp + 8);
@@ -79,7 +79,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_hp_15',
     polarity: 'neg',
-    label: '+15% к ХП врагов',
+    label: '+15% к Прочности врагов',
     apply: (s) => { s.difficultyModifier.hpMult *= 1.15; },
   },
   {
@@ -109,7 +109,7 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_hp_-25',
     polarity: 'neg',
-    label: '−25 макс. ХП Манекена',
+    label: '−25 макс. Прочности Манекена',
     apply: (s) => {
       s.mannequin.maxHp = Math.max(50, s.mannequin.maxHp - 25);
       s.mannequin.hp = Math.min(s.mannequin.maxHp, s.mannequin.hp);
@@ -141,13 +141,13 @@ const ALL: CursedExtraEffect[] = [
   {
     id: 'extra_enemy_shield_20',
     polarity: 'neg',
-    label: 'Враги получают щит на 20% от макс. ХП',
+    label: 'Враги получают щит на 20% от макс. Прочности',
     apply: (s) => { s.modifiers.enemyExtraShieldFraction += 0.20; },
   },
   {
     id: 'extra_enemy_regen_3',
     polarity: 'neg',
-    label: 'Враги восстанавливают 3 ХП/сек',
+    label: 'Враги восстанавливают 3 Прочности/сек',
     apply: (s) => { s.modifiers.enemyRegenPerSec += 3; },
   },
   {
