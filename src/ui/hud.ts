@@ -283,7 +283,7 @@ export class Hud {
     hpBar.appendChild(this.hpFill);
     this.hpLabel = document.createElement('span');
     this.hpLabel.className = 'hud-hp-label-num';
-    this.hpLabel.textContent = '120 / 120';
+    this.hpLabel.textContent = '120/120';
     hpBar.appendChild(this.hpLabel);
     hpInner.appendChild(hpTagLabel);
     hpInner.appendChild(hpBar);
@@ -441,7 +441,10 @@ export class Hud {
       this.hpFill.style.width = `${ratioRounded * 100}%`;
       this.prevHpRatio = ratioRounded;
     }
-    const hpLabel = `${Math.max(0, Math.round(m.hp))} / ${m.maxHp}`;
+    // Compact "150/200" rather than "150 / 200" — every saved character
+    // matters on phone HUDs where the bar shrinks below 100 px and the
+    // wider 9-character variant would overflow the bar.
+    const hpLabel = `${Math.max(0, Math.round(m.hp))}/${m.maxHp}`;
     if (hpLabel !== this.prevHpLabel) {
       this.hpLabel.textContent = hpLabel;
       this.prevHpLabel = hpLabel;
