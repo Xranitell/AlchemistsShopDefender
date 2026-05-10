@@ -188,6 +188,10 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
   title.textContent = t('ui.settings.audio');
   section.appendChild(title);
 
+  // Gameplay SFX — towers, enemies, drops, reactions. Audible "uiClick"
+  // sample is intentionally omitted on release here so it doesn't bleed
+  // into the *gameplay* slider preview when the player is tweaking that
+  // channel; gameplay sounds are tested in-run instead.
   section.appendChild(
     buildVolumeSlider({
       label: t('ui.settings.sfx'),
@@ -199,7 +203,26 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
       onChange: (v) => {
         meta.sfxVolume = v;
         saveMeta(meta);
-        // Audible cue so the player can sample the new level on release.
+        // Sample a real gameplay SFX so the player hears the new
+        // gameplay-channel level.
+        audio.playSfx('goldPickup');
+      },
+    }),
+  );
+
+  section.appendChild(
+    buildVolumeSlider({
+      label: t('ui.settings.uiSfx'),
+      initial: meta.uiSfxVolume,
+      onInput: (v) => {
+        meta.uiSfxVolume = v;
+        audio.setUiSfxVolume(v);
+      },
+      onChange: (v) => {
+        meta.uiSfxVolume = v;
+        saveMeta(meta);
+        // Sample a UI click so the player hears the new UI-channel
+        // level on release.
         audio.playSfx('uiClick');
       },
     }),
