@@ -64,8 +64,13 @@ export interface MetaSave {
    *  single active ability that the player triggers when the Overload
    *  bar is full. */
   selectedActiveModule: string;
-  /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
+  /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance.
+   *  `sfxVolume`   — gameplay SFX (shots, hits, drops, reactions).
+   *  `uiSfxVolume` — UI ticks (button click / hover) only. Split out
+   *                  so the player can mute clicks without losing
+   *                  combat audio cues. */
   sfxVolume: number;
+  uiSfxVolume: number;
   musicVolume: number;
   /** Animation strength (see {@link MotionMode}). Defaults to
    *  `'minimal'` on touch devices and `'auto'` everywhere else; the
@@ -146,6 +151,7 @@ export function newMetaSave(): MetaSave {
     craftingLevel: 1,
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
     sfxVolume: 0.6,
+    uiSfxVolume: 0.6,
     // Default music slider sits at 100 %. The audio engine internally
     // caps slider = 1.0 to a comfortable amplitude (`MUSIC_MAX_GAIN`),
     // so the soundtrack still sits behind SFX without the player having
@@ -267,6 +273,10 @@ export function loadMeta(): MetaSave {
         ? (data.selectedActiveModule as string)
         : DEFAULT_ACTIVE_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
+      // Migration: pre-split saves had no separate UI volume — fall
+      // back to the gameplay SFX level so the player keeps a familiar
+      // mix on first load after upgrade.
+      uiSfxVolume: clampVolume(data.uiSfxVolume, clampVolume(data.sfxVolume, 0.6)),
       musicVolume: clampVolume(data.musicVolume, 1.0),
       // Migration: pre-motion-mode saves had no setting. Carry over the
       // platform default so existing Android players who had been

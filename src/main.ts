@@ -194,7 +194,7 @@ let state: GameState = buildInitialState();
 // up the engine, push the user-saved volumes in and start the menu loop.
 function startAudioOnGesture(): void {
   audio.ensureStarted();
-  audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
+  audio.setVolumes({ sfxVolume: meta.sfxVolume, uiSfxVolume: meta.uiSfxVolume, musicVolume: meta.musicVolume });
   // Whatever phase we're in when the gesture lands, kick off the matching
   // music. Most players will land here from the main-menu screen.
   audio.playMusic(state.phase === 'wave' || state.phase === 'preparing' ? 'battle' : 'menu');
@@ -1716,7 +1716,7 @@ function showRewardDoubledOverlay(opts: {
 
 function showMainMenu(): void {
   meta = loadMeta();
-  audio.setVolumes({ sfxVolume: meta.sfxVolume, musicVolume: meta.musicVolume });
+  audio.setVolumes({ sfxVolume: meta.sfxVolume, uiSfxVolume: meta.uiSfxVolume, musicVolume: meta.musicVolume });
   applyMotionModeFromMeta(meta);
   audio.playMusic('menu');
   // Closing one of the menu cards always tears down the walkthrough
