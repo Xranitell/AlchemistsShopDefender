@@ -13,6 +13,26 @@ import type { WaveDef } from '../game/types';
 const DENSITY = 0.55;
 const DOUBLE_SPAWNS = true;
 
+/** How much of each wave gets a mirrored opposite-entrance copy.
+ *  0 → single-direction wave (no extras).
+ *  1 → every authored spawn is mirrored from the opposite side.
+ *
+ *  Previously the mirror toggled hard from 0 (waves 1–3) to 1 (waves
+ *  4+), which doubled enemies-on-screen overnight and made wave 4
+ *  feel disproportionately punishing. We now ramp mirrors in over
+ *  three waves so the jump is gradual: wave 4 keeps a third of the
+ *  authored spawns mirrored, wave 5 two thirds, wave 6+ fully
+ *  mirrored. This matches the same "every wave is one notch
+ *  harder" linear curve we use for HP/speed scaling and keeps the
+ *  player's mental model of "each wave adds a little more" intact.
+ */
+function mirrorFraction(index: number): number {
+  if (!DOUBLE_SPAWNS || index <= 3) return 0;
+  if (index === 4) return 1 / 3;
+  if (index === 5) return 2 / 3;
+  return 1;
+}
+
 const wave = (
   index: number,
   duration: number,
@@ -22,18 +42,30 @@ const wave = (
 ): WaveDef => {
   const scaled = spawns.map((s) => ({ ...s, at: s.at * DENSITY }));
   // Insert a mirrored spawn from the opposite entrance at a small offset so
-  // a wave with N authored spawns actually puts ~2N enemies on screen and
-  // attacks come from two opposite directions simultaneously.
-  // The first three waves stay single-direction so newcomers get a calmer
-  // ramp-up while learning the basic controls.
-  const allowMirror = DOUBLE_SPAWNS && index > 3;
-  const extra: WaveDef['spawns'] = allowMirror
-    ? scaled.map((s) => ({
-        ...s,
-        at: s.at + 0.3,
-        entrance: (s.entrance + 2) % 4,
-      }))
-    : [];
+  // a wave with N authored spawns puts more enemies on screen and attacks
+  // come from two opposite directions simultaneously. Mirror density
+  // ramps in gradually after wave 3 (see `mirrorFraction`) so the jump
+  // from "single direction" to "two directions" feels smooth.
+  const fraction = mirrorFraction(index);
+  const mirrorCount = Math.round(scaled.length * fraction);
+  const extra: WaveDef['spawns'] = [];
+  if (mirrorCount > 0) {
+    // Pick evenly-spaced spawns to mirror so the partial-mirror waves
+    // stay rhythmically balanced (rather than mirroring just the
+    // first N or last N entries, which would all cluster on one half
+    // of the wave). `step` >= 1 by construction since mirrorCount <=
+    // scaled.length.
+    const step = scaled.length / mirrorCount;
+    for (let i = 0; i < mirrorCount; i++) {
+      const src = scaled[Math.floor(i * step)];
+      if (!src) continue;
+      extra.push({
+        ...src,
+        at: src.at + 0.3,
+        entrance: (src.entrance + 2) % 4,
+      });
+    }
+  }
   const allSpawns = [...scaled, ...extra].sort((a, b) => a.at - b.at);
   return {
     index,
