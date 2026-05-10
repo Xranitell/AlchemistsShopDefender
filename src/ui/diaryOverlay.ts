@@ -67,19 +67,16 @@ type DiaryTab = 'alchemy' | 'synergies' | 'bestiary' | 'stances';
 function fitTitleToBox(el: HTMLElement, maxPx: number, minPx: number): void {
   const apply = (): void => {
     if (!el.isConnected) return;
-    // The available width is the parent's content box, NOT the
-    // element's own clientWidth — the element stretches to fit its
-    // content (because of flex / grid auto-sizing) and then asks the
-    // parent to scroll, so reading our own clientWidth gives us the
-    // already-overflowed width and never triggers a shrink. Walking
-    // up to the closest sized ancestor and reading its clientWidth
-    // gives us the real budget we have to fit into.
-    const parent = el.parentElement;
-    const budget = parent && parent.clientWidth > 0
-      ? parent.clientWidth
-      : el.clientWidth;
-    if (budget <= 0) return;
+    // Use the element's own clientWidth as the budget. This works
+    // correctly when the element has `min-width: 0` (flex info-panel
+    // names) or an explicit `width: 100%` (entry-card names) — the
+    // browser constrains the box to its layout allocation rather than
+    // letting it stretch to content size. Reading the parent's
+    // clientWidth is wrong for flex rows with siblings (e.g. a sprite
+    // box) because the parent includes the sibling's space too.
     el.style.fontSize = `${maxPx}px`;
+    const budget = el.clientWidth;
+    if (budget <= 0) return;
     const text = el.textContent ?? '';
     if (!text) return;
     const longest = text.split(/\s+/).reduce(
@@ -564,7 +561,7 @@ export class DiaryOverlay {
     head.appendChild(sprite);
 
     host.appendChild(head);
-    fitTitleToBox(name, 14, 8);
+    fitTitleToBox(name, 15, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -592,7 +589,7 @@ export class DiaryOverlay {
     glyph.textContent = entry.glyph;
     head.appendChild(glyph);
     host.appendChild(head);
-    fitTitleToBox(name, 14, 8);
+    fitTitleToBox(name, 15, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.formula')));
     host.appendChild(buildSynergyFormula(entry, 'info'));
@@ -631,7 +628,7 @@ export class DiaryOverlay {
     head.appendChild(name);
 
     host.appendChild(head);
-    fitTitleToBox(name, 14, 8);
+    fitTitleToBox(name, 15, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -681,7 +678,7 @@ export class DiaryOverlay {
     if (node) spriteBox.appendChild(node);
     head.appendChild(spriteBox);
     host.appendChild(head);
-    fitTitleToBox(name, 14, 8);
+    fitTitleToBox(name, 15, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
