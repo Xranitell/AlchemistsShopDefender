@@ -3070,13 +3070,18 @@ body {
   text-shadow: 0 0 6px rgba(255, 209, 102, 0.5);
 }
 
-/* ── Shop / Laboratory cards (left column, alongside daily rewards) ──
- * Stretched to fill the available width and grow vertically so they
- * read at the same visual scale as the daily rewards calendar that
- * sits below them in the same column. The Diary card joins them as a
- * fourth sibling — shrinks slightly so the four widgets still fit the
- * same column height without overflowing. */
+/* ── Left-column cards (Diary / Brewery / Laboratory / Loadout) ──────
+ * Per user request the four widgets must NOT all share the column
+ * height. Brewery sizes to its potion-slot row and Loadout sizes to
+ * its single equipped overload (`flex: 0 0 auto` so they take only
+ * what their content needs). Diary and Laboratory keep `flex: 1 1 0`
+ * so they fill the remaining vertical space. */
 .mm-col-left .mm-shop-card,
+.mm-col-left .mm-loadout-card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+}
 .mm-col-left .mm-lab-card,
 .mm-col-left .mm-diary-card {
   flex: 1 1 0;
@@ -3085,10 +3090,8 @@ body {
   flex-direction: column;
 }
 .mm-col-left .mm-shop-card .mm-shop-slots {
-  /* Brewery body trim: previously the slot row sat with 14/12 px
-     above/below margins which left a sizeable empty band between the
-     title strip and the slot row when the card stretched. Reducing
-     to 6/4 px keeps the slots visually anchored just under the title. */
+  /* Brewery body trim: keep the slot row anchored just under the
+     title so the card hugs its inventory grid. */
   gap: 8px;
   margin: 6px 0 4px;
 }
@@ -3106,11 +3109,8 @@ body {
   flex: 1 1 auto;
 }
 /* The lab tree's branches and node offsets are tuned for a fixed
-   ~200px-wide compact card. When the card stretches to fill the wider
-   left column, keep the tree itself at its original width and centre
-   it so the connecting branches still land on the HP / DMG nodes.
-   Heights trimmed to match the smaller card target now that four
-   widgets share the column. */
+   ~200px-wide compact card. Centre the tree so the connecting branches
+   still land on the HP / DMG nodes when the card stretches. */
 .mm-col-left .mm-lab-card .mm-lab-tree {
   width: 190px;
   height: 86px;
@@ -3118,6 +3118,13 @@ body {
 }
 .mm-col-left .mm-diary-card .mm-diary-body {
   min-height: 70px;
+  flex: 1 1 auto;
+}
+/* Loadout (Перегрузка) hugs its single equipped slot — drop the
+   bottom slot margin so the card doesn't carry empty padding under
+   the hint line. */
+.mm-col-left .mm-loadout-card .mm-loadout-slots {
+  margin: 4px 0 2px;
 }
 
 .mm-bp-sub { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg-dim); }
@@ -11988,18 +11995,18 @@ body {
   min-height: 0;
   overflow: hidden;
 }
+/* Per user request: Brewery sizes to its potion-slot row (no extra
+   space below), Loadout sizes to the single equipped overload (no
+   empty padding under the hint). Diary + Laboratory absorb whatever
+   vertical room is left in the column. */
 :root.viewport-fitted .main-menu .mm-col-left .mm-shop-card,
+:root.viewport-fitted .main-menu .mm-col-left .mm-loadout-card {
+  flex: 0 0 auto;
+  min-height: 0;
+}
 :root.viewport-fitted .main-menu .mm-col-left .mm-lab-card,
 :root.viewport-fitted .main-menu .mm-col-left .mm-diary-card {
   flex: 1 1 0;
-  min-height: 0;
-}
-:root.viewport-fitted .main-menu .mm-col-left .mm-loadout-card {
-  /* Loadout has 2 slot rows + title — slightly more content than the
-     other three cards. A flex-grow of 1.4 gives it ~10 design-px more
-     vertical space at the cost of evening out the slack across the
-     diorama cards (which had visible empty bands at flex 1). */
-  flex: 1.4 1 0;
   min-height: 0;
 }
 
@@ -12069,21 +12076,19 @@ body {
   max-height: 100%;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slots {
-  /* Slot row claims any leftover card-body height — slots themselves
-     stretch via `align-items: stretch` so the four potion silhouettes
-     read at a balanced size regardless of card height. */
-  flex: 1 1 auto;
+  /* Brewery card is now sized to fit its slot row exactly (parent uses
+     `flex: 0 0 auto`), so the slot row no longer needs to flex-grow.
+     Fix the row to its content height and keep the four slots at a
+     consistent design-px so the card hugs the inventory grid. */
+  flex: 0 0 auto;
   align-items: stretch;
   min-height: 0;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slot {
-  flex: 1 1 0;
-  height: auto;
-  min-height: 32px;
-  /* Cap slot growth so the brewery row never feels oversized — at
-     56 design-px the potion silhouettes still fill the slot without
-     looking "tall and thin" relative to the icon dimensions. */
-  max-height: 56px;
+  flex: 0 0 auto;
+  height: 46px;
+  min-height: 46px;
+  max-height: 46px;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-diary-card .mm-diary-body {
   /* Body fills the card's vertical space so the chest sprite is
@@ -12217,13 +12222,11 @@ body {
   gap: 4px;
 }
 :root.viewport-fitted-narrow .main-menu .mm-col-left .mm-shop-card .mm-shop-slot {
-  /* Cap brewery slot growth on narrow designs so the row stays tight
-     even when the card body has plenty of vertical room. The fitted
-     rule above lets each slot stretch via `flex: 1 1 0`; we lower the
-     ceiling to 48 design-px on narrow so the row reads as a compact
-     "potion shelf" rather than four oversized columns. */
-  max-height: 48px;
-  min-height: 32px;
+  /* Slightly tighter slots on narrow designs so the brewery row reads
+     as a compact "potion shelf" inside the squeezed left column. */
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
 }
 :root.viewport-fitted-narrow .main-menu .mm-loadout-card {
   /* Tighter loadout chrome so both AKTИВ + АУРА rows fit inside the
@@ -13635,6 +13638,13 @@ body {
   z-index: 0;
 }
 .mm-card > * { position: relative; z-index: 1; }
+/* Brewery backdrop is intentionally absolutely positioned over the
+   card body (alchemy-table scene + steam wisps). The blanket
+   `.mm-card > *` rule above forces every direct child to relative
+   which would push the SVG into normal flow and balloon the card
+   height; explicitly restore `absolute` so the backdrop only paints
+   behind the slot row. */
+.mm-card > .mm-shop-backdrop { position: absolute; }
 .mm-card-title {
   padding-bottom: 7px;
   border-bottom: 1px dashed rgba(255, 209, 102, 0.24);
