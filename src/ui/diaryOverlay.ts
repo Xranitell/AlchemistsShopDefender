@@ -518,18 +518,24 @@ export class DiaryOverlay {
     const discovered = meta ? isBestiaryDiscovered(meta, entry.id) : false;
 
     const head = document.createElement('div');
-    head.className = 'diary-info-head';
-
-    const name = document.createElement('div');
-    name.className = 'diary-info-name';
-    name.textContent = discovered ? enemyDisplayName(entry.id) : '???';
-    head.appendChild(name);
+    // Bestiary head uses the vertical-stack layout so the creature
+    // sprite reads as a centred portrait above the name. The other
+    // info renderers (element / synergy / stance) keep the original
+    // row layout because their glyph is small enough to share the
+    // row with the title.
+    head.className = 'diary-info-head diary-info-head-bestiary';
 
     const spriteBox = document.createElement('div');
     spriteBox.className = 'diary-info-sprite';
     const node = enemySpriteIconNode(entry.id, 96, { silhouette: !discovered });
     if (node) spriteBox.appendChild(node);
     head.appendChild(spriteBox);
+
+    const name = document.createElement('div');
+    name.className = 'diary-info-name';
+    name.textContent = discovered ? enemyDisplayName(entry.id) : '???';
+    head.appendChild(name);
+
     host.appendChild(head);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));

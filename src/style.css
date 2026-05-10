@@ -133,12 +133,22 @@ body {
   top: 4px;
   left: 18px;
   right: 18px;
-  display: flex;
-  justify-content: space-between;
+  /* 3-column grid keeps the HP plate visually centred regardless of
+   * how much width the wave badge on the left or the resource stack
+   * on the right consume. The previous flex `space-between` layout
+   * placed the plate based on the residual room between the two
+   * asymmetric side clusters, which on mobile pushed the plate off
+   * centre and made the abbreviation read as left-aligned. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: flex-start;
+  justify-items: stretch;
   gap: 16px;
   pointer-events: none;
 }
+.hud-top > .hud-wave-stack { justify-self: start; }
+.hud-top > .hud-hp-badge { justify-self: center; }
+.hud-top > .hud-right-stack { justify-self: end; }
 
 .hud-badge {
   position: relative;
@@ -232,7 +242,12 @@ body {
  * `align-self: flex-start` keeps it pinned to the top of the HUD row so the
  * mannequin's HP is the very first thing visible on every device. */
 .hud-hp-badge {
-  flex: 0 1 420px;
+  /* Centre column of the `.hud-top` 3-column grid — the parent's
+   * `justify-items: center` rule handles horizontal anchoring, so
+   * we only need to express how wide the plate wants to grow. */
+  width: 100%;
+  max-width: min(420px, 60vw);
+  min-width: 0;
   align-self: flex-start;
   padding: 8px 14px 10px;
 }
@@ -241,8 +256,21 @@ body {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  /* Centre the label/text inside the plate so the abbreviation reads
+   * as a centred caption above the bar instead of clinging to the
+   * left edge next to the heart sprite. */
+  align-items: center;
+  text-align: center;
+  min-width: 0;
 }
-.hud-hp-label { font-size: 9px; }
+.hud-hp-label {
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: 1px;
+}
 .hud-hp-bar {
   position: relative;
   width: 100%;
@@ -528,16 +556,97 @@ body {
   pointer-events: none;
 }
 
-/* Overload conic charge ring overlaid on top of OVERLOAD button */
+/* Overload charge ring — a thick cyan progress arc rendered on top of
+ * the warm gold OVERLOAD button. Implemented as a conic-gradient disc
+ * with a radial mask carving out the centre, so the ring stays purely
+ * decorative around the rim and never covers the lightning sprite or
+ * the "ПЕРЕГРУЗКА" label. The mask + brighter cyan + drop-shadow
+ * makes charge progress legible from across the screen.
+ *
+ * The conic-gradient `background` itself is written inline by
+ * `src/ui/hud.ts` as the overload meter ticks — only the geometry and
+ * tint live here. */
 .hud-overload-charge {
   position: absolute;
-  inset: -3px;
+  inset: -7px;
   border-radius: 50%;
   pointer-events: none;
-  mix-blend-mode: screen;
-  opacity: 0.45;
-  /* The conic gradient is set inline by hud.ts via background */
+  /* Carve out the inner disc so the ring is ~6px thick at the rim and
+   * the whole button face stays visible underneath. Both `mask` and
+   * `-webkit-mask` are set so iOS / older Chromium honour it. */
+  mask: radial-gradient(circle, transparent 60%, #000 62%);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 62%);
+  /* Wrap the ring in a soft drop-shadow + drop-shadow so the cyan arc
+   * pops against the warm gold button regardless of background. */
+  filter:
+    drop-shadow(0 0 4px rgba(125, 249, 255, 0.55))
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.85));
+  opacity: 1;
+  transition: filter 200ms ease;
 }
+/* When the meter is full the ring brightens, gains a stronger halo,
+ * and a subtle pulse so the player can tell at a glance the ability
+ * is ready to fire even if they aren't tracking the gradient sweep. */
+.hud-round-overload.ready .hud-overload-charge {
+  filter:
+    drop-shadow(0 0 7px rgba(255, 245, 200, 0.95))
+    drop-shadow(0 0 2px rgba(125, 249, 255, 0.8));
+  animation: hud-overload-ring-ready 1.4s ease-in-out infinite;
+}
+@keyframes hud-overload-ring-ready {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+:root.motion-reduced .hud-round-overload.ready .hud-overload-charge { animation: none; }
+/* Live charge percentage pill mounted just above the OVERLOAD button.
+ * Sits in its own absolutely-positioned chip so it doesn't fight the
+ * lightning sprite + "ПЕРЕГРУЗКА" caption inside the button face.
+ * Uses the same pixel font as the rest of the HUD and tracks the
+ * cyan/gold charge palette so charging vs. ready reads at a glance.
+ * The element is created lazily by `hud.ts`; styling lives here so
+ * the layout reads clean even before the first update. */
+.hud-overload-percent {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #e8f7ff;
+  background: linear-gradient(180deg, #0e1a26 0%, #050a10 100%);
+  border: 2px solid #1c2c3c;
+  border-radius: 5px;
+  padding: 3px 6px 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(125, 249, 255, 0.18),
+    0 2px 0 rgba(0, 0, 0, 0.55);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  white-space: nowrap;
+  /* Tint the chip cyan as the meter climbs by mixing the charge color
+   * via a CSS custom property — currently only the foreground glow
+   * shifts (background stays dark for contrast). */
+  text-shadow:
+    1px 1px 0 rgba(0, 0, 0, 0.85),
+    0 0 6px rgba(125, 249, 255, 0.55);
+}
+.hud-round-overload.ready .hud-overload-percent {
+  color: #fff5c8;
+  border-color: #ffd166;
+  background: linear-gradient(180deg, #2a1a05 0%, #1a0d02 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 200, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(255, 213, 102, 0.55);
+  text-shadow: 1px 1px 0 #4a2b00, 0 0 6px rgba(255, 213, 102, 0.9);
+  animation: hud-overload-pct-ready 1.2s ease-in-out infinite;
+}
+@keyframes hud-overload-pct-ready {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50%      { transform: translateX(-50%) scale(1.08); }
+}
+:root.motion-reduced .hud-round-overload.ready .hud-overload-percent { animation: none; }
 
 #overlay {
   position: absolute;
@@ -928,7 +1037,12 @@ body {
 
 /* Single card. Frame is a flex column so the title / divider / effects
  * stack with the divider taking the natural width. The card itself adds
- * the glow and angled clip-path corners. */
+ * the glow and angled clip-path corners.
+ *
+ * `container-type: inline-size` lets descendants (notably the title)
+ * scale via container queries — the title's font-size now tracks the
+ * card's actual rendered width instead of a hard-coded 15-px constant
+ * that overflowed on narrow phone columns. */
 .card-rh {
   position: relative;
   background: transparent;
@@ -937,6 +1051,8 @@ body {
   cursor: pointer;
   width: 100%;
   aspect-ratio: 3 / 4.4;
+  container-type: inline-size;
+  container-name: card-rh;
   /* Two chained drop-shadows: the dark one underneath the card, plus a
    * rarity-colored bloom that's visible OUTSIDE the clipped frame (because
    * `clip-path` on `.card-rh-frame` would otherwise eat any outer
@@ -1151,11 +1267,15 @@ body {
 
 .card-rh-title {
   font-family: 'Press Start 2P', 'VT323', monospace;
-  /* Pixel-art font: keep modest so longer Russian titles
-   * ("РТУТНОЕ ПОКРЫТИЕ", "ОГНЕННЫЙ КАМЕНЬ ПРОКЛЯТЫЙ") fit on 2-3 lines
-   * without horizontal overflow. */
-  font-size: 15px;
-  letter-spacing: 1px;
+  /* Auto-scaling pixel font: the title font-size tracks the card's
+   * actual rendered inline width (via the `card-rh` container set
+   * on `.card-rh`). On a wide desktop column (~320 px) the title
+   * grows to ~16 px; on a tight mobile column (~120 px) it shrinks
+   * to ~9 px so longer Russian names like "ОГНЕННЫЙ КАМЕНЬ
+   * ПРОКЛЯТЫЙ" fit on 2–3 lines instead of horizontally
+   * overflowing. */
+  font-size: clamp(9px, 4.5cqi + 2px, 16px);
+  letter-spacing: clamp(0.4px, 0.4cqi, 1px);
   text-align: center;
   color: #f6f0e0;
   text-transform: uppercase;
@@ -2772,9 +2892,17 @@ body {
 }
 .mm-daily-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  /* 3+3+1 layout — three cells per row for days 1–6 and a 7th cell
+   * stretched across the full row so the weekly-finale reward
+   * (древний ключ) reads as a banner instead of getting squashed
+   * against the other six cells. The previous 7-column row was
+   * unreadable on phones (sub-40-px cells with truncated labels). */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   margin: 6px 0 8px;
+}
+.mm-daily-grid > .mm-daily-cell:nth-child(7) {
+  grid-column: 1 / -1;
 }
 .mm-daily-cell {
   background: linear-gradient(180deg, #2a1820 0%, #140c12 100%);
@@ -3089,9 +3217,15 @@ body {
 .overlay-close:hover { color: #d24f1c; }
 .daily-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  /* 3+3+1 layout for the standalone daily-rewards overlay — same
+   * shape as the inline main-menu calendar so the weekly cadence
+   * reads identically in both surfaces. */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   margin-bottom: 16px;
+}
+.daily-grid > .daily-cell:nth-child(7) {
+  grid-column: 1 / -1;
 }
 .daily-cell {
   background: linear-gradient(180deg, #303a58, #171d30);
@@ -3366,28 +3500,45 @@ body {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--accent-cool) 0%, var(--bg-frame-mid) 100%);
+  height: 10px;
+  border-radius: 5px;
+  /* Solid two-tone track so the slider reads as an actual control on
+   * dark menu backgrounds — the previous transparent-ish gradient
+   * blended into the section panel on phones and was effectively
+   * invisible. */
+  background: linear-gradient(90deg, #7df9ff 0%, #1c3a4d 50%, #0e1a26 100%);
+  border: 1px solid #1c2c3c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
   outline: none;
   cursor: pointer;
 }
 .settings-volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  /* Bigger circular thumb \u2014 matches Yandex Games minimum touch target
+   * (24px) so the slider is grabbable on phones without the user
+   * having to chase a 16px target. */
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--accent);
+  background: radial-gradient(circle at 30% 25%, #fff4a8 0%, #ffd166 35%, #c9941a 100%);
   border: 2px solid #090b13;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.55);
   cursor: pointer;
 }
 .settings-volume-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--accent);
+  background: radial-gradient(circle at 30% 25%, #fff4a8 0%, #ffd166 35%, #c9941a 100%);
   border: 2px solid #090b13;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.55);
   cursor: pointer;
 }
 .settings-volume-value {
@@ -4796,13 +4947,17 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  width: min(96vw, 920px);
-  max-height: 94dvh;
+  /* Slimmer overload panel — the rim-side decoration plus the inner
+   * module cards previously stretched to ~94dvh which left a lot of
+   * empty space above and below the buttons. Cap to a tighter
+   * silhouette so the panel no longer dominates the screen. */
+  width: min(96vw, 760px);
+  max-height: min(72dvh, 620px);
   display: flex;
   flex-direction: column;
   border: 3px solid #ffd166;
   border-radius: 12px;
-  padding: 22px 22px 18px;
+  padding: 16px 18px 14px;
   background:
     radial-gradient(ellipse at top, rgba(255, 174, 58, 0.22) 0%, transparent 58%),
     linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
@@ -5983,8 +6138,13 @@ body {
   --mp-deep: #1a0507;
   width: min(1080px, 96vw);
   max-width: 1080px;
-  max-height: 92dvh;
-  padding: 24px 26px 26px;
+  /* Brewery panel slimmed down — the original 92dvh occupied almost
+   * the full viewport which felt oversized once the dramatic-stage
+   * backdrop was retired. The new cap leaves breathing room around
+   * the panel and matches the visual mass of the main-menu shop
+   * card while still allowing the recipe column to scroll. */
+  max-height: min(78dvh, 760px);
+  padding: 18px 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -5992,16 +6152,13 @@ body {
   isolation: isolate;
   overflow: hidden;
 }
-/* Dramatic-stage backdrop — promote it to fill the whole panel as a
- * decorative layer instead of taking flow height at the top. */
+/* Dramatic-stage backdrop suppressed in the brewery — the rotating
+ * rays + drifting embers + danger sigil overlay was too busy behind
+ * the inventory / ingredient grids and read as visual noise. The
+ * stage element still mounts (driven by `craftingOverlay.ts`) but
+ * is hidden so the warm panel-fill alone carries the mood. */
 .craft-panel > .mp-stage {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.85;
-  border-radius: inherit;
+  display: none;
 }
 .craft-panel > .craft-head,
 .craft-panel > .craft-body { position: relative; z-index: 2; }
@@ -8723,13 +8880,12 @@ body {
   background: linear-gradient(-45deg, #ffae3a 50%, transparent 50%);
 }
 .meta-tree-panel.dramatic-meta > .mp-stage {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.85;
-  border-radius: inherit;
+  /* Dramatic-stage backdrop suppressed in the talent lab too. The
+   * three-tab tree already carries plenty of motion (per-node halos,
+   * arc bloom, slide transitions); the rotating rays plus drifting
+   * embers were adding noise behind the canvas without helping
+   * legibility. */
+  display: none;
 }
 .meta-tree-panel.dramatic-meta > .meta-tree-header,
 .meta-tree-panel.dramatic-meta > .meta-tree-body,
@@ -9476,11 +9632,16 @@ body {
 
 /* ---------- Laboratory: SVG skill-tree diorama ---------------- */
 .mm-lab-card .mm-lab-desc {
-  /* The tree is drawn in SVG; let it fill the card body. */
+  /* The tree is drawn in SVG; let it fill the card body. Clipping
+   * here is critical — `.mm-lab-tree-svg` keeps `overflow: visible`
+   * so node-halo glow filters render fully, and without this clip
+   * the bloom + outermost halos visibly escape the card frame and
+   * spill onto neighbouring widgets. */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px 6px;
+  overflow: hidden;
 }
 .mm-lab-tree-svg {
   display: block;
@@ -9489,8 +9650,15 @@ body {
   height: auto;
   /* Keep nodes & strokes crisp on the pixel-art frame. */
   shape-rendering: geometricPrecision;
+  /* Allow drop-shadow filters on edges/nodes to render beyond the
+   * viewBox — the parent `.mm-lab-desc` clips so the bloom never
+   * escapes the card. */
   overflow: visible;
 }
+/* Containing card must clip too — `.mm-card` has no overflow rule
+ * by default, so the tree SVG's bloom would otherwise spill onto
+ * neighbouring widgets. */
+.mm-lab-card { overflow: hidden; }
 
 /* Edges: thin glowing lines. Three states, three palettes. */
 .mm-lab-edges line {
@@ -13011,7 +13179,10 @@ body {
     margin: 2px -2px;
   }
   .card-rh.cursed .card-rh-title {
-    font-size: 12px;
+    /* Cursed cards keep the same auto-scaling formula as regular cards
+     * (defined on the base `.card-rh-title` rule), but with a slightly
+     * tighter max so the curse glyph + name still fit. */
+    font-size: clamp(8px, 4cqi + 1px, 13px);
   }
 
   /* Pin the action-row chip used as the gold/reroll counter so it can
@@ -13081,14 +13252,23 @@ body {
   .settings-section h3 { font-size: 12px; margin-bottom: 6px; }
   .settings-volume-row {
     grid-template-columns: 56px 1fr 36px;
-    gap: 8px;
-    margin: 6px 0;
+    /* Extra vertical room so the 22-px touch thumb doesn't get clipped
+     * by neighbouring rows on tight portrait phones. */
+    gap: 10px;
+    margin: 10px 0;
+    min-height: 28px;
   }
   .settings-volume-label,
   .settings-volume-value,
   .settings-stat,
   .settings-reset-btn { font-size: 12px; }
-  .settings-volume-slider { height: 5px; }
+  /* Keep the slider clearly visible on phones \u2014 a 5-px track + 16-px
+   * thumb was getting lost against the dark settings-section gradient.
+   * Bump both so the volume control reads as an actual slider on a
+   * coarse-pointer device. */
+  .settings-volume-slider { height: 8px; border-radius: 4px; }
+  .settings-volume-slider::-webkit-slider-thumb { width: 22px; height: 22px; }
+  .settings-volume-slider::-moz-range-thumb { width: 22px; height: 22px; }
   .settings-reset-btn { padding: 7px 14px; }
 
   /* Auth-prompt CTA shown above the leaderboard list when the SDK
@@ -13574,16 +13754,17 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  /* Stable size that does not change between tabs. Caps at 98vw / 94dvh
-   * but otherwise the panel locks to a fixed 1320×860 logical size so
-   * switching Алхимия → Бестиарий → Стойки does not reflow the window. */
-  width: min(98vw, 1320px);
-  height: min(94dvh, 860px);
+  /* Stable size that does not change between tabs. Trimmed back from
+   * 1320×860 / 94dvh to a tighter footprint so the diary aligns
+   * visually with the slimmer brewery / overload panels and no
+   * longer dominates the screen on desktop. */
+  width: min(96vw, 1180px);
+  height: min(82dvh, 760px);
   display: flex;
   flex-direction: column;
   border: 3px solid var(--diary-edge);
   border-radius: 14px;
-  padding: 8px 22px 14px;
+  padding: 8px 18px 12px;
   background:
     radial-gradient(ellipse at top, rgba(255, 174, 58, 0.22) 0%, transparent 58%),
     linear-gradient(180deg, #1d1530 0%, #110a1c 60%, #160c1f 100%);
@@ -13602,6 +13783,11 @@ body {
  * sit on z-index 2/3, so dropping the stage to z-index 0 keeps the
  * decoration visible behind every column without competing for space. */
 .diary-panel > .mp-stage {
+  /* Backdrop suppressed in the diary too. Decorative rays under
+   * the bestiary / synergy grids were competing with the entry
+   * thumbnails for visual attention; the warm panel-fill alone
+   * keeps the mood without the swirl. */
+  display: none;
   position: absolute;
   inset: 0;
   margin: 0;
@@ -13982,6 +14168,29 @@ body {
   padding-bottom: 10px;
   margin-bottom: 8px;
   border-bottom: 1px dashed rgba(255, 209, 102, 0.35);
+}
+/* Bestiary entries swap to a vertical layout so the (silhouetted or
+ * unlocked) creature sprite reads as the focal element of the
+ * description card \u2014 the previous row layout left the sprite tucked
+ * into the right-hand corner where it looked clipped on mobile.
+ * Element / synergy / stance entries keep the row layout because
+ * their glyph is small enough to share the row with the title. */
+.diary-info-head.diary-info-head-bestiary {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+.diary-info-head.diary-info-head-bestiary .diary-info-sprite {
+  /* Centred icon claims the full content width \u2014 the inner sprite
+   * stays at its baked size via `flex` centring rules below, but the
+   * box itself spans the head so the silhouette pops as a portrait
+   * card rather than a side-thumbnail. */
+  align-self: center;
+}
+.diary-info-head.diary-info-head-bestiary .diary-info-name {
+  text-align: center;
+  align-self: stretch;
 }
 .diary-info-name {
   flex: 1;

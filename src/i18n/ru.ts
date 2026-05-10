@@ -77,6 +77,7 @@ export const RU: Record<string, string> = {
   'ui.hud.module.element_prism': 'Призма',
   'ui.hud.magnet': 'МАГНИТ',
   'ui.hud.overload': 'ПЕРЕГРУЗКА',
+  'ui.hud.overloadReady': 'ГОТОВ!',
   'ui.hud.bossIncoming': '⚠ БОСС ВОЛНА ⚠',
   'ui.hud.runSidebar.collapse': 'Свернуть',
   'ui.hud.runSidebar.expand': 'Развернуть',
