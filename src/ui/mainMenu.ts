@@ -442,7 +442,11 @@ export class MainMenu {
     const indicator = claimable
       ? `<span class="mm-daily-indicator mm-daily-indicator-claimable" title="${t('ui.daily.indicator.unclaimed')}">!</span>`
       : `<span class="mm-daily-indicator mm-daily-indicator-claimed" title="${t('ui.daily.indicator.claimed')}">✓</span>`;
-    titleRow.innerHTML = `<span>📅</span><span class="mm-daily-header-text">${t('ui.daily.title')}</span>${indicator}`;
+    // Use the short label in the inline menu strip — the full
+    // "Ежедневные награды" / "Daily rewards" string ellipsised on
+    // typical phone widths. The full title is still used as the
+    // overlay header.
+    titleRow.innerHTML = `<span>📅</span><span class="mm-daily-header-text">${t('ui.daily.titleShort')}</span>${indicator}`;
 
     const currentDay = opts.meta.dailyDay ?? 0;
     const pageStart = Math.floor(currentDay / DAILY_CYCLE) * DAILY_CYCLE;

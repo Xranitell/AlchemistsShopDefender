@@ -246,14 +246,14 @@ body {
    * `justify-items: center` rule handles horizontal anchoring, so
    * we only need to express how wide the plate wants to grow.
    *
-   * Bumped width / padding so the localised "MANNEQUIN HP" label and
-   * the centred numeric "X / Y" string fit without ellipsis or
-   * vertical-clip on phone-class viewports. The previous max-width of
-   * 60vw + 22px-tall bar was tight enough that the mobile 0.8×
-   * fit-scale (see `:root.viewport-fitted` rule below) chopped the HP
-   * digits, which the player saw as "the durability text is cut off". */
+   * Bumped width / padding so the localised "ПРОЧНОСТЬ" /
+   * "DURABILITY" caption and the centred numeric "X / Y" string both
+   * fit without ellipsis or vertical-clip on phone-class viewports.
+   * The earlier abbreviation ("ПРОЧН." / "DUR.") was the previous
+   * compromise to fit the badge — we now widen the plate instead so
+   * the label can spell the word out fully. */
   width: 100%;
-  max-width: min(480px, 72vw);
+  max-width: min(540px, 84vw);
   min-width: 0;
   align-self: flex-start;
   padding: 10px 16px 12px;
@@ -271,10 +271,10 @@ body {
   min-width: 0;
 }
 .hud-hp-label {
-  /* Bumped from 9 px so the localised label (РУ: "ПРОЧН.", EN:
-   * "DUR.") still reads cleanly after the 0.8× mobile fit-scale
-   * shrinks the badge — 9 px × 0.8 = 7.2 px which was hard to make out
-   * on phones, especially the dotted Cyrillic abbreviation. */
+  /* Bumped from 9 px so the localised label (РУ: "ПРОЧНОСТЬ",
+   * EN: "DURABILITY") still reads cleanly after the 0.8× mobile
+   * fit-scale shrinks the badge — 9 px × 0.8 = 7.2 px which was hard
+   * to make out on phones. */
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
@@ -2826,6 +2826,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Slightly smaller than the parent `.mm-card-title` 12 px so the
+   * label sits comfortably next to the calendar emoji and the
+   * "Неделя N" / "Week N" badge on the right without ellipsising
+   * even on the narrowest design columns. */
+  font-size: 11px;
+  letter-spacing: 0.5px;
 }
 .mm-daily-indicator {
   flex: 0 0 auto;
@@ -11283,7 +11289,7 @@ body {
   .hud-badge { padding: 9px 14px 11px; gap: 9px; }
   .hud-wave-badge { min-width: 124px; }
   .hud-wave-value { font-size: 22px; }
-  .hud-hp-badge { flex-basis: 460px; padding: 10px 16px 12px; }
+  .hud-hp-badge { flex-basis: 520px; padding: 10px 16px 12px; }
   .hud-hp-bar { height: 28px; min-width: 140px; }
   .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
   .hud-resource-value { font-size: 20px; }
@@ -11922,8 +11928,8 @@ body {
   gap: 8px;
 }
 :root.viewport-fitted .main-menu .mm-daily-header-text {
-  font-size: 9px;
-  letter-spacing: 0.5px;
+  font-size: 8px;
+  letter-spacing: 0.4px;
 }
 :root.viewport-fitted .main-menu .mm-daily-week-badge {
   font-size: 9px;
