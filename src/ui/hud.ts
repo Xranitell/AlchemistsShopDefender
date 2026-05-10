@@ -67,6 +67,13 @@ export class Hud {
   // Top-center HP bar
   private hpFill!: HTMLDivElement;
   private hpLabel!: HTMLSpanElement;
+  /** Held so we can re-translate the "ПРОЧНОСТЬ" / "DURABILITY" caption
+   *  when the player switches locale mid-run. Without a re-application
+   *  path the badge would stick on the locale that was active the
+   *  moment the HUD was first built — e.g. autodetect picks RU, the
+   *  player taps EN, every other label re-renders but this one keeps
+   *  showing "ПРОЧНОСТЬ". */
+  private hpTagLabel!: HTMLDivElement;
 
   // Top-right gold / essence
   private goldLabel!: HTMLSpanElement;
@@ -167,6 +174,9 @@ export class Hud {
     }
     if (this.overloadLabel) {
       this.overloadLabel.textContent = t('ui.hud.overload');
+    }
+    if (this.hpTagLabel) {
+      this.hpTagLabel.textContent = t('ui.hud.hpLabel');
     }
     if (this.pauseButton) {
       // `setPaused` re-applies these on a state change but if the player
@@ -273,9 +283,9 @@ export class Hud {
     hpBadge.appendChild(spriteEl(getSprites().iconHpHeart, 4));
     const hpInner = document.createElement('div');
     hpInner.className = 'hud-hp-inner';
-    const hpTagLabel = document.createElement('div');
-    hpTagLabel.className = 'hud-tag-label hud-hp-label';
-    hpTagLabel.textContent = t('ui.hud.hpLabel');
+    this.hpTagLabel = document.createElement('div');
+    this.hpTagLabel.className = 'hud-tag-label hud-hp-label';
+    this.hpTagLabel.textContent = t('ui.hud.hpLabel');
     const hpBar = document.createElement('div');
     hpBar.className = 'hud-bar hud-hp-bar';
     this.hpFill = document.createElement('div');
@@ -285,7 +295,7 @@ export class Hud {
     this.hpLabel.className = 'hud-hp-label-num';
     this.hpLabel.textContent = '120/120';
     hpBar.appendChild(this.hpLabel);
-    hpInner.appendChild(hpTagLabel);
+    hpInner.appendChild(this.hpTagLabel);
     hpInner.appendChild(hpBar);
     hpBadge.appendChild(hpInner);
     top.appendChild(hpBadge);
