@@ -12074,6 +12074,17 @@ body {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
+  /* The talent tree's intrinsic 200×110 viewBox is significantly
+     wider than the now-tall lab card (Diary + Lab grew to absorb
+     the slack from Brewery + Loadout in PR3). With
+     `preserveAspectRatio="xMidYMid meet"` the SVG painted at ~half
+     the body height, leaving a noticeable empty band the user
+     flagged as "the tree looks too small for the card". Scale the
+     painted content up so it visually fills the body — `.mm-lab-desc`
+     has `overflow: hidden` so the small horizontal bleed gets
+     clipped at the card frame. */
+  transform: scale(1.35);
+  transform-origin: center;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-shop-card .mm-shop-slots {
   /* Brewery card is now sized to fit its slot row exactly (parent uses
@@ -12098,10 +12109,13 @@ body {
   min-height: 0;
 }
 :root.viewport-fitted .main-menu .mm-col-left .mm-diary-card .mm-diary-book {
-  /* Bump the chest sprite from the original 0.40 scale (~93×89 CSS
-     px) to 0.50 (~117×112 px) so it visually matches the lab tree's
-     new "fill the card body" sizing. */
-  --diary-scale: 0.50;
+  /* Bump the chest sprite scale so it visually fills the now-tall
+     diary card. PR3 made Diary + Lab absorb the column slack from
+     Brewery + Loadout, so the card body is significantly taller —
+     0.50 (~117×112 px) used to read fine but on the larger card
+     left obvious empty space. 0.70 (~163×157 px) keeps the chest
+     comfortably inside the body padding while filling the frame. */
+  --diary-scale: 0.70;
 }
 
 /* Brewery: tighten chrome so the card is barely taller than its slot
