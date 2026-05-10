@@ -11,7 +11,8 @@
     "lint": "tsc -b --noEmit",
     "test:viewport": "playwright test",
     "test:viewport:update": "playwright test --update-snapshots",
-    "package": "npm run build && cd dist && zip -r ../alchemists-shop-rune-defense.zip ."
+    "package": "npm run build && cd dist && zip -r ../alchemists-shop-rune-defense.zip .",
+    "optimize-assets": "bash scripts/optimize-assets.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
