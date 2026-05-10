@@ -433,15 +433,32 @@ body {
   max-width: 540px;
 }
 
-/* Big yellow "В БОЙ" CTA — matches the reference start button */
+/* Big yellow "В БОЙ" CTA — matches the reference start button.
+ *
+ * The button sits inside `.hud-center-bottom` which has `pointer-events:
+ * none` so the surrounding gaps fall through to the canvas. This made the
+ * effective hit area on touch devices uncomfortably small — players were
+ * complaining that only the thin strip of visible button pixels would
+ * actually register a press, and tapping just outside the gold rectangle
+ * would silently throw a vial in the arena instead of advancing the
+ * wave.
+ *
+ * We compensate by (a) bumping the visible padding / minimum size so the
+ * button is at least the recommended 44 × 44 touch target, and (b)
+ * extending the click area with an invisible `::before` halo. Because
+ * `::before` is part of the host element, taps on the halo dispatch a
+ * click on the button itself even though it visually overflows. */
 .hud-skip-btn {
+  position: relative;
   pointer-events: auto;
   background:
     linear-gradient(180deg, var(--cta-yellow-hi) 0%, var(--cta-yellow) 50%, #c89a14 100%);
   color: #3a2a05;
   border: 3px solid #2a1c00;
   border-radius: 10px;
-  padding: 12px 36px;
+  padding: 14px 40px 16px;
+  min-width: 220px;
+  min-height: 52px;
   font-family: 'Press Start 2P', monospace;
   font-size: 14px;
   letter-spacing: 2px;
@@ -453,6 +470,19 @@ body {
     inset 0 -3px 0 rgba(80, 50, 0, 0.55),
     0 4px 0 #4a3200,
     0 6px 14px rgba(0, 0, 0, 0.55);
+}
+.hud-skip-btn::before {
+  /* Invisible click-area halo: extends the tappable region 14 px above
+     and below and 24 px to the left/right of the visible button so
+     fat-finger taps land on the button instead of falling through to the
+     canvas. Pointer-events must be explicit because the parent
+     `.hud-center-bottom` is `pointer-events: none`. */
+  content: '';
+  position: absolute;
+  inset: -14px -24px;
+  pointer-events: auto;
+  z-index: 1;
+  background: transparent;
 }
 .hud-skip-btn:hover:not(:disabled) {
   background:
@@ -9129,8 +9159,17 @@ body {
   .settings-lang-btn,
   .settings-motion-btn,
   .overlay-close,
-  .meta-loadout-btn {
+  .meta-loadout-btn,
+  .hud-skip-btn {
     min-height: 44px;
+  }
+  .hud-skip-btn {
+    /* Bump the wave-CTA above the 44 px minimum on touch — it's the
+       single most-pressed button in the prep phase and the canvas
+       behind it eats taps that miss by even a few pixels. */
+    min-height: 56px;
+    min-width: 240px;
+    padding: 16px 40px 18px;
   }
   .mm-lang-btn,
   .settings-lang-btn,
@@ -11215,7 +11254,9 @@ body {
   .hud-center-bottom { transform: none; gap: 6px; }
   .hud-hint { font-size: 14px; max-width: 60vw; }
   .hud-skip-btn {
-    padding: 12px 32px 14px;
+    padding: 14px 32px 16px;
+    min-width: 200px;
+    min-height: 52px;
     font-size: 14px;
     letter-spacing: 2px;
   }
