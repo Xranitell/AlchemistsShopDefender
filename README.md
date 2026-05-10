@@ -21,6 +21,7 @@ npm run build        # production-сборка в dist/
 npm run preview      # локальный предпросмотр прод-сборки
 npm run typecheck    # tsc --noEmit
 npm run package      # npm run build + zip в alchemists-shop-rune-defense.zip
+npm run optimize-assets  # пережимает PNG в public/sprites и MP3 в public/audio (требует pngquant, optipng, ffmpeg)
 ```
 
 Требования: Node.js 18+ (тест на v22.12). `npm install` не требует системных пакетов.
