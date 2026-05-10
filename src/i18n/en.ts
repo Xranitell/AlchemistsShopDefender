@@ -52,7 +52,7 @@ export const EN: Record<string, string> = {
 
   // ── HUD ──────────────────────────────────────────────────────────────
   'ui.hud.wave': 'WAVE',
-  'ui.hud.hpLabel': 'DUR.',
+  'ui.hud.hpLabel': 'DURABILITY',
   'ui.hud.shieldHp': 'D',
   'ui.hud.waveLabel': 'wave',
   'ui.hud.loop': 'loop {n}',
@@ -318,6 +318,7 @@ export const EN: Record<string, string> = {
 
   // ── Daily rewards ────────────────────────────────────────────────────
   'ui.daily.title': 'Daily rewards',
+  'ui.daily.titleShort': 'Rewards',
   'ui.daily.week': 'Week {n}',
   'ui.daily.today': 'Today',
   'ui.daily.day': 'Day {n}',
