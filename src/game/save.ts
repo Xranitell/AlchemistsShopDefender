@@ -45,6 +45,16 @@ export interface MetaSave {
   ancientKeys: number;
   purchased: string[];
   bestWave: number;
+  /** Per-leaderboard high-water marks. Keys are Yandex Games board
+   *  ids (`'endlessWaves'`, `'dailyWaves'`) and values are the best
+   *  score the player has ever submitted to that board on this
+   *  device. Used to gate `setLeaderboardScore` calls so a worse
+   *  later run never overwrites a better earlier one, regardless of
+   *  how the Yandex dashboard sort order is configured. Persisted
+   *  separately from `bestWave` so daily and endless boards can
+   *  diverge — the player's best daily-event score may be lower
+   *  than their endless best. */
+  bestLeaderboardScores: Partial<Record<string, number>>;
   totalRuns: number;
   // Daily rewards
   dailyDay: number;
@@ -139,6 +149,7 @@ export function newMetaSave(): MetaSave {
     ancientKeys: 1,
     purchased: [],
     bestWave: 0,
+    bestLeaderboardScores: {},
     totalRuns: 0,
     dailyDay: 0,
     dailyLastClaim: '',
@@ -207,6 +218,18 @@ function sanitizePurchased(raw: unknown): string[] {
   return out;
 }
 
+function sanitizeBestLeaderboardScores(raw: unknown): Partial<Record<string, number>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<string, number>> = {};
+  for (const [boardId, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof boardId !== 'string' || !boardId) continue;
+    if (typeof val === 'number' && Number.isFinite(val) && val > 0) {
+      out[boardId] = Math.floor(val);
+    }
+  }
+  return out;
+}
+
 function sanitizeBestiary(raw: unknown): BestiaryStore {
   if (!raw || typeof raw !== 'object') return {};
   const out: BestiaryStore = {};
@@ -256,6 +279,9 @@ export function loadMeta(): MetaSave {
       ancientKeys: data.ancientKeys ?? 1,
       purchased: sanitizePurchased(data.purchased),
       bestWave: data.bestWave ?? 0,
+      bestLeaderboardScores: sanitizeBestLeaderboardScores(
+        (data as Record<string, unknown>).bestLeaderboardScores,
+      ),
       totalRuns: data.totalRuns ?? 0,
       dailyDay: data.dailyDay ?? 0,
       dailyLastClaim: data.dailyLastClaim ?? '',

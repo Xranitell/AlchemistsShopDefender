@@ -209,12 +209,21 @@ function startAudioOnGesture(): void {
 // requires a real user-gesture handler, so we attach to `pointerdown` /
 // `keydown` / `touchstart` and silently ignore the rejection if the
 // browser blocks it (sandboxed iframes / unsupported environments).
+//
+// We deliberately do NOT use `{ once: true }`: if the first gesture
+// fails (the player pressed a modifier key, the browser blocked the
+// request because no real user-activation was attached, the player
+// then dismissed fullscreen, etc.) the next gesture should retry.
+// Once we successfully enter fullscreen we tear down the listeners
+// in the `fullscreenchange` / `webkitfullscreenchange` handler.
+function isInFullscreen(): boolean {
+  return Boolean(
+    document.fullscreenElement
+      ?? (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement,
+  );
+}
 function requestFullscreenOnGesture(): void {
-  // Already in fullscreen (e.g. the Yandex Games host frame already
-  // expanded us) — nothing to do.
-  const fsElement = document.fullscreenElement
-    ?? (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
-  if (fsElement) return;
+  if (isInFullscreen()) return;
   const el = document.documentElement;
   const rfs = el.requestFullscreen
     ?? (el as unknown as Record<string, unknown>).webkitRequestFullscreen;
@@ -229,9 +238,23 @@ function requestFullscreenOnGesture(): void {
     }
   }
 }
-['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
-  window.addEventListener(evt, requestFullscreenOnGesture, { once: true, passive: true });
-});
+const FS_GESTURE_EVENTS = ['pointerdown', 'keydown', 'touchstart'] as const;
+function detachFullscreenGestureListeners(): void {
+  for (const evt of FS_GESTURE_EVENTS) {
+    window.removeEventListener(evt, requestFullscreenOnGesture);
+  }
+}
+for (const evt of FS_GESTURE_EVENTS) {
+  window.addEventListener(evt, requestFullscreenOnGesture, { passive: true });
+}
+// Once fullscreen is entered (regardless of how — our gesture handler,
+// the OS hotkey, the host iframe), drop the listeners so we don't keep
+// re-firing the API on every input.
+for (const evt of ['fullscreenchange', 'webkitfullscreenchange']) {
+  document.addEventListener(evt, () => {
+    if (isInFullscreen()) detachFullscreenGestureListeners();
+  });
+}
 
 // Global delegated UI click / hover SFX. Every <button> in the DOM
 // (menu, HUD, overlays, shops …) gets a satisfying click on press and
@@ -963,10 +986,13 @@ function cumulativeWaveCount(): number {
 }
 
 /** Push the current run's progress to the relevant Yandex leaderboards.
- *  Yandex `setLeaderboardScore` only persists the player's all-time
- *  best, so it's safe to call after every cleared wave: scores are
- *  monotonically increasing across the run, so back-to-back submits
- *  keep the player at their high-water mark.
+ *  We persist the player's per-board best in `meta.bestLeaderboardScores`
+ *  and only call `setLeaderboardScore` when the current run beats it,
+ *  so a worse run never overwrites the high-water mark on the Yandex
+ *  board (Yandex respects the "best score wins" rule only when the
+ *  board is configured with the right sort order in the developer
+ *  console; gating the call client-side makes the behaviour correct
+ *  regardless of dashboard configuration).
  *
  *  Why this exists separately from `awardRunEssence`: previously the
  *  leaderboard was only updated on victory or defeat. A player who
@@ -977,10 +1003,19 @@ function cumulativeWaveCount(): number {
 function submitWaveLeaderboards(): void {
   const wave = cumulativeWaveCount();
   if (wave < 1) return;
-  void yandex.setLeaderboardScore('endlessWaves', wave);
+  let bestsChanged = false;
+  const tryUpdate = (boardId: string): void => {
+    const prev = meta.bestLeaderboardScores[boardId] ?? 0;
+    if (wave <= prev) return;
+    meta.bestLeaderboardScores[boardId] = wave;
+    bestsChanged = true;
+    void yandex.setLeaderboardScore(boardId, wave);
+  };
+  tryUpdate('endlessWaves');
   if (state.difficulty === 'daily') {
-    void yandex.setLeaderboardScore(dailyBoardId(), wave);
+    tryUpdate(dailyBoardId());
   }
+  if (bestsChanged) saveMeta(meta);
 }
 
 /** Build the per-currency reward grid that replaces the old single-line
@@ -1282,6 +1317,10 @@ function showVictory(): void {
       menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
       menuBtn.addEventListener('click', () => {
         audio.playSfx('uiClick');
+        // Regular interstitial on run-end → menu navigation.
+        // SDK rate-limits internally so back-to-back retries
+        // won't repeatedly play ads.
+        void yandex.showFullscreen();
         restart();
       });
       footer.appendChild(menuBtn);
@@ -1518,6 +1557,11 @@ function showGameOver(): void {
   tryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   tryBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
+    // Run-end "Try again" is a regular interstitial moment per Yandex's
+    // ad guidelines — fire a fullscreen ad in parallel with the retry.
+    // The SDK rate-limits internally (~once / 60 s) so chained retries
+    // won't spam the player.
+    void yandex.showFullscreen();
     // Epic / Ancient retries cost a key. Without this guard the player
     // could farm dungeons indefinitely from the defeat screen, even with
     // zero keys in inventory, since `consumeKey` was never called on
@@ -1579,6 +1623,7 @@ function showGameOver(): void {
   menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   menuBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
+    void yandex.showFullscreen();
     restart();
   });
   secondaryRow.appendChild(menuBtn);
@@ -1703,6 +1748,9 @@ function showRewardDoubledOverlay(opts: {
   primaryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   primaryBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
+    // Run-end CTA → fullscreen interstitial. SDK rate-limits internally,
+    // so back-to-back retries do not stack ads.
+    void yandex.showFullscreen();
     opts.primary.onClick();
   });
   ctaWrap.appendChild(primaryBtn);
@@ -1717,6 +1765,7 @@ function showRewardDoubledOverlay(opts: {
     secondaryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
     secondaryBtn.addEventListener('click', () => {
       audio.playSfx('uiClick');
+      void yandex.showFullscreen();
       secondary.onClick();
     });
     secondaryRow.appendChild(secondaryBtn);
@@ -1727,6 +1776,21 @@ function showRewardDoubledOverlay(opts: {
 
   root.appendChild(panel);
   root.classList.add('visible');
+}
+
+/** Wrap a navigation handler so a regular fullscreen interstitial fires
+ *  alongside it. The Yandex SDK rate-limits `showFullscreenAdv` internally
+ *  (≈1 ad / 60 s), so calling this from every menu button is safe — most
+ *  clicks will be silent no-ops. We fire the ad and run the handler in
+ *  parallel rather than awaiting the ad, otherwise the menu would feel
+ *  laggy on every tap. The ad simply renders on top of whatever screen
+ *  the handler navigates to; closing it returns the player to the new
+ *  screen. */
+function withInterstitial(handler: () => void): () => void {
+  return () => {
+    void yandex.showFullscreen();
+    handler();
+  };
 }
 
 function showMainMenu(): void {
@@ -1749,41 +1813,41 @@ function showMainMenu(): void {
   };
   mainMenu.show({
     meta,
-    onBattle: () => {
+    onBattle: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDifficultySelect();
-    },
-    onLaboratory: () => {
+    }),
+    onLaboratory: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showLaboratory();
-    },
-    onDailyRewards: () => {
+    }),
+    onDailyRewards: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDailyRewards();
-    },
-    onSettings: () => {
+    }),
+    onSettings: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showSettings();
-    },
-    onCrafting: () => {
+    }),
+    onCrafting: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showCrafting();
-    },
-    onLoadout: () => {
+    }),
+    onLoadout: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showLoadout();
-    },
-    onDiary: () => {
+    }),
+    onDiary: withInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDiary();
-    },
+    }),
   });
   // First-time main-menu walkthrough — fires once per save. Steps
   // whose target card isn't on-screen for some reason are skipped

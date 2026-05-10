@@ -258,6 +258,46 @@ class YandexGames {
     });
   }
 
+  /** Show a regular fullscreen (interstitial) ad. Used between meaningful
+   *  navigation events — main-menu transitions, run-end "try again", etc.
+   *  The Yandex SDK rate-limits these internally to once per ~60 s and
+   *  silently no-ops outside the interval, so it's safe to call from
+   *  every button handler. Resolves once the ad has closed (or failed,
+   *  or wasn't shown at all) so the caller can chain navigation onto
+   *  the resolved promise without ever blocking the player. On non-
+   *  Yandex hosts (local dev / CrazyGames) the SDK is null and this
+   *  resolves immediately with no visible side-effect. */
+  showFullscreen(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.sdk?.adv) {
+        resolve();
+        return;
+      }
+      let resolved = false;
+      const finish = (): void => {
+        if (resolved) return;
+        resolved = true;
+        resolve();
+      };
+      try {
+        this.sdk.adv.showFullscreenAdv({
+          callbacks: {
+            onClose: () => finish(),
+            onError: () => finish(),
+            onOffline: () => finish(),
+          },
+        });
+      } catch {
+        finish();
+      }
+      // Belt-and-braces: if the SDK never fires any callback (e.g.
+      // sandboxed iframe, blocked by adblocker), don't strand the
+      // caller forever — release the promise after a short timeout so
+      // navigation still happens.
+      setTimeout(finish, 800);
+    });
+  }
+
   isReal(): boolean {
     return this.sdk !== null;
   }
