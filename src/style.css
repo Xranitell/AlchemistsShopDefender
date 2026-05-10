@@ -14238,7 +14238,17 @@ body {
   letter-spacing: 0.6px;
   line-height: 1.3;
   color: #efe6ce;
-  word-break: break-word;
+  /* `word-break: break-word` is non-standard and behaved as `break-all`
+   * on the Yandex Browser the players reported with, slicing words like
+   * "Алхимическая" mid-character. `overflow-wrap: break-word`
+   * is the standardised replacement: it only breaks inside a word when
+   * the word genuinely cannot fit on a single line, so short words like
+   * "Мортира" stay whole. The runtime auto-fit shrinker in
+   * `diaryOverlay.ts` then drops the font size for the rare
+   * still-too-wide-word case. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 .diary-entry.locked {
   --diary-accent: #5b5870;
@@ -14299,12 +14309,21 @@ body {
 }
 .diary-info-name {
   flex: 1;
+  /* min-width: 0 lets the flex child actually shrink below its
+   * intrinsic content width — without it the long word keeps the
+   * box wide and the layout overflows. Pairs with the auto-fit
+   * shrinker that scales the font down to fit the longest word. */
+  min-width: 0;
   font-family: 'Press Start 2P', 'VT323', monospace;
   font-size: 14px;
   letter-spacing: 1px;
   color: var(--diary-accent);
   text-shadow: 0 0 8px color-mix(in srgb, var(--diary-accent) 50%, transparent);
-  word-break: break-word;
+  /* See note on `.diary-entry-name` — prefer word-boundary wrapping
+   * and let the JS auto-fit handle the rare long-word case. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 .diary-info-sprite {
   width: 96px;
