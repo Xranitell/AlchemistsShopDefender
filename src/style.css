@@ -14334,6 +14334,14 @@ body {
   flex-shrink: 0;
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--diary-accent) 30%, transparent));
 }
+/* Stance entries use a smaller info icon so the (often-long) tower
+ * name has room to read on a single line. The bestiary head still
+ * uses the larger 96 px portrait — its layout is column-based so the
+ * width doesn't fight the title. */
+.diary-info-sprite.diary-info-sprite-stance {
+  width: 76px;
+  height: 76px;
+}
 .diary-info-glyph {
   font-size: 56px;
   color: var(--diary-accent);
@@ -14941,6 +14949,7 @@ body {
   .diary-grid-synergies { grid-template-columns: 1fr; }
   .diary-synergy-formula-card { min-height: 58px; }
   .diary-info-sprite { width: 80px; height: 80px; }
+  .diary-info-sprite.diary-info-sprite-stance { width: 64px; height: 64px; }
   .diary-info-name { font-size: 12px; }
 }
 
@@ -15039,6 +15048,7 @@ body {
   .diary-info-head { padding-bottom: 6px; margin-bottom: 6px; }
   .diary-info-name { font-size: 11px; letter-spacing: 0.5px; }
   .diary-info-sprite { width: 56px; height: 56px; }
+  .diary-info-sprite.diary-info-sprite-stance { width: 48px; height: 48px; }
   .diary-info-glyph { font-size: 32px; }
   .diary-info-section-label { font-size: 8px; margin-top: 6px; margin-bottom: 4px; }
   .diary-info-desc { font-size: 13px; line-height: 1.25; margin-bottom: 6px; }

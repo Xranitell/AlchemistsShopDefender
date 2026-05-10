@@ -66,7 +66,19 @@ type DiaryTab = 'alchemy' | 'synergies' | 'bestiary' | 'stances';
  */
 function fitTitleToBox(el: HTMLElement, maxPx: number, minPx: number): void {
   const apply = (): void => {
-    if (!el.isConnected || el.clientWidth <= 0) return;
+    if (!el.isConnected) return;
+    // The available width is the parent's content box, NOT the
+    // element's own clientWidth — the element stretches to fit its
+    // content (because of flex / grid auto-sizing) and then asks the
+    // parent to scroll, so reading our own clientWidth gives us the
+    // already-overflowed width and never triggers a shrink. Walking
+    // up to the closest sized ancestor and reading its clientWidth
+    // gives us the real budget we have to fit into.
+    const parent = el.parentElement;
+    const budget = parent && parent.clientWidth > 0
+      ? parent.clientWidth
+      : el.clientWidth;
+    if (budget <= 0) return;
     el.style.fontSize = `${maxPx}px`;
     const text = el.textContent ?? '';
     if (!text) return;
@@ -86,24 +98,44 @@ function fitTitleToBox(el: HTMLElement, maxPx: number, minPx: number): void {
     probe.style.position = 'absolute';
     probe.style.visibility = 'hidden';
     probe.style.left = '-9999px';
+    probe.style.top = '-9999px';
     probe.textContent = longest;
     document.body.appendChild(probe);
-    const wordW = probe.offsetWidth;
+    // `getBoundingClientRect().width` is sub-pixel accurate where
+    // `offsetWidth` rounds down — important when a single rounded
+    // pixel is the difference between "fits" and "wraps".
+    const wordW = probe.getBoundingClientRect().width;
     document.body.removeChild(probe);
-    if (wordW <= 0 || wordW <= el.clientWidth) {
-      // Longest word already fits at the default font; let the
-      // stylesheet drive size by clearing the inline override.
+    // 6 % safety margin so we never end up *exactly* at the line
+    // wrap threshold (where browser sub-pixel rounding can still
+    // push the last glyph onto the next line). Empirically the
+    // right info panel's dashed border / padding eats ~4 px from
+    // the visible budget and was the source of the
+    // "Алхимическая\nя мортира" off-by-one wrap bug.
+    const safe = budget - 4;
+    if (wordW <= 0 || wordW * 1.06 <= safe) {
+      // Longest word already fits comfortably at the default font;
+      // clear the inline override so the stylesheet drives size.
       el.style.fontSize = '';
       return;
     }
-    const ratio = el.clientWidth / wordW;
+    const ratio = safe / (wordW * 1.06);
     const size = Math.max(minPx, Math.floor(maxPx * ratio * 100) / 100);
     el.style.fontSize = `${size}px`;
   };
-  // Wait one rAF so flex/grid layout has settled and clientWidth is
-  // meaningful. A second rAF guards against the very first frame
-  // where the overlay just transitioned in and widths are still 0.
-  requestAnimationFrame(() => requestAnimationFrame(apply));
+  // Wait for the pixel font (Press Start 2P) to actually be ready
+  // before measuring — without this we measure against the monospace
+  // fallback which is ~30 % narrower, calculate "fits", and then the
+  // pixel font swaps in and overflows. After fonts are ready we still
+  // wait two rAFs for flex / grid layout to settle.
+  const schedule = (): void => {
+    requestAnimationFrame(() => requestAnimationFrame(apply));
+  };
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.status !== 'loaded') {
+    document.fonts.ready.then(schedule).catch(schedule);
+  } else {
+    schedule();
+  }
 }
 
 /** Difficulty modes that get a bestiary progress bar. Endless / daily
@@ -360,7 +392,7 @@ export class DiaryOverlay {
     name.className = 'diary-entry-name';
     name.textContent = elementName(entry);
     card.appendChild(name);
-    fitTitleToBox(name, 10, 7);
+    fitTitleToBox(name, 10, 6);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note';
@@ -387,7 +419,7 @@ export class DiaryOverlay {
     result.className = 'diary-synergy-result-name';
     result.textContent = synergyName(entry);
     card.appendChild(result);
-    fitTitleToBox(result, 10, 7);
+    fitTitleToBox(result, 10, 6);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note diary-synergy-note';
@@ -433,7 +465,7 @@ export class DiaryOverlay {
     }
     card.appendChild(name);
     // Locked "???" is short; only auto-fit the discovered, real names.
-    if (discovered) fitTitleToBox(name, 10, 7);
+    if (discovered) fitTitleToBox(name, 10, 6);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note';
@@ -466,7 +498,7 @@ export class DiaryOverlay {
     name.className = 'diary-entry-name';
     name.textContent = towerDisplayName(entry.id);
     card.appendChild(name);
-    fitTitleToBox(name, 10, 7);
+    fitTitleToBox(name, 10, 6);
 
     if (tower) {
       const badge = document.createElement('div');
@@ -532,7 +564,7 @@ export class DiaryOverlay {
     head.appendChild(sprite);
 
     host.appendChild(head);
-    fitTitleToBox(name, 14, 10);
+    fitTitleToBox(name, 14, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -560,7 +592,7 @@ export class DiaryOverlay {
     glyph.textContent = entry.glyph;
     head.appendChild(glyph);
     host.appendChild(head);
-    fitTitleToBox(name, 14, 10);
+    fitTitleToBox(name, 14, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.formula')));
     host.appendChild(buildSynergyFormula(entry, 'info'));
@@ -599,7 +631,7 @@ export class DiaryOverlay {
     head.appendChild(name);
 
     host.appendChild(head);
-    fitTitleToBox(name, 14, 10);
+    fitTitleToBox(name, 14, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -637,12 +669,19 @@ export class DiaryOverlay {
     head.appendChild(name);
 
     const spriteBox = document.createElement('div');
-    spriteBox.className = 'diary-info-sprite';
-    const node = towerSpriteIconNode(entry.id, 96);
+    // The stance icon was 96 × 96 — slightly oversized for the right
+    // info panel column on phone widths, where it left only ~120 px
+    // for the title and forced "Алхимическая мортира" to wrap. Down
+    // to 76 px (with the matching CSS tweak in `.diary-info-sprite`)
+    // so the title gets enough horizontal budget to fit on one or two
+    // clean lines without the auto-fit shrinker having to drop the
+    // font down to its minimum.
+    spriteBox.className = 'diary-info-sprite diary-info-sprite-stance';
+    const node = towerSpriteIconNode(entry.id, 76);
     if (node) spriteBox.appendChild(node);
     head.appendChild(spriteBox);
     host.appendChild(head);
-    fitTitleToBox(name, 14, 10);
+    fitTitleToBox(name, 14, 8);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
