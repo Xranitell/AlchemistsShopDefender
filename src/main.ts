@@ -203,19 +203,34 @@ function startAudioOnGesture(): void {
   window.addEventListener(evt, startAudioOnGesture, { once: true, passive: true });
 });
 
-// On mobile, request fullscreen on first tap to hide the browser chrome
-// and give the game the entire screen. `requestFullscreen` must be called
-// from inside a user-gesture handler.
-function requestFullscreenOnMobile(): void {
-  const isMobile = Math.min(screen.width, screen.height) < MOBILE_BREAKPOINT;
-  if (!isMobile) return;
+// Request fullscreen on the player's first interaction so the game owns
+// the whole screen on every platform — players asked for the desktop
+// build to also drop the browser chrome immediately. The Fullscreen API
+// requires a real user-gesture handler, so we attach to `pointerdown` /
+// `keydown` / `touchstart` and silently ignore the rejection if the
+// browser blocks it (sandboxed iframes / unsupported environments).
+function requestFullscreenOnGesture(): void {
+  // Already in fullscreen (e.g. the Yandex Games host frame already
+  // expanded us) — nothing to do.
+  const fsElement = document.fullscreenElement
+    ?? (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+  if (fsElement) return;
   const el = document.documentElement;
   const rfs = el.requestFullscreen
     ?? (el as unknown as Record<string, unknown>).webkitRequestFullscreen;
-  if (typeof rfs === 'function') rfs.call(el).catch(() => {});
+  if (typeof rfs === 'function') {
+    try {
+      const result = (rfs as () => Promise<void> | void).call(el);
+      if (result && typeof (result as Promise<void>).catch === 'function') {
+        (result as Promise<void>).catch(() => {});
+      }
+    } catch {
+      /* ignore — host environment refused the request */
+    }
+  }
 }
-['pointerdown', 'touchstart'].forEach((evt) => {
-  window.addEventListener(evt, requestFullscreenOnMobile, { once: true, passive: true });
+['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, requestFullscreenOnGesture, { once: true, passive: true });
 });
 
 // Global delegated UI click / hover SFX. Every <button> in the DOM

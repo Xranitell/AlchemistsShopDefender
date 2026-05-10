@@ -274,7 +274,19 @@ body {
 .hud-hp-bar {
   position: relative;
   width: 100%;
-  height: 20px;
+  /* Force a minimum width so the centred "HP / max" label always has
+     enough horizontal room to render on a single line. Without this
+     the parent badge could shrink the bar to ~54 px on phones, and
+     the wider 9-character HP string (e.g. "200 / 200" at 10 px Press
+     Start 2P ≈ 90 px) would overflow both ends of the bar. The bar's
+     `overflow: hidden` then clipped the text to a stub like "200"
+     visually offset from the centre, which players reported as the
+     number rendering below the bar. */
+  min-width: 110px;
+  /* Bumped from 20 px so the centred "HP / max" label has enough
+     vertical room to render on a single line at 10 px font without
+     wrap-clipping below the bar. */
+  height: 22px;
   background: #090b13;
   border: 3px solid #07080e;
   border-radius: 2px;
@@ -300,12 +312,19 @@ body {
   display: grid;
   place-items: center;
   font-family: 'Press Start 2P', monospace;
-  font-size: 11px;
+  font-size: 10px;
+  /* Force a single line so the text never wraps below the bar on
+     narrow viewports. The previous default (`white-space: normal`)
+     allowed "150 / 200" to break onto two lines, which the parent
+     bar's `overflow: hidden` then partially cropped, leaving only the
+     stub "150" visible just below the red fill. */
+  white-space: nowrap;
   color: #fff;
   text-shadow:
     -1px 0 0 #000, 1px 0 0 #000,
     0 -1px 0 #000, 0 1px 0 #000;
-  letter-spacing: 1px;
+  letter-spacing: 0;
+  line-height: 1;
   z-index: 2;
 }
 
@@ -11243,7 +11262,7 @@ body {
   .hud-wave-badge { min-width: 124px; }
   .hud-wave-value { font-size: 22px; }
   .hud-hp-badge { flex-basis: 400px; padding: 8px 14px 10px; }
-  .hud-hp-bar { height: 20px; }
+  .hud-hp-bar { height: 22px; min-width: 100px; }
   .hud-resource-badge { min-width: 150px; padding: 8px 12px; }
   .hud-resource-value { font-size: 20px; }
   .hud-pause-btn { width: 60px; height: 60px; font-size: 18px; }
