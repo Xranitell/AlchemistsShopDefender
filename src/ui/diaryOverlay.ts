@@ -51,6 +51,61 @@ import { appendGlitchTitleChars, buildDramaticStage } from './dramaticStage';
 
 type DiaryTab = 'alchemy' | 'synergies' | 'bestiary' | 'stances';
 
+/** Shrink an element's font-size after layout so its longest word fits
+ *  on one line within the element's content box. Only kicks in when the
+ *  default stylesheet font is too large for the longest word — short
+ *  names keep their stylesheet size and just wrap at word boundaries.
+ *
+ *  Was added because long Russian tower names like "Алхимическая
+ *  мортира" were being chopped mid-character by the previous
+ *  `word-break: break-word` rule. The CSS now uses `overflow-wrap:
+ *  break-word` so wrapping respects word boundaries, and this helper
+ *  scales the font down for the still-too-wide-single-word case so
+ *  the whole word fits on one line of the (sometimes narrow) info
+ *  panel column.
+ */
+function fitTitleToBox(el: HTMLElement, maxPx: number, minPx: number): void {
+  const apply = (): void => {
+    if (!el.isConnected || el.clientWidth <= 0) return;
+    el.style.fontSize = `${maxPx}px`;
+    const text = el.textContent ?? '';
+    if (!text) return;
+    const longest = text.split(/\s+/).reduce(
+      (a, b) => (b.length > a.length ? b : a),
+      '',
+    );
+    if (!longest) return;
+    const probe = document.createElement('span');
+    const cs = getComputedStyle(el);
+    probe.style.fontFamily = cs.fontFamily;
+    probe.style.fontWeight = cs.fontWeight;
+    probe.style.fontStyle = cs.fontStyle;
+    probe.style.letterSpacing = cs.letterSpacing;
+    probe.style.fontSize = `${maxPx}px`;
+    probe.style.whiteSpace = 'nowrap';
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    probe.style.left = '-9999px';
+    probe.textContent = longest;
+    document.body.appendChild(probe);
+    const wordW = probe.offsetWidth;
+    document.body.removeChild(probe);
+    if (wordW <= 0 || wordW <= el.clientWidth) {
+      // Longest word already fits at the default font; let the
+      // stylesheet drive size by clearing the inline override.
+      el.style.fontSize = '';
+      return;
+    }
+    const ratio = el.clientWidth / wordW;
+    const size = Math.max(minPx, Math.floor(maxPx * ratio * 100) / 100);
+    el.style.fontSize = `${size}px`;
+  };
+  // Wait one rAF so flex/grid layout has settled and clientWidth is
+  // meaningful. A second rAF guards against the very first frame
+  // where the overlay just transitioned in and widths are still 0.
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+}
+
 /** Difficulty modes that get a bestiary progress bar. Endless / daily
  *  share their counters with the player, but they're not displayed as
  *  separate bars to keep the right panel compact. */
@@ -305,6 +360,7 @@ export class DiaryOverlay {
     name.className = 'diary-entry-name';
     name.textContent = elementName(entry);
     card.appendChild(name);
+    fitTitleToBox(name, 10, 7);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note';
@@ -331,6 +387,7 @@ export class DiaryOverlay {
     result.className = 'diary-synergy-result-name';
     result.textContent = synergyName(entry);
     card.appendChild(result);
+    fitTitleToBox(result, 10, 7);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note diary-synergy-note';
@@ -375,6 +432,8 @@ export class DiaryOverlay {
       name.classList.add('locked-name');
     }
     card.appendChild(name);
+    // Locked "???" is short; only auto-fit the discovered, real names.
+    if (discovered) fitTitleToBox(name, 10, 7);
 
     const note = document.createElement('div');
     note.className = 'diary-entry-note';
@@ -407,6 +466,7 @@ export class DiaryOverlay {
     name.className = 'diary-entry-name';
     name.textContent = towerDisplayName(entry.id);
     card.appendChild(name);
+    fitTitleToBox(name, 10, 7);
 
     if (tower) {
       const badge = document.createElement('div');
@@ -472,6 +532,7 @@ export class DiaryOverlay {
     head.appendChild(sprite);
 
     host.appendChild(head);
+    fitTitleToBox(name, 14, 10);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -499,6 +560,7 @@ export class DiaryOverlay {
     glyph.textContent = entry.glyph;
     head.appendChild(glyph);
     host.appendChild(head);
+    fitTitleToBox(name, 14, 10);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.formula')));
     host.appendChild(buildSynergyFormula(entry, 'info'));
@@ -537,6 +599,7 @@ export class DiaryOverlay {
     head.appendChild(name);
 
     host.appendChild(head);
+    fitTitleToBox(name, 14, 10);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
@@ -579,6 +642,7 @@ export class DiaryOverlay {
     if (node) spriteBox.appendChild(node);
     head.appendChild(spriteBox);
     host.appendChild(head);
+    fitTitleToBox(name, 14, 10);
 
     host.appendChild(infoSectionLabel(t('ui.diary.section.description')));
     const desc = document.createElement('p');
