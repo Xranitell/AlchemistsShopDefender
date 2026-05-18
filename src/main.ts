@@ -66,8 +66,8 @@ import {
   curseChoiceCount,
 } from './data/blessings';
 import type { GameState } from './game/state';
-import { loadMeta, saveMeta, resetMeta, recordBestiaryKill, type MetaSave } from './game/save';
-import { applyMetaUpgrades, calcRunEssence } from './game/meta';
+import { loadMeta, saveMeta, recordBestiaryKill, type MetaSave } from './game/save';
+import { applyMetaUpgrades, calcRunEssence, resetMetaTreeAndRefund } from './game/meta';
 import {
   attachRunInventory,
   persistRunInventory,
@@ -2104,10 +2104,17 @@ function showLaboratory(): void {
       showMainMenu();
     },
     onReset: () => {
-      resetMeta();
-      meta = loadMeta();
-      metaOverlay.hide();
-      showMainMenu();
+      // Только сброс дерева талантов + возврат потраченной эссенции.
+      // Полный сброс meta-сохранения остаётся за кнопкой «Сбросить
+      // прогресс» в настройках; здесь мы сохраняем ключи, мастерство,
+      // бестиарий, ингредиенты, инвентарь, daily/BP и настройки.
+      resetMetaTreeAndRefund(meta);
+      saveMeta(meta);
+      // Re-render the laboratory in place so the player sees the
+      // refunded essence totals and the cleared tree immediately
+      // (instead of being kicked back to the main menu, which felt
+      // like a "nuked everything" confirmation).
+      showLaboratory();
     },
   });
 }
