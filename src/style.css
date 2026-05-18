@@ -3550,8 +3550,8 @@ body {
 
 /* ============= Settings ============= */
 .settings-panel {
-  max-width: 400px;
-  width: min(90vw, 400px);
+  max-width: min(90vw, 800px);
+  width: 90vw;
 }
 .settings-header {
   display: flex;
@@ -3564,7 +3564,7 @@ body {
   font-size: 14px;
   margin: 0;
 }
-.settings-body { display: flex; flex-direction: column; gap: 16px; }
+.settings-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-content: start; }
 .settings-section {
   background: linear-gradient(180deg, #303a58, #171d30);
   border: 3px solid #090b13;
@@ -9328,8 +9328,8 @@ body {
 
   /* Settings: wider + 2-column on mobile */
   .settings-panel {
-    max-width: 600px;
-    width: min(96vw, 600px);
+    max-width: min(90vw, 800px);
+    width: 90vw;
     max-height: 96dvh;
     overflow-y: auto;
   }
@@ -11093,8 +11093,8 @@ body {
 @media (orientation: landscape) and (max-height: 700px) {
   /* ── Settings overlay ──────────────────────────────────────────── */
   .settings-panel {
-    max-width: min(94vw, 460px);
-    width: min(94vw, 460px);
+    max-width: min(90vw, 800px);
+    width: 90vw;
     max-height: 94dvh;
     padding: 14px 16px 14px;
   }
@@ -11490,7 +11490,7 @@ body {
 
 /* ── Narrow CSS-viewport (Yandex Games sandbox, ≤ 900 px wide) ──── */
 @media (orientation: landscape) and (max-width: 900px) {
-  .settings-panel { max-width: 92vw; width: 92vw; }
+  .settings-panel { max-width: 90vw; width: 90vw; }
   .daily-panel { max-width: 92vw; width: 92vw; }
   .lo-panel { width: 96vw; max-width: 96vw; }
   .bp-panel { max-width: 96vw; width: 96vw; }
@@ -12765,9 +12765,9 @@ body {
    fallback. */
 
 :root.viewport-fitted .settings-panel {
-  max-width: 400px;
-  width: min(90vw, 400px);
-  max-height: none;
+  max-width: min(90vw, 800px);
+  width: 90vw;
+  max-height: 92dvh;
   padding: 24px 28px;
 
   position: absolute;
@@ -12785,7 +12785,10 @@ body {
   font-size: 14px;
 }
 :root.viewport-fitted .settings-panel .settings-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
+  align-content: start;
 }
 :root.viewport-fitted .settings-panel .settings-section {
   padding: 12px;
@@ -12807,6 +12810,11 @@ body {
 :root.viewport-fitted .settings-panel .settings-reset-btn {
   padding: 8px 20px;
   font-size: 14px;
+}
+/* Let the danger/reset section span both grid columns */
+:root.viewport-fitted .settings-panel .settings-danger,
+:root.viewport-fitted .settings-panel .settings-section:last-of-type {
+  grid-column: 1 / -1;
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -13492,15 +13500,12 @@ body {
     transform-origin: center center;
   }
 
-  /* Settings overlay — the panel itself fits the viewport (clamped to
-     `min(90vw, 400px)` and 95dvh tall via `.panel`), but on landscape
-     phones the volume sliders' fixed 70px label / 48px value columns
-     plus the 28×32 `.panel` padding pushed the slider track off-screen
-     in some browser zoom states. Tighten everything one notch on
-     coarse-pointer devices. */
+  /* Settings overlay — the panel uses 90vw width with generous
+     max-height to reduce scrolling. On coarse-pointer devices,
+     tighten internal padding/font-sizes slightly. */
   .settings-panel {
-    width: min(94vw, 380px);
-    max-width: 380px;
+    width: 90vw;
+    max-width: min(90vw, 800px);
     padding: 14px 14px;
     max-height: 92dvh;
   }
@@ -13695,8 +13700,11 @@ body {
 }
 
 .settings-body {
-  /* Flex shrink + own-scroll so a too-tall body never pushes the
-     header (and its close X) above the viewport top. */
+  /* Grid 2-column layout with own-scroll so a too-tall body never
+     pushes the header (and its close X) above the viewport top. */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -13705,11 +13713,19 @@ body {
      borders on browsers with always-visible scrollbars. */
   padding-right: 2px;
 }
+/* Let the danger/reset section span both columns in 2-column grid */
+.settings-danger,
+.settings-section.settings-reset-section,
+.settings-body > .settings-section:last-of-type {
+  grid-column: 1 / -1;
+}
 
 /* Re-cap the fitted panel even though the JS-driven `--ui-scale`
    normally fits it. Belt-and-braces against zoom, font-boosting, or
    `--ui-scale` flooring at 0.5 on phones below the design height. */
 :root.viewport-fitted .settings-panel {
+  max-width: min(90vw, 800px);
+  width: 90vw;
   max-height: 92dvh;
 }
 
@@ -13718,8 +13734,8 @@ body {
   .settings-panel {
     /* Wider but flatter — give the body room to lay out two columns
        of sections side-by-side. */
-    max-width: min(96vw, 560px);
-    width: min(96vw, 560px);
+    max-width: min(90vw, 800px);
+    width: 90vw;
     padding: 10px 12px;
   }
   .settings-header { margin-bottom: 6px; }
@@ -13760,8 +13776,8 @@ body {
    stats / reset button via a flick scroll. */
 @media (orientation: landscape) and (max-height: 380px) {
   .settings-panel {
-    max-width: min(96vw, 460px);
-    width: min(96vw, 460px);
+    max-width: min(90vw, 600px);
+    width: 90vw;
   }
   .settings-body {
     grid-template-columns: 1fr;
@@ -13776,8 +13792,8 @@ body {
    rotate-warning is dismissed). */
 @media (max-width: 640px) {
   .settings-panel {
-    width: min(96vw, 380px);
-    max-width: min(96vw, 380px);
+    width: 90vw;
+    max-width: 90vw;
     padding: 12px 14px;
   }
 }
