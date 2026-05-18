@@ -268,6 +268,11 @@ export class PauseStatsOverlay {
     body.textContent = t('ui.exitConfirm.body');
     dialog.appendChild(body);
 
+    const halfRewardNote = document.createElement('div');
+    halfRewardNote.className = 'pause-exit-warning';
+    halfRewardNote.textContent = t('ui.exitConfirm.halfReward');
+    dialog.appendChild(halfRewardNote);
+
     // Epic / Ancient runs spent a key when the run started — surface a
     // second, more emphatic line so the player knows they won't get it
     // back if they exit now.
