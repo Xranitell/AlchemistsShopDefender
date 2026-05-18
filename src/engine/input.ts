@@ -110,12 +110,15 @@ export class Input {
     // Fallback: register press when the click hits a non-interactive HUD
     // element that overlaps the canvas (e.g. decorative panel areas).
     // Skip buttons / inputs so their own click handlers still work.
+    // Also skip .tower-shop / .mannequin-shop so clicks on those popups
+    // don't trigger game actions while the popup is open or mid-close.
     window.addEventListener('mousedown', (e) => {
       if (e.target === c) return;
       if (!this.isInsideCanvas(e.clientX, e.clientY)) return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      if ((e.target as HTMLElement).closest?.('.tower-shop')) return;
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
@@ -142,6 +145,7 @@ export class Input {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      if ((e.target as HTMLElement).closest?.('.tower-shop')) return;
       // When a fullscreen overlay is open the canvas is hidden behind it
       // (see `#app:has(#overlay.visible) #hud { display: none }` rule).
       // Forwarding the touch as a game press while also preventing default
