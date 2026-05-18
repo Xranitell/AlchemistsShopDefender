@@ -7,3 +7,23 @@ dist-tsc/
 .vscode/
 *.log
 .cache/
+
+# Playwright (Phase 6 viewport regression suite). The expected
+# baselines under tests/viewport/__screenshots__/ ARE committed; only
+# the per-run report + failure traces are ignored.
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
+# Local repro scripts used to inspect main-menu layout at custom
+# viewport sizes (see tests/viewport/ for the committed regression
+# suite). These are session-scratch and shouldn't enter the repo.
+/repro.mjs
+/repro-multi.mjs
+/repro-craft.mjs
+/repro-modifier.mjs
+/repro-loadout.mjs
+/scripts/probe-*.mjs
+/scripts/inspect-*.mjs
+/tmp-screenshots/

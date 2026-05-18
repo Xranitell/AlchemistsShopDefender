@@ -1,7 +1,10 @@
 import { BP_LEVELS, BP_MAX_LEVEL, bpRewardLabel } from '../data/battlePass';
+import type { BpReward } from '../data/battlePass';
+import { rewardSprite } from '../data/dailyRewards';
 import type { MetaSave } from '../game/save';
 import { saveMeta } from '../game/save';
 import { t } from '../i18n';
+import { spriteIcon } from '../render/spriteIcon';
 
 export class BattlePassOverlay {
   private root: HTMLElement;
@@ -91,7 +94,8 @@ export class BattlePassOverlay {
       numCell.textContent = `${def.level}`;
       numbersRow.appendChild(numCell);
 
-      // Free reward cell
+      // Free reward cell — pixel icon + amount label so the player can read
+      // "what" the reward is at a glance, mirroring the daily-rewards cell.
       const freeCell = document.createElement('div');
       freeCell.className = 'bp-cell';
       if (def.freeReward) {
@@ -99,7 +103,11 @@ export class BattlePassOverlay {
         if (claimed) freeCell.classList.add('claimed');
         else if (reached) freeCell.classList.add('claimable');
         else freeCell.classList.add('locked');
-        freeCell.textContent = claimed ? '✓' : bpRewardLabel(def.freeReward);
+        if (claimed) {
+          freeCell.textContent = '✓';
+        } else {
+          freeCell.appendChild(buildBpRewardCell(def.freeReward));
+        }
         if (reached && !claimed && def.freeReward) {
           freeCell.addEventListener('click', () => {
             claimBpReward(opts.meta, def.level, 'free');
@@ -112,7 +120,8 @@ export class BattlePassOverlay {
       }
       freeRow.appendChild(freeCell);
 
-      // Premium reward cell
+      // Premium reward cell — same layout as the free row; the cell's CSS
+      // class signals "premium" so it can be tinted gold.
       const premCell = document.createElement('div');
       premCell.className = 'bp-cell';
       if (def.premiumReward) {
@@ -121,7 +130,11 @@ export class BattlePassOverlay {
         else if (claimed) premCell.classList.add('claimed');
         else if (reached) premCell.classList.add('claimable');
         else premCell.classList.add('locked');
-        premCell.textContent = claimed ? '✓' : bpRewardLabel(def.premiumReward);
+        if (claimed) {
+          premCell.textContent = '✓';
+        } else {
+          premCell.appendChild(buildBpRewardCell(def.premiumReward));
+        }
         if (reached && !claimed && opts.meta.bpPremium && def.premiumReward) {
           premCell.addEventListener('click', () => {
             claimBpReward(opts.meta, def.level, 'premium');
@@ -168,6 +181,22 @@ export class BattlePassOverlay {
   }
 }
 
+/** Builds a `[pixel-icon][amount label]` cell used for both free and
+ *  premium rewards. Centralised so the two columns stay visually identical
+ *  with the daily-rewards calendar. */
+function buildBpRewardCell(reward: BpReward): HTMLElement {
+  const wrap = document.createElement('span');
+  wrap.className = 'bp-reward';
+  // Ancient-essence rewards glow gold; the rest stay flat.
+  const extraClass = reward.type === 'ancient_essence' ? 'glow-gold' : undefined;
+  wrap.appendChild(spriteIcon(rewardSprite(reward.type), { scale: 2, extraClass }));
+  const lab = document.createElement('span');
+  lab.className = 'bp-reward-amt';
+  lab.textContent = bpRewardLabel(reward);
+  wrap.appendChild(lab);
+  return wrap;
+}
+
 function claimBpReward(meta: MetaSave, level: number, track: 'free' | 'premium'): void {
   const def = BP_LEVELS[level - 1]!;
   const reward = track === 'free' ? def.freeReward : def.premiumReward;
@@ -183,18 +212,24 @@ function claimBpReward(meta: MetaSave, level: number, track: 'free' | 'premium')
 }
 
 function applyBpReward(meta: MetaSave, reward: { type: string; amount: number }): void {
+  // Mirror of `applyDailyReward` — every reward type maps directly to a
+  // real meta-save bucket. See `BpReward['type']` in `data/battlePass.ts`
+  // for the exhaustive list.
   switch (reward.type) {
-    case 'gold':
-      meta.blueEssence += reward.amount;
-      break;
     case 'blue_essence':
       meta.blueEssence += reward.amount;
       break;
     case 'ancient_essence':
       meta.ancientEssence += reward.amount;
       break;
-    case 'keys':
-      meta.keys += reward.amount;
+    case 'epic_key':
+      meta.epicKeys += reward.amount;
+      break;
+    case 'ancient_key':
+      meta.ancientKeys += reward.amount;
+      break;
+    case 'rerolls':
+      meta.bonusRerolls += reward.amount;
       break;
   }
 }

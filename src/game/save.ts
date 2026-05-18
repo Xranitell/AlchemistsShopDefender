@@ -1,8 +1,6 @@
 import {
   DEFAULT_ACTIVE_MODULE,
-  DEFAULT_AURA_MODULE,
   isActiveModule,
-  isAuraModule,
 } from '../data/modules';
 import {
   ALL_INGREDIENT_IDS,
@@ -10,8 +8,32 @@ import {
   POTION_INVENTORY_SIZE,
   type IngredientId,
 } from '../data/potions';
+import { META_BY_ID } from '../data/metaTree';
+import type { DifficultyMode } from '../data/difficulty';
+
+/** Per-difficulty kill counter for a single enemy kind. Difficulty modes
+ *  not yet encountered are simply absent from the partial record. */
+export type BestiaryRecord = Partial<Record<DifficultyMode, number>>;
+
+/** Whole-meta bestiary store: enemy id → per-difficulty kill counts. */
+export type BestiaryStore = Partial<Record<string, BestiaryRecord>>;
+
+const VALID_DIFFICULTIES: DifficultyMode[] = [
+  'normal',
+  'epic',
+  'ancient',
+  'endless',
+  'daily',
+];
 
 const SAVE_KEY = 'asd_meta_v2';
+
+/** UI animation preference. `'auto'` follows the OS
+ *  `prefers-reduced-motion` media query (iOS sets it via Low-Power-Mode
+ *  / Reduce Motion). `'minimal'` is the default on touch devices so
+ *  Android phones — which don't expose the OS query — still get a calm
+ *  default. `'full'` is the "force animations" override. */
+export type MotionMode = 'auto' | 'minimal' | 'full';
 
 export interface MetaSave {
   blueEssence: number;
@@ -23,6 +45,16 @@ export interface MetaSave {
   ancientKeys: number;
   purchased: string[];
   bestWave: number;
+  /** Per-leaderboard high-water marks. Keys are Yandex Games board
+   *  ids (`'endlessWaves'`, `'dailyWaves'`) and values are the best
+   *  score the player has ever submitted to that board on this
+   *  device. Used to gate `setLeaderboardScore` calls so a worse
+   *  later run never overwrites a better earlier one, regardless of
+   *  how the Yandex dashboard sort order is configured. Persisted
+   *  separately from `bestWave` so daily and endless boards can
+   *  diverge — the player's best daily-event score may be lower
+   *  than their endless best. */
+  bestLeaderboardScores: Partial<Record<string, number>>;
   totalRuns: number;
   // Daily rewards
   dailyDay: number;
@@ -37,18 +69,60 @@ export interface MetaSave {
   bonusRerolls: number;
   // Crafting level (shop upgrades)
   craftingLevel: number;
-  /** Mannequin module loadout (GDD §11.2). One active + one aura. Defaults
-   *  preserve pre-loadout behaviour: lightning Overload + magnet aura. */
+  /** Mannequin Overload selection (GDD §11.2). The previous "Aura"
+   *  passive slot was removed in the Overload-only redesign — we keep a
+   *  single active ability that the player triggers when the Overload
+   *  bar is full. */
   selectedActiveModule: string;
-  selectedAuraModule: string;
-  /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance. */
+  /** Audio volumes (0..1). Defaults match GDD §16 ambient/SFX balance.
+   *  `sfxVolume`   — gameplay SFX (shots, hits, drops, reactions).
+   *  `uiSfxVolume` — UI ticks (button click / hover) only. Split out
+   *                  so the player can mute clicks without losing
+   *                  combat audio cues. */
   sfxVolume: number;
+  uiSfxVolume: number;
   musicVolume: number;
+  /** Animation strength (see {@link MotionMode}). Defaults to
+   *  `'minimal'` on touch devices and `'auto'` everywhere else; the
+   *  player can override either default via the settings overlay. */
+  motionMode: MotionMode;
   /** First-time-user-experience flag (GDD §18). True once the player has
    *  cleared wave 5 in the very first run, or hit "Skip tutorial". */
   tutorialDone: boolean;
+  /** Set once the player has seen the pause-panel walkthrough at least
+   *  once. Prevents the panel sequence from replaying every time the
+   *  player opens the pause overlay. */
+  pauseTutorialDone: boolean;
+  /** Set once the player has seen the main-menu walkthrough. Same idea
+   *  as `pauseTutorialDone` but for the between-runs main menu. */
+  menuTutorialDone: boolean;
+  /** Set once the player has seen the settings-panel walkthrough. Same
+   *  idea as `pauseTutorialDone` but for the settings overlay; surfaces
+   *  the animation toggle (the most-asked phone-perf setting) and the
+   *  reset-progress button to first-time players. */
+  settingsTutorialDone: boolean;
+  /** Set once the player has seen the cursed-card walkthrough — the
+   *  one-shot tooltip that explains how cursed drafts work the first
+   *  time one appears. Independent of the wave-based FTUE so it still
+   *  fires for veteran players the first time they meet a cursed
+   *  draft (e.g. the new «Проклятый день» daily event, or wave 3 of
+   *  any non-FTUE run). */
+  cursedTutorialDone: boolean;
   /** UI locale for i18n (PR-9). 'ru' or 'en'. Empty/missing = autodetect. */
   locale: 'ru' | 'en';
+  /** True once the player has explicitly picked a locale via the in-game
+   *  language switcher. While false, we let the Yandex SDK's
+   *  `environment.i18n.lang` override the locale on session start so the
+   *  game follows the player's Yandex profile language without ever
+   *  ignoring an in-game choice. */
+  localeUserChoice: boolean;
+  /** Mode-mastery counters: number of full victories per difficulty. Each
+   *  Epic / Ancient victory grants +1 mastery, which scales blue-essence
+   *  drops in *every* future run by a small amount (capped). This is the
+   *  meta hook that makes higher modes worth replaying — see
+   *  `masteryEssenceMult` in game/meta.ts. */
+  epicMastery: number;
+  ancientMastery: number;
   // ─── Potion crafting (PR-«крафт») ───────────────────────────────────────
   /** Stockpile of crafting ingredients. Keys come from `IngredientId`; missing
    *  keys are treated as 0. Drops persist across runs. */
@@ -56,6 +130,12 @@ export interface MetaSave {
   /** Brewed-potion inventory carried across runs. Fixed length =
    *  `POTION_INVENTORY_SIZE` (4); each slot is either a recipe id or `null`. */
   inventory: (string | null)[];
+  /** Bestiary kill counts keyed by enemy id, then by difficulty mode.
+   *  Drives the Alchemist's Diary unlock state — once an entry has at
+   *  least one kill (in any difficulty) the silhouette resolves into
+   *  the full info card. Per-difficulty counts feed the progress bars
+   *  shown next to the entry. Persisted across runs. */
+  bestiary: BestiaryStore;
 }
 
 export function newMetaSave(): MetaSave {
@@ -69,6 +149,7 @@ export function newMetaSave(): MetaSave {
     ancientKeys: 1,
     purchased: [],
     bestWave: 0,
+    bestLeaderboardScores: {},
     totalRuns: 0,
     dailyDay: 0,
     dailyLastClaim: '',
@@ -80,13 +161,27 @@ export function newMetaSave(): MetaSave {
     bonusRerolls: 0,
     craftingLevel: 1,
     selectedActiveModule: DEFAULT_ACTIVE_MODULE,
-    selectedAuraModule: DEFAULT_AURA_MODULE,
     sfxVolume: 0.6,
-    musicVolume: 0.4,
+    uiSfxVolume: 0.6,
+    // Default music slider sits at 100 %. The audio engine internally
+    // caps slider = 1.0 to a comfortable amplitude (`MUSIC_MAX_GAIN`),
+    // so the soundtrack still sits behind SFX without the player having
+    // to dial it down on first launch — they'd just hear the slider as
+    // a normalised "100 % = comfortable max" knob now.
+    musicVolume: 1.0,
+    motionMode: defaultMotionModeForNewSave(),
     tutorialDone: false,
+    pauseTutorialDone: false,
+    menuTutorialDone: false,
+    settingsTutorialDone: false,
+    cursedTutorialDone: false,
     locale: defaultLocale(),
+    localeUserChoice: false,
+    epicMastery: 0,
+    ancientMastery: 0,
     ingredients: {},
     inventory: emptyInventory(),
+    bestiary: {},
   };
 }
 
@@ -104,6 +199,51 @@ function sanitizeIngredients(
     if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
       out[id] = Math.floor(v);
     }
+  }
+  return out;
+}
+
+/** Drop any allocated upgrade ids that are no longer present in the meta
+ *  tree. Old saves built against the previous tree layout would otherwise
+ *  carry ghost ids that confuse refund-connectivity checks. */
+function sanitizePurchased(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const id of raw) {
+    if (typeof id !== 'string') continue;
+    if (!META_BY_ID[id]) continue;
+    if (out.includes(id)) continue;
+    out.push(id);
+  }
+  return out;
+}
+
+function sanitizeBestLeaderboardScores(raw: unknown): Partial<Record<string, number>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<string, number>> = {};
+  for (const [boardId, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof boardId !== 'string' || !boardId) continue;
+    if (typeof val === 'number' && Number.isFinite(val) && val > 0) {
+      out[boardId] = Math.floor(val);
+    }
+  }
+  return out;
+}
+
+function sanitizeBestiary(raw: unknown): BestiaryStore {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: BestiaryStore = {};
+  for (const [enemyId, perDiff] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof enemyId !== 'string' || !enemyId) continue;
+    if (!perDiff || typeof perDiff !== 'object') continue;
+    const rec: BestiaryRecord = {};
+    for (const diff of VALID_DIFFICULTIES) {
+      const v = (perDiff as Record<string, unknown>)[diff];
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+        rec[diff] = Math.floor(v);
+      }
+    }
+    if (Object.keys(rec).length > 0) out[enemyId] = rec;
   }
   return out;
 }
@@ -137,8 +277,11 @@ export function loadMeta(): MetaSave {
       keys: data.keys ?? 0,
       epicKeys: data.epicKeys ?? 1,
       ancientKeys: data.ancientKeys ?? 1,
-      purchased: Array.isArray(data.purchased) ? data.purchased : [],
+      purchased: sanitizePurchased(data.purchased),
       bestWave: data.bestWave ?? 0,
+      bestLeaderboardScores: sanitizeBestLeaderboardScores(
+        (data as Record<string, unknown>).bestLeaderboardScores,
+      ),
       totalRuns: data.totalRuns ?? 0,
       dailyDay: data.dailyDay ?? 0,
       dailyLastClaim: data.dailyLastClaim ?? '',
@@ -149,26 +292,64 @@ export function loadMeta(): MetaSave {
       bpClaimedPremium: Array.isArray(data.bpClaimedPremium) ? data.bpClaimedPremium : [],
       bonusRerolls: data.bonusRerolls ?? 0,
       craftingLevel: data.craftingLevel ?? 1,
-      // Migration: existing saves predate the loadout. Default to the
-      // pre-loadout behaviour (lightning + magnet) and validate against the
-      // current module catalog so removed ids fall back gracefully.
+      // Migration: pre-Overload-redesign saves stored a separate aura id;
+      // it's silently dropped here. Pre-loadout saves had no module field
+      // at all and fall back to the default Overload (lightning).
       selectedActiveModule: isActiveModule(data.selectedActiveModule ?? '')
         ? (data.selectedActiveModule as string)
         : DEFAULT_ACTIVE_MODULE,
-      selectedAuraModule: isAuraModule(data.selectedAuraModule ?? '')
-        ? (data.selectedAuraModule as string)
-        : DEFAULT_AURA_MODULE,
       sfxVolume: clampVolume(data.sfxVolume, 0.6),
-      musicVolume: clampVolume(data.musicVolume, 0.4),
+      // Migration: pre-split saves had no separate UI volume — fall
+      // back to the gameplay SFX level so the player keeps a familiar
+      // mix on first load after upgrade.
+      uiSfxVolume: clampVolume(data.uiSfxVolume, clampVolume(data.sfxVolume, 0.6)),
+      musicVolume: clampVolume(data.musicVolume, 1.0),
+      // Migration: pre-motion-mode saves had no setting. Carry over the
+      // platform default so existing Android players who had been
+      // suffering through the full animation set quietly fall to
+      // `'minimal'` — they can re-enable via the settings toggle.
+      motionMode: sanitizeMotionMode(data.motionMode),
       // Migration: pre-FTUE saves had no tutorial flag. Treat any returning
       // player who has at least one finished run as having seen the
       // tutorial — we don't want to nag veterans with the wave-1 hint.
       tutorialDone: typeof data.tutorialDone === 'boolean'
         ? data.tutorialDone
         : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players with at least one finished run have
+      // already discovered the pause / main-menu UI on their own — don't
+      // pop the panel walkthrough at them retroactively. New saves get
+      // both flags set to false so the walkthroughs play exactly once.
+      pauseTutorialDone: typeof data.pauseTutorialDone === 'boolean'
+        ? data.pauseTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      menuTutorialDone: typeof data.menuTutorialDone === 'boolean'
+        ? data.menuTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players who have already finished a run have
+      // discovered the settings UI on their own — don't pop the
+      // walkthrough at them retroactively. New saves get `false` so the
+      // walkthrough plays exactly once when they first open settings.
+      settingsTutorialDone: typeof data.settingsTutorialDone === 'boolean'
+        ? data.settingsTutorialDone
+        : (data.totalRuns ?? 0) > 0,
+      // Migration: returning players with at least one finished run have
+      // almost certainly already met a cursed draft on their own (every
+      // 3rd wave is cursed) — don't replay the explainer at them. Brand
+      // new saves get `false` so the walkthrough plays exactly once.
+      cursedTutorialDone: typeof data.cursedTutorialDone === 'boolean'
+        ? data.cursedTutorialDone
+        : (data.totalRuns ?? 0) > 0,
       locale: data.locale === 'en' || data.locale === 'ru' ? data.locale : defaultLocale(),
+      // Existing saves without the explicit-choice flag are treated as
+      // "explicit" so we don't flip the player's previously persisted
+      // language out from under them on the first session after the
+      // Yandex SDK integration ships.
+      localeUserChoice: typeof data.localeUserChoice === 'boolean' ? data.localeUserChoice : true,
+      epicMastery: typeof data.epicMastery === 'number' ? Math.max(0, Math.floor(data.epicMastery)) : 0,
+      ancientMastery: typeof data.ancientMastery === 'number' ? Math.max(0, Math.floor(data.ancientMastery)) : 0,
       ingredients: sanitizeIngredients((data as Record<string, unknown>).ingredients),
       inventory: sanitizeInventory((data as Record<string, unknown>).inventory),
+      bestiary: sanitizeBestiary((data as Record<string, unknown>).bestiary),
     };
     // If migrated from v1, save as v2
     if (rawV1 && !raw) {
@@ -197,6 +378,16 @@ export function resetMeta(): void {
   }
 }
 
+function defaultMotionModeForNewSave(): MotionMode {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'auto';
+  return window.matchMedia('(pointer: coarse)').matches ? 'minimal' : 'auto';
+}
+
+function sanitizeMotionMode(v: unknown): MotionMode {
+  if (v === 'auto' || v === 'minimal' || v === 'full') return v;
+  return defaultMotionModeForNewSave();
+}
+
 function clampVolume(v: unknown, fallback: number): number {
   if (typeof v !== 'number' || Number.isNaN(v)) return fallback;
   if (v < 0) return 0;
@@ -211,4 +402,50 @@ export function todayString(): string {
 
 export function canClaimDaily(meta: MetaSave): boolean {
   return meta.dailyLastClaim !== todayString();
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Bestiary helpers
+// ────────────────────────────────────────────────────────────────────────
+
+/** Increment the per-difficulty kill counter for `enemyId` by `amount`.
+ *  No-op when `amount <= 0`. Mutates `meta` in place — callers are
+ *  responsible for invoking `saveMeta(meta)` once the batch is applied. */
+export function recordBestiaryKill(
+  meta: MetaSave,
+  enemyId: string,
+  difficulty: DifficultyMode,
+  amount: number = 1,
+): void {
+  if (!enemyId || !Number.isFinite(amount) || amount <= 0) return;
+  if (!meta.bestiary) meta.bestiary = {};
+  const rec = (meta.bestiary[enemyId] ??= {});
+  rec[difficulty] = (rec[difficulty] ?? 0) + Math.floor(amount);
+}
+
+/** Convenience: kills of `enemyId` in `difficulty` (0 if missing). */
+export function bestiaryKills(
+  meta: MetaSave,
+  enemyId: string,
+  difficulty: DifficultyMode,
+): number {
+  return meta.bestiary?.[enemyId]?.[difficulty] ?? 0;
+}
+
+/** Convenience: total kills of `enemyId` across every difficulty. The
+ *  Alchemist's Diary uses this to decide whether the silhouette is
+ *  unlocked (any kill in any mode reveals the entry). */
+export function bestiaryTotalKills(meta: MetaSave, enemyId: string): number {
+  const rec = meta.bestiary?.[enemyId];
+  if (!rec) return 0;
+  let total = 0;
+  for (const v of Object.values(rec)) {
+    if (typeof v === 'number' && v > 0) total += v;
+  }
+  return total;
+}
+
+/** Convenience: `true` once `enemyId` has been killed at least once. */
+export function isBestiaryDiscovered(meta: MetaSave, enemyId: string): boolean {
+  return bestiaryTotalKills(meta, enemyId) > 0;
 }

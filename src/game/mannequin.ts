@@ -13,7 +13,7 @@ export function updateMannequin(state: GameState, dt: number): void {
   if (m.throwAnim > 0) m.throwAnim -= dt;
   m.potionTimer -= dt;
 
-  // Manual fire only — player must click to throw a potion. (No auto-aim.)
+  // Manual fire only — player must click to throw a vial. (No auto-aim.)
   if (state.manualFireRequested && m.potionTimer <= 0) {
     const aim = clampAim(state, state.aim);
     tickFireRuby(state);
@@ -27,14 +27,14 @@ export function updateMannequin(state: GameState, dt: number): void {
     const dy = aim.y - m.pos.y;
     const len = Math.hypot(dx, dy) || 1;
     m.throwDir = { x: dx / len, y: dy / len };
-    m.throwAnim = 0.22;
+    m.throwAnim = 0.44;
   }
 
   // Triple Throw card (GDD §8.2): every `tripleThrowInterval` seconds the
-  // alchemist also lobs a 3-potion fan toward the highest-priority enemy on
+  // alchemist also lobs a 3-vial fan toward the highest-priority enemy on
   // the board. The fan is spawned on TOP of normal throws — it doesn't
   // consume the manual cooldown — so the card stacks with the rest of the
-  // potion build instead of replacing it.
+  // vial build instead of replacing it.
   if (state.modifiers.tripleThrowActive) {
     state.modifiers.tripleThrowTimer -= dt;
     if (state.modifiers.tripleThrowTimer <= 0) {
@@ -67,8 +67,8 @@ function pickFanTarget(state: GameState): Enemy | null {
   return best;
 }
 
-/** Spawn a 3-potion fan aimed at `target`. The two side potions land slightly
- *  off-axis (~22°) of the centre potion so the fan has a visible spread. */
+/** Spawn a 3-vial fan aimed at `target`. The two side vials land slightly
+ *  off-axis (~22°) of the centre vial so the fan has a visible spread. */
 function spawnFanThrow(state: GameState, target: Enemy): void {
   const m = state.mannequin;
   const dx = target.pos.x - m.pos.x;

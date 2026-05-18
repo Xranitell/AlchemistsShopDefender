@@ -1,14 +1,17 @@
 import type { GameState } from '../game/state';
 import { totalWaves, currentWaveDuration, currentPauseDuration, isNextWaveBoss } from '../game/wave';
 import { getSprites } from '../render/sprites';
-import type { BakedSprite } from '../render/sprite';
+import { spriteIcon } from '../render/spriteIcon';
 import { DIFFICULTY_MODES } from '../data/difficulty';
+import { MUTATOR_BY_ID } from '../data/mutators';
+import { CONTRACT_BY_ID } from '../data/contracts';
+import { BLESSING_BY_ID, CURSE_BY_ID } from '../data/blessings';
 import {
   POTION_BY_ID,
   POTION_INVENTORY_SIZE,
   type PotionRecipe,
 } from '../data/potions';
-import { t } from '../i18n';
+import { t, onLocaleChange } from '../i18n';
 
 export interface HudHandlers {
   onPause(): void;
@@ -31,9 +34,29 @@ export class Hud {
   private handlers: HudHandlers;
 
   // Top-left WAVE widget
+  /** Held so we can re-translate the "ВОЛНА" / "WAVE" caption when the
+   *  player switches locale mid-run via the language toggle. */
+  private waveLabel!: HTMLDivElement;
   private waveValue!: HTMLSpanElement;
   /** Ribbon under the WAVE widget showing the current difficulty. */
   private difficultyBadge!: HTMLDivElement;
+  /** Side panel container holding the picked blessings/curses, the
+   *  wave-rotating dungeon laws, and the run contracts. Anchored to
+   *  the left edge of the screen, below the wave/difficulty cluster,
+   *  so the player can read the active rules, effects, and goals at
+   *  all times during a run. */
+  private runSidebar!: HTMLDivElement;
+  private runSidebarToggle!: HTMLButtonElement;
+  private runSidebarCollapsed = false;
+  /** Section inside the sidebar listing the picked blessings (and curse
+   *  in Ancient). Built once per run since the picks don't change. */
+  private blessingSection!: HTMLDivElement;
+  /** Section inside the sidebar listing the active wave-rotating laws.
+   *  Re-rendered each time the active mutator id list changes. */
+  private mutatorSection!: HTMLDivElement;
+  /** Section inside the sidebar listing the run contracts. Card text is
+   *  re-rendered every frame because it shows live progress (X/N). */
+  private contractSection!: HTMLDivElement;
 
   // Top-right pause button (also drives the keyboard shortcut). Holds its
   // own paused/playing state so the icon and aria-label stay in sync with
@@ -44,20 +67,38 @@ export class Hud {
   // Top-center HP bar
   private hpFill!: HTMLDivElement;
   private hpLabel!: HTMLSpanElement;
+  /** Held so we can re-translate the "ПРОЧНОСТЬ" / "DURABILITY" caption
+   *  when the player switches locale mid-run. Without a re-application
+   *  path the badge would stick on the locale that was active the
+   *  moment the HUD was first built — e.g. autodetect picks RU, the
+   *  player taps EN, every other label re-renders but this one keeps
+   *  showing "ПРОЧНОСТЬ". */
+  private hpTagLabel!: HTMLDivElement;
 
   // Top-right gold / essence
   private goldLabel!: HTMLSpanElement;
   private essenceLabel!: HTMLSpanElement;
-  private catalystBadge!: HTMLDivElement;
-  private catalystValue!: HTMLSpanElement;
 
   // (Magnet button removed — auto-magnet is always active)
 
-  // Bottom-right ability / overload buttons
-  private abilityButton!: HTMLButtonElement;
+  // Bottom-right overload button. The matching ability button used to
+  // sit to its left but was always disabled with a "скоро будет
+  // доступно" tooltip — it had no functionality, so it was removed to
+  // declutter the HUD.
   private overloadButton!: HTMLButtonElement;
+  /** Held so we can re-translate the "ПЕРЕГРУЗКА" / "OVERLOAD" caption
+   *  when the player switches locale mid-run. The label text is set
+   *  once at construction; without a re-application path the EN string
+   *  would stick on a RU button after the player taps the language
+   *  toggle. */
+  private overloadLabel!: HTMLSpanElement;
   private overloadFill!: HTMLDivElement;
   private overloadModule!: HTMLSpanElement;
+  /** Numeric "57%" → "ГОТОВ" / "READY" readout shown inside the
+   *  overload button so the player has a concrete number for the
+   *  charge state in addition to the conic ring sweep. */
+  private overloadPercentLabel!: HTMLSpanElement;
+  private prevOverloadPercent = -1;
 
   // Center-bottom hint + skip-wave (only during preparing phase)
   private hint!: HTMLDivElement;
@@ -76,10 +117,85 @@ export class Hud {
   private potionSlots: HTMLButtonElement[] = [];
   private effectsBar!: HTMLDivElement;
 
+  // Diff cache: HUD.update is called every render frame (60Hz). Without this
+  // we'd write to `style.width`, `style.background` (conic-gradient) and
+  // `innerHTML` regardless of whether the value actually changed, which
+  // forces the browser to re-style/relayout/repaint the HUD every frame.
+  private prevHpRatio = -1;
+  private prevHpLabel = '';
+  private prevOverloadDeg = -1;
+  private prevGold = -1;
+  private prevEssence = -1;
+  private prevWaveValue = '';
+  private prevDifficulty = '';
+  private prevDifficultyHidden = -1;
+  private prevMutatorKey = '';
+  private prevContractKey = '';
+  private prevBlessingKey = '';
+  private prevSkipVisible = -1;
+  private prevSkipText = '';
+  private prevOverloadDisabled: boolean | null = null;
+  private prevOverloadReady: boolean | null = null;
+  private prevOverloadModule = '';
+  private prevHint = '';
+  private prevBossVisible = -1;
+  private prevTimerBarDisplay = '';
+  private prevTimerFillRatio = -1;
+  private prevTimerLabel = '';
+  private prevTimerClass = '';
+  private prevPotionInteractive = -1;
+  private prevPotionState: Array<string | null> = [];
+  private prevEffectsHtml = '';
+
   constructor(root: HTMLElement, handlers: HudHandlers) {
     this.root = root;
     this.handlers = handlers;
     this.build();
+    // The HUD is built once at boot but the player can flip the locale
+    // mid-run via the in-game settings. Without a re-translation hook
+    // every static label set by `build()` (WAVE caption, OVERLOAD
+    // caption, boss-incoming banner, pause button title, …) sticks at
+    // whatever locale was active when the widget was first created. We
+    // subscribe here and re-apply the labels — values that already get
+    // re-rendered every frame inside `update()` (HP / gold / hint /
+    // skip-button / module name / etc.) need no special handling.
+    onLocaleChange(() => this.relabelStatic());
+  }
+
+  /** Re-apply every label whose source key isn't read again inside the
+   *  per-frame `update()` path. Called once at boot and again whenever
+   *  the i18n layer fires `onLocaleChange`. */
+  private relabelStatic(): void {
+    if (this.waveLabel) {
+      this.waveLabel.textContent = t('ui.hud.wave');
+    }
+    if (this.bossIndicator) {
+      this.bossIndicator.textContent = t('ui.hud.bossIncoming');
+    }
+    if (this.overloadLabel) {
+      this.overloadLabel.textContent = t('ui.hud.overload');
+    }
+    if (this.hpTagLabel) {
+      this.hpTagLabel.textContent = t('ui.hud.hpLabel');
+    }
+    if (this.pauseButton) {
+      // `setPaused` re-applies these on a state change but if the player
+      // flips the locale while paused / unpaused without toggling the
+      // run state, we still need to refresh the active-state label.
+      const key = this.isPaused ? 'ui.hud.resume' : 'ui.hud.pause';
+      this.pauseButton.setAttribute('aria-label', t(key));
+      this.pauseButton.title = t(key);
+    }
+    if (this.runSidebarToggle) {
+      this.updateRunSidebarToggleLabel();
+    }
+  }
+
+  private updateRunSidebarToggleLabel(): void {
+    const key = this.runSidebarCollapsed ? 'ui.hud.runSidebar.expand' : 'ui.hud.runSidebar.collapse';
+    this.runSidebarToggle.textContent = t(key);
+    this.runSidebarToggle.setAttribute('aria-label', t(key));
+    this.runSidebarToggle.setAttribute('aria-expanded', this.runSidebarCollapsed ? 'false' : 'true');
   }
 
   private build(): void {
@@ -91,15 +207,15 @@ export class Hud {
 
     // Top-left: WAVE widget
     const waveBadge = badgeFrame('hud-wave-badge');
-    const waveLabel = document.createElement('div');
-    waveLabel.className = 'hud-tag-label';
-    waveLabel.textContent = 'WAVE';
+    this.waveLabel = document.createElement('div');
+    this.waveLabel.className = 'hud-tag-label';
+    this.waveLabel.textContent = t('ui.hud.wave');
     this.waveValue = document.createElement('span');
     this.waveValue.className = 'hud-wave-value';
     this.waveValue.textContent = '1 / 5';
     const waveCol = document.createElement('div');
     waveCol.className = 'hud-wave-col';
-    waveCol.appendChild(waveLabel);
+    waveCol.appendChild(this.waveLabel);
     waveCol.appendChild(this.waveValue);
     waveBadge.appendChild(waveCol);
     waveBadge.appendChild(spriteEl(getSprites().iconWavePip, 4));
@@ -126,6 +242,35 @@ export class Hud {
 
     top.appendChild(waveStack);
 
+    // Run sidebar — vertical panel anchored to the LEFT edge of the
+    // screen, below the wave/difficulty cluster. Holds blessings, dungeon
+    // laws, and run contracts as expanded cards (icon + name + short
+    // description) so the player doesn't need to open the pause overlay
+    // to read the current rules and goals.
+    this.runSidebar = document.createElement('div');
+    this.runSidebar.className = 'hud-run-sidebar';
+    this.runSidebar.style.display = 'none';
+    this.runSidebarToggle = document.createElement('button');
+    this.runSidebarToggle.className = 'hud-run-sidebar-toggle';
+    this.runSidebarToggle.type = 'button';
+    this.runSidebarToggle.addEventListener('click', () => {
+      this.runSidebarCollapsed = !this.runSidebarCollapsed;
+      this.runSidebar.classList.toggle('collapsed', this.runSidebarCollapsed);
+      this.updateRunSidebarToggleLabel();
+    });
+    this.updateRunSidebarToggleLabel();
+    this.blessingSection = document.createElement('div');
+    this.blessingSection.className = 'hud-run-section hud-run-section-blessings';
+    this.mutatorSection = document.createElement('div');
+    this.mutatorSection.className = 'hud-run-section hud-run-section-laws';
+    this.contractSection = document.createElement('div');
+    this.contractSection.className = 'hud-run-section hud-run-section-contracts';
+    this.runSidebar.appendChild(this.runSidebarToggle);
+    this.runSidebar.appendChild(this.blessingSection);
+    this.runSidebar.appendChild(this.mutatorSection);
+    this.runSidebar.appendChild(this.contractSection);
+    this.root.appendChild(this.runSidebar);
+
     // Boss wave warning indicator — appended to HUD root so it's centered on screen
     this.bossIndicator = document.createElement('div');
     this.bossIndicator.className = 'hud-boss-indicator';
@@ -138,9 +283,9 @@ export class Hud {
     hpBadge.appendChild(spriteEl(getSprites().iconHpHeart, 4));
     const hpInner = document.createElement('div');
     hpInner.className = 'hud-hp-inner';
-    const hpTagLabel = document.createElement('div');
-    hpTagLabel.className = 'hud-tag-label hud-hp-label';
-    hpTagLabel.textContent = 'HP';
+    this.hpTagLabel = document.createElement('div');
+    this.hpTagLabel.className = 'hud-tag-label hud-hp-label';
+    this.hpTagLabel.textContent = t('ui.hud.hpLabel');
     const hpBar = document.createElement('div');
     hpBar.className = 'hud-bar hud-hp-bar';
     this.hpFill = document.createElement('div');
@@ -148,9 +293,9 @@ export class Hud {
     hpBar.appendChild(this.hpFill);
     this.hpLabel = document.createElement('span');
     this.hpLabel.className = 'hud-hp-label-num';
-    this.hpLabel.textContent = '120 / 120';
+    this.hpLabel.textContent = '120/120';
     hpBar.appendChild(this.hpLabel);
-    hpInner.appendChild(hpTagLabel);
+    hpInner.appendChild(this.hpTagLabel);
     hpInner.appendChild(hpBar);
     hpBadge.appendChild(hpInner);
     top.appendChild(hpBadge);
@@ -159,48 +304,33 @@ export class Hud {
     const rightStack = document.createElement('div');
     rightStack.className = 'hud-right-stack';
 
-    const goldBadge = badgeFrame('hud-resource-badge');
+    // Top-right resource badges show only the icon + value (no GOLD /
+    // ESSENCE text labels — Yandex moderation requires currency strings
+    // localised, and the cleanest cross-locale solution is to drop the
+    // labels entirely and let the iconography speak for itself).
+    const goldBadge = badgeFrame('hud-resource-badge hud-resource-badge-iconic');
     goldBadge.appendChild(spriteEl(getSprites().iconCoin, 3));
     const goldInner = document.createElement('div');
     goldInner.className = 'hud-resource-inner';
-    const goldLab = document.createElement('div');
-    goldLab.className = 'hud-tag-label hud-tag-gold';
-    goldLab.textContent = 'GOLD';
     this.goldLabel = document.createElement('span');
     this.goldLabel.className = 'hud-resource-value';
     this.goldLabel.textContent = '0';
-    goldInner.appendChild(goldLab);
     goldInner.appendChild(this.goldLabel);
     goldBadge.appendChild(goldInner);
     rightStack.appendChild(goldBadge);
 
-    const essBadge = badgeFrame('hud-resource-badge');
-    essBadge.appendChild(spriteEl(getSprites().iconEssence, 3));
+    const essBadge = badgeFrame('hud-resource-badge hud-resource-badge-iconic');
+    // Use the same blue-essence sprite as the main menu so the player sees a
+    // single, consistent "essence" icon in the HUD and the meta UI.
+    essBadge.appendChild(spriteEl(getSprites().iconBlueEssence, 3));
     const essInner = document.createElement('div');
     essInner.className = 'hud-resource-inner';
-    const essLab = document.createElement('div');
-    essLab.className = 'hud-tag-label hud-tag-essence';
-    essLab.textContent = 'ESSENCE';
     this.essenceLabel = document.createElement('span');
     this.essenceLabel.className = 'hud-resource-value';
     this.essenceLabel.textContent = '0';
-    essInner.appendChild(essLab);
     essInner.appendChild(this.essenceLabel);
     essBadge.appendChild(essInner);
     rightStack.appendChild(essBadge);
-
-    // Catalyst slot counter: shows N/M (equipped/total). Hidden when no slots.
-    this.catalystBadge = document.createElement('div');
-    this.catalystBadge.className = 'hud-catalyst-badge';
-    const catLab = document.createElement('div');
-    catLab.className = 'hud-tag-label';
-    catLab.textContent = t('ui.hud.catalysts');
-    this.catalystValue = document.createElement('span');
-    this.catalystValue.className = 'hud-resource-value';
-    this.catalystValue.textContent = '0/0';
-    this.catalystBadge.appendChild(catLab);
-    this.catalystBadge.appendChild(this.catalystValue);
-    rightStack.appendChild(this.catalystBadge);
 
     // Pause button — sits in the top-right corner, above the resource stack.
     // Tapping it toggles the run pause state via the `onPause` handler so
@@ -276,29 +406,19 @@ export class Hud {
 
     bottom.appendChild(center);
 
-    // Bottom-right: ABILITY + OVERLOAD round buttons
+    // Bottom-right: OVERLOAD round button. (The ability button next to
+    // it was removed — see field comment above.)
     const rightButtons = document.createElement('div');
     rightButtons.className = 'hud-bottom-right';
-
-    this.abilityButton = document.createElement('button');
-    this.abilityButton.className = 'hud-round-btn hud-round-ability';
-    this.abilityButton.appendChild(spriteEl(getSprites().iconAbility, 4));
-    const abLabel = document.createElement('span');
-    abLabel.className = 'hud-icon-label';
-    abLabel.textContent = t('ui.hud.ability');
-    this.abilityButton.appendChild(abLabel);
-    this.abilityButton.disabled = true;
-    this.abilityButton.title = t('ui.hud.abilityComingSoon');
-    rightButtons.appendChild(this.abilityButton);
 
     this.overloadButton = document.createElement('button');
     this.overloadButton.className = 'hud-round-btn hud-round-overload';
     this.overloadButton.dataset.tutorialTarget = 'overload';
     this.overloadButton.appendChild(spriteEl(getSprites().iconLightning, 4));
-    const olLabel = document.createElement('span');
-    olLabel.className = 'hud-icon-label';
-    olLabel.textContent = t('ui.hud.overload');
-    this.overloadButton.appendChild(olLabel);
+    this.overloadLabel = document.createElement('span');
+    this.overloadLabel.className = 'hud-icon-label';
+    this.overloadLabel.textContent = t('ui.hud.overload');
+    this.overloadButton.appendChild(this.overloadLabel);
     this.overloadModule = document.createElement('span');
     this.overloadModule.className = 'hud-overload-module';
     this.overloadButton.appendChild(this.overloadModule);
@@ -306,6 +426,13 @@ export class Hud {
     this.overloadFill = document.createElement('div');
     this.overloadFill.className = 'hud-overload-charge';
     this.overloadButton.appendChild(this.overloadFill);
+    // Live percent readout — hidden behind a class until `update()`
+    // populates it on the first frame so the layout doesn't jump
+    // when the value snaps from "" to "0%".
+    this.overloadPercentLabel = document.createElement('span');
+    this.overloadPercentLabel.className = 'hud-overload-percent';
+    this.overloadPercentLabel.textContent = '0%';
+    this.overloadButton.appendChild(this.overloadPercentLabel);
     this.overloadButton.addEventListener('click', () => this.handlers.onActivateOverload());
     rightButtons.appendChild(this.overloadButton);
 
@@ -318,74 +445,322 @@ export class Hud {
   update(state: GameState): void {
     const m = state.mannequin;
     const ratio = Math.max(0, m.hp / m.maxHp);
-    this.hpFill.style.width = `${ratio * 100}%`;
-    this.hpLabel.textContent = `${Math.max(0, Math.round(m.hp))} / ${m.maxHp}`;
+    // Quantise to 0.1% so we don't churn the DOM for sub-pixel HP changes.
+    const ratioRounded = Math.round(ratio * 1000) / 1000;
+    if (ratioRounded !== this.prevHpRatio) {
+      this.hpFill.style.width = `${ratioRounded * 100}%`;
+      this.prevHpRatio = ratioRounded;
+    }
+    // Compact "150/200" rather than "150 / 200" — every saved character
+    // matters on phone HUDs where the bar shrinks below 100 px and the
+    // wider 9-character variant would overflow the bar.
+    const hpLabel = `${Math.max(0, Math.round(m.hp))}/${m.maxHp}`;
+    if (hpLabel !== this.prevHpLabel) {
+      this.hpLabel.textContent = hpLabel;
+      this.prevHpLabel = hpLabel;
+    }
 
     const o = state.overload;
     const ocharge = o.charge / o.maxCharge;
-    this.overloadFill.style.background = `conic-gradient(var(--cool-glow) ${ocharge * 360}deg, transparent ${ocharge * 360}deg)`;
+    // Round to whole degrees — conic-gradient changes below 1° are invisible
+    // but every write triggers a full repaint of the overload ring.
+    const odeg = Math.round(ocharge * 360);
+    if (odeg !== this.prevOverloadDeg) {
+      this.overloadFill.style.background = `conic-gradient(var(--cool-glow) ${odeg}deg, transparent ${odeg}deg)`;
+      this.prevOverloadDeg = odeg;
+    }
+    // Numeric readout. Quantise to whole percent so we don't churn
+    // the DOM on sub-percent meter ticks. Once full, swap the number
+    // for the localised "ГОТОВ"/"READY" word so the player has a
+    // crisp signal that the ability is now firable.
+    const opct = Math.min(100, Math.max(0, Math.round(ocharge * 100)));
+    if (opct !== this.prevOverloadPercent) {
+      this.overloadPercentLabel.textContent = opct >= 100
+        ? t('ui.hud.overloadReady')
+        : `${opct}%`;
+      this.prevOverloadPercent = opct;
+    }
 
-    this.goldLabel.textContent = `${state.gold}`;
-    this.essenceLabel.textContent = `${state.essence}`;
-
-    // Catalyst counter — show only when there's at least 1 slot.
-    if (state.catalystSlots > 0) {
-      this.catalystBadge.style.display = '';
-      this.catalystValue.textContent = `${state.equippedCatalysts.length}/${state.catalystSlots}`;
-    } else {
-      this.catalystBadge.style.display = 'none';
+    if (state.gold !== this.prevGold) {
+      this.goldLabel.textContent = `${state.gold}`;
+      // Only flash on gain — losses (paying for a tower) shouldn't read as
+      // a positive cue. The `prevGold === -1` sentinel covers the very first
+      // frame so we don't pulse on initial population.
+      if (this.prevGold >= 0 && state.gold > this.prevGold) pulseValue(this.goldLabel);
+      this.prevGold = state.gold;
+    }
+    if (state.essence !== this.prevEssence) {
+      this.essenceLabel.textContent = `${state.essence}`;
+      if (this.prevEssence >= 0 && state.essence > this.prevEssence) pulseValue(this.essenceLabel);
+      this.prevEssence = state.essence;
     }
 
     const ws = state.waveState;
     const idx = ws.currentIndex;
     const total = totalWaves(state);
-    if (state.difficulty === 'endless') {
-      // Show loop count instead of total so the player sees progress across
-      // wave loops (waves reset to 0 each loop).
+    let waveText: string;
+    if (state.difficulty === 'endless' || state.difficulty === 'daily') {
+      // Both Endless and Daily Events run infinitely — show the wave index
+      // and the current cycle ("loop") instead of an idx/total fraction.
       const loop = state.endlessLoop;
-      this.waveValue.textContent = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
+      waveText = `${idx + 1} • ${t('ui.hud.loop', { n: loop + 1 })}`;
     } else if (idx < 0) {
-      this.waveValue.textContent = `0 / ${total}`;
+      waveText = `0 / ${total}`;
     } else {
-      this.waveValue.textContent = `${idx + 1} / ${total}`;
+      waveText = `${idx + 1} / ${total}`;
+    }
+    if (waveText !== this.prevWaveValue) {
+      this.waveValue.textContent = waveText;
+      if (this.prevWaveValue !== '') pulseValue(this.waveValue);
+      this.prevWaveValue = waveText;
     }
 
-    const difDef = DIFFICULTY_MODES[state.difficulty];
-    this.difficultyBadge.textContent = t(`ui.difficulty.${state.difficulty}.short`);
-    this.difficultyBadge.style.color = difDef.color;
-    this.difficultyBadge.style.borderColor = difDef.color;
-    this.difficultyBadge.style.display = state.difficulty === 'normal' ? 'none' : '';
+    if (state.difficulty !== this.prevDifficulty) {
+      const difDef = DIFFICULTY_MODES[state.difficulty];
+      this.difficultyBadge.textContent = t(`ui.difficulty.${state.difficulty}.short`);
+      this.difficultyBadge.style.color = difDef.color;
+      this.difficultyBadge.style.borderColor = difDef.color;
+      this.prevDifficulty = state.difficulty;
+    }
+    const difHidden = state.difficulty === 'normal' ? 1 : 0;
+    if (difHidden !== this.prevDifficultyHidden) {
+      this.difficultyBadge.style.display = difHidden ? 'none' : '';
+      this.prevDifficultyHidden = difHidden;
+    }
+
+    // Sidebar visibility: only show when there is something to display.
+    const hasMutators = state.activeMutatorIds.length > 0;
+    const hasContracts = state.activeContractIds.length > 0;
+    const hasBlessings = state.activeBlessingIds.length > 0 || state.activeCurseId !== null;
+    this.runSidebar.style.display = (hasMutators || hasContracts || hasBlessings) ? '' : 'none';
+
+    // Mutator section — re-rendered only when the active mutator id list
+    // changes (i.e. on every wave reroll). Each card shows the icon, name
+    // and a one-liner combining the i18nLines effect strings.
+    const mutKey = state.activeMutatorIds.join(',');
+    if (mutKey !== this.prevMutatorKey) {
+      this.prevMutatorKey = mutKey;
+      this.mutatorSection.innerHTML = '';
+      if (hasMutators) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.pause.mutatorsTitle');
+        this.mutatorSection.appendChild(head);
+        for (const id of state.activeMutatorIds) {
+          const def = MUTATOR_BY_ID[id];
+          if (!def) continue;
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-law';
+          card.style.borderColor = def.color;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.style.color = def.color;
+          ico.textContent = def.icon;
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.style.color = def.color;
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          desc.textContent = def.i18nLines.map((k) => t(k)).join(' • ');
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.mutatorSection.appendChild(card);
+        }
+      }
+    }
+
+    // Blessing / curse section — rebuilt only when the picked set changes
+    // (i.e. once per run, since blessings/curses are picked at run start
+    // and stay for the whole run). Each card shows icon + name + the
+    // one-line effect description.
+    const blessingKey = state.activeBlessingIds.join(',') + '|' + (state.activeCurseId ?? '');
+    if (blessingKey !== this.prevBlessingKey) {
+      this.prevBlessingKey = blessingKey;
+      this.blessingSection.innerHTML = '';
+      if (hasBlessings) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.blessing.label');
+        this.blessingSection.appendChild(head);
+        for (const id of state.activeBlessingIds) {
+          const def = BLESSING_BY_ID[id];
+          if (!def) continue;
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-blessing';
+          card.style.borderColor = def.color;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.style.color = def.color;
+          ico.textContent = def.icon;
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.style.color = def.color;
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          desc.textContent = t(def.i18nEffect);
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.blessingSection.appendChild(card);
+        }
+        if (state.activeCurseId) {
+          const def = CURSE_BY_ID[state.activeCurseId];
+          if (def) {
+            const card = document.createElement('div');
+            card.className = 'hud-run-card hud-run-card-curse';
+            card.style.borderColor = def.color;
+            const ico = document.createElement('div');
+            ico.className = 'hud-run-card-icon';
+            ico.style.color = def.color;
+            ico.textContent = def.icon;
+            card.appendChild(ico);
+            const body = document.createElement('div');
+            body.className = 'hud-run-card-body';
+            const name = document.createElement('div');
+            name.className = 'hud-run-card-name';
+            name.style.color = def.color;
+            name.textContent = t(def.i18nName);
+            body.appendChild(name);
+            const desc = document.createElement('div');
+            desc.className = 'hud-run-card-desc';
+            desc.textContent = t(def.i18nEffect);
+            body.appendChild(desc);
+            card.appendChild(body);
+            this.blessingSection.appendChild(card);
+          }
+        }
+      }
+    }
+
+    // Contract section — card structure rebuilt only on id-list change,
+    // but the body line (progress + reward + done/failed flag) is
+    // refreshed every frame since the counters tick live.
+    const contractIdKey = state.activeContractIds.join(',');
+    if (contractIdKey !== this.prevContractKey) {
+      this.prevContractKey = contractIdKey;
+      this.contractSection.innerHTML = '';
+      if (hasContracts) {
+        const head = document.createElement('div');
+        head.className = 'hud-run-section-title';
+        head.textContent = t('ui.contract.label');
+        this.contractSection.appendChild(head);
+        for (const id of state.activeContractIds) {
+          const def = CONTRACT_BY_ID[id];
+          if (!def) continue;
+          const card = document.createElement('div');
+          card.className = 'hud-run-card hud-run-card-contract';
+          card.dataset.contractId = id;
+          const ico = document.createElement('div');
+          ico.className = 'hud-run-card-icon';
+          ico.textContent = def.icon;
+          card.appendChild(ico);
+          const body = document.createElement('div');
+          body.className = 'hud-run-card-body';
+          const name = document.createElement('div');
+          name.className = 'hud-run-card-name';
+          name.textContent = t(def.i18nName);
+          body.appendChild(name);
+          const desc = document.createElement('div');
+          desc.className = 'hud-run-card-desc';
+          // Body content set per-frame below by the live progress loop.
+          body.appendChild(desc);
+          card.appendChild(body);
+          this.contractSection.appendChild(card);
+        }
+      }
+    }
+    // Per-frame: refresh contract card body lines with live progress.
+    if (hasContracts) {
+      for (const id of state.activeContractIds) {
+        const def = CONTRACT_BY_ID[id];
+        if (!def) continue;
+        const card = this.contractSection.querySelector(
+          `[data-contract-id="${id}"]`,
+        );
+        if (!card) continue;
+        const desc = card.querySelector('.hud-run-card-desc') as HTMLDivElement | null;
+        if (!desc) continue;
+        const prog = def.progress(state);
+        let line: string;
+        if (prog.failed) {
+          card.classList.remove('done');
+          card.classList.add('failed');
+          line = t('ui.contract.failed');
+        } else if (prog.done) {
+          card.classList.add('done');
+          card.classList.remove('failed');
+          line = t('ui.contract.done');
+        } else {
+          card.classList.remove('done', 'failed');
+          line = `${prog.current}/${prog.target} · ${t(def.i18nDesc, { n: prog.target })}`;
+        }
+        if (desc.textContent !== line) desc.textContent = line;
+      }
+    }
 
     // Skip-wave button only active during preparing phase
     const showSkip = state.phase === 'preparing';
-    this.skipBtn.style.display = showSkip ? '' : 'none';
-    this.skipBtn.disabled = !showSkip;
-    if (showSkip && idx < 0) {
-      this.skipBtn.textContent = t('ui.hud.toBattleNow');
-    } else {
-      this.skipBtn.textContent = t('ui.hud.nextWave');
+    const showSkipFlag = showSkip ? 1 : 0;
+    if (showSkipFlag !== this.prevSkipVisible) {
+      this.skipBtn.style.display = showSkip ? '' : 'none';
+      this.skipBtn.disabled = !showSkip;
+      this.prevSkipVisible = showSkipFlag;
+    }
+    const skipText = (showSkip && idx < 0) ? t('ui.hud.toBattleNow') : t('ui.hud.nextWave');
+    if (skipText !== this.prevSkipText) {
+      this.skipBtn.textContent = skipText;
+      this.prevSkipText = skipText;
     }
 
     // Overload button enabled when fully charged
-    this.overloadButton.disabled = state.overload.charge < state.overload.maxCharge;
-    this.overloadButton.classList.toggle('ready', state.overload.charge >= state.overload.maxCharge);
-    this.overloadModule.textContent = activeModuleShortLabel(state.activeModuleId);
+    const overloadDisabled = state.overload.charge < state.overload.maxCharge;
+    if (overloadDisabled !== this.prevOverloadDisabled) {
+      this.overloadButton.disabled = overloadDisabled;
+      this.prevOverloadDisabled = overloadDisabled;
+    }
+    const overloadReady = !overloadDisabled;
+    if (overloadReady !== this.prevOverloadReady) {
+      this.overloadButton.classList.toggle('ready', overloadReady);
+      this.prevOverloadReady = overloadReady;
+    }
+    const moduleLabel = activeModuleShortLabel(state.activeModuleId);
+    if (moduleLabel !== this.prevOverloadModule) {
+      this.overloadModule.textContent = moduleLabel;
+      this.prevOverloadModule = moduleLabel;
+    }
 
     // Hints
+    let hintText: string;
     if (state.phase === 'preparing') {
       const next = idx + 1;
-      this.hint.textContent = next === 0
+      hintText = next === 0
         ? t('ui.hud.hint.first')
         : t('ui.hud.hint.next', { n: next + 1 });
     } else if (state.phase === 'wave') {
-      this.hint.textContent = t('ui.hud.hint.wave', { idx: idx + 1, total });
+      hintText = t('ui.hud.hint.wave', { idx: idx + 1, total });
     } else {
-      this.hint.textContent = '';
+      hintText = '';
+    }
+    if (hintText !== this.prevHint) {
+      this.hint.textContent = hintText;
+      this.prevHint = hintText;
     }
 
     // Boss wave indicator
-    const showBoss = state.phase === 'preparing' && isNextWaveBoss(state);
-    this.bossIndicator.style.display = showBoss ? '' : 'none';
+    const showBoss = state.phase === 'preparing' && isNextWaveBoss(state) ? 1 : 0;
+    if (showBoss !== this.prevBossVisible) {
+      this.bossIndicator.style.display = showBoss ? '' : 'none';
+      this.prevBossVisible = showBoss;
+    }
 
     // Wave / pause progress bar. Shown during 'wave' and 'preparing' only.
     this.updateTimerBar(state);
@@ -417,13 +792,21 @@ export class Hud {
 
   private updatePotionBar(state: GameState): void {
     const interactive = state.phase === 'wave' || state.phase === 'preparing';
-    this.potionBar.style.display = interactive ? '' : 'none';
-    this.effectsBar.style.display = interactive ? '' : 'none';
+    const interactiveFlag = interactive ? 1 : 0;
+    if (interactiveFlag !== this.prevPotionInteractive) {
+      this.potionBar.style.display = interactive ? '' : 'none';
+      this.effectsBar.style.display = interactive ? '' : 'none';
+      this.prevPotionInteractive = interactiveFlag;
+    }
     if (!interactive) return;
 
+    // Potion slots: only re-render the slot when the recipe id changed.
     for (let i = 0; i < this.potionSlots.length; i++) {
       const btn = this.potionSlots[i]!;
       const id = state.inventory[i];
+      const key = id ? id : '__empty__';
+      if (this.prevPotionState[i] === key) continue;
+      this.prevPotionState[i] = key;
       const recipe = id ? POTION_BY_ID[id] : null;
       btn.disabled = !recipe;
       if (recipe) {
@@ -439,54 +822,79 @@ export class Hud {
       }
     }
 
-    // Effect chips: timed potions + storm charges + shield HP.
-    const chips: string[] = [];
+    // Effect chips: timed potions + storm charges + shield HP. Build the
+    // HTML in a string buffer and only write innerHTML when it actually
+    // changed — `innerHTML` triggers a full re-parse + reflow each call.
+    let chipsHtml = '';
     for (const ap of state.activePotions) {
       const recipe: PotionRecipe | undefined = POTION_BY_ID[ap.id];
       if (!recipe) continue;
       const sec = Math.max(0, ap.timeLeft).toFixed(0);
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${recipe.color};color:${recipe.color}"><span>${recipe.glyph}</span><span>${sec}s</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${recipe.color};color:${recipe.color}"><span>${recipe.glyph}</span><span>${sec}s</span></span>`;
     }
     if (state.stormCharges > 0) {
       const r = POTION_BY_ID['storm']!;
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${state.stormCharges}×</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${state.stormCharges}×</span></span>`;
     }
     if (state.potionShieldHp > 0) {
       const r = POTION_BY_ID['stoneShield']!;
-      chips.push(
-        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}HP</span></span>`,
-      );
+      chipsHtml +=
+        `<span class="hud-effect-chip" style="border-color:${r.color};color:${r.color}"><span>${r.glyph}</span><span>${Math.round(state.potionShieldHp)}${t('ui.hud.shieldHp')}</span></span>`;
     }
-    this.effectsBar.innerHTML = chips.join('');
+    if (chipsHtml !== this.prevEffectsHtml) {
+      this.effectsBar.innerHTML = chipsHtml;
+      this.prevEffectsHtml = chipsHtml;
+    }
   }
 
   private updateTimerBar(state: GameState): void {
     const ws = state.waveState;
+    let display: string;
+    let classMode = '';
+    let ratioRounded = -1;
+    let label = '';
+
     if (state.phase === 'wave') {
       const total = currentWaveDuration(state);
       const elapsed = Math.max(0, ws.timeInWave);
       const ratio = total > 0 ? Math.min(1, elapsed / total) : 0;
-      this.timerBar.style.display = '';
-      this.timerBar.classList.remove('pause');
-      this.timerBar.classList.add('wave');
-      this.timerFill.style.width = `${ratio * 100}%`;
+      display = '';
+      classMode = 'wave';
+      ratioRounded = Math.round(ratio * 1000) / 1000;
       const left = Math.max(0, total - elapsed);
-      this.timerLabel.textContent = t('ui.hud.timer.battle', { sec: left.toFixed(1) });
+      label = t('ui.hud.timer.battle', { sec: left.toFixed(1) });
     } else if (state.phase === 'preparing') {
       const total = currentPauseDuration(state);
       const left = Math.max(0, ws.pauseDurationLeft);
       const ratio = total > 0 ? 1 - Math.min(1, left / total) : 0;
-      this.timerBar.style.display = '';
-      this.timerBar.classList.remove('wave');
-      this.timerBar.classList.add('pause');
-      this.timerFill.style.width = `${ratio * 100}%`;
-      this.timerLabel.textContent = t('ui.hud.timer.pause', { sec: left.toFixed(1) });
+      display = '';
+      classMode = 'pause';
+      ratioRounded = Math.round(ratio * 1000) / 1000;
+      label = t('ui.hud.timer.pause', { sec: left.toFixed(1) });
     } else {
-      this.timerBar.style.display = 'none';
+      display = 'none';
+    }
+
+    if (display !== this.prevTimerBarDisplay) {
+      this.timerBar.style.display = display;
+      this.prevTimerBarDisplay = display;
+    }
+    if (display === 'none') return;
+
+    if (classMode !== this.prevTimerClass) {
+      this.timerBar.classList.toggle('wave', classMode === 'wave');
+      this.timerBar.classList.toggle('pause', classMode === 'pause');
+      this.prevTimerClass = classMode;
+    }
+    if (ratioRounded !== this.prevTimerFillRatio) {
+      this.timerFill.style.width = `${ratioRounded * 100}%`;
+      this.prevTimerFillRatio = ratioRounded;
+    }
+    if (label !== this.prevTimerLabel) {
+      this.timerLabel.textContent = label;
+      this.prevTimerLabel = label;
     }
   }
 }
@@ -503,28 +911,37 @@ export function roundIconButton(extraClass: string): HTMLDivElement {
   return el;
 }
 
-// Embed a baked sprite as an HTMLCanvasElement scaled up via CSS image-rendering: pixelated.
-function spriteEl(sprite: BakedSprite, scale: number): HTMLCanvasElement {
-  const out = document.createElement('canvas');
-  out.width = sprite.width;
-  out.height = sprite.height;
-  out.className = 'hud-sprite';
-  const c = out.getContext('2d')!;
-  c.imageSmoothingEnabled = false;
-  c.drawImage(sprite.canvas, 0, 0);
-  out.style.width = `${sprite.width * scale}px`;
-  out.style.height = `${sprite.height * scale}px`;
-  return out;
+// HUD-flavoured wrapper around the shared sprite helper. The HUD adds a
+// `hud-sprite` class so existing CSS selectors keep working.
+function spriteEl(sprite: import('../render/sprite').BakedSprite, scale: number): HTMLCanvasElement {
+  return spriteIcon(sprite, { scale, extraClass: 'hud-sprite' });
+}
+
+/** Toggle the `.value-pulse` class to flash a HUD number on change. The
+ *  CSS keyframe runs once and the listener auto-removes the class so the
+ *  next mutation can re-trigger it. */
+function pulseValue(el: HTMLElement): void {
+  el.classList.remove('value-pulse');
+  // Force reflow so re-adding the class re-runs the animation.
+  void el.offsetWidth;
+  el.classList.add('value-pulse');
+  el.addEventListener(
+    'animationend',
+    () => el.classList.remove('value-pulse'),
+    { once: true },
+  );
 }
 
 function activeModuleShortLabel(id: string): string {
   switch (id) {
     case 'lightning': return t('ui.hud.module.lightning');
     case 'chronos': return t('ui.hud.module.chronos');
-    case 'transmute': return t('ui.hud.module.transmute');
     case 'alch_dome': return t('ui.hud.module.alch_dome');
     case 'frost_nova': return t('ui.hud.module.frost_nova');
     case 'vortex': return t('ui.hud.module.vortex');
+    case 'meteor_shower': return t('ui.hud.module.meteor_shower');
+    case 'death_mark': return t('ui.hud.module.death_mark');
+    case 'element_prism': return t('ui.hud.module.element_prism');
     default: return '';
   }
 }

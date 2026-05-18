@@ -6,6 +6,8 @@
 // In non-Yandex environments (local dev, CrazyGames, plain web) all calls are
 // stubbed to no-ops so we can develop and run the game offline.
 
+import { audio } from './audio/audio';
+
 declare global {
   interface Window {
     YaGames?: {
@@ -26,6 +28,22 @@ interface YaLeaderboards {
       player: { publicName: string; scopePermissions?: { avatar?: string }; getAvatarSrc?(size: string): string };
     }[];
   }>;
+}
+
+/** Subset of the player object the SDK returns from getPlayer().
+ *  `isAuthorized()` is the modern (post-Aug 2024) replacement for
+ *  the deprecated `getMode()` — returns `false` for anonymous
+ *  (`'lite'`) players, who can't write to leaderboards. We probe
+ *  for the new method first and fall back to `getMode()` so we
+ *  keep working on older SDK builds. */
+interface YaPlayer {
+  isAuthorized?(): boolean;
+  getMode?(): string;
+  getUniqueID?(): string;
+}
+
+interface YaAuth {
+  openAuthDialog(): Promise<void>;
 }
 
 interface YGameSdk {
@@ -55,8 +73,20 @@ interface YGameSdk {
       };
     }): void;
   };
-  getPlayer?(opts?: { scopes?: boolean }): Promise<unknown>;
+  auth?: YaAuth;
+  getPlayer?(opts?: { scopes?: boolean }): Promise<YaPlayer>;
   getLeaderboards?(): Promise<YaLeaderboards>;
+  /** Player environment — the Yandex SDK exposes the user's preferred
+   *  interface language here. We forward this to our i18n engine so the
+   *  Yandex console stops flagging "i18n не используется" and players
+   *  who switch their Yandex profile language see the game follow. */
+  environment?: {
+    i18n?: {
+      lang?: string;
+    };
+    app?: { id?: string };
+    browser?: { lang?: string };
+  };
 }
 
 export interface LeaderboardEntry {
@@ -92,10 +122,27 @@ function mockSetScore(boardId: string, score: number): void {
   } catch { /* noop */ }
 }
 
+/** Yandex SDK rate-limits `setLeaderboardScore` to one accepted call
+ *  per second per game session. The exact server-side window is 1000ms
+ *  but we add a small safety margin so timer drift / GC pauses don't
+ *  push us back into the rejection band. */
+const LEADERBOARD_MIN_INTERVAL_MS = 1100;
+
 class YandexGames {
   private sdk: YGameSdk | null = null;
   private lb: YaLeaderboards | null = null;
+  private player: YaPlayer | null = null;
   private ready = false;
+  /** Listeners notified when the player auth state changes (init / sign-in). */
+  private authListeners: Array<() => void> = [];
+  /** Serialised tail of pending leaderboard writes. Each new
+   *  `setLeaderboardScore` extends this chain so calls run in
+   *  order with the rate-limit gap between them. */
+  private submitChain: Promise<void> = Promise.resolve();
+  /** Wall-clock time of the most recently *issued* leaderboard
+   *  write. Used to compute how long the next chained write must
+   *  sleep before it can be sent without being rate-limited. */
+  private lastSubmitTime = 0;
 
   async init(): Promise<void> {
     if (typeof window === 'undefined' || !window.YaGames) {
@@ -107,9 +154,75 @@ class YandexGames {
       if (this.sdk.getLeaderboards) {
         this.lb = await this.sdk.getLeaderboards();
       }
+      // Probe the player so we know whether leaderboard writes will be
+      // accepted. Yandex rejects setLeaderboardScore from `'lite'`
+      // (anonymous) players, so we surface auth state to the UI.
+      await this.refreshPlayer();
     } catch (err) {
       console.warn('[YandexGames] init failed, running in stub mode', err);
     }
+  }
+
+  private async refreshPlayer(): Promise<void> {
+    if (!this.sdk?.getPlayer) return;
+    try {
+      this.player = await this.sdk.getPlayer({ scopes: false });
+    } catch (err) {
+      console.warn('[YandexGames] getPlayer failed', err);
+      this.player = null;
+    }
+    for (const cb of this.authListeners) cb();
+  }
+
+  /** Subscribe to player auth-state changes. The callback fires after
+   *  `init()` resolves and again whenever `signIn()` succeeds. */
+  onAuthChange(cb: () => void): () => void {
+    this.authListeners.push(cb);
+    return () => {
+      const i = this.authListeners.indexOf(cb);
+      if (i >= 0) this.authListeners.splice(i, 1);
+    };
+  }
+
+  /** True when the SDK reports the player is authorised to write to
+   *  leaderboards (i.e. signed into a Yandex account, not in `'lite'`
+   *  guest mode). On non-Yandex hosts (local dev) we return true so
+   *  the mock leaderboard works without a sign-in flow.
+   *
+   *  Prefers the modern `Player.isAuthorized()` (the deprecated
+   *  `getMode()` logs a console warning on every call), falls back
+   *  to `getMode()` for older SDK builds that haven't shipped the
+   *  new method yet. */
+  isAuthorized(): boolean {
+    if (!this.sdk) return true; // local / non-Yandex: mock board accepts writes
+    if (typeof this.player?.isAuthorized === 'function') {
+      return this.player.isAuthorized();
+    }
+    const mode = this.player?.getMode?.();
+    return mode !== undefined && mode !== 'lite';
+  }
+
+  /** Open the Yandex auth dialog to upgrade a `'lite'` guest into a
+   *  signed-in account. Resolves true when the player is authorised
+   *  after the dialog closes. Bound to a UI button (Leaderboard panel)
+   *  so we never trigger it without a user gesture. */
+  async signIn(): Promise<boolean> {
+    if (!this.sdk?.auth) return this.isAuthorized();
+    try {
+      await this.sdk.auth.openAuthDialog();
+    } catch (err) {
+      console.warn('[YandexGames] auth dialog failed', err);
+      return this.isAuthorized();
+    }
+    await this.refreshPlayer();
+    // Re-fetch the leaderboards handle — Yandex docs note that the
+    // leaderboards object is bound to the player session at call time.
+    if (this.sdk.getLeaderboards) {
+      try {
+        this.lb = await this.sdk.getLeaderboards();
+      } catch { /* keep previous handle */ }
+    }
+    return this.isAuthorized();
   }
 
   /** Tell the platform that game assets have loaded. Hides the Yandex spinner. */
@@ -129,7 +242,14 @@ class YandexGames {
     this.sdk?.features?.GameplayAPI?.stop();
   }
 
-  /** Show a rewarded video. Resolves true if the user actually got the reward. */
+  /** Show a rewarded video. Resolves true if the user actually got the reward.
+   *
+   *  Yandex Games requirement 4.7: the game's own audio must be muted
+   *  for the entire duration of a rewarded video so it does not overlap
+   *  the ad soundtrack. We suspend the AudioContext on `onOpen` and
+   *  release the lock on `onClose` / `onError` — the ref-counted
+   *  `audio.pauseForAd()` keeps audio silent across back-to-back ads
+   *  without races. */
   showRewarded(): Promise<boolean> {
     return new Promise((resolve) => {
       if (!this.sdk?.adv) {
@@ -137,13 +257,99 @@ class YandexGames {
         return;
       }
       let rewarded = false;
+      let audioPaused = false;
+      const pauseAudio = (): void => {
+        if (audioPaused) return;
+        audioPaused = true;
+        audio.pauseForAd();
+      };
+      const resumeAudio = (): void => {
+        if (!audioPaused) return;
+        audioPaused = false;
+        audio.resumeAfterAd();
+      };
       this.sdk.adv.showRewardedVideo({
         callbacks: {
+          onOpen: () => pauseAudio(),
           onRewarded: () => { rewarded = true; },
-          onClose: () => resolve(rewarded),
-          onError: () => resolve(false),
+          onClose: () => {
+            resumeAudio();
+            resolve(rewarded);
+          },
+          onError: () => {
+            resumeAudio();
+            resolve(false);
+          },
         },
       });
+    });
+  }
+
+  /** Show a regular fullscreen (interstitial) ad. Used between meaningful
+   *  navigation events — main-menu transitions, run-end "try again", etc.
+   *  The Yandex SDK rate-limits these internally to once per ~60 s and
+   *  silently no-ops outside the interval, so it's safe to call from
+   *  every button handler. Resolves once the ad has closed (or failed,
+   *  or wasn't shown at all) so the caller can chain navigation onto
+   *  the resolved promise without ever blocking the player. On non-
+   *  Yandex hosts (local dev / CrazyGames) the SDK is null and this
+   *  resolves immediately with no visible side-effect. */
+  showFullscreen(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.sdk?.adv) {
+        resolve();
+        return;
+      }
+      let resolved = false;
+      // Yandex Games requirement 4.7: while a fullscreen interstitial is
+      // on the screen the game's audio must be muted. We can't subscribe
+      // to a dedicated onOpen for `showFullscreenAdv`, so we pause the
+      // AudioContext optimistically before issuing the call. The matching
+      // resume runs from `finish()` regardless of which terminal callback
+      // fires (onClose / onError / onOffline / 800ms timeout fallback).
+      let audioPaused = false;
+      const pauseAudio = (): void => {
+        if (audioPaused) return;
+        audioPaused = true;
+        audio.pauseForAd();
+      };
+      const resumeAudio = (): void => {
+        if (!audioPaused) return;
+        audioPaused = false;
+        audio.resumeAfterAd();
+      };
+      const finish = (wasShown?: boolean): void => {
+        if (resolved) return;
+        resolved = true;
+        if (wasShown === false) {
+          // The SDK signalled the ad never reached the player (rate-
+          // limited, no-fill, blocked). Release the audio lock without
+          // delay so the game's music is not silently dimmed for nothing.
+          resumeAudio();
+        } else {
+          resumeAudio();
+        }
+        resolve();
+      };
+      pauseAudio();
+      try {
+        this.sdk.adv.showFullscreenAdv({
+          callbacks: {
+            onClose: (wasShown) => finish(wasShown),
+            onError: () => finish(false),
+            onOffline: () => finish(false),
+          },
+        });
+      } catch {
+        finish(false);
+      }
+      // Belt-and-braces: if the SDK never fires any callback (e.g.
+      // sandboxed iframe, blocked by adblocker), don't strand the
+      // caller forever — release the promise after a short timeout so
+      // navigation still happens. The same timeout also acts as our
+      // safety net for the audio lock: if no terminal callback ever
+      // arrives we don't want music silenced indefinitely.
+      setTimeout(() => finish(false), 800);
     });
   }
 
@@ -151,17 +357,64 @@ class YandexGames {
     return this.sdk !== null;
   }
 
-  /** Submit a score to a leaderboard. Falls back to localStorage mock. */
+  /** Returns the user's preferred interface language as reported by the
+   *  Yandex Games SDK ("ru", "en", "tr", ...). When the SDK is not
+   *  available (local dev / non-Yandex hosts) we fall back to the browser
+   *  language. The Yandex publishing console uses this call to verify
+   *  that a game actually integrates with their localization API. */
+  getLang(): string | null {
+    const sdkLang = this.sdk?.environment?.i18n?.lang;
+    if (typeof sdkLang === 'string' && sdkLang.length > 0) return sdkLang;
+    const browserLang = this.sdk?.environment?.browser?.lang;
+    if (typeof browserLang === 'string' && browserLang.length > 0) return browserLang;
+    if (typeof navigator !== 'undefined' && typeof navigator.language === 'string') {
+      return navigator.language;
+    }
+    return null;
+  }
+
+  /** Submit a score to a leaderboard. Falls back to localStorage mock.
+   *  Skips the SDK call when the player is in `'lite'` (anonymous)
+   *  mode — Yandex throws on those, and a noisy console warn after
+   *  every cleared wave isn't useful when the fix is "sign in" rather
+   *  than "retry". The Leaderboard panel surfaces a sign-in button
+   *  so the player can fix the auth state explicitly.
+   *
+   *  Yandex SDK rate-limits `setLeaderboardScore` to one call per
+   *  second per game session — the 2nd call inside the window is
+   *  rejected with "The request to setLeaderboardScore can be sent
+   *  no more than once per second". We submit two boards on each
+   *  cleared wave (`endlessWaves` always, `dailyWaves` for daily
+   *  runs), so without serialisation the 2nd write silently fails.
+   *  Chain every call on `submitChain` and pace successive writes
+   *  by at least `LEADERBOARD_MIN_INTERVAL_MS` so neither submit is
+   *  dropped by the rate limiter. */
   async setLeaderboardScore(boardId: string, score: number): Promise<void> {
-    if (this.lb) {
+    if (!this.lb) {
+      mockSetScore(boardId, score);
+      return;
+    }
+    if (!this.isAuthorized()) {
+      console.info('[YandexGames] skipping leaderboard write — player not signed in (lite mode)');
+      return;
+    }
+    const lb = this.lb;
+    this.submitChain = this.submitChain.then(async () => {
+      const sinceLast = Date.now() - this.lastSubmitTime;
+      if (sinceLast < LEADERBOARD_MIN_INTERVAL_MS) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, LEADERBOARD_MIN_INTERVAL_MS - sinceLast);
+        });
+      }
       try {
-        await this.lb.setLeaderboardScore(boardId, score);
+        await lb.setLeaderboardScore(boardId, score);
       } catch (err) {
         console.warn('[YandexGames] setLeaderboardScore failed', err);
+      } finally {
+        this.lastSubmitTime = Date.now();
       }
-    } else {
-      mockSetScore(boardId, score);
-    }
+    });
+    return this.submitChain;
   }
 
   /** Get top players for a leaderboard. Falls back to localStorage mock. */

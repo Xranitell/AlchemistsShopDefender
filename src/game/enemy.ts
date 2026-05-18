@@ -8,6 +8,20 @@ import { audio } from '../audio/audio';
 import { t } from '../i18n';
 import { INGREDIENT_DROP_TABLE, INGREDIENTS, type IngredientId } from '../data/potions';
 import { takenDamageMultiplier, goldMultiplier, absorbWithShield, enemySpeedMultiplier } from './potions';
+import { waveSpeedScale } from './wave';
+import { shakeCamera } from '../engine/shake';
+import { spawnShockwave } from '../render/shockwaves';
+import { flashScreen } from '../render/screenFlash';
+import { spawnScorchDecal } from '../render/scorchDecals';
+import {
+  spawnBurst,
+  FIRE_COLORS,
+  MERCURY_COLORS,
+  ACID_COLORS,
+  AETHER_COLORS,
+  FROST_COLORS,
+  POISON_COLORS,
+} from '../render/particles';
 
 export function updateEnemies(state: GameState, dt: number): void {
   const m = state.mannequin;
@@ -21,6 +35,9 @@ export function updateEnemies(state: GameState, dt: number): void {
       e.status.burnTime -= dt;
       e.hp -= e.status.burnDps * dt;
       e.hitFlash = Math.max(e.hitFlash, 0.04);
+      // Attribute the killing blow to fire if this DoT tick drops the
+      // enemy to 0 HP (run-contract bookkeeping only).
+      if (e.hp <= 0) e.lastHitElement = 'fire';
     } else {
       e.status.burnDps = 0;
     }
@@ -45,15 +62,72 @@ export function updateEnemies(state: GameState, dt: number): void {
       // Poison ignores armour — apply DoT directly.
       e.hp -= e.status.poisonDps * dt;
       e.hitFlash = Math.max(e.hitFlash, 0.03);
+      if (e.hp <= 0) e.lastHitElement = 'poison';
     } else {
       e.status.poisonDps = 0;
     }
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
+    // Cursed-extra: enemy regen — non-boss enemies recover a flat HP/sec
+    // amount up to their `maxHp` ceiling. The shield does NOT regenerate;
+    // once depleted it stays gone for the rest of the enemy's life.
+    if (state.modifiers.enemyRegenPerSec > 0 && !e.kind.isBoss && e.hp > 0) {
+      e.hp = Math.min(e.maxHp, e.hp + state.modifiers.enemyRegenPerSec * dt);
+    }
+
     // Dash-back: while this timer is >0 the enemy is pushed away from the
     // hero instead of toward them (brief knockback from the last hit).
     if (e.dashBackTimer > 0) {
       e.dashBackTimer -= dt;
+    }
+
+    // Shield-regen tick (golems / boss rat-king on Epic / Ancient): when
+    // the timer hits zero a fresh shield charge is granted up to the
+    // tier-aware cap (1 on Epic, 2 on Ancient). Base-tier golems never
+    // regenerate.
+    if (e.shieldRegenTimer > 0) {
+      e.shieldRegenTimer -= dt;
+      if (e.shieldRegenTimer <= 0) {
+        const cap = e.abilityTier === 'ancient' ? 2 : 1;
+        if (e.shieldCharges < cap) {
+          e.shieldCharges += 1;
+          spawnFloatingText(state, t('floating.shieldHit'), e.pos, '#ffd166');
+        }
+      }
+    }
+
+    // Aura heal (shamans): pulse a small heal to nearby allied enemies
+    // every ~1.5 s. Tier scales the heal amount and pulse radius; Ancient
+    // also briefly buffs nearby allies' speed so the cluster around a
+    // shaman feels noticeably more aggressive.
+    if (e.abilities.includes('aura_heal') && e.hp > 0) {
+      e.auraHealTimer -= dt;
+      if (e.auraHealTimer <= 0) {
+        const auraR =
+          e.abilityTier === 'ancient' ? 130 : e.abilityTier === 'epic' ? 110 : 90;
+        const heal =
+          e.abilityTier === 'ancient' ? 8 : e.abilityTier === 'epic' ? 6 : 4;
+        let healed = 0;
+        for (const ally of state.enemies) {
+          if (ally.id === e.id) continue;
+          if (ally.hp <= 0) continue;
+          if (ally.hp >= ally.maxHp) continue;
+          const dx = ally.pos.x - e.pos.x;
+          const dy = ally.pos.y - e.pos.y;
+          if (dx * dx + dy * dy > auraR * auraR) continue;
+          ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+          healed += 1;
+          // Ancient: brief speed buff layered on top of the heal.
+          if (e.abilityTier === 'ancient') {
+            ally.status.slowFactor = Math.max(ally.status.slowFactor, 1.15);
+            ally.status.slowTime = Math.max(ally.status.slowTime, 1.2);
+          }
+        }
+        if (healed > 0) {
+          spawnFloatingText(state, `+${heal}`, e.pos, '#7fc97f');
+        }
+        e.auraHealTimer = 1.5;
+      }
     }
 
     // ── Elite modifier ticks ──
@@ -73,12 +147,52 @@ export function updateEnemies(state: GameState, dt: number): void {
     // --- Per-kind pre-move behaviours ---
     // Sapper: once it gets close enough to the mannequin, freeze in place and
     // tick a short fuse; explode radially when the fuse reaches zero.
+    // Эпический+ sappers also latch onto the closest tower they pass by and
+    // EMP it for the full fuse duration before detonating.
     if (e.kind.id === 'sapper') {
-      const d2m = dist(e.pos, m.pos);
-      if (e.sapperFuse > 0 || d2m < e.kind.radius + 48) {
+      const sdx = e.pos.x - m.pos.x;
+      const sdy = e.pos.y - m.pos.y;
+      const sapR = e.kind.radius + 48;
+      const nearMannequin = (sdx * sdx + sdy * sdy) < sapR * sapR;
+
+      // Try to latch onto a tower if the sapper carries the EMP ability
+      // (Эпический+) and isn't already fused / latched. The latch radius
+      // mirrors the iso-plane ellipse used elsewhere (4× y² weight) so a
+      // sapper walking past the rune dais on a slightly tilted angle still
+      // catches the tower.
+      if (e.attachedTowerId === -1 && e.sapperFuse <= 0
+          && e.abilities.includes('disable_tower_on_contact')) {
+        const latchR = e.kind.radius + 28;
+        const latchR2 = latchR * latchR;
+        for (const t of state.towers) {
+          const ddx = t.pos.x - e.pos.x;
+          const ddy = t.pos.y - e.pos.y;
+          if (ddx * ddx + 4 * ddy * ddy < latchR2) {
+            e.attachedTowerId = t.id;
+            // Эпический disables for 3 s, Древний for 4 s, matching the
+            // tier escalation pattern used by the other abilities.
+            const disableDur = e.abilityTier === 'ancient' ? 4 : 3;
+            t.disabledTimer = Math.max(t.disabledTimer, disableDur);
+            e.sapperFuse = disableDur;
+            spawnFloatingText(state, '⚡', e.pos, '#7df9ff');
+            break;
+          }
+        }
+      }
+
+      if (e.sapperFuse > 0 || nearMannequin) {
         if (e.sapperFuse <= 0) {
           e.sapperFuse = 0.55;
           spawnFloatingText(state, '!', e.pos, '#ff5a5a');
+        }
+        // Keep the latched tower disabled for the remainder of the fuse
+        // so the EMP doesn't lift off early if the sapper's fuse ticks
+        // run faster than the tower's `disabledTimer`.
+        if (e.attachedTowerId !== -1) {
+          const tower = state.towers.find((t) => t.id === e.attachedTowerId);
+          if (tower) {
+            tower.disabledTimer = Math.max(tower.disabledTimer, Math.max(0, e.sapperFuse));
+          }
         }
         e.sapperFuse -= dt;
         // Pulse by flashing hitFlash so the sprite visibly blinks red.
@@ -135,32 +249,65 @@ export function updateEnemies(state: GameState, dt: number): void {
       if (e.bossSlamWindup > 0) {
         // Skip the regular movement step so the slam telegraphs cleanly.
       } else {
-        const dir = norm(sub(m.pos, e.pos));
-        const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
-        // Homunculus phase 3 gets +50% speed.
-        const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.5 : 1;
-        // Frenzied elite: ×1.5 speed.
-        const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
-        const speed = e.kind.speed * e.status.slowFactor
-          * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult
-          * enemySpeedMultiplier(state);
-        e.pos.x += dir.x * speed * dt;
-        e.pos.y += dir.y * speed * dt;
+        // Inline normalize(mannequin - enemy) — saves two object allocations
+        // per enemy per frame. With 50+ enemies this is a hot allocation
+        // path and was creating GC pressure on weaker devices.
+        const dx = m.pos.x - e.pos.x;
+        const dy = m.pos.y - e.pos.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) {
+          const dashMult = e.dashBackTimer > 0 ? -0.6 : 1;
+          const phaseSpeedBoost = e.kind.id === 'boss_homunculus' && e.bossPhase >= 3 ? 1.5 : 1;
+          const eliteSpeedMult = e.elite === 'frenzied' ? 1.5 : 1;
+          const speed = e.kind.speed * e.status.slowFactor
+            * state.difficultyModifier.speedMult * dashMult * phaseSpeedBoost * eliteSpeedMult
+            * enemySpeedMultiplier(state) * waveSpeedScale(state);
+          // Direction toward the mannequin, normalized.
+          let nx = dx / len;
+          let ny = dy / len;
+          // Sprint surge (formerly the perpendicular zig-zag pattern,
+          // which was useless against the stationary mannequin since
+          // the lateral weave only exists to dodge towers). The rework
+          // re-uses the same state fields but turns them into a
+          // *forward* burst: every ~1.7 s the rat opens a 0.4 s window
+          // where it doubles its forward speed toward the mannequin so
+          // killing slow rats becomes urgent (they close the gap in
+          // bursts the player has to interrupt). `zigzagDir` is no
+          // longer read but kept on the type to avoid a wider refactor.
+          let sprintMul = 1;
+          if (e.abilities.includes('zigzag_dash') && e.dashBackTimer <= 0) {
+            if (e.zigzagTimer > 0) {
+              e.zigzagTimer -= dt;
+              sprintMul = 2.0;
+            } else if (e.zigzagCooldown > 0) {
+              e.zigzagCooldown -= dt;
+            } else {
+              e.zigzagTimer = 0.4;
+              e.zigzagCooldown = 1.4 + state.rng.range(0, 0.6);
+            }
+          }
+          e.pos.x += nx * speed * sprintMul * dt;
+          e.pos.y += ny * speed * sprintMul * dt;
+        }
       }
     }
 
-    // Mercury ring: slow enemies near mannequin.
+    // Mercury ring: slow enemies near mannequin. Squared compare avoids sqrt.
+    const mdx = e.pos.x - m.pos.x;
+    const mdy = e.pos.y - m.pos.y;
+    const d2 = mdx * mdx + mdy * mdy;
     if (state.modifiers.mercuryRingActive) {
-      const dToM = dist(e.pos, m.pos);
-      if (dToM < 120 * state.metaAuraRadiusMult) {
+      const r = 120 * state.metaAuraRadiusMult;
+      if (d2 < r * r) {
         e.status.slowFactor = Math.min(e.status.slowFactor, 0.6);
         e.status.slowTime = Math.max(e.status.slowTime, 0.2);
       }
     }
 
-    // Hit mannequin.
-    const d = dist(e.pos, m.pos);
-    if (d < e.kind.radius + 22) {
+    // Hit mannequin. The +33 mannequin-body radius matches the 1.5×-scaled
+    // sprite footprint (was +22 at HERO_SCALE 3, now HERO_SCALE 4.5).
+    const hitR = e.kind.radius + 33;
+    if (d2 < hitR * hitR) {
       const scaledDamage = e.kind.damage * state.difficultyModifier.damageMult;
       const shieldMult = state.tempShieldTime > 0 ? (1 - state.tempShieldReduction) : 1;
       const rawDmg = Math.max(1, scaledDamage * (1 - state.metaMannequinArmor) * shieldMult * takenDamageMultiplier(state));
@@ -168,7 +315,21 @@ export function updateEnemies(state: GameState, dt: number): void {
       m.hp -= dmgReduced;
       state.metaAutoRepairCooldown = 5;
       m.damageFlash = 0.25;
+      // Camera shake scales with the % of max HP this hit consumed so a
+      // chip-damage swarm doesn't shake as hard as a boss bite. Capped
+      // so consecutive heavy hits don't pin the screen at max amplitude.
+      shakeCamera(Math.min(6, 1.5 + (dmgReduced / Math.max(1, m.maxHp)) * 50), 0.18);
+      // Edge-flash intensity scales with the % of max HP this hit consumed.
+      flashScreen(Math.min(1, 0.25 + (dmgReduced / Math.max(1, m.maxHp)) * 4), 0.32);
       spawnFloatingText(state, `-${Math.round(dmgReduced)}`, m.pos, '#ff6a3d');
+      // Run-contract bookkeeping: flag the current wave so the
+      // flawless-wave contracts know this run isn't perfect anymore.
+      // `damageInWave` is indexed 1-based to match the user-facing wave
+      // numbering (see `data/contracts.ts`).
+      if (dmgReduced > 0) {
+        const w = state.waveState.currentIndex + 1;
+        state.contractStats.damageInWave[w] = true;
+      }
       // Thorny shell: reflect damage on melee contact.
       if (state.modifiers.thornyShell) {
         e.hp -= 8;
@@ -205,10 +366,12 @@ export function updateEnemies(state: GameState, dt: number): void {
       state.tempShieldReduction = 0.8;
       m.damageFlash = 0.4;
       spawnFloatingText(state, t('floating.golemHeart'), m.pos, '#ffb86b');
-    } else if (!state.reviveUsed) {
-      m.hp = 0;
-      state.revivePaused = true;
     } else {
+      // Mannequin death goes straight to the new "Манекен пал" defeat
+      // panel. The previous flow first opened the revive overlay
+      // ("Манекен разрушен!") with a rewarded-ad / surrender choice;
+      // players reported it reading as a stale "old popup" that flashed
+      // before the new defeat panel, so we skip it entirely now.
       m.hp = 0;
       state.phase = 'gameover';
     }
@@ -236,7 +399,14 @@ function sapperDetonate(state: GameState, e: Enemy): void {
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
+    // Sapper detonations are wide AoE — shake harder than a melee bite.
+    shakeCamera(6, 0.32);
+    flashScreen(Math.min(1, 0.4 + (dmg / Math.max(1, m.maxHp)) * 4), 0.4);
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+    if (dmg > 0) {
+      const w = state.waveState.currentIndex + 1;
+      state.contractStats.damageInWave[w] = true;
+    }
   }
   // Damage to nearby enemies.
   for (const other of state.enemies) {
@@ -270,10 +440,12 @@ function updateHomunculus(state: GameState, e: Enemy, dt: number): void {
   }
 
   // Tick the minion-summon timer. Phase 1 summons the fastest, phase 3 slowest
-  // (the boss is already brutal from the speed buff).
+  // (the boss is already brutal from the speed buff). Periods are
+  // tuned wider than the original 3/3.5/4.5 so the player isn't drowning
+  // in continuous slime / rat / sapper waves while juggling the boss.
   e.minionSummonTimer -= dt;
   if (e.minionSummonTimer <= 0) {
-    const period = e.bossPhase === 1 ? 3 : e.bossPhase === 2 ? 3.5 : 4.5;
+    const period = e.bossPhase === 1 ? 6 : e.bossPhase === 2 ? 7 : 9;
     e.minionSummonTimer = period;
     summonHomunculusMinions(state, e);
   }
@@ -297,6 +469,12 @@ function summonHomunculusMinions(state: GameState, e: Enemy): void {
       y: e.pos.y + Math.sin(angle) * r,
     };
     spawnEnemy(state, kind, pos);
+    // Tag the freshly-spawned minion with its summoner so the boss can
+    // claw HP back when this minion dies later. `spawnEnemy` always
+    // pushes the new entity to the end of the list, so tagging the
+    // tail is correct even with concurrent on-spawn hooks.
+    const summoned = state.enemies[state.enemies.length - 1];
+    if (summoned) summoned.summonedByBossId = e.id;
   }
   spawnFloatingText(state, t('floating.summon'), e.pos, '#c084fc');
 }
@@ -322,7 +500,15 @@ function minibossSlimeSlam(state: GameState, e: Enemy): void {
     m.hp -= dmg;
     m.damageFlash = 0.3;
     state.metaAutoRepairCooldown = 5;
+    // Boss slam: heavy thump, slightly shorter than sapper to keep the
+    // distinct rhythm of "boss slam → recover → next attack".
+    shakeCamera(7, 0.28);
+    flashScreen(Math.min(1, 0.5 + (dmg / Math.max(1, m.maxHp)) * 4), 0.36);
     spawnFloatingText(state, `-${Math.round(dmg)}`, m.pos, '#ff6a3d');
+    if (dmg > 0) {
+      const w = state.waveState.currentIndex + 1;
+      state.contractStats.damageInWave[w] = true;
+    }
   }
   spawnFloatingText(state, t('floating.slam'), e.pos, '#ffd166');
 }
@@ -366,15 +552,20 @@ export function updateGoldPickups(state: GameState, dt: number): void {
   const m = state.mannequin;
   if (state.magnetTimer > 0) state.magnetTimer -= dt;
   const remove: number[] = [];
+  // Inline distance / direction math: avoids two object allocations per
+  // pickup per frame and a redundant sqrt — we already need the magnitude.
   for (let i = 0; i < state.goldPickups.length; i++) {
     const g = state.goldPickups[i]!;
     g.life -= dt;
-    const d = dist(g.pos, m.pos);
-    // All pickups are always attracted toward the hero automatically.
-    const dir = norm(sub(m.pos, g.pos));
-    const sp = 280 + Math.max(0, 600 - d) * 1.2;
-    g.pos.x += dir.x * sp * dt;
-    g.pos.y += dir.y * sp * dt;
+    const dx = m.pos.x - g.pos.x;
+    const dy = m.pos.y - g.pos.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 0) {
+      const sp = 280 + Math.max(0, 600 - d) * 1.2;
+      const inv = (sp * dt) / d;
+      g.pos.x += dx * inv;
+      g.pos.y += dy * inv;
+    }
     if (d < 18 || g.life <= 0) {
       if (d < 18) {
         state.gold += g.value;
@@ -391,14 +582,23 @@ export function updateFirePools(state: GameState, dt: number): void {
   for (let i = 0; i < state.firePools.length; i++) {
     const fp = state.firePools[i]!;
     fp.time -= dt;
-    if (fp.time <= 0) { remove.push(i); continue; }
+    if (fp.time <= 0) {
+      // Leave behind a fading scorch mark so the fire pool's footprint
+      // doesn't vanish instantly. Purely cosmetic.
+      spawnScorchDecal(fp.pos.x, fp.pos.y, fp.radius * 0.95, 1.5);
+      remove.push(i);
+      continue;
+    }
     for (const e of state.enemies) {
       if (e.elite === 'ethereal' && e.etherealActive) continue;
-      const d = dist(fp.pos, e.pos);
-      if (d <= fp.radius + e.kind.radius) {
+      const dx = fp.pos.x - e.pos.x;
+      const dy = fp.pos.y - e.pos.y;
+      const r = fp.radius + e.kind.radius;
+      if (dx * dx + dy * dy <= r * r) {
         const fireMult = e.elite === 'fire_resistant' ? 0.4 : 1;
         e.hp -= fp.dps * dt * fireMult;
         e.hitFlash = Math.max(e.hitFlash, 0.04);
+        if (e.hp <= 0) e.lastHitElement = 'fire';
         if (e.elite !== 'fire_resistant') {
           e.status.burnDps = Math.max(e.status.burnDps, fp.dps * 0.5);
           e.status.burnTime = Math.max(e.status.burnTime, 1);
@@ -414,7 +614,11 @@ export function updateFloatingTexts(state: GameState, dt: number): void {
   for (let i = 0; i < state.floatingTexts.length; i++) {
     const t = state.floatingTexts[i]!;
     t.life -= dt;
+    // Bounce easing: vy decelerates over the lifetime so the number floats
+    // up fast at first and gently settles. Replaces the previous linear
+    // rise. `vy` is reduced toward zero with a critically-damped feel.
     t.pos.y += t.vy * dt;
+    t.vy *= Math.exp(-2.6 * dt);
     if (t.life <= 0) remove.push(i);
   }
   for (let i = remove.length - 1; i >= 0; i--) state.floatingTexts.splice(remove[i]!, 1);
@@ -432,9 +636,59 @@ export function addOverload(state: GameState, amount: number): void {
  */
 function onEnemyDeath(state: GameState, e: Enemy): void {
   audio.playSfx('enemyDeath', { detune: e.kind.isBoss ? 0.5 : 1 });
+  // Boss death gets a meaty shake so the kill feels like a milestone;
+  // regular enemies get a tiny pop only for elites/larger kinds so we
+  // don't shake the camera 30 times during a slime wave.
+  if (e.kind.isBoss) {
+    shakeCamera(8, 0.4);
+  } else if (e.elite || e.kind.hp >= 60) {
+    shakeCamera(1.5, 0.12);
+  }
+  // Death VFX: shockwave ring + a meatier particle burst, both tinted by
+  // the element that delivered the killing blow so a fire-killed enemy
+  // sprays embers and a mercury-killed one drips silver. Bosses get an
+  // extra-wide secondary ring + a white core flash so the kill reads as a
+  // milestone moment, not a regular enemy.
+  const palette = deathPaletteFor(e.lastHitElement);
+  const ringColor = deathRingColor(e.lastHitElement);
+  const sizeFactor = e.kind.isBoss ? 3.2 : (e.elite ? 1.7 : 1);
+  const baseR = e.kind.radius;
+  spawnShockwave(
+    e.pos.x,
+    e.pos.y,
+    baseR * 0.6,
+    baseR * (3 + sizeFactor),
+    ringColor,
+    e.kind.isBoss ? 0.5 : 0.32,
+    e.kind.isBoss ? 6 : 3,
+  );
+  if (e.kind.isBoss) {
+    // Secondary larger ring + bright white core flash.
+    spawnShockwave(
+      e.pos.x,
+      e.pos.y,
+      baseR * 0.4,
+      baseR * 6.5,
+      'rgba(255, 245, 220, 1)',
+      0.45,
+      4,
+    );
+  }
+  // Particle burst — count and speed scale with enemy class.
+  const burstCount = e.kind.isBoss ? 36 : (e.elite ? 18 : 10);
+  const burstSpeed = e.kind.isBoss ? 220 : 140;
+  spawnBurst(
+    e.pos.x,
+    e.pos.y,
+    burstCount,
+    palette,
+    burstSpeed,
+    e.kind.isBoss ? 0.7 : 0.45,
+    e.kind.isBoss ? 3 : 2,
+    60,
+  );
   const goldMult = state.modifiers.goldDropMult
     * state.difficultyModifier.goldMult
-    * (state.transmuteTimer > 0 ? state.transmuteGoldMult : 1)
     * goldMultiplier(state);
   const value = Math.round(state.rng.range(e.kind.goldDrop[0], e.kind.goldDrop[1]) * goldMult);
   state.goldPickups.push({
@@ -447,42 +701,128 @@ function onEnemyDeath(state: GameState, e: Enemy): void {
   state.essence += e.kind.isBoss ? 3 : 1;
   addOverload(state, e.kind.isBoss ? 25 : 6);
 
-  // Split-on-death: spawn N smaller slimes (2 the first generation, 1 the
-  // second) at the death position. Offspring inherit abilities but cannot
-  // split themselves beyond generation 2.
-  if (e.abilities.includes('split_on_death') && e.splitGeneration < 2) {
-    const count = e.splitGeneration === 0 ? 2 : 1;
+  // Run-contract bookkeeping: tally kills by enemy kind and last-hit
+  // element. Bosses also bump a separate counter so the boss-slayer
+  // contract doesn't have to enumerate boss-kind ids.
+  const cs = state.contractStats;
+  cs.killsByKind[e.kind.id] = (cs.killsByKind[e.kind.id] ?? 0) + 1;
+  cs.killsByElement[e.lastHitElement] = (cs.killsByElement[e.lastHitElement] ?? 0) + 1;
+  if (e.kind.isBoss) cs.bossKills += 1;
+
+  // Split-on-death: spawn N smaller slimes at the death position. Tier
+  // controls the children count and how deep splits chain — Ancient lets
+  // the first generation of children also split once more (max gen 2),
+  // base / Epic only allows generation 0 to split.
+  //
+  // Children are scattered as a small explosion: angles are evenly
+  // distributed around the parent (with per-slot jitter so the ring
+  // doesn't read as a perfect geometric pattern) and the radius is
+  // significantly larger than before so a single AoE vial can no
+  // longer wipe the whole brood while it's still clustered on the
+  // parent's death pixel.
+  const splitMaxGen = e.abilityTier === 'ancient' ? 2 : 1;
+  if (e.abilities.includes('split_on_death') && e.splitGeneration < splitMaxGen) {
+    const baseCount =
+      e.abilityTier === 'epic'
+        ? (e.splitGeneration === 0 ? 3 : 2)
+        : e.abilityTier === 'ancient'
+        ? (e.splitGeneration === 0 ? 3 : 2)
+        : (e.splitGeneration === 0 ? 2 : 1);
     const slime = ENEMIES['slime'];
     if (slime) {
-      for (let i = 0; i < count; i++) {
-        const angle = state.rng.range(0, Math.PI * 2);
-        const r = 14 + state.rng.range(0, 8);
+      const angleStart = state.rng.range(0, Math.PI * 2);
+      const slice = (Math.PI * 2) / baseCount;
+      for (let i = 0; i < baseCount; i++) {
+        const angle = angleStart + slice * i + state.rng.range(-0.35, 0.35);
+        const r = 56 + state.rng.range(0, 28);
         const pos = {
           x: e.pos.x + Math.cos(angle) * r,
           y: e.pos.y + Math.sin(angle) * r,
         };
         spawnEnemy(state, slime, pos, e.splitGeneration + 1);
       }
+      // Visual flair: small shockwave so the scatter reads as an
+      // explosion outwards, not a teleport-in.
+      spawnShockwave(
+        e.pos.x,
+        e.pos.y,
+        e.kind.radius * 0.4,
+        e.kind.radius * 4.5,
+        'rgba(127, 201, 127, 0.85)',
+        0.3,
+        3,
+      );
     }
   }
 
-  // Explode-on-death: do a small fire-pool-less radial damage burst.
-  if (e.abilities.includes('explode_on_death')) {
-    const radius = 60;
-    for (const other of state.enemies) {
-      if (other.id === e.id) continue;
-      if (dist(other.pos, e.pos) < radius) {
-        applyDamageToEnemy(state, other, 6, 'fire');
+  // Final-boss synergy: if this enemy was summoned by an alive boss
+  // (homunculus today), the boss claws back a small chunk of HP per
+  // dead minion regardless of who killed it. Capped at the boss's
+  // `maxHp` so it can't overshoot the bar. Floating text is rendered
+  // on the boss so the player can read the cause-and-effect.
+  if (e.summonedByBossId >= 0) {
+    const boss = state.enemies.find(
+      (other) => other.id === e.summonedByBossId && other.hp > 0,
+    );
+    if (boss) {
+      const before = boss.hp;
+      boss.hp = Math.min(boss.maxHp, boss.hp + 3);
+      const healed = boss.hp - before;
+      if (healed > 0) {
+        spawnFloatingText(state, `+${healed}`, boss.pos, '#7fc97f');
       }
     }
-    // Damage the hero too if close enough.
-    if (dist(state.mannequin.pos, e.pos) < radius) {
-      const raw = Math.max(1, 4 * state.difficultyModifier.damageMult * (1 - state.metaMannequinArmor) * takenDamageMultiplier(state));
-      const dmg = absorbWithShield(state, raw);
-      state.mannequin.hp -= dmg;
-      state.mannequin.damageFlash = 0.22;
-      spawnFloatingText(state, `-${Math.round(dmg)}`, state.mannequin.pos, '#ff6a3d');
+  }
+
+  // Volatile-burst on death: Эпохи назад this used to splash chip
+  // damage to the mannequin and to nearby allied enemies, but the
+  // mannequin is stationary so the player couldn't dodge it and the
+  // friendly-fire chip never mattered against thick waves. Reworked so
+  // dying flying flasks instead release a *short-range tower EMP* —
+  // every tower whose dais centre falls inside the burst goes offline
+  // for `disableDur` seconds, the same offline state used by sapper
+  // contact-EMP and golem death-pulse. This gives the player a real
+  // strategic reason to focus flasks down BEFORE they drift past the
+  // tower line: a flask popping at the back of the dais now silences
+  // every turret it overlaps for a beat.
+  if (e.abilities.includes('explode_on_death')) {
+    const radius =
+      e.abilityTier === 'epic' ? 90 : e.abilityTier === 'ancient' ? 110 : 70;
+    const disableDur =
+      e.abilityTier === 'epic' ? 2.0 : e.abilityTier === 'ancient' ? 2.5 : 1.5;
+    const r2 = radius * radius;
+    let any = false;
+    for (const tw of state.towers) {
+      const dx2 = tw.pos.x - e.pos.x;
+      const dy2 = tw.pos.y - e.pos.y;
+      if (dx2 * dx2 + dy2 * dy2 < r2) {
+        tw.disabledTimer = Math.max(tw.disabledTimer, disableDur);
+        any = true;
+      }
     }
+    if (any) spawnFloatingText(state, '⚡', e.pos, '#7df9ff');
+  }
+
+  // Stun-towers-on-death: Эпический+ golems release a short-range EMP
+  // pulse on death that disables every tower whose centre falls within
+  // the ring for `STUN_DURATION` seconds. The visual is a single
+  // "bzzt" floating text on the dead golem so the tower silence isn't
+  // mysterious — paired with the per-tower disabled overlay it reads
+  // as a clear cause-and-effect.
+  if (e.abilities.includes('stun_towers_on_death')) {
+    const STUN_RADIUS = e.abilityTier === 'ancient' ? 130 : 100;
+    const STUN_DURATION = e.abilityTier === 'ancient' ? 3 : 2;
+    const r2 = STUN_RADIUS * STUN_RADIUS;
+    let any = false;
+    for (const t of state.towers) {
+      const dx2 = t.pos.x - e.pos.x;
+      const dy2 = t.pos.y - e.pos.y;
+      if (dx2 * dx2 + dy2 * dy2 < r2) {
+        t.disabledTimer = Math.max(t.disabledTimer, STUN_DURATION);
+        any = true;
+      }
+    }
+    if (any) spawnFloatingText(state, 'EMP', e.pos, '#7df9ff');
   }
 
   // Crafting ingredient drops. Split-on-death offspring are NOT eligible
@@ -507,3 +847,31 @@ function rollIngredientDrop(state: GameState, e: Enemy): void {
 
 // Convenience used in projectile.ts via importVec2 reference.
 export type _Vec2 = Vec2;
+
+// Death-VFX colour helpers. Mapping the killing element to a particle
+// palette + ring stroke colour keeps the same look as the normal
+// elemental hit FX so a fire kill feels like fire all the way through.
+const NEUTRAL_DEATH_COLORS = ['#ffd166', '#e8c98c', '#f5e8ff', '#c9a96b'];
+function deathPaletteFor(element: Enemy['lastHitElement']): string[] {
+  switch (element) {
+    case 'fire': return FIRE_COLORS;
+    case 'mercury': return MERCURY_COLORS;
+    case 'acid': return ACID_COLORS;
+    case 'aether': return AETHER_COLORS;
+    case 'frost': return FROST_COLORS;
+    case 'poison': return POISON_COLORS;
+    default: return NEUTRAL_DEATH_COLORS;
+  }
+}
+
+function deathRingColor(element: Enemy['lastHitElement']): string {
+  switch (element) {
+    case 'fire': return 'rgba(255, 180, 90, 1)';
+    case 'mercury': return 'rgba(220, 230, 255, 1)';
+    case 'acid': return 'rgba(210, 245, 90, 1)';
+    case 'aether': return 'rgba(189, 246, 255, 1)';
+    case 'frost': return 'rgba(189, 246, 255, 1)';
+    case 'poison': return 'rgba(155, 227, 107, 1)';
+    default: return 'rgba(245, 232, 255, 1)';
+  }
+}

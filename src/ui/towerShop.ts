@@ -1,6 +1,15 @@
 import { TOWERS, TOWER_MAX_LEVEL, towerUpgradeCost, towerName } from '../data/towers';
 import type { GameState } from '../game/state';
-import { buyTower, cycleTargetingMode, targetingModeLabel, upgradeTower, sellTower } from '../game/tower';
+import {
+  buyTower,
+  countTowersOfKind,
+  cycleTargetingMode,
+  sellTower,
+  targetingModeLabel,
+  upgradeTower,
+  WATCH_TOWER_BUILD_LIMIT,
+} from '../game/tower';
+import { placePopupNearAnchor } from './popupPlacement';
 import { t } from '../i18n';
 
 /**
@@ -22,6 +31,10 @@ export class TowerShop {
   /** Show shop near a rune point. */
   open(runePointId: number, screenPos: { x: number; y: number }): void {
     if (!this.state) return;
+    // Defence-in-depth: tower install / upgrade is a between-waves
+    // action only. handleClick already guards this, but if any other
+    // call site forgets to gate on phase we silently no-op here too.
+    if (this.state.phase !== 'preparing') return;
     const rp = this.state.runePoints.find((r) => r.id === runePointId);
     if (!rp || !rp.active) return;
 
@@ -30,6 +43,8 @@ export class TowerShop {
     this.state.activeRunePoint = runePointId;
     const el = document.createElement('div');
     el.className = 'tower-shop';
+    // Initial guess; final position is clamped to the viewport after the
+    // popup has been laid out (see end of `open`).
     el.style.left = `${screenPos.x + 24}px`;
     el.style.top = `${screenPos.y - 20}px`;
 
@@ -62,14 +77,25 @@ export class TowerShop {
         const displayCost = Math.ceil(
           baseCost * archmasterMult * this.state.modifiers.towerCostMult,
         );
-        right.textContent = archmaster
-          ? t('ui.tower.cost.archmaster', { n: displayCost })
-          : (discount > 0
-              ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
-              : t('ui.tower.cost.plain', { n: displayCost }));
+        // Сторожевой фонарь: only one lantern allowed per run (see
+        // WATCH_TOWER_BUILD_LIMIT). Once purchased the card stays
+        // visible for affordance but is disabled and shows the cap as
+        // its cost text instead of a price.
+        const atLanternCap =
+          kind.id === 'watch_tower'
+          && countTowersOfKind(this.state, 'watch_tower') >= WATCH_TOWER_BUILD_LIMIT;
+        if (atLanternCap) {
+          right.textContent = t('ui.tower.cost.cap', { n: WATCH_TOWER_BUILD_LIMIT });
+        } else {
+          right.textContent = archmaster
+            ? t('ui.tower.cost.archmaster', { n: displayCost })
+            : (discount > 0
+                ? t('ui.tower.cost.discount', { n: displayCost, d: discount })
+                : t('ui.tower.cost.plain', { n: displayCost }));
+        }
         btn.appendChild(left);
         btn.appendChild(right);
-        btn.disabled = this.state.gold < displayCost;
+        btn.disabled = atLanternCap || this.state.gold < displayCost;
         btn.addEventListener('click', () => {
           if (!this.state) return;
           const ok = buyTower(this.state, runePointId, kind.id);
@@ -79,14 +105,14 @@ export class TowerShop {
         el.appendChild(btn);
       }
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.cancel');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
     } else {
       // Upgrade menu.
       const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
+      info.className = 'tower-shop-info';
       info.textContent = t('ui.tower.info', {
         name: towerName(tower.kind),
         lvl: tower.level,
@@ -160,6 +186,7 @@ export class TowerShop {
       el.appendChild(sell);
 
       const cancel = document.createElement('button');
+      cancel.className = 'tower-shop-cancel';
       cancel.textContent = t('ui.tower.close');
       cancel.addEventListener('click', () => this.close());
       el.appendChild(cancel);
@@ -167,6 +194,10 @@ export class TowerShop {
 
     this.root.appendChild(el);
     this.el = el;
+    // Reposition once the popup has been measured so it never escapes the
+    // viewport — important on landscape mobile where the rune may be
+    // close to the right or bottom edge.
+    placePopupNearAnchor(el, screenPos);
   }
 
   close(): void {

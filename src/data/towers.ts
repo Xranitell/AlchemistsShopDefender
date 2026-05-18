@@ -18,7 +18,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Игломет',
     cost: 60,
     damage: 6,
-    range: 220,
+    range: 330,
     fireRate: 2.4,
     projectileSpeed: 540,
     splashRadius: 0,
@@ -29,22 +29,40 @@ export const TOWERS: Record<string, TowerKind> = {
   mortar: {
     id: 'mortar',
     name: 'Алхимическая мортира',
-    cost: 110,
-    damage: 14,
-    range: 260,
-    fireRate: 0.7,
-    projectileSpeed: 360,
-    splashRadius: 60,
+    cost: 130,
+    // Base hit damage cut 30% from the previous 48 — the mortar's
+    // strength now lives in its arena-spanning targeting reach, not
+    // in raw shell damage.
+    damage: 34,
+    // Arena-spanning targeting range: the mortar can shoot ANY enemy
+    // on the map regardless of where it sits on the dais. The 1280×720
+    // arena's diagonal is ~1469 px, so 1500 px guarantees every spawn
+    // is in range. The shell still arcs and travels visibly, so a
+    // far-side target gets a long flight time — the player reads the
+    // shell crossing the screen and can plan around it.
+    range: 2250,
+    // One shot every ~8.9 seconds. The
+    // mortar is a siege piece: it fires very rarely, but every shell
+    // can land anywhere on the map, so the long cooldown keeps it
+    // from trivialising waves.
+    fireRate: 0.1125,
+    // Slow shell so the player can read it travelling — important
+    // visual since the splash can wipe a packed cluster when it lands.
+    projectileSpeed: 320 / 3,
+    // Localised splash — back to the original 140 px (the user wants
+    // arena-wide *targeting reach*, not arena-wide explosions). A 140-px
+    // blast still hits a tight cluster of enemies near the impact.
+    splashRadius: 140,
     element: 'fire',
     color: '#ff8c5a',
-    desc: 'Медленная AoE-мортира. Хороша против толп.',
+    desc: 'Бьёт по всей карте, но редко. Локальный взрыв при попадании — идеальна для точечного удара по дальним угрозам.',
   },
   mercury_sprayer: {
     id: 'mercury_sprayer',
     name: 'Ртутный распылитель',
     cost: 90,
     damage: 4,
-    range: 200,
+    range: 300,
     fireRate: 1.8,
     projectileSpeed: 420,
     splashRadius: 45,
@@ -57,7 +75,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Кислотный инжектор',
     cost: 100,
     damage: 8,
-    range: 240,
+    range: 360,
     fireRate: 1.2,
     projectileSpeed: 480,
     splashRadius: 0,
@@ -70,7 +88,7 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Эфирная катушка',
     cost: 130,
     damage: 7,
-    range: 230,
+    range: 345,
     fireRate: 1.4,
     projectileSpeed: 0,
     splashRadius: 0,
@@ -84,13 +102,13 @@ export const TOWERS: Record<string, TowerKind> = {
     name: 'Сторожевой фонарь',
     cost: 80,
     damage: 0,
-    range: 200,
+    range: 300,
     fireRate: 0,
     projectileSpeed: 0,
     splashRadius: 0,
     element: 'neutral',
     color: '#ffd166',
-    desc: 'Не стреляет. Соседним стойкам в радиусе: +20% скорострельности и +10% дальности.',
+    desc: 'Не стреляет. Усиливает стойки на соседних слотах: +20% скорострельности и +10% дальности. Каждый уровень добавляет ещё один слот по очереди.',
     behavior: 'aura',
   },
 };

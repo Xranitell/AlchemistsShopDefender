@@ -49,15 +49,51 @@ interface SfxOptions {
 const RATE_LIMIT_WINDOW_MS = 100;
 const RATE_LIMIT_PER_ID = 6;
 
+/** Linear-amplitude cap applied at the music slider's max position.
+ *
+ * The procedurally-generated menu / battle MP3 tracks are mastered at a
+ * conservative peak (~-2.5 dB), but a raw 1.0 gain on top of
+ * `masterGain = 0.85` would still drown SFX during dense combat.
+ * Capping at 0.22 keeps the music bed comfortably below the SFX mix;
+ * the player perceives 100 % on the slider as "comfortable max". */
+const MUSIC_MAX_GAIN = 0.22;
+
+/** Map a 0..1 slider value to the actual gain node value. Linear scaling
+ *  capped at `MUSIC_MAX_GAIN` so the slider behaves like a real volume
+ *  knob: 0 % silent, 50 % half-volume, 100 % comfortable max — never
+ *  earsplitting. Kept as a free function so both `applyGains()` and the
+ *  initial gain assignment in `ensureStarted()` agree. */
+function musicSliderToGain(slider: number): number {
+  return MUSIC_MAX_GAIN * clamp01(slider);
+}
+
+/** SFX ids that route through the dedicated UI gain channel rather than
+ *  the gameplay SFX channel. Lets the player tune UI clicks separately
+ *  from in-game sounds. Keep in sync with the runtime check in
+ *  `playSfx()`. */
+const UI_SFX_IDS: ReadonlySet<SfxId> = new Set<SfxId>(['uiClick', 'uiHover']);
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  /** Gameplay SFX channel: shots, enemy hits, drops, reactions … */
   private sfxGain: GainNode | null = null;
+  /** UI SFX channel: button clicks, hover ticks. Routed separately so
+   *  the settings panel can expose an independent volume slider. */
+  private uiSfxGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
 
-  /** Persisted user volumes (0..1). Apply on top of the per-channel gain. */
+  /** Persisted user volumes (0..1). Apply on top of the per-channel gain.
+   *  These represent the slider's raw position; the music slider goes
+   *  through `musicSliderToGain()` before being written to the gain node
+   *  so the bundled ambient track stays inside a comfortable amplitude
+   *  range even at slider = 100 %. Default music slider is 1.0 — with
+   *  `MUSIC_MAX_GAIN = 0.22` that lands close to the previous (loudest
+   *  comfortable) listening position; players who want it quieter just
+   *  drag the slider down. */
   private sfxVolume = 0.6;
-  private musicVolume = 0.4;
+  private uiSfxVolume = 0.6;
+  private musicVolume = 1.0;
   private muted = false;
 
   /** Currently scheduled music: source nodes + the track id. Switching a
@@ -65,15 +101,27 @@ export class AudioEngine {
   private music: { track: MusicTrack; nodes: AudioNode[]; stopAt: number } | null = null;
   private musicLoopTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Looping HTMLAudioElement used for the sample-based ambient track
-   *  (`The Copper Crucible`). Routed through a MediaElementAudioSourceNode
-   *  so it shares the music gain bus and the user volume slider works.
-   *  Kept null until the first time we play a sample-based track. */
-  private ambientEl: HTMLAudioElement | null = null;
-  private ambientNode: MediaElementAudioSourceNode | null = null;
-  /** Tracks which sample track is currently selected (or null). Lets the
-   *  engine skip redundant assignments and stop / resume cleanly. */
-  private currentSampleTrack: MusicTrack = null;
+  /** Decoded AudioBuffer cache keyed by *concrete* track filename
+   *  (e.g. `'menu_a'`, `'menu_b'`, `'battle_a'`, `'battle_b'`). Loaded
+   *  lazily and reused so switching variants doesn't retrigger network
+   *  I/O. Buffer-source playback gives sample-accurate looping with no
+   *  encoder-padding gap — that's why we don't use HTMLAudioElement
+   *  here any more.  */
+  private sampleBuffers: Map<string, AudioBuffer> = new Map();
+  /** In-flight decode promises so concurrent plays of the same variant
+   *  don't kick off duplicate fetches. */
+  private samplePending: Map<string, Promise<AudioBuffer | null>> = new Map();
+  /** The currently scheduled music source + which logical track + which
+   *  variant is playing. */
+  private currentSample: {
+    track: 'menu' | 'battle';
+    variant: string;
+    node: AudioBufferSourceNode;
+  } | null = null;
+  /** Generation counter — incremented each time `playMusic` is called so
+   *  in-flight decodes that lose the race can detect they were
+   *  superseded and bail out before starting a stale source. */
+  private musicGen = 0;
 
   /** Recent fire times per SFX id (ms since context start) for rate-limiting. */
   private recentFires: Map<SfxId, number[]> = new Map();
@@ -81,9 +129,12 @@ export class AudioEngine {
   /** Pre-generated short white-noise buffer, reused for hi-hat / hiss SFX. */
   private noiseBuffer: AudioBuffer | null = null;
 
-  setVolumes(opts: { sfxVolume?: number; musicVolume?: number }): void {
+  setVolumes(opts: { sfxVolume?: number; uiSfxVolume?: number; musicVolume?: number }): void {
     if (typeof opts.sfxVolume === 'number') {
       this.sfxVolume = clamp01(opts.sfxVolume);
+    }
+    if (typeof opts.uiSfxVolume === 'number') {
+      this.uiSfxVolume = clamp01(opts.uiSfxVolume);
     }
     if (typeof opts.musicVolume === 'number') {
       this.musicVolume = clamp01(opts.musicVolume);
@@ -93,6 +144,11 @@ export class AudioEngine {
 
   setSfxVolume(v: number): void {
     this.sfxVolume = clamp01(v);
+    this.applyGains();
+  }
+
+  setUiSfxVolume(v: number): void {
+    this.uiSfxVolume = clamp01(v);
     this.applyGains();
   }
 
@@ -131,8 +187,12 @@ export class AudioEngine {
     this.sfxGain.gain.value = this.sfxVolume;
     this.sfxGain.connect(this.masterGain);
 
+    this.uiSfxGain = ctx.createGain();
+    this.uiSfxGain.gain.value = this.uiSfxVolume;
+    this.uiSfxGain.connect(this.masterGain);
+
     this.musicGain = ctx.createGain();
-    this.musicGain.gain.value = this.musicVolume;
+    this.musicGain.gain.value = musicSliderToGain(this.musicVolume);
     this.musicGain.connect(this.masterGain);
 
     this.noiseBuffer = makeNoiseBuffer(ctx, 0.4);
@@ -149,6 +209,7 @@ export class AudioEngine {
    *  the user-gesture rule. */
   private onVisibilityChange = (): void => {
     if (!this.ctx) return;
+    if (this.adPauseDepth > 0) return;
     if (document.hidden) {
       void this.ctx.suspend().catch(() => {});
     } else {
@@ -156,12 +217,46 @@ export class AudioEngine {
     }
   };
 
+  /** Ref-counted pause level driven by `pauseForAd()` / `resumeAfterAd()`.
+   *  Yandex Games requirement 4.7: while a fullscreen interstitial or a
+   *  rewarded video is on the screen the game's own audio must be muted
+   *  so it does not overlap the ad soundtrack. We suspend the entire
+   *  AudioContext (cheap, side-effect free) and resume it when every
+   *  caller has released the lock. Ref-counted so back-to-back ad
+   *  events (e.g. rewarded then interstitial) keep audio silent until
+   *  the *last* ad closes. */
+  private adPauseDepth = 0;
+
+  /** Suspend the AudioContext until the matching `resumeAfterAd()` call.
+   *  Safe to call before the engine has booted — `adPauseDepth` is then
+   *  applied as soon as `ensureStarted()` creates the context. Idempotent
+   *  via the depth counter so multiple ads chaining together do not race
+   *  on suspend/resume. */
+  pauseForAd(): void {
+    this.adPauseDepth++;
+    if (!this.ctx) return;
+    void this.ctx.suspend().catch(() => {});
+  }
+
+  /** Pair with `pauseForAd()`. Resumes the AudioContext only once every
+   *  caller has released the lock, so chained ads keep the game silent
+   *  for the whole duration. */
+  resumeAfterAd(): void {
+    if (this.adPauseDepth > 0) this.adPauseDepth--;
+    if (this.adPauseDepth > 0) return;
+    if (!this.ctx) return;
+    if (document.hidden) return;
+    void this.ctx.resume().catch(() => {});
+  }
+
   /** Play a one-shot SFX. No-op if the engine has not been started yet. */
   playSfx(id: SfxId, opts: SfxOptions = {}): void {
-    if (this.muted || !this.ctx || !this.sfxGain) return;
+    if (this.muted || !this.ctx || !this.sfxGain || !this.uiSfxGain) return;
     if (!this.allowFire(id)) return;
     const now = this.ctx.currentTime;
-    const out = this.sfxGain;
+    // Route UI SFX through their dedicated gain so the player can dial
+    // them down independently of gameplay sounds.
+    const out = UI_SFX_IDS.has(id) ? this.uiSfxGain : this.sfxGain;
     const detune = opts.detune ?? 1;
     const volume = opts.volume ?? 1;
     try {
@@ -230,14 +325,16 @@ export class AudioEngine {
   /** Switch the ambient music loop. Pass null to stop.
    *
    *  Track routing:
-   *    - 'menu' / 'battle' → looping MP3 ambient (`audio/ambient.mp3`).
-   *      The user explicitly asked for The Copper Crucible to be the
-   *      ambient track for both the main menu and the active run.
-   *    - 'boss'            → procedural synth loop (kept for contrast —
-   *      we still want a tense, dissonant track during boss waves).
-   *    - null              → stop everything. */
+   *    - 'menu'   → buffer-looped MP3 (one of two soft lo-fi variants),
+   *      randomly picked each time we (re)enter the menu state for
+   *      variety.
+   *    - 'battle' → buffer-looped MP3 (one of two combat lo-fi variants).
+   *    - 'boss'   → procedural synth loop (kept for contrast — we still
+   *      want a tense, dissonant track during boss waves).
+   *    - null     → stop everything. */
   playMusic(track: MusicTrack): void {
     if (!this.ctx || !this.musicGain) return;
+    this.musicGen++;
     if (track === null) {
       this.stopProceduralMusic();
       this.stopSampleMusic();
@@ -253,9 +350,11 @@ export class AudioEngine {
       this.scheduleMusicLoop('boss');
       return;
     }
-    // menu / battle → sample-based ambient.
+    // menu / battle → sample-based ambient. Pick a fresh variant every
+    // time we enter the state so the player doesn't hear the same loop
+    // back-to-back across menu ↔ battle transitions.
     this.stopProceduralMusic();
-    this.startSampleMusic(track);
+    void this.startSampleMusic(track);
   }
 
   stopMusic(): void {
@@ -287,47 +386,91 @@ export class AudioEngine {
   }
 
   private stopSampleMusic(): void {
-    if (this.ambientEl) {
-      try {
-        this.ambientEl.pause();
-        this.ambientEl.currentTime = 0;
-      } catch {
-        // ignore
-      }
+    if (this.currentSample) {
+      try { this.currentSample.node.stop(); } catch { /* already stopped */ }
+      try { this.currentSample.node.disconnect(); } catch { /* ignore */ }
+      this.currentSample = null;
     }
-    this.currentSampleTrack = null;
   }
 
-  /** Start (or resume) the looping MP3 ambient. The same audio element is
-   *  reused across menu ↔ battle transitions — we don't restart playback
-   *  when switching from menu to battle so the loop stays seamless across
-   *  scene changes. */
-  private startSampleMusic(track: MusicTrack): void {
-    if (!this.ctx || !this.musicGain) return;
-    if (!this.ambientEl) {
-      const el = new Audio('audio/ambient.mp3');
-      el.loop = true;
-      el.preload = 'auto';
-      // crossOrigin not required — file is same-origin from public/.
-      this.ambientEl = el;
+  /** Per-logical-track variant pool. Each menu/battle entry into
+   *  `playMusic()` randomly picks one of these so the player hears
+   *  different lo-fi grooves between sessions / state transitions. */
+  private static readonly SAMPLE_VARIANTS: Record<'menu' | 'battle', readonly string[]> = {
+    menu: ['menu_a', 'menu_b'],
+    battle: ['battle_a', 'battle_b'],
+  };
+
+  /** Concrete filename for a variant id. Files are bundled under
+   *  `public/audio/<variant>.mp3`. */
+  private static fileForVariant(variant: string): string {
+    return `audio/${variant}.mp3`;
+  }
+
+  /** Decode (and cache) the MP3 backing a given variant. Returns null
+   *  on any failure — e.g. user offline, asset missing, decode error —
+   *  so callers can silently degrade rather than crash. */
+  private async loadSampleBuffer(variant: string): Promise<AudioBuffer | null> {
+    if (!this.ctx) return null;
+    const cached = this.sampleBuffers.get(variant);
+    if (cached) return cached;
+    const inflight = this.samplePending.get(variant);
+    if (inflight) return inflight;
+    const ctx = this.ctx;
+    const promise = (async () => {
       try {
-        this.ambientNode = this.ctx.createMediaElementSource(el);
-        this.ambientNode.connect(this.musicGain);
+        const res = await fetch(AudioEngine.fileForVariant(variant));
+        if (!res.ok) return null;
+        const ab = await res.arrayBuffer();
+        const buf = await ctx.decodeAudioData(ab);
+        this.sampleBuffers.set(variant, buf);
+        return buf;
       } catch {
-        // Some browsers throw if createMediaElementSource is called twice
-        // on the same element — we already guarded with `!this.ambientEl`,
-        // but swallow defensively anyway.
+        return null;
+      } finally {
+        this.samplePending.delete(variant);
       }
-    }
-    if (this.currentSampleTrack === track && !this.ambientEl.paused) {
-      // Already playing this exact sample track — keep the loop running.
-      return;
-    }
-    this.currentSampleTrack = track;
-    // play() returns a Promise that rejects if autoplay is blocked. We
-    // already gate `playMusic` on `ensureStarted` (which itself only fires
-    // from a user gesture), but swallow defensively.
-    void this.ambientEl.play().catch(() => {});
+    })();
+    this.samplePending.set(variant, promise);
+    return promise;
+  }
+
+  /** Pick a fresh variant for the requested track, biased away from the
+   *  one we just played so consecutive entries (menu → battle → menu)
+   *  rarely repeat. */
+  private pickVariant(track: 'menu' | 'battle'): string {
+    const pool = AudioEngine.SAMPLE_VARIANTS[track];
+    if (pool.length === 0) return track;
+    const recent = this.currentSample?.variant;
+    const candidates = pool.length > 1 && recent && pool.includes(recent)
+      ? pool.filter((v) => v !== recent)
+      : pool.slice();
+    return candidates[Math.floor(Math.random() * candidates.length)] ?? pool[0]!;
+  }
+
+  /** Start a buffer-sourced loop for the requested track. Looping via
+   *  `AudioBufferSourceNode.loop = true` is sample-accurate, so the
+   *  encoder-padding silence that HTMLAudioElement's `loop` attribute
+   *  exposes between iterations is avoided entirely — the track now
+   *  loops seamlessly. */
+  private async startSampleMusic(track: 'menu' | 'battle'): Promise<void> {
+    if (!this.ctx || !this.musicGain) return;
+    const myGen = this.musicGen;
+    const variant = this.pickVariant(track);
+    const buf = await this.loadSampleBuffer(variant);
+    if (!buf) return;
+    // Bail if `playMusic` was called again while we were decoding —
+    // otherwise we'd start a stale loop on top of the new one.
+    if (myGen !== this.musicGen) return;
+    if (!this.ctx || !this.musicGain) return;
+    // Tear down any prior source before scheduling the new one.
+    this.stopSampleMusic();
+    const node = this.ctx.createBufferSource();
+    node.buffer = buf;
+    node.loop = true;
+    node.connect(this.musicGain);
+    try { node.start(0); } catch { /* context died */ return; }
+    this.currentSample = { track, variant, node };
   }
 
   // ---------------------------------------------------------------------
@@ -335,15 +478,17 @@ export class AudioEngine {
   // ---------------------------------------------------------------------
 
   private applyGains(): void {
-    if (!this.ctx || !this.masterGain || !this.sfxGain || !this.musicGain) return;
+    if (!this.ctx || !this.masterGain || !this.sfxGain || !this.uiSfxGain || !this.musicGain) return;
     const t = this.ctx.currentTime;
     const masterTarget = this.muted ? 0 : 0.85;
     this.masterGain.gain.cancelScheduledValues(t);
     this.masterGain.gain.setTargetAtTime(masterTarget, t, 0.02);
     this.sfxGain.gain.cancelScheduledValues(t);
     this.sfxGain.gain.setTargetAtTime(this.sfxVolume, t, 0.02);
+    this.uiSfxGain.gain.cancelScheduledValues(t);
+    this.uiSfxGain.gain.setTargetAtTime(this.uiSfxVolume, t, 0.02);
     this.musicGain.gain.cancelScheduledValues(t);
-    this.musicGain.gain.setTargetAtTime(this.musicVolume, t, 0.02);
+    this.musicGain.gain.setTargetAtTime(musicSliderToGain(this.musicVolume), t, 0.02);
   }
 
   private allowFire(id: SfxId): boolean {
@@ -352,6 +497,17 @@ export class AudioEngine {
     // Drop entries older than the rate-limit window.
     while (list.length > 0 && now - list[0]! > RATE_LIMIT_WINDOW_MS) list.shift();
     if (list.length >= RATE_LIMIT_PER_ID) return false;
+    // UI clicks are special: a single press tends to reach the engine
+    // multiple times (the global delegated `click` listener + an
+    // existing in-component handler that still calls `playSfx`
+    // directly). When two ticks land within the same animation frame
+    // their square waves stack and the click sounds rasping / tripled.
+    // A 70 ms hard floor on `uiClick`/`uiHover` collapses the storm to
+    // a single, clean tick without affecting how often gameplay SFX
+    // can fire.
+    if (UI_SFX_IDS.has(id) && list.length > 0 && now - list[list.length - 1]! < 70) {
+      return false;
+    }
     list.push(now);
     this.recentFires.set(id, list);
     return true;
@@ -704,33 +860,48 @@ export class AudioEngine {
   }
 
   private synthUiClick(t: number, out: AudioNode, detune: number, vol: number): void {
-    // Tight tick.
+    // Soft, warm tick. Triangle (only odd harmonics, but at -9 dB vs
+    // square so the timbre reads as woody rather than buzzy), short
+    // attack ramp to avoid the click-pop of an instant gain step, and
+    // a low-pass filter that rolls off the harshness on top. Pitch
+    // glides 900 → 520 Hz so the hit lands somewhere between a "tap"
+    // and a "tock" without ever sounding metallic.
     const ctx = this.ctx!;
     const osc = ctx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(1400 * detune, t);
-    osc.frequency.exponentialRampToValueAtTime(700 * detune, t + 0.04);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(900 * detune, t);
+    osc.frequency.exponentialRampToValueAtTime(520 * detune, t + 0.05);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2400;
+    lp.Q.value = 0.4;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.16 * vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-    osc.connect(g).connect(out);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.11 * vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(lp).connect(g).connect(out);
     osc.start(t);
-    osc.stop(t + 0.07);
+    osc.stop(t + 0.11);
   }
 
   private synthUiHover(t: number, out: AudioNode, detune: number, vol: number): void {
-    // Softer, lower than uiClick — used on hover.
+    // Subtle, slightly wooden tick — sine + light low-pass. Quieter
+    // than the click so cursor sweeps don't dominate the mix.
     const ctx = this.ctx!;
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(620 * detune, t);
+    osc.frequency.setValueAtTime(560 * detune, t);
+    osc.frequency.exponentialRampToValueAtTime(480 * detune, t + 0.05);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1800;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0, t);
-    g.gain.linearRampToValueAtTime(0.07 * vol, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-    osc.connect(g).connect(out);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05 * vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    osc.connect(lp).connect(g).connect(out);
     osc.start(t);
-    osc.stop(t + 0.07);
+    osc.stop(t + 0.09);
   }
 
   private synthLevelUp(t: number, out: AudioNode, detune: number, vol: number): void {

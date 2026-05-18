@@ -1,4 +1,4 @@
-import { dist, dist2, norm, scale, sub, type Vec2 } from '../engine/math';
+import { dist, norm, scale, sub, type Vec2 } from '../engine/math';
 import type { Enemy, GameState, Projectile } from './state';
 import { newId, spawnFloatingText } from './state';
 import { checkElementalReaction } from './reactions';
@@ -7,17 +7,26 @@ import type { Element } from './types';
 import { audio } from '../audio/audio';
 import { tutorial } from '../ui/tutorial';
 import { t } from '../i18n';
+import { shakeCamera } from '../engine/shake';
 import {
   potionDamageMultiplier,
   consumeStormCharge,
 } from './potions';
+import { MANNEQUIN_IDLE_ANIM } from '../render/creatureAnims';
 
-/** Pick the element of a thrown potion based on currently-active recipe
- *  modifiers. Cards can layer multiple flags on the same potion — we resolve
+/** Frost is a "finisher" element: it never one-shots a healthy target.
+ *  If a frost hit would drop an enemy below this fraction of max HP, the
+ *  damage is clamped at the threshold; only a *follow-up* frost hit on
+ *  an already-weakened (<25 % HP) target executes them outright. Bosses
+ *  are exempt to keep phase transitions intact. */
+const FROST_EXECUTE_THRESHOLD = 0.25;
+
+/** Pick the element of a thrown vial based on currently-active recipe
+ *  modifiers. Cards can layer multiple flags on the same vial — we resolve
  *  with a fixed priority so the most "specialised" recipe wins. */
 function selectPotionElement(state: GameState): Element {
   const m = state.modifiers;
-  // Salamander legendary forces every potion to be fire-element regardless of
+  // Salamander legendary forces every vial to be fire-element regardless of
   // any other recipe layered on top.
   if (m.salamanderActive) return 'fire';
   if (m.potionFrostActive) return 'frost';
@@ -59,6 +68,58 @@ export function fireTowerProjectile(
   audio.playSfx('towerFire', { detune });
 }
 
+/** Lobs a mortar shell on a parabolic arc toward the target's current
+ *  position. The shell behaves like a thrown vial: it cannot be
+ *  intercepted in flight, lands at the predicted point, and detonates
+ *  with a vial-style shockwave + a burning fire-pool. Used exclusively
+ *  by the mortar tower so its silhouette / impact reads as siege
+ *  artillery instead of a sniper rifle. */
+export function fireMortarShell(
+  state: GameState,
+  fromPos: Vec2,
+  target: Enemy,
+  damage: number,
+  splash: number,
+  speed: number,
+  element: Projectile['element'],
+): void {
+  // Mortars fire at the target's *current* position. The 140-px splash
+  // is wide enough that a moving target still lands inside the blast,
+  // so a clean point shot reads as siege artillery instead of a guided
+  // missile chasing the enemy through the air.
+  const ts: Vec2 = { ...target.pos };
+  const d = dist(fromPos, ts);
+  // Scale flight time with distance and the tower stat. A base speed of
+  // 320 maps to the old 700 px/s feel; lowering the stat stretches both
+  // short and long arcs proportionally.
+  const speedScale = 320 / Math.max(1, speed);
+  const duration = Math.min(
+    1.1 * speedScale,
+    Math.max(0.55 * speedScale, (d / 700) * speedScale),
+  );
+  // Tall arc: mortar shells fly higher than thrown vials so the shadow
+  // sweeps across the floor.
+  const peakHeight = Math.min(170, 80 + d * 0.18);
+  state.projectiles.push({
+    id: newId(state),
+    kind: 'tower',
+    pos: { ...fromPos },
+    vel: { x: 0, y: 0 },
+    damage,
+    splashRadius: splash,
+    targetId: target.id,
+    element,
+    life: duration + 0.1,
+    // Mortar fire is the iconic burning pool drop — every shell leaves
+    // one even without the Flammable Mix modifier.
+    leaveFire: true,
+    echoExplosion: false,
+    bonusFromManualAim: false,
+    arc: { start: { ...fromPos }, target: ts, t: 0, duration, peakHeight, height: 0 },
+  });
+  audio.playSfx('towerFire', { detune: 0.7 });
+}
+
 export function throwPotion(
   state: GameState,
   to: Vec2,
@@ -70,10 +131,16 @@ export function throwPotion(
     * potionDamageMultiplier(state) * stormMult;
   const radius = m.basePotionRadius * state.modifiers.potionRadiusMult;
 
-  // Parabolic arc: potion follows a ballistic curve from the alchemist to the
+  // Parabolic arc: the vial follows a ballistic curve from the alchemist to the
   // aim point, landing in `duration` seconds. Flight time scales mildly with
   // distance so short tosses feel snappy and long ones feel hefty.
-  const start: Vec2 = { ...m.pos };
+  //
+  // Launch the vial from the mannequin's chest (≈ half the rendered
+  // sprite height above the feet anchor) instead of straight from the
+  // ground, so the throw visually leaves from the hand rather than
+  // teleporting up out of the floor.
+  const mannequinDisplayHeight = MANNEQUIN_IDLE_ANIM.sh * MANNEQUIN_IDLE_ANIM.scale;
+  const start: Vec2 = { x: m.pos.x, y: m.pos.y - mannequinDisplayHeight / 2 };
   const target: Vec2 = { ...to };
   const d = dist(start, target);
   const duration = Math.min(0.85, Math.max(0.32, d / 900));
@@ -98,6 +165,19 @@ export function throwPotion(
 }
 
 export function updateProjectiles(state: GameState, dt: number): void {
+  // Build an enemy id → enemy lookup once per frame. Tower projectiles each
+  // need to resolve `targetId` and the previous code did `state.enemies.find`
+  // per projectile per frame (O(P×E)). With many projectiles in flight this
+  // dominated the update phase on weaker devices.
+  let enemyById: Map<number, Enemy> | null = null;
+  for (let i = 0; i < state.projectiles.length; i++) {
+    if (state.projectiles[i]!.kind === 'tower' && state.projectiles[i]!.targetId !== null) {
+      enemyById = new Map();
+      for (const e of state.enemies) enemyById.set(e.id, e);
+      break;
+    }
+  }
+
   const remove: number[] = [];
   for (let i = 0; i < state.projectiles.length; i++) {
     const p = state.projectiles[i]!;
@@ -105,10 +185,11 @@ export function updateProjectiles(state: GameState, dt: number): void {
 
     let hit: Enemy | null = null;
 
-    if (p.kind === 'potion' && p.arc) {
-      // Parabolic flight: interpolate along the ground plane while tracking a
-      // vertical (z) height offset used only for rendering. The potion is
-      // "in the air" and will not collide with enemies until it lands.
+    if (p.arc) {
+      // Parabolic flight (vials and mortar shells): interpolate along
+      // the ground plane while tracking a vertical (z) height offset
+      // used only for rendering. The projectile is "in the air" and
+      // will not collide with enemies until it lands at `t === 1`.
       p.arc.t += dt / p.arc.duration;
       const t = Math.min(1, p.arc.t);
       p.pos.x = p.arc.start.x + (p.arc.target.x - p.arc.start.x) * t;
@@ -122,7 +203,7 @@ export function updateProjectiles(state: GameState, dt: number): void {
         remove.push(i);
         continue;
       }
-      // During flight the potion is still airborne — no mid-air hits.
+      // During flight the projectile is airborne — no mid-air hits.
       continue;
     }
 
@@ -131,28 +212,33 @@ export function updateProjectiles(state: GameState, dt: number): void {
     p.pos.y += p.vel.y * dt;
 
     if (p.kind === 'tower') {
-      // Track target if alive.
-      if (p.targetId !== null) {
-        const target = state.enemies.find((e) => e.id === p.targetId);
-        if (target && dist(p.pos, target.pos) < (target.kind.radius + 6)) {
-          hit = target;
+      // Track target if alive (O(1) lookup via cached map).
+      if (p.targetId !== null && enemyById) {
+        const target = enemyById.get(p.targetId);
+        if (target) {
+          const dx = p.pos.x - target.pos.x;
+          const dy = p.pos.y - target.pos.y;
+          const r = target.kind.radius + 6;
+          if (dx * dx + dy * dy < r * r) hit = target;
         }
       }
-      // Fall back: any enemy within 8px (handles homing+death).
+      // Fall back: any enemy within range (handles homing+death).
       if (!hit) {
         for (const e of state.enemies) {
-          if (dist2(e.pos, p.pos) < (e.kind.radius + 4) ** 2) {
-            hit = e; break;
-          }
+          const dx = e.pos.x - p.pos.x;
+          const dy = e.pos.y - p.pos.y;
+          const r = e.kind.radius + 4;
+          if (dx * dx + dy * dy < r * r) { hit = e; break; }
         }
       }
     } else if (p.kind === 'potion') {
       // Echo-explosion secondary blasts do not have an arc — they sit still
       // and just wait out their tiny life before detonating.
       for (const e of state.enemies) {
-        if (dist2(e.pos, p.pos) < (e.kind.radius + 6) ** 2) {
-          hit = e; break;
-        }
+        const dx = e.pos.x - p.pos.x;
+        const dy = e.pos.y - p.pos.y;
+        const r = e.kind.radius + 6;
+        if (dx * dx + dy * dy < r * r) { hit = e; break; }
       }
     }
 
@@ -166,15 +252,59 @@ export function updateProjectiles(state: GameState, dt: number): void {
     }
   }
   for (let i = remove.length - 1; i >= 0; i--) state.projectiles.splice(remove[i]!, 1);
+
+  // Tick the vial-impact shockwave VFX (visual-only; damage was
+  // already resolved at spawn time inside `resolveImpact`). Ringed
+  // entries that have run out of life are spliced out so the array
+  // stays bounded.
+  for (let i = state.potionBlasts.length - 1; i >= 0; i--) {
+    const b = state.potionBlasts[i]!;
+    b.time -= dt;
+    if (b.time <= 0) state.potionBlasts.splice(i, 1);
+  }
 }
 
 function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
-  if (p.kind === 'potion' && !p.echoExplosion) {
-    // Potion glass-shatter on landing. Echo-secondary blasts deliberately
-    // skip the SFX so the rate-limit stays kind to chained reactions.
+  // Mortar shells use the parabolic-arc pipeline, so we treat any
+  // arc-tagged tower projectile as a "siege impact" — same vial-style
+  // shockwave, glass-shatter SFX and camera shake as a thrown vial.
+  // Linear tower projectiles (needler, acid, mercury) keep the
+  // muzzle-flash-only behaviour.
+  const isMortarShell = p.kind === 'tower' && !!p.arc;
+  if ((p.kind === 'potion' || isMortarShell) && !p.echoExplosion) {
+    // Vial / mortar glass-shatter on landing. Echo-secondary blasts
+    // deliberately skip the SFX so the rate-limit stays kind to
+    // chained reactions.
     audio.playSfx('potionImpact');
   }
-  // Did this potion actually land on top of (or touching) an enemy? The
+  // Spawn the impact-shockwave VFX so the player can see the splash
+  // zone the area-damage check actually used. Vials and mortar shells
+  // both get a ring; linear tower projectiles (needler, acid) skip it
+  // because they have no splash radius and a 0-radius ring would just
+  // be a flash on top of the existing muzzle-flash sparkles.
+  if ((p.kind === 'potion' || isMortarShell) && p.splashRadius > 0) {
+    state.potionBlasts.push({
+      id: newId(state),
+      pos: { x: at.x, y: at.y },
+      radius: p.splashRadius,
+      time: 0.5,
+      maxTime: 0.5,
+      element: p.element,
+      echo: !!p.echoExplosion,
+    });
+  }
+  // Camera shake for splash impacts: scaled by splash radius so a wide
+  // vial explosion / mortar shell shakes harder than a single-target
+  // needler. Linear tower projectiles still skip the shake — they fire
+  // on every cooldown and constant shake reads as jitter rather than
+  // weight. Echo secondaries from the player's own vials get a
+  // softer kick to avoid double-thump on chain reactions.
+  if (p.splashRadius > 0 && (p.kind === 'potion' || isMortarShell)) {
+    const base = Math.min(5, 1.5 + p.splashRadius / 40);
+    const mag = p.echoExplosion ? base * 0.5 : base;
+    shakeCamera(mag, 0.16);
+  }
+  // Did this vial actually land on top of (or touching) an enemy? The
   // tutorial fires its "manual aim bonus" hint only on the first such hit.
   if (p.kind === 'potion' && p.bonusFromManualAim) {
     const closest = nearestEnemy(state, at, Math.max(p.splashRadius, 14));
@@ -188,13 +318,23 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
     if (e) applyDamageToEnemy(state, e, p.damage, p.element);
   }
 
-  if (p.kind === 'potion' && p.leaveFire) {
+  if (p.leaveFire && (p.kind === 'potion' || isMortarShell)) {
+    // Vial fire pools scale with the brewing-mult so flammable-mix
+    // vials hit harder; mortar shells are siege weapons and get a
+    // flat baseline DPS (independent of the player's vial stats) so
+    // their pool reads as the *tower's* contribution rather than the
+    // alchemist's. Slightly tighter radius than the splash so the
+    // visual fire fits inside the shockwave ring.
+    const dps = p.kind === 'potion'
+      ? 8 * state.modifiers.potionDamageMult
+      : 6;
+    const time = isMortarShell ? 2.4 : 3.0;
     state.firePools.push({
       id: newId(state),
       pos: { ...at },
-      radius: p.splashRadius * 0.9,
-      dps: 8 * state.modifiers.potionDamageMult,
-      time: 3.0,
+      radius: p.splashRadius * 0.85,
+      dps,
+      time,
     });
   }
 
@@ -219,10 +359,12 @@ function resolveImpact(state: GameState, p: Projectile, at: Vec2): void {
 
 function nearestEnemy(state: GameState, at: Vec2, maxDistance: number): Enemy | null {
   let best: Enemy | null = null;
-  let bestD = maxDistance;
+  let bestD2 = maxDistance * maxDistance;
   for (const e of state.enemies) {
-    const d = dist(at, e.pos);
-    if (d < bestD) { bestD = d; best = e; }
+    const dx = at.x - e.pos.x;
+    const dy = at.y - e.pos.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) { bestD2 = d2; best = e; }
   }
   return best;
 }
@@ -236,10 +378,16 @@ export function applyAreaDamage(
   manualBonus: boolean,
 ): void {
   for (const e of state.enemies) {
-    const d = dist(at, e.pos);
-    if (d > radius + e.kind.radius) continue;
+    const dx = at.x - e.pos.x;
+    const dy = at.y - e.pos.y;
+    const d2 = dx * dx + dy * dy;
+    const outerR = radius + e.kind.radius;
+    if (d2 > outerR * outerR) continue;
     let dmg = damage;
-    if (manualBonus && d < radius * 0.4) dmg *= 1.2 + state.metaPotionAimBonus;
+    if (manualBonus) {
+      const innerR = radius * 0.4;
+      if (d2 < innerR * innerR) dmg *= 1.2 + state.metaPotionAimBonus;
+    }
     applyDamageToEnemy(state, e, dmg, element);
   }
 }
@@ -250,11 +398,33 @@ export function applyDamageToEnemy(
   rawDamage: number,
   element: Projectile['element'],
 ): void {
+  // Cursed-extra: dodge roll. Non-boss enemies get a per-hit chance to
+  // fully evade the projectile. The chance is hard-capped so the player
+  // can never softlock from too many stacked dodge extras.
+  if (
+    !e.kind.isBoss
+    && state.modifiers.enemyDodgeChance > 0
+    && state.rng.chance(Math.min(0.6, state.modifiers.enemyDodgeChance))
+  ) {
+    e.hitFlash = 0.08;
+    spawnFloatingText(state, t('floating.dodge'), e.pos, '#a0c4ff');
+    return;
+  }
+
   // Difficulty abilities:
-  // One-hit shield absorbs the first hit completely and breaks.
+  // One-hit shield absorbs the first hit completely and breaks. Epic /
+  // Ancient golems regenerate the shield after a short delay (8s on
+  // Epic, 6s on Ancient) so a single AoE clear no longer disables them
+  // for the rest of the wave.
   if (e.shieldCharges > 0) {
     e.shieldCharges -= 1;
     e.hitFlash = 0.18;
+    if (e.abilities.includes('one_hit_shield') && e.abilityTier !== 'base') {
+      const regenDelay = e.abilityTier === 'ancient' ? 6 : 8;
+      // Only queue a regen if there isn't one already running, so
+      // chaining hits while a regen is queued doesn't keep deferring it.
+      if (e.shieldRegenTimer <= 0) e.shieldRegenTimer = regenDelay;
+    }
     // Spawn a small visual cue via floating text so the player reads it.
     spawnFloatingText(state, t('floating.shieldHit'), e.pos, '#ffd166');
     return;
@@ -266,17 +436,25 @@ export function applyDamageToEnemy(
     return;
   }
 
-  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction.
+  // Base armor, plus homunculus phase 2+ stacks an extra 25% reduction
+  // and any cursed-extra global armour bump. The total is clamped to
+  // [0, 0.95] so the floor ensures damage still ticks through.
   const baseArmor = e.kind.armor
-    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0);
+    + (e.kind.id === 'boss_homunculus' && e.bossPhase >= 2 ? 0.25 : 0)
+    + state.modifiers.enemyArmorAdd;
   // Meta armour penetration scales the effective armour value down.
-  const armor = baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen);
+  const armor = Math.min(0.95,
+    baseArmor * e.status.armorBreakFactor * (1 - state.metaArmorPen));
   let dmg = Math.max(1, rawDamage * (1 - armor));
 
   // Meta crit chance: doubled damage on a successful roll.
   if (state.metaCritChance > 0 && state.rng.chance(state.metaCritChance)) {
     dmg *= 2;
-    spawnFloatingText(state, t('floating.crit'), e.pos, '#ffd166');
+    // Crit indicator: render as the gold-sparkle 'crit' variant. The
+    // damage number itself isn't shown (towers fire too fast for that
+    // to be readable), but the crit tag pops up above the enemy so
+    // the player gets a clear "yes that hit harder" beat.
+    spawnFloatingText(state, t('floating.crit'), e.pos, '#ffe17a', 'crit');
   }
 
   // Armored elite: ×0.6 physical damage, aether unaffected.
@@ -295,14 +473,58 @@ export function applyDamageToEnemy(
     dmg *= 1.3;
   }
 
-  e.hp -= dmg;
-  e.hitFlash = 0.12;
-  audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
+  // Cursed-extra: bonus shield soaks damage before it spills over to HP.
+  // Damage that fully drains the shield bleeds the remainder into HP so
+  // the hit still registers.
+  if (e.extraShield > 0) {
+    const absorbed = Math.min(e.extraShield, dmg);
+    e.extraShield -= absorbed;
+    dmg -= absorbed;
+    if (dmg <= 0) {
+      e.hitFlash = 0.10;
+      audio.playSfx('enemyHit', { detune: 1.2 });
+      return;
+    }
+  }
 
-  // Dash-back: on a successful hit push the enemy away from the hero for
-  // a brief period so the projectile knocks them back slightly.
+  // Frost finisher rule: the ice vial never one-shots a healthy target.
+  // If pre-hit HP is already below the execute threshold, frost shatters
+  // the enemy outright; otherwise damage is clamped so frost can never
+  // bring HP below the threshold in a single tick. Bosses are exempt so
+  // their phase transitions stay intact.
+  let frostExecute = false;
+  if (element === 'frost' && !e.kind.isBoss) {
+    const executeThreshold = e.maxHp * FROST_EXECUTE_THRESHOLD;
+    if (e.hp <= executeThreshold) {
+      frostExecute = true;
+    } else {
+      dmg = Math.min(dmg, e.hp - executeThreshold);
+    }
+  }
+
+  e.hp -= dmg;
+  if (frostExecute) e.hp = 0;
+  e.hitFlash = 0.12;
+  // Stamp the element so on-death attribution (run contracts) can count
+  // this hit's element as the killing blow if hp reaches 0 below.
+  e.lastHitElement = element;
+  audio.playSfx('enemyHit', { detune: e.kind.isBoss ? 0.6 : 1 + (state.rng.range(-1, 1) * 0.05) });
+  // Boss-hit camera shake: each non-killing boss hit gets a small kick so
+  // the player physically feels they're chipping a chunky enemy. Boss
+  // *deaths* (a much bigger shake) are triggered separately in
+  // `onEnemyDeath` to avoid double-shaking the kill frame.
+  if (e.kind.isBoss && e.hp > 0) {
+    shakeCamera(2.5, 0.1);
+  }
+
+  // Dash-back: on a successful hit push the enemy away from the hero
+  // for a brief period so the projectile knocks them back slightly.
+  // Tier scales how long the kite lasts — Epic doubles the impulse,
+  // Ancient stretches it further so rats become very hard to chain.
   if (e.abilities.includes('dash_back_on_hit')) {
-    e.dashBackTimer = Math.max(e.dashBackTimer, 0.25);
+    const dashDuration =
+      e.abilityTier === 'epic' ? 0.45 : e.abilityTier === 'ancient' ? 0.65 : 0.25;
+    e.dashBackTimer = Math.max(e.dashBackTimer, dashDuration);
   }
 
   // Boss perpendicular dodge: triggered on hits when ready.

@@ -12,16 +12,28 @@ export interface Camera {
   cx: number;
   cy: number;
   scale: number;
+  /** Canvas-pixel offset applied AFTER the centered scale. Used to
+   *  recenter zoomed content on the canvas midpoint when the zoom
+   *  factor is greater than the world→canvas base scale (e.g. the
+   *  phone-zoom in `getRenderCamera`). Defaults to 0 / 0 so the
+   *  existing pure-scale path stays a no-op. */
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export function applyIsoTransform(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
 ): void {
-  if (camera.scale === 1) return;
-  ctx.translate(camera.cx, camera.cy);
-  ctx.scale(camera.scale, camera.scale);
-  ctx.translate(-camera.cx, -camera.cy);
+  const ox = camera.offsetX ?? 0;
+  const oy = camera.offsetY ?? 0;
+  if (camera.scale === 1 && ox === 0 && oy === 0) return;
+  if (ox !== 0 || oy !== 0) ctx.translate(ox, oy);
+  if (camera.scale !== 1) {
+    ctx.translate(camera.cx, camera.cy);
+    ctx.scale(camera.scale, camera.scale);
+    ctx.translate(-camera.cx, -camera.cy);
+  }
 }
 
 export function screenToWorld(
@@ -29,12 +41,18 @@ export function screenToWorld(
   sy: number,
   camera: Camera,
 ): { x: number; y: number } {
-  if (camera.scale === 1) {
+  const ox = camera.offsetX ?? 0;
+  const oy = camera.offsetY ?? 0;
+  if (camera.scale === 1 && ox === 0 && oy === 0) {
     return { x: sx, y: sy };
   }
+  // Inverse of `applyIsoTransform`: undo the post-scale offset, then
+  // undo the centered scale.
+  const ax = sx - ox;
+  const ay = sy - oy;
   return {
-    x: camera.cx + (sx - camera.cx) / camera.scale,
-    y: camera.cy + (sy - camera.cy) / camera.scale,
+    x: camera.cx + (ax - camera.cx) / camera.scale,
+    y: camera.cy + (ay - camera.cy) / camera.scale,
   };
 }
 
@@ -46,11 +64,13 @@ export function worldToScreen(
   wy: number,
   camera: Camera,
 ): { x: number; y: number } {
-  if (camera.scale === 1) {
+  const ox = camera.offsetX ?? 0;
+  const oy = camera.offsetY ?? 0;
+  if (camera.scale === 1 && ox === 0 && oy === 0) {
     return { x: wx, y: wy };
   }
   return {
-    x: camera.cx + (wx - camera.cx) * camera.scale,
-    y: camera.cy + (wy - camera.cy) * camera.scale,
+    x: camera.cx + (wx - camera.cx) * camera.scale + ox,
+    y: camera.cy + (wy - camera.cy) * camera.scale + oy,
   };
 }

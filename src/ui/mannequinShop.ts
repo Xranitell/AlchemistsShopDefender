@@ -1,5 +1,7 @@
 import type { GameState } from '../game/state';
+import { placePopupNearAnchor } from './popupPlacement';
 import { t } from '../i18n';
+import { tutorial } from './tutorial';
 
 /**
  * Popup attached to the Mannequin (the centre of the arena). Exposes the
@@ -18,6 +20,12 @@ export class MannequinShop {
 
   open(screenPos: { x: number; y: number }): void {
     if (!this.state) return;
+    // Defence-in-depth: repair / shield is a between-waves action only.
+    // The click handler in main.ts already gates on phase, but if any
+    // other call site forgets to we silently no-op here too — this also
+    // protects against the popup re-opening if the state flips into a
+    // wave while it's already on screen.
+    if (this.state.phase !== 'preparing') return;
     this.close();
     const el = document.createElement('div');
     el.className = 'tower-shop mannequin-shop';
@@ -25,8 +33,7 @@ export class MannequinShop {
     el.style.top = `${screenPos.y - 20}px`;
 
     const title = document.createElement('div');
-    title.style.color = 'var(--fg-dim)';
-    title.style.fontSize = '12px';
+    title.className = 'tower-shop-info';
     title.textContent = t('ui.mannequin.title');
     el.appendChild(title);
 
@@ -34,12 +41,17 @@ export class MannequinShop {
     this.appendShieldButton(el);
 
     const cancel = document.createElement('button');
+    cancel.className = 'tower-shop-cancel';
     cancel.textContent = t('ui.mannequin.close');
     cancel.addEventListener('click', () => this.close());
     el.appendChild(cancel);
 
     this.root.appendChild(el);
     this.el = el;
+    placePopupNearAnchor(el, screenPos);
+    // Tell the FTUE controller that the player has discovered the
+    // repair / shield panel — dismisses the `w2-mannequin-shop` hint.
+    tutorial.notify('mannequinShopOpened');
   }
 
   private appendRepairButton(el: HTMLDivElement): void {
@@ -73,8 +85,7 @@ export class MannequinShop {
     const cost = 120;
     if (this.state.tempShieldTime > 0) {
       const info = document.createElement('div');
-      info.style.color = 'var(--fg-dim)';
-      info.style.fontSize = '12px';
+      info.className = 'tower-shop-info';
       info.textContent = t('ui.mannequin.shieldActive', { sec: this.state.tempShieldTime.toFixed(1) });
       el.appendChild(info);
       return;

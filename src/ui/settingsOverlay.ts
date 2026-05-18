@@ -1,6 +1,7 @@
-import type { MetaSave } from '../game/save';
+import type { MetaSave, MotionMode } from '../game/save';
 import { resetMeta, saveMeta } from '../game/save';
 import { audio } from '../audio/audio';
+import { applyMotionMode } from '../engine/motion';
 import { t, getLocale, setLocale, type Locale } from '../i18n';
 
 export class SettingsOverlay {
@@ -36,36 +37,51 @@ export class SettingsOverlay {
     // Audio section: SFX + music volume sliders. Edits flow straight through
     // to the audio engine in real-time, then persist via saveMeta() so the
     // chosen levels survive a reload.
-    body.appendChild(buildAudioSection(opts.meta));
+    const audioSection = buildAudioSection(opts.meta);
+    audioSection.dataset.tutorialTarget = 'settings-audio';
+    body.appendChild(audioSection);
 
     // Language section (PR-9 i18n).
-    body.appendChild(buildLanguageSection(opts.meta));
+    const languageSection = buildLanguageSection(opts.meta);
+    languageSection.dataset.tutorialTarget = 'settings-language';
+    body.appendChild(languageSection);
+
+    // Motion / animation section. Lets the player override the OS
+    // `prefers-reduced-motion` query in either direction. Default for new
+    // saves is `'minimal'` on touch devices (Android phones never set
+    // the OS query) and `'auto'` on desktop / iOS.
+    const motionSection = buildMotionSection(opts.meta);
+    motionSection.dataset.tutorialTarget = 'settings-motion';
+    body.appendChild(motionSection);
 
     // Stats section
     const stats = document.createElement('div');
     stats.className = 'settings-section';
+    stats.dataset.tutorialTarget = 'settings-stats';
     stats.innerHTML = `
       <h3>${t('ui.settings.stats')}</h3>
       <div class="settings-stat">${t('ui.settings.stat.runs')}<strong>${opts.meta.totalRuns}</strong></div>
       <div class="settings-stat">${t('ui.settings.stat.bestWave')}<strong>${opts.meta.bestWave}</strong></div>
       <div class="settings-stat">${t('ui.settings.stat.blue')}<strong>${opts.meta.blueEssence}</strong></div>
       <div class="settings-stat">${t('ui.settings.stat.ancient')}<strong>${opts.meta.ancientEssence}</strong></div>
-      <div class="settings-stat">${t('ui.settings.stat.keys')}<strong>${opts.meta.keys}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.epicKeys')}<strong>${opts.meta.epicKeys}</strong></div>
+      <div class="settings-stat">${t('ui.settings.stat.ancientKeys')}<strong>${opts.meta.ancientKeys}</strong></div>
     `;
     body.appendChild(stats);
 
     // Reset section
     const resetSection = document.createElement('div');
     resetSection.className = 'settings-section settings-danger';
+    resetSection.dataset.tutorialTarget = 'settings-reset';
     const resetBtn = document.createElement('button');
     resetBtn.className = 'settings-reset-btn';
     resetBtn.textContent = t('ui.settings.reset');
     resetBtn.addEventListener('click', () => {
       audio.playSfx('uiClick');
-      if (confirm(t('ui.settings.resetConfirm'))) {
+      openResetConfirmDialog(panel, () => {
         resetMeta();
         opts.onReset();
-      }
+      });
     });
     resetSection.appendChild(resetBtn);
     body.appendChild(resetSection);
@@ -83,6 +99,47 @@ export class SettingsOverlay {
     this.root.classList.remove('visible');
     this.root.innerHTML = '';
   }
+}
+
+/** Animation strength picker: 3-button segmented control (Auto / Minimal /
+ *  Full). Edits flow through `applyMotionMode()` so the UI reacts on the
+ *  next paint, then persist via `saveMeta()`. */
+function buildMotionSection(meta: MetaSave): HTMLElement {
+  const section = document.createElement('div');
+  section.className = 'settings-section';
+  const title = document.createElement('h3');
+  title.textContent = t('ui.settings.motion');
+  section.appendChild(title);
+
+  const row = document.createElement('div');
+  row.className = 'settings-motion-row';
+  const modes: MotionMode[] = ['auto', 'minimal', 'full'];
+  const buttons: HTMLButtonElement[] = [];
+  for (const mode of modes) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'settings-motion-btn' + (meta.motionMode === mode ? ' active' : '');
+    btn.textContent = t(`ui.settings.motion.${mode}`);
+    btn.addEventListener('click', () => {
+      audio.playSfx('uiClick');
+      if (meta.motionMode === mode) return;
+      meta.motionMode = mode;
+      saveMeta(meta);
+      applyMotionMode(mode);
+      for (const b of buttons) b.classList.remove('active');
+      btn.classList.add('active');
+    });
+    buttons.push(btn);
+    row.appendChild(btn);
+  }
+  section.appendChild(row);
+
+  const hint = document.createElement('div');
+  hint.className = 'settings-motion-hint';
+  hint.textContent = t('ui.settings.motion.hint');
+  section.appendChild(hint);
+
+  return section;
 }
 
 /** Language picker: small RU/EN button row. Updates the locale immediately
@@ -108,6 +165,9 @@ function buildLanguageSection(meta: MetaSave): HTMLElement {
       if (getLocale() === code) return;
       setLocale(code);
       meta.locale = code;
+      // Once the player picks a language manually we stop letting the
+      // Yandex SDK override it on subsequent sessions.
+      meta.localeUserChoice = true;
       saveMeta(meta);
     });
     row.appendChild(btn);
@@ -128,6 +188,10 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
   title.textContent = t('ui.settings.audio');
   section.appendChild(title);
 
+  // Gameplay SFX — towers, enemies, drops, reactions. Audible "uiClick"
+  // sample is intentionally omitted on release here so it doesn't bleed
+  // into the *gameplay* slider preview when the player is tweaking that
+  // channel; gameplay sounds are tested in-run instead.
   section.appendChild(
     buildVolumeSlider({
       label: t('ui.settings.sfx'),
@@ -139,7 +203,26 @@ function buildAudioSection(meta: MetaSave): HTMLElement {
       onChange: (v) => {
         meta.sfxVolume = v;
         saveMeta(meta);
-        // Audible cue so the player can sample the new level on release.
+        // Sample a real gameplay SFX so the player hears the new
+        // gameplay-channel level.
+        audio.playSfx('goldPickup');
+      },
+    }),
+  );
+
+  section.appendChild(
+    buildVolumeSlider({
+      label: t('ui.settings.uiSfx'),
+      initial: meta.uiSfxVolume,
+      onInput: (v) => {
+        meta.uiSfxVolume = v;
+        audio.setUiSfxVolume(v);
+      },
+      onChange: (v) => {
+        meta.uiSfxVolume = v;
+        saveMeta(meta);
+        // Sample a UI click so the player hears the new UI-channel
+        // level on release.
         audio.playSfx('uiClick');
       },
     }),
@@ -202,4 +285,72 @@ function buildVolumeSlider(opts: {
   row.appendChild(slider);
   row.appendChild(valueLabel);
   return row;
+}
+
+/** Custom in-app confirmation dialog for the destructive "Reset progress"
+ *  action. Replaces the native `window.confirm()` so the prompt matches the
+ *  game's pixel-art chrome and works inside Yandex Games where the native
+ *  modal can be suppressed or themed inconsistently. Mirrors the structure
+ *  of `pause-exit-confirm` (see `pauseStatsOverlay.ts`) and reuses the same
+ *  CSS family of classes via the `.pause-exit-*` overlay style. */
+function openResetConfirmDialog(host: HTMLElement, onConfirm: () => void): void {
+  // Don't stack a second dialog if the player double-clicks the reset
+  // button before the first has resolved.
+  if (host.querySelector('.pause-exit-confirm.settings-reset-confirm') !== null) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pause-exit-confirm settings-reset-confirm';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'pause-exit-dialog';
+
+  const title = document.createElement('div');
+  title.className = 'pause-exit-title';
+  title.textContent = t('ui.resetConfirm.title');
+  dialog.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'pause-exit-body';
+  body.textContent = t('ui.resetConfirm.body');
+  dialog.appendChild(body);
+
+  const warn = document.createElement('div');
+  warn.className = 'pause-exit-warning';
+  warn.textContent = t('ui.resetConfirm.warning');
+  dialog.appendChild(warn);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'pause-exit-buttons';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'pause-exit-btn pause-exit-stay';
+  cancelBtn.textContent = t('ui.resetConfirm.cancel');
+  cancelBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+    host.classList.remove('confirming-reset');
+  });
+  buttons.appendChild(cancelBtn);
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'pause-exit-btn pause-exit-confirm-btn';
+  confirmBtn.textContent = t('ui.resetConfirm.confirm');
+  confirmBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+    host.classList.remove('confirming-reset');
+    onConfirm();
+  });
+  buttons.appendChild(confirmBtn);
+
+  dialog.appendChild(buttons);
+  overlay.appendChild(dialog);
+  host.appendChild(overlay);
+  host.classList.add('confirming-reset');
+
+  // Default focus on the safer cancel button so a stray Enter keypress
+  // doesn't wipe the player's account.
+  requestAnimationFrame(() => cancelBtn.focus());
 }

@@ -1,5 +1,18 @@
 import type { Vec2 } from './math';
 
+/**
+ * Returns true when `target` (or any of its ancestors) is the visible
+ * `#overlay` container. UI overlays (main menu, brewery, talent tree,
+ * settings, …) all live inside `#overlay` and toggle `.visible` while
+ * shown — when one of them is up, every touch starting inside its DOM
+ * subtree is a UI gesture (tap a button, drag a slider, scroll a list)
+ * and should NOT be forwarded to the game canvas behind it.
+ */
+function isInsideOverlay(target: HTMLElement | null): boolean {
+  if (!target || !target.closest) return false;
+  return !!target.closest('#overlay.visible');
+}
+
 export interface InputState {
   mouse: Vec2;
   mouseDown: boolean;
@@ -18,47 +31,77 @@ export class Input {
   };
 
   private canvas: HTMLCanvasElement;
-  private cssToGameX = 1;
-  private cssToGameY = 1;
+  // Cached canvas-rect numbers. We only refresh on resize / scroll
+  // instead of per pointer event — `getBoundingClientRect` forces a
+  // synchronous layout each call, which on mobile can dominate the
+  // `mousemove` / `touchmove` cost during dragging. The cache is
+  // invalidated on every scroll / resize / orientation event.
+  private rectLeft = 0;
+  private rectTop = 0;
+  private rectRight = 0;
+  private rectBottom = 0;
+  private rectDirty = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.attach();
   }
 
-  private updateScale() {
-    const rect = this.canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      this.cssToGameX = this.canvas.width / rect.width;
-      this.cssToGameY = this.canvas.height / rect.height;
-    }
+  private invalidateRect = (): void => {
+    this.rectDirty = true;
+  };
+
+  private syncRect(): void {
+    if (!this.rectDirty) return;
+    const r = this.canvas.getBoundingClientRect();
+    this.rectLeft = r.left;
+    this.rectTop = r.top;
+    this.rectRight = r.right;
+    this.rectBottom = r.bottom;
+    this.rectDirty = false;
   }
 
+  /** Translate a CSS-pixel client coord into a CSS-pixel canvas-relative
+   *  coord. The renderer applies an HiDPI base transform so all game/
+   *  world math runs in CSS pixels — pointer events come in CSS pixels
+   *  too (`clientX` / `clientY`), so a simple subtract-the-origin is the
+   *  whole conversion. The previous implementation also divided by
+   *  `canvas.width / rect.width`, which collapsed to 1 when the backing
+   *  store matched the CSS size; with the new DPR-aware backing store
+   *  that ratio is no longer 1 and the multiplication would push every
+   *  hit-test off by `dpr`. */
   private toGame(clientX: number, clientY: number): Vec2 {
-    this.updateScale();
-    const rect = this.canvas.getBoundingClientRect();
+    this.syncRect();
     return {
-      x: (clientX - rect.left) * this.cssToGameX,
-      y: (clientY - rect.top) * this.cssToGameY,
+      x: clientX - this.rectLeft,
+      y: clientY - this.rectTop,
     };
   }
 
   private isInsideCanvas(clientX: number, clientY: number): boolean {
-    const rect = this.canvas.getBoundingClientRect();
+    this.syncRect();
     return (
-      clientX >= rect.left && clientX <= rect.right &&
-      clientY >= rect.top && clientY <= rect.bottom
+      clientX >= this.rectLeft && clientX <= this.rectRight &&
+      clientY >= this.rectTop && clientY <= this.rectBottom
     );
   }
 
   private attach() {
     const c = this.canvas;
+
+    // Refresh the cached canvas rect lazily on layout-changing events.
+    // We use {passive: true} so we don't accidentally block scrolling
+    // when the canvas covers a scrollable region.
+    window.addEventListener('resize', this.invalidateRect, { passive: true });
+    window.addEventListener('scroll', this.invalidateRect, { passive: true });
+    window.addEventListener('orientationchange', this.invalidateRect, { passive: true });
+
     // Listen on window so aim updates even when cursor is over HUD overlays.
     window.addEventListener('mousemove', (e) => {
       if (this.isInsideCanvas(e.clientX, e.clientY)) {
         this.state.mouse = this.toGame(e.clientX, e.clientY);
       }
-    });
+    }, { passive: true });
     c.addEventListener('mousedown', (e) => {
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
@@ -67,19 +110,22 @@ export class Input {
     // Fallback: register press when the click hits a non-interactive HUD
     // element that overlaps the canvas (e.g. decorative panel areas).
     // Skip buttons / inputs so their own click handlers still work.
+    // Also skip .tower-shop / .mannequin-shop so clicks on those popups
+    // don't trigger game actions while the popup is open or mid-close.
     window.addEventListener('mousedown', (e) => {
       if (e.target === c) return;
       if (!this.isInsideCanvas(e.clientX, e.clientY)) return;
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      if ((e.target as HTMLElement).closest?.('.tower-shop')) return;
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;
     });
     window.addEventListener('mouseup', () => {
       this.state.mouseDown = false;
-    });
+    }, { passive: true });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
 
     c.addEventListener('touchstart', (e) => {
@@ -99,6 +145,14 @@ export class Input {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
+      if ((e.target as HTMLElement).closest?.('.tower-shop')) return;
+      // When a fullscreen overlay is open the canvas is hidden behind it
+      // (see `#app:has(#overlay.visible) #hud { display: none }` rule).
+      // Forwarding the touch as a game press while also preventing default
+      // would (a) trigger a phantom vial throw in the obscured arena and
+      // (b) block native vertical pan inside scrollable overlay panels
+      // such as the brewery recipe list. Bail out of both behaviours.
+      if (isInsideOverlay(e.target as HTMLElement | null)) return;
       e.preventDefault();
       this.state.mouse = this.toGame(t.clientX, t.clientY);
       this.state.mouseDown = true;
@@ -108,6 +162,11 @@ export class Input {
     window.addEventListener('touchmove', (e) => {
       const t = e.touches[0];
       if (!t) return;
+      // Same overlay carve-out as the touchstart fallback above. Without
+      // this, dragging inside an overlay (recipe list, mannequin loadout,
+      // talent tree side rail, etc.) ate the gesture before the browser
+      // could turn it into a native vertical pan.
+      if (isInsideOverlay(e.target as HTMLElement | null)) return;
       if (this.isInsideCanvas(t.clientX, t.clientY)) {
         e.preventDefault();
         this.state.mouse = this.toGame(t.clientX, t.clientY);
@@ -116,7 +175,7 @@ export class Input {
 
     window.addEventListener('touchend', () => {
       this.state.mouseDown = false;
-    });
+    }, { passive: true });
 
     window.addEventListener('keydown', (e) => {
       if (!this.state.keys.has(e.code)) {

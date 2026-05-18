@@ -1,17 +1,63 @@
 import type { GameState } from './state';
-import { newId, ENDLESS_MODIFIER_POOL } from './state';
+import { newId, spawnFloatingText, ENDLESS_MODIFIER_POOL } from './state';
 import { newStatus, type EnemyKind } from './types';
 import type { Vec2 } from '../engine/math';
 import { ENEMIES } from '../data/enemies';
 import { WAVES } from '../data/waves';
 import { BOSS_WAVES } from '../data/bossWaves';
-import type { EnemyAbility } from '../data/difficulty';
+import { abilityTierFor, EPIC_ONLY_ENEMY_ABILITIES, type EnemyAbility } from '../data/difficulty';
 import { ELITE_MOD_IDS, type EliteModId } from '../data/eliteMods';
+import { DAILY_EVENT_BY_ID } from '../data/dailyEvents';
 import { audio } from '../audio/audio';
+import { rerollWaveMutators, addEndlessDungeonLaw } from './world';
+import { MUTATOR_BY_ID } from '../data/mutators';
+import { t } from '../i18n';
+import { shakeCamera } from '../engine/shake';
+import { spawnShockwave } from '../render/shockwaves';
 
 /** Return the active wave list for the current difficulty mode. */
 function activeWaves(state: GameState): readonly import('../game/types').WaveDef[] {
-  return state.difficulty === 'boss_challenge' ? BOSS_WAVES : WAVES;
+  // Daily Event: Boss-day uses BOSS_WAVES; the rest of the events use the
+  // standard wave list and rely on enemy/spawn modifiers for their twist.
+  // Boss Challenge is no longer a standalone difficulty — it lives as one
+  // of the rotating daily events (Tuesday).
+  if (state.difficulty === 'daily' && state.dailyEventId) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    if (ev?.useBossWaves) return BOSS_WAVES;
+  }
+  return WAVES;
+}
+
+/** True when the current run should loop wave 1 → end → wave 1 again
+ *  (endless mode + every Daily Event since the user wants infinite waves). */
+function isInfiniteRun(state: GameState): boolean {
+  return state.difficulty === 'endless' || state.difficulty === 'daily';
+}
+
+// ── Linear per-wave difficulty scaling ──────────────────────────────────────
+// Every wave adds a fixed increment to enemy HP and speed so difficulty
+// grows linearly rather than exponentially. The formula counts the
+// effective wave number across endless loops so the curve stays smooth.
+
+/** Additive HP increment per wave (4 % of base per wave). */
+const HP_PER_WAVE = 0.04;
+/** Additive speed increment per wave (1 % of base per wave). */
+const SPEED_PER_WAVE = 0.01;
+
+/** 0-based effective wave number counting across endless loops. */
+function effectiveWaveNumber(state: GameState): number {
+  const wavesPerCycle = activeWaves(state).length;
+  return state.endlessLoop * wavesPerCycle + Math.max(0, state.waveState.currentIndex);
+}
+
+/** Linear HP scaling multiplier for the current wave. */
+export function waveHpScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * HP_PER_WAVE;
+}
+
+/** Linear speed scaling multiplier for the current wave. */
+export function waveSpeedScale(state: GameState): number {
+  return 1 + effectiveWaveNumber(state) * SPEED_PER_WAVE;
 }
 
 /** Configured length of the active wave in seconds, or 0 if no wave is set. */
@@ -24,17 +70,26 @@ export function currentWaveDuration(state: GameState): number {
 /** Length of the prep window shown BEFORE the very first wave of a run.
  *  Gives the player a moment to read the scene, place a starter tower, and
  *  pick a target before slimes arrive. */
-export const INITIAL_PREP_DURATION = 18;
+export const PREP_DURATION = 25;
+export const INITIAL_PREP_DURATION = PREP_DURATION;
+
+/** Daily Event prep-window scaling. Defaults to 1 (no change); the
+ *  Speedrun event sets this to <1 so the prep timer ticks down faster
+ *  and the player gets less placement time between waves. */
+function dailyPrepMult(state: GameState): number {
+  if (state.difficulty !== 'daily' || !state.dailyEventId) return 1;
+  const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+  return ev?.prepDurationMult ?? 1;
+}
 
 /** Configured length of the upcoming pause (used while the game is in the
  *  'preparing' phase). Falls back to a sensible default when no wave has run
  *  yet (e.g. just after starting a new run). */
 export function currentPauseDuration(state: GameState): number {
   const idx = state.waveState.currentIndex;
-  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, INITIAL_PREP_DURATION);
-  const waves = activeWaves(state);
-  const def = waves[idx];
-  return def?.pauseAfterSec ?? 6;
+  const scaled = PREP_DURATION * dailyPrepMult(state);
+  if (idx < 0) return Math.max(state.waveState.pauseDurationLeft, scaled);
+  return scaled;
 }
 
 export function startNextWave(state: GameState): void {
@@ -42,9 +97,10 @@ export function startNextWave(state: GameState): void {
   ws.currentIndex += 1;
   const waves = activeWaves(state);
   if (ws.currentIndex >= waves.length) {
-    if (state.difficulty === 'endless') {
-      // Endless: loop back to wave 0 with stiffer modifiers + random
-      // modifier from the pool. Show the modifier selector overlay first.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: loop back to wave 0 with stiffer modifiers +
+      // a random modifier from the pool. Show the modifier selector overlay
+      // first so the player can read the new twist.
       state.endlessLoop += 1;
       ws.currentIndex = 0;
 
@@ -82,7 +138,42 @@ function doStartWave(state: GameState): void {
       entrance: state.rng.int(0, 4),
     });
   }
+  // Daily-event Horde / similar: copy a fraction of base spawns at random
+  // times to inflate density. `spawnCountMult` of 1.5 ⇒ +50% extra spawns.
+  const mult = state.spawnCountMult ?? 1;
+  if (mult > 1 && baseSpawns.length > 0) {
+    const bonus = Math.round(baseSpawns.length * (mult - 1));
+    for (let i = 0; i < bonus; i++) {
+      const template = baseSpawns[i % baseSpawns.length]!;
+      extra.push({
+        kind: template.kind,
+        at: state.rng.range(0, def.durationSec - 1),
+        entrance: state.rng.int(0, 4),
+      });
+    }
+  }
+  // Daily Event "День боссов": after the boss-wave list has looped at
+  // least once, also drop a miniboss into every regular-feeling wave so
+  // the "every wave is a boss wave" promise stays true on repeats.
+  if (state.difficulty === 'daily' && state.dailyEventId) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    if (ev?.miniBossEveryWave && !def.isBoss && ENEMIES['miniboss_slime']) {
+      // Spawn the miniboss in the back half of the wave so the player has
+      // some time to soften up the smaller enemies first.
+      const t = Math.max(2, def.durationSec * 0.55);
+      extra.push({ kind: 'miniboss_slime', at: t, entrance: state.rng.int(0, 4) });
+    }
+  }
   ws.pendingSpawns = [...baseSpawns, ...extra].sort((a, b) => a.at - b.at);
+
+  // Side-only spawn rule: collapse legacy top/bottom (entrances 0, 2)
+  // onto the matching horizontal half so the actual spawn position
+  // and the entrance-marker UI stay in sync. Wave authoring still uses
+  // four entrance ids for spawn-timing variety; we just project them
+  // onto the two horizontal sides at activation time.
+  ws.pendingSpawns.forEach((s) => {
+    s.entrance = (s.entrance % 2 === 0) ? 3 : 1;
+  });
 
   // Boss waves swap to the dedicated boss music track and play a stinger;
   // otherwise we just bump the regular waveStart fanfare.
@@ -109,16 +200,49 @@ function doStartWave(state: GameState): void {
   }
 
   state.phase = 'wave';
+  // Wave-start stinger: a small shake + a wide cyan shockwave from the
+  // mannequin so the wave kick-off has a clear physical "go!" beat.
+  // Boss waves get a meatier version because they're meant to feel
+  // heavier as a drumroll moment.
+  shakeCamera(def.isBoss ? 4 : 1, 0.22);
+  spawnShockwave(
+    state.mannequin.pos.x,
+    state.mannequin.pos.y,
+    20,
+    def.isBoss ? 320 : 220,
+    def.isBoss ? 'rgba(255, 200, 130, 1)' : 'rgba(189, 246, 255, 1)',
+    def.isBoss ? 0.55 : 0.4,
+    def.isBoss ? 5 : 3,
+  );
 }
 
 export function startPause(state: GameState): void {
   const ws = state.waveState;
-  const waves = activeWaves(state);
-  const def = waves[ws.currentIndex];
   ws.pauseTime = 0;
-  ws.pauseDurationLeft = def?.pauseAfterSec ?? 6;
+  ws.pauseDurationLeft = PREP_DURATION * dailyPrepMult(state);
   state.entrances.forEach((e) => { e.active = false; });
   state.phase = 'preparing';
+  // Re-roll the wave-rotating "dungeon laws" so the upcoming prep window
+  // surfaces the next wave's mutators. No-op outside Epic / Ancient.
+  rerollWaveMutators(state);
+
+  // Daily Event "Изобилие": gift a chunk of bonus gold every prep window
+  // so the player always has the budget to experiment with builds. Skip
+  // the very first prep (before any wave has been beaten) — the run-start
+  // gold grant already covers wave 1 placements.
+  if (state.difficulty === 'daily' && state.dailyEventId && ws.currentIndex >= 0) {
+    const ev = DAILY_EVENT_BY_ID[state.dailyEventId];
+    const bonus = ev?.bonusGoldPerWave ?? 0;
+    if (bonus > 0) {
+      state.gold += bonus;
+      spawnFloatingText(
+        state,
+        `+${bonus} G`,
+        { x: state.mannequin.pos.x, y: state.mannequin.pos.y - 12 },
+        '#ffd166',
+      );
+    }
+  }
 }
 
 export function updateWave(state: GameState, dt: number): void {
@@ -139,12 +263,16 @@ export function updateWave(state: GameState, dt: number): void {
     const kind = ENEMIES[spawn.kind];
     if (!kind) continue;
 
-    // Cardinal base angles: 0=top, 1=right, 2=bottom, 3=left.
-    // Top = -π/2, right = 0, bottom = π/2, left = π (on canvas y-down).
-    const baseAngles = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
-    const baseAngle = baseAngles[spawn.entrance % 4]!;
-    // Wide ±60° jitter so a single wave direction still spans a full side.
-    const angle = baseAngle + state.rng.range(-Math.PI / 3, Math.PI / 3);
+    // Side-facing creature sprites read awkwardly when an enemy walks in
+    // from straight above or below the mannequin (the painted body is
+    // always east-/west-facing, so a north/south spawn shows the back of
+    // the creature). Wave activation already collapsed every spawn's
+    // entrance index onto a horizontal side (1 = right, 3 = left), so
+    // here we just rotate that into a base angle and add ±50° jitter
+    // — never reaching the forbidden top/bottom 80° wedge.
+    const HORIZONTAL_JITTER = (50 * Math.PI) / 180;
+    const baseAngle = spawn.entrance === 3 ? Math.PI : 0;
+    const angle = baseAngle + state.rng.range(-HORIZONTAL_JITTER, HORIZONTAL_JITTER);
     const pos = pickOffscreenPoint(state, angle);
     spawnEnemy(state, kind, pos);
     ws.spawnedCount += 1;
@@ -152,8 +280,9 @@ export function updateWave(state: GameState, dt: number): void {
 
   // Wave is over when all spawns finished and arena is empty.
   if (ws.pendingSpawns.length === 0 && state.enemies.length === 0) {
-    if (state.difficulty === 'endless') {
-      // Award end-of-wave gold and trigger card draft — no victory.
+    if (isInfiniteRun(state)) {
+      // Endless / Daily Event: award end-of-wave gold and trigger card
+      // draft — there is no victory screen.
       const reward = 25 + ws.currentIndex * 8;
       state.gold += reward;
       state.phase = 'card_select';
@@ -180,8 +309,22 @@ export function spawnEnemy(
   splitGeneration = 0,
 ): void {
   const mod = state.difficultyModifier;
-  let maxHp = Math.round(kind.hp * mod.hpMult);
-  const abilities = pickEnemyAbilities(kind.id, mod.abilities);
+  let maxHp = Math.round(kind.hp * mod.hpMult * waveHpScale(state));
+  // Tier the abilities scale on. Epic amplifies the base behaviour
+  // (more children on split, larger explosion, etc.); Ancient layers an
+  // extra mechanic on top (children can split once more, sappers disable
+  // towers longer and leave a fire pool, etc.). Defaults to `base` for
+  // normal / endless / daily so every monster still gets its signature ability.
+  const tier = abilityTierFor(state.difficulty);
+  // Эпический+ gives every kind its base abilities AND any kind-specific
+  // epic ability on top — sapper EMP, golem stun pulse, etc. The base
+  // pool already comes from the mode's modifier; we just append the
+  // epic-only pool when the tier qualifies and let `pickEnemyAbilities`
+  // filter to abilities that apply to this enemy kind.
+  const abilityPool = tier === 'epic' || tier === 'ancient'
+    ? [...mod.abilities, ...EPIC_ONLY_ENEMY_ABILITIES]
+    : mod.abilities;
+  const abilities = pickEnemyAbilities(kind.id, abilityPool);
   // Homunculus enters phase 1 and starts summoning minions every 4 sec.
   const isHomunculus = kind.id === 'boss_homunculus';
 
@@ -193,6 +336,13 @@ export function spawnEnemy(
     maxHp = Math.round(maxHp * 0.7);
   }
 
+  // Golems start with one shield charge plus a second one on Ancient,
+  // matching the "ancient mechanics" tier promise on the difficulty
+  // preview text.
+  const baseShield = abilities.includes('one_hit_shield')
+    ? (tier === 'ancient' ? 2 : 1)
+    : 0;
+
   state.enemies.push({
     id: newId(state),
     kind,
@@ -203,7 +353,14 @@ export function spawnEnemy(
     hitFlash: 0,
     goldPending: 0,
     abilities,
-    shieldCharges: abilities.includes('one_hit_shield') ? 1 : 0,
+    shieldCharges: baseShield,
+    // Cursed-extra: seed the bonus damage-soak shield from the global
+    // multiplier. Bosses don't get this — their HP pools are already
+    // tuned, and stacking another shield ruins their pacing. The
+    // spawn-time max is cached so the renderer can show a proportional
+    // bar above the enemy.
+    extraShield: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
+    extraShieldMax: kind.isBoss ? 0 : maxHp * state.modifiers.enemyExtraShieldFraction,
     dashBackTimer: 0,
     splitGeneration,
     damageTaken: 1,
@@ -221,6 +378,24 @@ export function spawnEnemy(
     bossDodgeDir: { x: 0, y: 0 },
     bossDodgeSpeed: 0,
     bossSlamWindup: 0,
+    lastHitElement: 'neutral',
+    abilityTier: tier,
+    // First aura pulse fires after a short stagger so a wave that
+    // spawns several shamans at once doesn't pulse them on the same
+    // frame.
+    auraHealTimer: abilities.includes('aura_heal')
+      ? 0.5 + state.rng.range(0, 1.0)
+      : 0,
+    shieldRegenTimer: 0,
+    // Rat sprint bookkeeping. The cooldown is staggered so a pack of rats
+    // spawned together don't all surge forward on the same frame.
+    zigzagTimer: 0,
+    zigzagDir: state.rng.range(0, 1) < 0.5 ? -1 : 1,
+    zigzagCooldown: abilities.includes('zigzag_dash')
+      ? 0.6 + state.rng.range(0, 0.9)
+      : 0,
+    attachedTowerId: -1,
+    summonedByBossId: -1,
   });
 }
 
@@ -260,6 +435,18 @@ function pickEnemyAbilities(kindId: string, abilities: EnemyAbility[]): EnemyAbi
       case 'aura_heal':
         if (kindId === 'shaman') out.push(a);
         break;
+      case 'zigzag_dash':
+        // Rats and the rat-king both surge forward in short bursts, so
+        // the boss reads as a giant version of the same "close the gap"
+        // threat the player already knows from regular rats.
+        if (kindId === 'rat' || kindId === 'boss_rat_king') out.push(a);
+        break;
+      case 'disable_tower_on_contact':
+        if (kindId === 'sapper') out.push(a);
+        break;
+      case 'stun_towers_on_death':
+        if (kindId === 'golem') out.push(a);
+        break;
     }
   }
   return out;
@@ -277,10 +464,10 @@ export function confirmEndlessModifier(state: GameState): void {
   // Apply the modifier to the difficulty bundle.
   switch (modId) {
     case 'hp_x125':
-      state.difficultyModifier.hpMult *= 1.25;
+      state.difficultyModifier.hpMult += 0.25;
       break;
     case 'speed_x110':
-      state.difficultyModifier.speedMult *= 1.10;
+      state.difficultyModifier.speedMult += 0.10;
       break;
     case 'gold_minus10':
       state.difficultyModifier.goldMult *= 0.90;
@@ -297,6 +484,23 @@ export function confirmEndlessModifier(state: GameState): void {
         state.difficultyModifier.abilities.push('dash_back_on_hit');
       }
       break;
+  }
+
+  // Each completed 15-wave cycle in endless mode also stamps a fresh
+  // dungeon law on top of the cumulative modifier list. The player
+  // gets a quick floating-text confirmation on the mannequin so the new
+  // law isn't a silent power-creep.
+  const newLawId = addEndlessDungeonLaw(state);
+  if (newLawId) {
+    const def = MUTATOR_BY_ID[newLawId];
+    if (def) {
+      spawnFloatingText(
+        state,
+        `${def.icon} ${t(def.i18nName)}`,
+        state.mannequin.pos,
+        def.color,
+      );
+    }
   }
 
   state.pendingEndlessModifier = null;
