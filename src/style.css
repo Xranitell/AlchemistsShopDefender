@@ -15783,23 +15783,64 @@ body {
 
 
 /* ════════════════════════════════════════════════════════════════════════
-   MOBILE SCALING FIXES — Phase 6
-   
+   MOBILE SCALING FIXES -- Phase 6
+
    Addresses:
-   1. Tower-shop card content overflowing screen edges
-   2. Crafting panel (Зельеварка) not scaling / showing scrollbars
-   3. Pause menu not fitting on mobile (buttons cut off)
-   4. Difficulty/dungeon description panel not fitting small screens
-   5. Blessing/curse cards touching bottom edge of panel
+   1. Difficulty panel cards overflowing on small screens
+   2. Tower-shop card content overflowing screen edges
+   3. Crafting panel (Zeljevarks) showing visible scrollbars
+   4. Modifier preview / dungeon description panel not fitting
+   5. Blessing/curse cards touching bottom edge (unscoped desktop leak)
    6. Pause menu right column too narrow, exit/close buttons cut off
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ── 1. Tower-shop: scale content inside cards for small screens ──── 
-   The popup is positioned via JS (placePopupNearAnchor) so we can't 
-   use a parent transform. Instead, shrink internal content (font, 
-   padding, min-width) so the popup physically fits. The existing 
-   max-height + overflow-y: auto rule (line ~12882) already caps at 
-   100dvh - 16px. We further tighten on very small viewports. */
+/* ── 1. Difficulty panel: cap height and shrink cards on short screens ── */
+
+:root.viewport-fitted .difficulty-panel {
+  max-height: calc(var(--design-h, 720px) - 40px);
+  overflow-y: auto;
+}
+
+:root.viewport-fitted .difficulty-card,
+:root.viewport-fitted .difficulty-card:nth-child(4),
+:root.viewport-fitted .difficulty-card:nth-child(5) {
+  min-height: 180px;
+  padding: 10px;
+  gap: 5px;
+}
+
+@media (max-height: 600px) {
+  :root.viewport-fitted .difficulty-card,
+  :root.viewport-fitted .difficulty-card:nth-child(4),
+  :root.viewport-fitted .difficulty-card:nth-child(5) {
+    min-height: 160px;
+    padding: 8px;
+    gap: 4px;
+  }
+  :root.viewport-fitted .difficulty-icon {
+    font-size: 32px;
+    margin: 4px 0;
+  }
+  :root.viewport-fitted .difficulty-name {
+    font-size: 9px;
+  }
+  :root.viewport-fitted .difficulty-flavor {
+    font-size: 11px;
+    min-height: 20px;
+  }
+  :root.viewport-fitted .difficulty-cost {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+  :root.viewport-fitted .difficulty-panel {
+    padding: 16px 20px;
+  }
+}
+
+/* ── 2. Tower-shop: scale content inside cards for small screens ──────
+   The popup is positioned via JS (placePopupNearAnchor) so we cannot
+   use a parent transform. Instead, shrink internal content (font,
+   padding, min-width) so the popup physically fits. */
 :root.viewport-fitted .tower-shop {
   font-size: clamp(12px, 2.5vw, 17px);
   min-width: clamp(150px, 28vw, 220px);
@@ -15818,109 +15859,49 @@ body {
 :root.viewport-fitted .tower-shop-rune-banner {
   font-size: clamp(8px, 1.5vw, 11px);
   padding: 4px 6px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
-/* ── 2. Crafting panel (Зельеварка): ensure full visibility ──────── 
-   The existing `:root.viewport-fitted .craft-panel` rule pins to a 
-   design rectangle with `transform: scale(--ui-scale)`. But on very 
-   small screens the panel still clips because max-height is calculated
-   against design-h which exceeds the viewport after transform. 
-   Force the panel to fit within 96dvh after scaling. */
+/* ── 3. Crafting panel: no visible scrollbars ────────────────────────
+   The panel stays overflow: hidden so the outer frame never scrolls.
+   Internal lists (.craft-recipes, .craft-col-left) scroll with hidden
+   scrollbars so content is accessible without visual chrome. */
 :root.viewport-fitted .craft-panel {
   max-height: calc(var(--design-h, 720px) * 0.94);
   overflow: hidden;
 }
 
-/* Ensure the craft body scrolls internally rather than overflowing */
 :root.viewport-fitted .craft-panel .craft-body {
   overflow: hidden;
   min-height: 0;
+  flex: 1 1 auto;
 }
+
 :root.viewport-fitted .craft-panel .craft-col-left {
   overflow-y: auto;
   overscroll-behavior: contain;
   max-height: 100%;
+  scrollbar-width: none;
+}
+:root.viewport-fitted .craft-panel .craft-col-left::-webkit-scrollbar {
+  display: none;
 }
 
-/* ── 3 & 6. Pause menu: fit entirely on mobile, wider right column ── 
-   The pause-stats-group already scales via `transform: scale(--ui-scale)`
-   but the footer (exit button) and close button can still be cut off 
-   because the group's max-height is pinned at 720px which overflows 
-   when combined with header + footer + row content. 
-   
-   Also widen the side panel on narrow designs so content doesn't 
-   overflow the right column. */
-
-/* Ensure footer stays within the scaled group */
-:root.viewport-fitted .pause-stats-group {
-  max-height: calc(var(--design-h, 720px) - 20px);
-  display: flex;
-  flex-direction: column;
-}
-
-/* The row must shrink so header + footer always have room */
-:root.viewport-fitted .pause-stats-row {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Inner panels scroll when they overflow */
-:root.viewport-fitted .pause-stats-inner,
-:root.viewport-fitted .pause-stats-side {
-  max-height: 100%;
+:root.viewport-fitted .craft-panel .craft-recipes {
   overflow-y: auto;
-  flex: 1 1 auto;
-  min-height: 0;
+  scrollbar-width: none;
+}
+:root.viewport-fitted .craft-panel .craft-recipes::-webkit-scrollbar {
+  display: none;
 }
 
-/* Footer (exit button) must never be clipped */
-:root.viewport-fitted .pause-stats-footer {
-  flex-shrink: 0;
-  padding: 10px 4px 4px;
-}
-
-/* Header (close button) must never be clipped */
-:root.viewport-fitted .pause-stats-header {
-  flex-shrink: 0;
-}
-
-/* Widen the side panel on narrow viewports so right column content 
-   (blessings, laws, contracts) and buttons fit properly */
-:root.viewport-fitted-narrow .pause-stats-inner { width: 480px; }
-:root.viewport-fitted-narrow .pause-stats-side  { width: 440px; }
-
-/* ── 4. Difficulty/dungeon description panel: fit-mode scaling ────── 
-   The difficulty-panel already has a `:root.viewport-fitted` rule but 
-   on very small screens (< 600px height) it can still overflow because
-   the card min-height of 220px × 2 rows + header > viewport. 
-   Reduce card min-height on short viewports.
-   
-   The modifier-preview-panel (dungeon confirmation popup) also needs 
-   tighter constraints on small screens — its content (stats + bullets 
-   + warning + buttons) can exceed the design-h cap. */
-@media (max-height: 600px) {
-  :root.viewport-fitted .difficulty-card {
-    min-height: 160px;
-    padding: 10px;
-    gap: 4px;
-  }
-  :root.viewport-fitted .difficulty-icon {
-    font-size: 32px;
-    margin: 4px 0;
-  }
-  :root.viewport-fitted .difficulty-flavor {
-    font-size: 12px;
-    min-height: 24px;
-  }
-  :root.viewport-fitted .difficulty-panel {
-    padding: 16px 20px;
-  }
-}
-
-/* Modifier-preview (dungeon confirmation): tighten on small screens */
+/* ── 4. Modifier preview panel: cap lines and pin actions ────────────
+   Refines the existing fit-mode rule (around line 13060). The .mp-lines
+   section gets a max-height cap so the action buttons always remain
+   visible without scrolling the entire panel. */
 :root.viewport-fitted .modifier-preview-panel {
-  max-height: calc(var(--design-h, 720px) - 32px);
+  max-height: calc(var(--design-h, 720px) * 0.90);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -15934,30 +15915,29 @@ body {
   flex-shrink: 0;
 }
 
-/* ── 5. Blessing/curse cards: shrink elements 10% ────────────────── 
-   Cards currently touch the bottom edge of the blessing panel on 
-   mobile. Reduce overall card padding and internal element sizes 
-   by ~10% so they have breathing room. */
-.blessing-card {
+/* ── 5. Blessing/curse cards: shrink 10% scoped to fit-mode only ─────
+   Previously these rules were GLOBAL selectors that also affected
+   desktop. Now scoped under :root.viewport-fitted so desktop keeps
+   original sizes. */
+:root.viewport-fitted .blessing-card {
   padding: 16px 11px 12px;
   gap: 7px;
 }
-.blessing-icon {
+:root.viewport-fitted .blessing-icon {
   font-size: 40px;
 }
-.blessing-name {
+:root.viewport-fitted .blessing-name {
   font-size: 10px;
 }
-.blessing-flavor {
+:root.viewport-fitted .blessing-flavor {
   font-size: 13px;
 }
-.blessing-effect {
+:root.viewport-fitted .blessing-effect {
   font-size: 15px;
   padding: 3px 7px;
 }
 
-/* Blessing panel: add fit-mode scaling so the entire overlay 
-   shrinks on small viewports — previously missing entirely. */
+/* Blessing panel: fit-mode scaling with tighter max-height */
 :root.viewport-fitted .blessing-overlay {
   padding: var(--safe-top, 0px)
            var(--safe-right, 0px)
@@ -15967,10 +15947,48 @@ body {
 :root.viewport-fitted .blessing-panel {
   position: relative;
   width: min(760px, calc(var(--design-w, 1280px) * 0.62));
-  max-height: calc(var(--design-h, 720px) * 0.92);
+  max-height: calc(var(--design-h, 720px) * 0.88);
   max-width: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   transform: scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
+
+/* ── 6. Pause menu: fit entirely on mobile, wider right column ───────
+   Ensures the footer (exit button) and close button are never clipped.
+   Widens the side panel on narrow viewports. */
+
+:root.viewport-fitted .pause-stats-group {
+  max-height: calc(var(--design-h, 720px) - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+:root.viewport-fitted .pause-stats-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:root.viewport-fitted .pause-stats-inner,
+:root.viewport-fitted .pause-stats-side {
+  max-height: 100%;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:root.viewport-fitted .pause-stats-footer {
+  flex-shrink: 0;
+  padding: 10px 4px 4px;
+}
+
+:root.viewport-fitted .pause-stats-header {
+  flex-shrink: 0;
+}
+
+/* Narrow viewport overrides: widen side panel so right column content
+   (blessings, laws, contracts) and buttons fit properly */
+:root.viewport-fitted-narrow .pause-stats-inner { width: 500px; }
+:root.viewport-fitted-narrow .pause-stats-side  { width: 420px; }
