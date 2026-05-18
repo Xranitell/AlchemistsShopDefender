@@ -12841,12 +12841,12 @@ body {
    Desktop viewports (ui-scale = 1.0) are unaffected. */
 
 :root.viewport-fitted .difficulty-panel {
-  /* Render at the full design width regardless of how narrow the real
-     viewport is — the parent transform handles fitting. */
-  width: 1100px;
-  max-width: 1100px;
+  /* Render at a compact design width so --ui-scale stays closer to
+     0.6-0.7 on small screens instead of dropping to 0.5. */
+  width: 900px;
+  max-width: 900px;
   max-height: none;
-  padding: 24px 28px;
+  padding: 18px 20px;
 
   position: absolute;
   top: 50%;
@@ -12861,14 +12861,14 @@ body {
    transform scales. */
 :root.viewport-fitted .difficulty-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 :root.viewport-fitted .difficulty-card,
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
   grid-column: span 2;
-  min-height: 220px;
-  padding: 12px;
+  min-height: 180px;
+  padding: 10px;
   gap: 6px;
   border-radius: 8px;
 }
@@ -12885,15 +12885,15 @@ body {
   border-width: 1px;
 }
 :root.viewport-fitted .difficulty-name { font-size: 11px; }
-:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 36px; padding: 0; }
+:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 28px; padding: 0; }
 :root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 13px; }
 :root.viewport-fitted .difficulty-icon {
-  font-size: 44px;
-  margin: 6px 0;
+  font-size: 36px;
+  margin: 4px 0;
   width: auto;
   height: auto;
 }
-:root.viewport-fitted .difficulty-glyph { font-size: 44px; }
+:root.viewport-fitted .difficulty-glyph { font-size: 36px; }
 
 /* ════════════════════════════════════════════════════════════════════════
    TOWER-SHOP popup — fit on short viewports.
@@ -15844,7 +15844,7 @@ body {
 :root.viewport-fitted .difficulty-card,
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
-  min-height: 180px;
+  min-height: 160px;
   padding: 10px;
   gap: 5px;
 }
