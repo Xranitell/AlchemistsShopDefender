@@ -12785,6 +12785,107 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   DIFFICULTY-SELECT overlay — fit-mode adapter.
+
+   The panel hosts five large cards in a 3-on-top / 2-on-bottom grid.
+   The legacy `width: min(96vw, 1100px)` clamp shrinks the panel below
+   1100 px on narrower-than-design viewports, so on a ~1024 px landscape
+   phone the five-in-a-row mobile media query laid the cards on a single
+   row that overflowed the panel — the "Дневной" card clipped past the
+   right edge (see moderation screenshot #1).
+
+   Strategy mirrors chest / settings / cards-stage:
+     1. Force the panel to render at its full 1100 px design width so
+        the 3+2 grid has room.
+     2. Cancel the landscape-mobile media-query rule that collapses the
+        grid to a 5-in-a-row layout — in fit-mode we always paint the
+        desktop 3+2 layout.
+     3. Pin absolutely to the centre of #overlay and apply
+        translate(-50%, -50%) scale(var(--ui-scale)).
+
+   On a 768×398 phone landscape the panel paints internally at
+   ~1100 × ~500 and visually at ~605 × ~275 — well inside the viewport.
+   Desktop viewports (ui-scale = 1.0) are unaffected. */
+
+:root.viewport-fitted .difficulty-panel {
+  /* Render at the full design width regardless of how narrow the real
+     viewport is — the parent transform handles fitting. */
+  width: 1100px;
+  max-width: 1100px;
+  max-height: none;
+  padding: 24px 28px;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Restore the desktop 3+2 grid — the legacy landscape-mobile media
+   query collapses it to a 5-in-a-row layout with smaller cards. In
+   fit-mode we always paint the desktop baseline so only the parent
+   transform scales. */
+:root.viewport-fitted .difficulty-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+:root.viewport-fitted .difficulty-card,
+:root.viewport-fitted .difficulty-card:nth-child(4),
+:root.viewport-fitted .difficulty-card:nth-child(5) {
+  grid-column: span 2;
+  min-height: 220px;
+  padding: 12px;
+  gap: 6px;
+  border-radius: 8px;
+}
+:root.viewport-fitted .difficulty-card:nth-child(4) { grid-column: 2 / span 2; }
+:root.viewport-fitted .difficulty-card:nth-child(5) { grid-column: 4 / span 2; }
+
+/* Restore desktop typography for header + card body. */
+:root.viewport-fitted .difficulty-header h2 { font-size: 16px; }
+:root.viewport-fitted .difficulty-subtitle { font-size: 16px; }
+:root.viewport-fitted .difficulty-label {
+  font-size: 9px;
+  margin-top: -20px;
+  padding: 2px 6px;
+  border-width: 1px;
+}
+:root.viewport-fitted .difficulty-name { font-size: 11px; }
+:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 36px; padding: 0; }
+:root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 13px; }
+:root.viewport-fitted .difficulty-icon {
+  font-size: 44px;
+  margin: 6px 0;
+  width: auto;
+  height: auto;
+}
+:root.viewport-fitted .difficulty-glyph { font-size: 44px; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   TOWER-SHOP popup — fit on short viewports.
+
+   The popup anchors next to a rune point and lists up to 6 tower build
+   buttons + a cancel button + an optional rune banner. On a short
+   landscape mobile (e.g. ~398 px tall) the popup's natural height
+   (~280 px) plus the rune-banner can exceed the visible viewport, so
+   the last tower row clips at the bottom (moderation screenshot #2 for
+   issue #1). placePopupNearAnchor already clamps the top so the popup
+   sits at vh - popupH - margin, but when popupH > vh the popup still
+   overflows by popupH - vh.
+
+   Cap the popup at the viewport height minus a small margin and
+   scroll its body internally when content exceeds that cap. Touch /
+   wheel scroll inside the popup is whitelisted by main.ts (popup
+   itself is a scrollable surface) so the body scroll-lock from the
+   moderation fix doesn't block it. */
+.tower-shop {
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    CARD-DRAFT overlay (Roundhouse cards) — fit-mode adapter
    (mobile phase 4, overlay #5).
 
