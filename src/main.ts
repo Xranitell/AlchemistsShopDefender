@@ -379,7 +379,6 @@ const pauseStats = new PauseStatsOverlay(document.body, {
     tutorial.cancelSequence('pauseOpen');
     if (wasSequenceRunning && !meta.pauseTutorialDone) {
       meta.pauseTutorialDone = true;
-      saveMeta(meta);
     }
     // Award half of the normal defeat essence on exit (Issue 7)
     const wave = state.waveState.currentIndex + 1;

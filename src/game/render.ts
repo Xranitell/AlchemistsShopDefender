@@ -177,6 +177,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawShockwaves(ctx);
   drawParticles(ctx);
   drawOverloadVfx(ctx);
+  // In non-night runs, draw the reticle in its original z-position
+  // (below floating texts / dynamic lighting).
+  if (!state.nightModeActive) {
+    drawAimReticle(ctx, state);
+  }
   drawFloatingTexts(ctx, state);
   // Dynamic lighting from fire pools
   drawDynamicLighting(ctx, state);
@@ -186,11 +191,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // transform so the disc tracks the mannequin in world coordinates.
   if (state.nightModeActive) {
     drawNightVignette(ctx, state);
+    // In night mode, draw reticle AFTER the vignette so it's always
+    // visible on top of the darkness (Issue 8).
+    drawAimReticle(ctx, state);
   }
-
-  // Aim reticle drawn AFTER the night vignette so it remains visible
-  // in the dark (Issue 8: night mode cursor visibility).
-  drawAimReticle(ctx, state);
 
   // Restore from isometric transform
   ctx.restore();
