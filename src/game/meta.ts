@@ -232,6 +232,37 @@ export function refundMetaUpgrade(meta: MetaSave, upg: MetaUpgrade): boolean {
   return true;
 }
 
+/** Reset the talent tree: refund every essence point spent on non-root
+ *  nodes and clear the allocation. Roots are implicit (never stored in
+ *  `meta.purchased`) so they stay reachable after the reset.
+ *
+ *  Unlike `resetMeta()` (which wipes the entire MetaSave from localStorage),
+ *  this function only touches the tree: keys, mastery, bestiary,
+ *  ingredients, inventory, daily/BP progress, settings — all preserved.
+ *
+ *  Returns the total refund per currency so the caller can surface a
+ *  toast / log entry if it wants. The function mutates `meta` in place;
+ *  callers are responsible for invoking `saveMeta(meta)` afterwards. */
+export function resetMetaTreeAndRefund(
+  meta: MetaSave,
+): { blue: number; ancient: number } {
+  let blue = 0;
+  let ancient = 0;
+  for (const id of meta.purchased) {
+    const upg = META_BY_ID[id];
+    if (!upg) continue;
+    // Roots are pre-allocated and free — skip them. (They aren't expected
+    // to live in `purchased` anyway, but guard defensively.)
+    if (upg.kind === 'root') continue;
+    if (upg.currency === 'blue') blue += upg.cost;
+    else ancient += upg.cost;
+  }
+  meta.blueEssence += blue;
+  meta.ancientEssence += ancient;
+  meta.purchased = [];
+  return { blue, ancient };
+}
+
 function isAllocationConnected(allocated: Set<string>): boolean {
   // BFS from every per-tree root and require that every allocated node ends
   // up visited. Trees are independent graphs — nodes can only reach their
