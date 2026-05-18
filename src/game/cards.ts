@@ -67,8 +67,8 @@ export function rollCardOptions(state: GameState): CardDef[] {
 
   const cursed = shouldDraftCursed(state);
 
-  // Choose the appropriate base pool.
-  let pool = (cursed ? cursedCardPool() : normalCardPool()).filter((c) => !taken.has(c.id));
+  // Choose the appropriate base pool (cards may repeat across drafts).
+  let pool = cursed ? cursedCardPool() : normalCardPool();
 
   // Legendary cooldown window — drop legendaries if we offered one recently.
   // Cursed waves still respect the cooldown so the player isn't drowned in
