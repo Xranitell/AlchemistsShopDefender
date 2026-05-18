@@ -12812,7 +12812,7 @@ body {
      viewport is — the parent transform handles fitting. */
   width: 1100px;
   max-width: 1100px;
-  max-height: none;
+  max-height: none; /* Overridden by Phase 6 section at end of file */
   padding: 24px 28px;
 
   position: absolute;
@@ -15809,6 +15809,10 @@ body {
   gap: 5px;
 }
 
+:root.viewport-fitted .difficulty-name {
+  font-size: 10px;
+}
+
 @media (max-height: 600px) {
   :root.viewport-fitted .difficulty-card,
   :root.viewport-fitted .difficulty-card:nth-child(4),
@@ -15880,6 +15884,7 @@ body {
 
 :root.viewport-fitted .craft-panel .craft-col-left {
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   max-height: 100%;
   scrollbar-width: none;
@@ -15990,5 +15995,5 @@ body {
 
 /* Narrow viewport overrides: widen side panel so right column content
    (blessings, laws, contracts) and buttons fit properly */
-:root.viewport-fitted-narrow .pause-stats-inner { width: 500px; }
+:root.viewport-fitted-narrow .pause-stats-inner { width: min(500px, 100%); }
 :root.viewport-fitted-narrow .pause-stats-side  { width: 420px; }
