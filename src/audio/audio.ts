@@ -209,12 +209,45 @@ export class AudioEngine {
    *  the user-gesture rule. */
   private onVisibilityChange = (): void => {
     if (!this.ctx) return;
+    if (this.adPauseDepth > 0) return;
     if (document.hidden) {
       void this.ctx.suspend().catch(() => {});
     } else {
       void this.ctx.resume().catch(() => {});
     }
   };
+
+  /** Ref-counted pause level driven by `pauseForAd()` / `resumeAfterAd()`.
+   *  Yandex Games requirement 4.7: while a fullscreen interstitial or a
+   *  rewarded video is on the screen the game's own audio must be muted
+   *  so it does not overlap the ad soundtrack. We suspend the entire
+   *  AudioContext (cheap, side-effect free) and resume it when every
+   *  caller has released the lock. Ref-counted so back-to-back ad
+   *  events (e.g. rewarded then interstitial) keep audio silent until
+   *  the *last* ad closes. */
+  private adPauseDepth = 0;
+
+  /** Suspend the AudioContext until the matching `resumeAfterAd()` call.
+   *  Safe to call before the engine has booted — `adPauseDepth` is then
+   *  applied as soon as `ensureStarted()` creates the context. Idempotent
+   *  via the depth counter so multiple ads chaining together do not race
+   *  on suspend/resume. */
+  pauseForAd(): void {
+    this.adPauseDepth++;
+    if (!this.ctx) return;
+    void this.ctx.suspend().catch(() => {});
+  }
+
+  /** Pair with `pauseForAd()`. Resumes the AudioContext only once every
+   *  caller has released the lock, so chained ads keep the game silent
+   *  for the whole duration. */
+  resumeAfterAd(): void {
+    if (this.adPauseDepth > 0) this.adPauseDepth--;
+    if (this.adPauseDepth > 0) return;
+    if (!this.ctx) return;
+    if (document.hidden) return;
+    void this.ctx.resume().catch(() => {});
+  }
 
   /** Play a one-shot SFX. No-op if the engine has not been started yet. */
   playSfx(id: SfxId, opts: SfxOptions = {}): void {
