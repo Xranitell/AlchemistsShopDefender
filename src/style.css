@@ -12845,7 +12845,7 @@ body {
      viewport is — the parent transform handles fitting. */
   width: 1100px;
   max-width: 1100px;
-  max-height: none; /* Overridden by Phase 6 section at end of file */
+  max-height: none;
   padding: 24px 28px;
 
   position: absolute;
@@ -15837,10 +15837,9 @@ body {
 
 /* ── 1. Difficulty panel: cap height and shrink cards on short screens ── */
 
-:root.viewport-fitted .difficulty-panel {
-  max-height: calc(var(--design-h, 720px) - 40px);
-  overflow-y: auto;
-}
+/* Phase 6 max-height removed: the Phase 4 transform-based scaling
+   (max-height: none + scale(var(--ui-scale))) handles fitting correctly.
+   Setting max-height in CSS px on a scaled panel clips incorrectly. */
 
 :root.viewport-fitted .difficulty-card,
 :root.viewport-fitted .difficulty-card:nth-child(4),
@@ -15854,33 +15853,9 @@ body {
   font-size: 10px;
 }
 
-@media (max-height: 600px) {
-  :root.viewport-fitted .difficulty-card,
-  :root.viewport-fitted .difficulty-card:nth-child(4),
-  :root.viewport-fitted .difficulty-card:nth-child(5) {
-    min-height: 160px;
-    padding: 8px;
-    gap: 4px;
-  }
-  :root.viewport-fitted .difficulty-icon {
-    font-size: 32px;
-    margin: 4px 0;
-  }
-  :root.viewport-fitted .difficulty-name {
-    font-size: 9px;
-  }
-  :root.viewport-fitted .difficulty-flavor {
-    font-size: 11px;
-    min-height: 20px;
-  }
-  :root.viewport-fitted .difficulty-cost {
-    font-size: 11px;
-    padding: 4px 6px;
-  }
-  :root.viewport-fitted .difficulty-panel {
-    padding: 16px 20px;
-  }
-}
+/* @media (max-height: 600px) difficulty overrides removed:
+   transform scaling via --ui-scale handles all viewport sizes.
+   Card intrinsic sizes are set in the non-media rules above. */
 
 /* ── 2. Tower-shop: scale content inside cards for small screens ──────
    The popup is positioned via JS (placePopupNearAnchor) so we cannot
@@ -16014,14 +15989,16 @@ body {
 :root.viewport-fitted .pause-stats-row {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  gap: 16px;
 }
 
 :root.viewport-fitted .pause-stats-inner,
 :root.viewport-fitted .pause-stats-side {
-  max-height: 100%;
+  max-height: calc(var(--design-h, 720px) - 100px);
   overflow-y: auto;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
