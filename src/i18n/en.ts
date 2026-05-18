@@ -357,7 +357,7 @@ export const EN: Record<string, string> = {
   'ui.meta.refund': 'Refund',
   'ui.meta.back': 'Back',
   'ui.meta.resetTree': 'Reset tree',
-  'ui.meta.resetConfirm': 'Reset all meta progress?',
+  'ui.meta.resetConfirm': 'Reset skill tree? Points will be refunded.',
   'ui.meta.help': 'Tap a node to see details on the right · tap again to learn.',
   'ui.meta.kind.root': 'Root',
   'ui.meta.kind.small': 'Minor node',

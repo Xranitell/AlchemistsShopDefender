@@ -9311,7 +9311,7 @@ body {
   /* Difficulty select — large 3-on-top / 2-on-bottom cards don't fit
      on a phone in landscape; tighten everything and lay the grid on a
      single row of five compact cards. */
-  .difficulty-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .difficulty-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; overflow-y: auto; max-height: calc(94dvh - 70px); }
   .difficulty-card,
   .difficulty-card:nth-child(4),
   .difficulty-card:nth-child(5) { grid-column: auto; }
@@ -9325,6 +9325,26 @@ body {
   .difficulty-header h2 { font-size: 13px; }
   .difficulty-subtitle { font-size: 14px; }
   .difficulty-panel { padding: 12px 16px; }
+
+  /* Settings: wider + 2-column on mobile */
+  .settings-panel {
+    max-width: 600px;
+    width: min(96vw, 600px);
+    max-height: 96dvh;
+    overflow-y: auto;
+  }
+  .settings-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .settings-section {
+    min-width: 0;
+  }
+  /* Let the danger/reset section span full width */
+  .settings-danger {
+    grid-column: 1 / -1;
+  }
 
   /* Modifier-preview scaling moved to `:root.viewport-fitted
      .modifier-preview-panel` (Phase 5) which scales the whole panel
@@ -11629,16 +11649,21 @@ body {
   .chest-reward-tile-label { font-size: 10px; }
   .chest-footer button { padding: 7px 10px; font-size: 8px; }
 
-  .defeat-overlay { gap: 5px; padding: 10px 14px 10px; }
-  .defeat-stage { min-height: 80px; }
-  .defeat-rays { width: 180px; height: 180px; }
-  .defeat-mannequin { transform: rotate(-14deg) translateY(2px) scale(0.6); }
-  .defeat-title { font-size: 15px; letter-spacing: 0.8px; }
-  .defeat-tagline { font-size: 7px; }
-  .defeat-summary { font-size: 12px; }
-  .defeat-tip { font-size: 11px; padding: 4px 8px; }
-  .defeat-cta-primary { font-size: 10px; padding: 8px 14px; letter-spacing: 0.8px; }
-  .defeat-cta-secondary { padding: 6px 10px; font-size: 8px; }
+  .defeat-overlay { gap: 4px; padding: 8px 12px 8px; max-height: 96dvh; overflow-y: auto; }
+  .defeat-stage { min-height: 60px; padding: 2px 0; }
+  .defeat-rays { width: 150px; height: 150px; }
+  .defeat-mannequin { transform: rotate(-14deg) translateY(2px) scale(0.5); }
+  .defeat-title { font-size: 13px; letter-spacing: 0.6px; }
+  .defeat-tagline { font-size: 7px; margin: 0; }
+  .defeat-summary { font-size: 11px; margin: 0; }
+  .defeat-chips { gap: 4px; margin: 0; }
+  .defeat-chip { padding: 2px 6px; gap: 3px; }
+  .defeat-chip span { font-size: 9px; }
+  .defeat-tip { font-size: 10px; padding: 3px 7px; max-width: 300px; margin: 0; }
+  .defeat-cta-wrap { gap: 4px; margin-top: 0; }
+  .defeat-cta-primary { font-size: 10px; padding: 7px 12px; letter-spacing: 0.6px; }
+  .defeat-secondary-row { gap: 5px; }
+  .defeat-cta-secondary { padding: 5px 9px; font-size: 8px; }
 
   .pause-exit-dialog { padding: 10px 14px 10px; }
   .pause-exit-title { font-size: 11px; }

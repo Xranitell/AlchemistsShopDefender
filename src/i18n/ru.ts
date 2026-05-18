@@ -358,7 +358,7 @@ export const RU: Record<string, string> = {
   'ui.meta.refund': 'Вернуть',
   'ui.meta.back': 'Назад',
   'ui.meta.resetTree': 'Сбросить дерево',
-  'ui.meta.resetConfirm': 'Сбросить весь мета-прогресс?',
+  'ui.meta.resetConfirm': 'Сбросить дерево навыков? Очки будут возвращены.',
   'ui.meta.help': 'Выберите узел, чтобы увидеть детали справа · повторный выбор — изучить.',
   'ui.meta.kind.root': 'Корень',
   'ui.meta.kind.small': 'Малый узел',
