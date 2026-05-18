@@ -247,6 +247,7 @@ export const RU: Record<string, string> = {
   'ui.exitConfirm.body': 'Прогресс забега будет утерян.',
   'ui.exitConfirm.bodyKeyEpic': 'Эпический ключ уже потрачен на этот забег и не вернётся при выходе.',
   'ui.exitConfirm.bodyKeyAncient': 'Древний ключ уже потрачен на этот забег и не вернётся при выходе.',
+  'ui.exitConfirm.halfReward': 'При выходе вы получите только половину заработанных эссенций.',
   'ui.exitConfirm.exit': 'Выйти',
   'ui.exitConfirm.stay': 'Остаться',
   'ui.pause.exitToMenu': 'Выйти в меню',

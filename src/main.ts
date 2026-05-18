@@ -381,6 +381,18 @@ const pauseStats = new PauseStatsOverlay(document.body, {
       meta.pauseTutorialDone = true;
       saveMeta(meta);
     }
+    // Award half of the normal defeat essence on exit (Issue 7)
+    const wave = state.waveState.currentIndex + 1;
+    if (wave > 0) {
+      const reward = calcRunEssence(meta, wave, state.totalKills, false, state.difficulty);
+      const halfBlue = Math.floor(reward.blue * 0.5);
+      const halfAncient = Math.floor(reward.ancient * 0.5);
+      meta.blueEssence += halfBlue;
+      meta.ancientEssence += halfAncient;
+      meta.totalRuns += 1;
+      if (wave > meta.bestWave) meta.bestWave = wave;
+      saveMeta(meta);
+    }
     restart();
   },
 });
@@ -538,7 +550,7 @@ function syncCanvasCursor(): void {
   if (!canvas) return;
   const inGameplay = (state.phase === 'wave' || state.phase === 'preparing')
     && !userPaused;
-  const desired = inGameplay ? 'none' : '';
+  const desired = inGameplay && !state.nightModeActive ? 'none' : '';
   if (desired !== lastCanvasCursor) {
     canvas.style.cursor = desired;
     lastCanvasCursor = desired;
