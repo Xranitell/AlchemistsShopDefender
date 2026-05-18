@@ -31,6 +31,7 @@ import {
   branchName,
   type MetaBranch,
 } from '../data/metaTree';
+import { audio } from '../audio/audio';
 import { t, tWithFallback } from '../i18n';
 import { getSprites } from '../render/sprites';
 import { spriteIcon } from '../render/spriteIcon';
@@ -229,9 +230,11 @@ export class MetaOverlay {
       resetBtn.className = 'meta-reset';
       resetBtn.textContent = t('ui.meta.resetTree');
       resetBtn.addEventListener('click', () => {
-        if (confirm(t('ui.meta.resetConfirm'))) {
-          opts.onReset!();
-        }
+        // Yandex Games requirement 1.14: the platform disallows any
+        // native browser dialog (alert/confirm/prompt) inside the game
+        // frame. The previous `window.confirm()` is replaced with an
+        // in-app modal that uses the pause-overlay's confirm chrome.
+        openMetaResetConfirmDialog(this.root, () => opts.onReset!());
       });
       actions.appendChild(resetBtn);
     }
@@ -742,4 +745,60 @@ function branchLabel(b: MetaBranch): string {
     case 'survival': return t('ui.meta.branch.survival');
     default: return b;
   }
+}
+
+/** In-app replacement for the previous `window.confirm()` call on the
+ *  meta-tree reset button. Yandex Games (requirement 1.14) forbids
+ *  native browser dialogs inside the game frame, so we render a pixel-
+ *  art modal that matches the rest of the UI. Mirrors the structure
+ *  used by `openResetConfirmDialog` in `settingsOverlay.ts` so both
+ *  destructive flows look identical to the player. */
+function openMetaResetConfirmDialog(host: HTMLElement, onConfirm: () => void): void {
+  if (host.querySelector('.pause-exit-confirm.meta-reset-confirm') !== null) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'pause-exit-confirm meta-reset-confirm';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'pause-exit-dialog';
+
+  const title = document.createElement('div');
+  title.className = 'pause-exit-title';
+  title.textContent = t('ui.meta.resetTree');
+  dialog.appendChild(title);
+
+  const body = document.createElement('div');
+  body.className = 'pause-exit-body';
+  body.textContent = t('ui.meta.resetConfirm');
+  dialog.appendChild(body);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'pause-exit-buttons';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'pause-exit-btn pause-exit-stay';
+  cancelBtn.textContent = t('ui.resetConfirm.cancel');
+  cancelBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+  });
+  buttons.appendChild(cancelBtn);
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'pause-exit-btn pause-exit-confirm-btn';
+  confirmBtn.textContent = t('ui.resetConfirm.confirm');
+  confirmBtn.addEventListener('click', () => {
+    audio.playSfx('uiClick');
+    overlay.remove();
+    onConfirm();
+  });
+  buttons.appendChild(confirmBtn);
+
+  dialog.appendChild(buttons);
+  overlay.appendChild(dialog);
+  host.appendChild(overlay);
+
+  requestAnimationFrame(() => cancelBtn.focus());
 }

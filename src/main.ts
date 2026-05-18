@@ -256,6 +256,65 @@ for (const evt of ['fullscreenchange', 'webkitfullscreenchange']) {
   });
 }
 
+// ── Yandex Games platform compliance ─────────────────────────────────
+// The following document-level listeners enforce the three pieces of
+// the Yandex Games moderation rules that need JS, not just CSS:
+//   • 1.6.2.7 — no context menu, no native text-selection, no drag-
+//     image popup on `dragstart`. The CSS already disables
+//     `user-select` everywhere, but a few legacy browsers still raise
+//     the context menu / drag image on long-press / right-click, so we
+//     swallow those events directly. The two listeners use the capture
+//     phase so they run before any feature-specific handlers and can't
+//     be bypassed by `stopPropagation()` in third-party code.
+//   • 1.10.2 — no browser scroll / pinch-zoom. CSS `overflow: hidden`
+//     covers the desktop wheel, but some mobile WebViews still allow a
+//     vertical pan when the active element is non-scrollable. A
+//     non-passive `wheel` / `touchmove` listener prevents the gesture
+//     from ever reaching the browser. We carefully exempt interactive
+//     overlays (`#overlay.visible`) so the brewery / talent tree
+//     scrollable panels keep their native pan.
+//   • 1.14 — no native browser dialogs / unhandled exceptions. Anything
+//     escaping to `window.onerror` or `unhandledrejection` is logged
+//     but its default action is suppressed so the platform's iframe
+//     wrapper does not surface a generic "scripts are out of date /
+//     reload" banner over the game.
+document.addEventListener('contextmenu', (e) => e.preventDefault(), { capture: true });
+document.addEventListener('selectstart', (e) => {
+  const target = e.target as HTMLElement | null;
+  // Allow text selection inside form fields the player explicitly
+  // focuses (e.g. a future settings input). Everything else — game
+  // canvas, HUD, overlay text — must NOT be selectable per 1.6.2.7.
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+    return;
+  }
+  e.preventDefault();
+}, { capture: true });
+document.addEventListener('dragstart', (e) => e.preventDefault(), { capture: true });
+document.addEventListener('gesturestart', (e) => e.preventDefault(), { capture: true });
+document.addEventListener('wheel', (e) => {
+  const target = e.target as HTMLElement | null;
+  // The brewery / talent-tree / loadout overlays explicitly opt-in to
+  // native scrolling on their inner panels. Anything else (the canvas,
+  // the HUD) must not scroll the document.
+  if (target && target.closest && target.closest('#overlay.visible')) return;
+  e.preventDefault();
+}, { passive: false });
+
+// Belt-and-braces global error trap. `vite.config.ts` already drops
+// console.* in production, but a real exception (e.g. ad SDK rejection,
+// missing localStorage on locked-down iOS) would still trigger the
+// platform's generic "Game crashed, reload?" banner in the Yandex
+// iframe. Swallowing the event keeps the player on the running game
+// while we still print the cause to the dev console for debugging.
+window.addEventListener('error', (e) => {
+  if (import.meta.env.DEV) return; // dev tooling still sees the error
+  e.preventDefault();
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (import.meta.env.DEV) return;
+  e.preventDefault();
+});
+
 // Global delegated UI click / hover SFX. Every <button> in the DOM
 // (menu, HUD, overlays, shops …) gets a satisfying click on press and
 // a subtle hover tick on pointer-enter — no need to wire each handler

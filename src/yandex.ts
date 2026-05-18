@@ -6,6 +6,8 @@
 // In non-Yandex environments (local dev, CrazyGames, plain web) all calls are
 // stubbed to no-ops so we can develop and run the game offline.
 
+import { audio } from './audio/audio';
+
 declare global {
   interface Window {
     YaGames?: {
@@ -240,7 +242,14 @@ class YandexGames {
     this.sdk?.features?.GameplayAPI?.stop();
   }
 
-  /** Show a rewarded video. Resolves true if the user actually got the reward. */
+  /** Show a rewarded video. Resolves true if the user actually got the reward.
+   *
+   *  Yandex Games requirement 4.7: the game's own audio must be muted
+   *  for the entire duration of a rewarded video so it does not overlap
+   *  the ad soundtrack. We suspend the AudioContext on `onOpen` and
+   *  release the lock on `onClose` / `onError` — the ref-counted
+   *  `audio.pauseForAd()` keeps audio silent across back-to-back ads
+   *  without races. */
   showRewarded(): Promise<boolean> {
     return new Promise((resolve) => {
       if (!this.sdk?.adv) {
@@ -248,11 +257,29 @@ class YandexGames {
         return;
       }
       let rewarded = false;
+      let audioPaused = false;
+      const pauseAudio = (): void => {
+        if (audioPaused) return;
+        audioPaused = true;
+        audio.pauseForAd();
+      };
+      const resumeAudio = (): void => {
+        if (!audioPaused) return;
+        audioPaused = false;
+        audio.resumeAfterAd();
+      };
       this.sdk.adv.showRewardedVideo({
         callbacks: {
+          onOpen: () => pauseAudio(),
           onRewarded: () => { rewarded = true; },
-          onClose: () => resolve(rewarded),
-          onError: () => resolve(false),
+          onClose: () => {
+            resumeAudio();
+            resolve(rewarded);
+          },
+          onError: () => {
+            resumeAudio();
+            resolve(false);
+          },
         },
       });
     });
@@ -274,27 +301,55 @@ class YandexGames {
         return;
       }
       let resolved = false;
-      const finish = (): void => {
+      // Yandex Games requirement 4.7: while a fullscreen interstitial is
+      // on the screen the game's audio must be muted. We can't subscribe
+      // to a dedicated onOpen for `showFullscreenAdv`, so we pause the
+      // AudioContext optimistically before issuing the call. The matching
+      // resume runs from `finish()` regardless of which terminal callback
+      // fires (onClose / onError / onOffline / 800ms timeout fallback).
+      let audioPaused = false;
+      const pauseAudio = (): void => {
+        if (audioPaused) return;
+        audioPaused = true;
+        audio.pauseForAd();
+      };
+      const resumeAudio = (): void => {
+        if (!audioPaused) return;
+        audioPaused = false;
+        audio.resumeAfterAd();
+      };
+      const finish = (wasShown?: boolean): void => {
         if (resolved) return;
         resolved = true;
+        if (wasShown === false) {
+          // The SDK signalled the ad never reached the player (rate-
+          // limited, no-fill, blocked). Release the audio lock without
+          // delay so the game's music is not silently dimmed for nothing.
+          resumeAudio();
+        } else {
+          resumeAudio();
+        }
         resolve();
       };
+      pauseAudio();
       try {
         this.sdk.adv.showFullscreenAdv({
           callbacks: {
-            onClose: () => finish(),
-            onError: () => finish(),
-            onOffline: () => finish(),
+            onClose: (wasShown) => finish(wasShown),
+            onError: () => finish(false),
+            onOffline: () => finish(false),
           },
         });
       } catch {
-        finish();
+        finish(false);
       }
       // Belt-and-braces: if the SDK never fires any callback (e.g.
       // sandboxed iframe, blocked by adblocker), don't strand the
       // caller forever — release the promise after a short timeout so
-      // navigation still happens.
-      setTimeout(finish, 800);
+      // navigation still happens. The same timeout also acts as our
+      // safety net for the audio lock: if no terminal callback ever
+      // arrives we don't want music silenced indefinitely.
+      setTimeout(() => finish(false), 800);
     });
   }
 
