@@ -12843,10 +12843,10 @@ body {
 :root.viewport-fitted .difficulty-panel {
   /* Render at a compact design width so --ui-scale stays closer to
      0.6-0.7 on small screens instead of dropping to 0.5. */
-  width: 900px;
-  max-width: 900px;
+  width: 820px;
+  max-width: 820px;
   max-height: none;
-  padding: 18px 20px;
+  padding: 14px 16px;
 
   position: absolute;
   top: 50%;
@@ -12861,15 +12861,17 @@ body {
    transform scales. */
 :root.viewport-fitted .difficulty-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
+  max-height: none;
+  overflow: visible;
 }
 :root.viewport-fitted .difficulty-card,
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
   grid-column: span 2;
-  min-height: 180px;
-  padding: 10px;
-  gap: 6px;
+  min-height: 144px;
+  padding: 8px;
+  gap: 4px;
   border-radius: 8px;
 }
 :root.viewport-fitted .difficulty-card:nth-child(4) { grid-column: 2 / span 2; }
@@ -12885,15 +12887,15 @@ body {
   border-width: 1px;
 }
 :root.viewport-fitted .difficulty-name { font-size: 11px; }
-:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 28px; padding: 0; }
-:root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 13px; }
+:root.viewport-fitted .difficulty-flavor { font-size: 12px; min-height: 24px; padding: 0; }
+:root.viewport-fitted .difficulty-cost { padding: 4px 7px; font-size: 12px; }
 :root.viewport-fitted .difficulty-icon {
-  font-size: 36px;
-  margin: 4px 0;
+  font-size: 32px;
+  margin: 2px 0;
   width: auto;
   height: auto;
 }
-:root.viewport-fitted .difficulty-glyph { font-size: 36px; }
+:root.viewport-fitted .difficulty-glyph { font-size: 32px; }
 
 /* ════════════════════════════════════════════════════════════════════════
    TOWER-SHOP popup — fit on short viewports.
@@ -15844,9 +15846,9 @@ body {
 :root.viewport-fitted .difficulty-card,
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
-  min-height: 160px;
-  padding: 10px;
-  gap: 5px;
+  min-height: 144px;
+  padding: 8px;
+  gap: 4px;
 }
 
 :root.viewport-fitted .difficulty-name {
@@ -15881,6 +15883,119 @@ body {
   padding: 4px 6px;
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+/* Phase 7: tower build menu must physically fit on short phone
+   viewports. Keep the rows compact and avoid wrapping tower names into
+   extra lines, otherwise the sixth tower plus cancel button can slip
+   below the visible area. */
+:root.viewport-fitted .tower-shop {
+  min-width: clamp(250px, 34vw, 300px);
+  max-width: min(300px, calc(100vw - 16px));
+  max-height: calc(100dvh - max(16px, var(--safe-top, 0px) + var(--safe-bottom, 0px) + 12px));
+  padding: 6px;
+  gap: 3px;
+}
+:root.viewport-fitted .tower-shop button {
+  min-height: 0;
+  padding: 5px 7px;
+  gap: 5px;
+  font-size: 8px;
+  line-height: 1.18;
+}
+:root.viewport-fitted .tower-shop button > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+}
+:root.viewport-fitted .tower-shop .cost {
+  padding: 2px 5px;
+  font-size: 8px;
+  line-height: 1;
+}
+:root.viewport-fitted .tower-shop-rune-banner {
+  font-size: 8px;
+  line-height: 1.15;
+  padding: 3px 5px;
+  margin-bottom: 1px;
+}
+
+/* Phase 7: daily-event preview scales as a single design surface on
+   fitted viewports, so the week strip and action row stay visible even
+   when the browser chrome leaves only ~400 CSS px of height. */
+:root.viewport-fitted .dev-overlay {
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+}
+:root.viewport-fitted .dev-panel {
+  width: 860px;
+  max-width: 860px;
+  max-height: none;
+  overflow: visible;
+  padding: 16px 18px;
+  border-radius: 10px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* The generic panel enter animation writes its own `transform` with
+   `animation-fill-mode: both`, which overrides the fitted centering
+   transform above and pushes the difficulty panel off-screen. */
+:root.viewport-fitted #overlay.visible > .difficulty-panel {
+  animation: none;
+}
+:root.viewport-fitted #overlay.visible > .craft-panel {
+  animation: none;
+}
+:root.viewport-fitted #overlay.visible > .settings-panel {
+  animation: none;
+}
+:root.viewport-fitted .dev-header {
+  gap: 12px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+}
+:root.viewport-fitted .dev-icon { font-size: 42px; }
+:root.viewport-fitted .dev-day { font-size: 12px; letter-spacing: 1.5px; }
+:root.viewport-fitted .dev-name { font-size: 15px; }
+:root.viewport-fitted .dev-flavor { font-size: 14px; }
+:root.viewport-fitted .dev-desc {
+  font-size: 14px;
+  line-height: 1.28;
+  margin-bottom: 8px;
+}
+:root.viewport-fitted .dev-lines {
+  gap: 4px;
+  margin-bottom: 10px;
+}
+:root.viewport-fitted .dev-lines li {
+  font-size: 14px;
+  padding: 4px 8px;
+}
+:root.viewport-fitted .dev-week { margin-bottom: 8px; }
+:root.viewport-fitted .dev-week-title {
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+:root.viewport-fitted .dev-week-grid { gap: 4px; }
+:root.viewport-fitted .dev-week-cell {
+  gap: 1px;
+  padding: 4px 2px;
+  border-radius: 5px;
+}
+:root.viewport-fitted .dev-week-icon { font-size: 17px; }
+:root.viewport-fitted .dev-week-day,
+:root.viewport-fitted .dev-week-name { font-size: 9px; }
+:root.viewport-fitted .dev-actions {
+  gap: 8px;
+  padding-top: 2px;
+}
+:root.viewport-fitted .dev-btn {
+  font-size: 10px;
+  padding: 8px 18px 10px;
 }
 
 /* ── 3. Crafting panel: no visible scrollbars ────────────────────────
