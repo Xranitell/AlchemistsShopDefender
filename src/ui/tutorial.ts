@@ -29,6 +29,15 @@ interface ResolvedTarget {
   radius: number;
 }
 
+interface VisibleBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
 interface SequenceCallbacks {
   /** Fired when the player clicks the panel-step "Skip" button. The
    *  caller is expected to flip the meta-save flag so the sequence
@@ -588,6 +597,13 @@ class TutorialController {
     this.dimmerRing.setAttribute('cy', String(cy));
     this.dimmerRing.setAttribute('r', String(radius));
 
+    const bounds = this.getVisibleBounds();
+    const margin = 16;
+    const clamp = (value: number, min: number, max: number): number => {
+      if (max < min) return min;
+      return Math.max(min, Math.min(max, value));
+    };
+
     // Position the tooltip so it doesn't cover the spotlight. Default:
     // place it below; if that runs off-screen, place it above. For very
     // large targets (e.g. a tall main-menu card) the spotlight radius
@@ -595,8 +611,8 @@ class TutorialController {
     // off-screen — clamp the result so the tooltip stays visible no
     // matter how big the spotlight is.
     const rect = this.tooltipEl.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - (cy + radius);
-    const spaceAbove = cy - radius;
+    const spaceBelow = bounds.bottom - (cy + radius);
+    const spaceAbove = (cy - radius) - bounds.top;
     let tipY: number;
     let arrowAbove = false;
     if (target.kind === 'centered') {
@@ -612,24 +628,25 @@ class TutorialController {
       // disappearing. The arrow is hidden in this case so it doesn't
       // float in the middle of the dimmer.
       if (spaceBelow >= spaceAbove) {
-        tipY = window.innerHeight - rect.height - 16;
+        tipY = bounds.bottom - rect.height - margin;
       } else {
-        tipY = 16;
+        tipY = bounds.top + margin;
         arrowAbove = true;
       }
     }
     let tipX = cx - rect.width / 2;
-    tipX = Math.max(16, Math.min(window.innerWidth - rect.width - 16, tipX));
+    tipX = clamp(tipX, bounds.left + margin, bounds.right - rect.width - margin);
     if (target.kind === 'centered') {
-      tipX = window.innerWidth / 2 - rect.width / 2;
-      tipY = window.innerHeight / 2 - rect.height / 2;
+      tipX = bounds.left + bounds.width / 2 - rect.width / 2;
+      tipY = bounds.top + bounds.height / 2 - rect.height / 2;
     }
     // Final clamp: even with the above logic, a viewport smaller than
     // the tooltip itself (rare, but possible on phones in landscape)
     // would still produce off-screen coordinates. Pin to (16, 16) at
     // worst — the tooltip text wraps and the player can scroll if the
     // panel below it is itself scrollable.
-    tipY = Math.max(16, Math.min(window.innerHeight - rect.height - 16, tipY));
+    tipX = clamp(tipX, bounds.left + margin, bounds.right - rect.width - margin);
+    tipY = clamp(tipY, bounds.top + margin, bounds.bottom - rect.height - margin);
     this.tooltipEl.style.left = `${tipX}px`;
     this.tooltipEl.style.top = `${tipY}px`;
 
@@ -639,9 +656,26 @@ class TutorialController {
     } else {
       this.arrowEl.classList.remove('hidden');
       this.arrowEl.textContent = arrowAbove ? '▲' : '▼';
-      this.arrowEl.style.left = `${cx - 12}px`;
-      this.arrowEl.style.top = arrowAbove ? `${tipY + rect.height + 4}px` : `${tipY - 28}px`;
+      this.arrowEl.style.left = `${clamp(cx - 12, bounds.left + margin, bounds.right - 24 - margin)}px`;
+      const arrowY = arrowAbove ? tipY + rect.height + 4 : tipY - 28;
+      this.arrowEl.style.top = `${clamp(arrowY, bounds.top + 4, bounds.bottom - 32)}px`;
     }
+  }
+
+  private getVisibleBounds(): VisibleBounds {
+    const vv = window.visualViewport;
+    const left = vv?.offsetLeft ?? 0;
+    const top = vv?.offsetTop ?? 0;
+    const width = Math.max(1, Math.floor(vv?.width ?? window.innerWidth));
+    const height = Math.max(1, Math.floor(vv?.height ?? window.innerHeight));
+    return {
+      left,
+      top,
+      right: left + width,
+      bottom: top + height,
+      width,
+      height,
+    };
   }
 
   private resolveTarget(target: TutorialTarget): ResolvedTarget | null {
@@ -662,7 +696,8 @@ class TutorialController {
       // Cap the radius at ~40% of the viewport's shorter side so the
       // tooltip below/above the spotlight has room to breathe even for
       // very tall or wide cards (e.g. the leaderboard column).
-      const cap = Math.min(window.innerWidth, window.innerHeight) * 0.4;
+      const bounds = this.getVisibleBounds();
+      const cap = Math.min(bounds.width, bounds.height) * 0.4;
       return {
         cx: rect.left + rect.width / 2,
         cy: rect.top + rect.height / 2,
@@ -670,7 +705,12 @@ class TutorialController {
       };
     }
     if (target.kind === 'centered') {
-      return { cx: window.innerWidth / 2, cy: window.innerHeight / 2, radius: 0 };
+      const bounds = this.getVisibleBounds();
+      return {
+        cx: bounds.left + bounds.width / 2,
+        cy: bounds.top + bounds.height / 2,
+        radius: 0,
+      };
     }
     if (!this.canvas || !this.lastState) return null;
     const rect = this.canvas.getBoundingClientRect();

@@ -59,6 +59,7 @@ interface YGameSdk {
   adv?: {
     showFullscreenAdv(opts: {
       callbacks?: {
+        onOpen?(): void;
         onClose?(wasShown: boolean): void;
         onError?(err: unknown): void;
         onOffline?(): void;
@@ -68,7 +69,7 @@ interface YGameSdk {
       callbacks?: {
         onOpen?(): void;
         onRewarded?(): void;
-        onClose?(): void;
+        onClose?(wasShown?: boolean): void;
         onError?(err: unknown): void;
       };
     }): void;
@@ -257,6 +258,8 @@ class YandexGames {
         return;
       }
       let rewarded = false;
+      let resolved = false;
+      let safetyTimer: number | null = null;
       let audioPaused = false;
       const pauseAudio = (): void => {
         if (audioPaused) return;
@@ -268,20 +271,34 @@ class YandexGames {
         audioPaused = false;
         audio.resumeAfterAd();
       };
-      this.sdk.adv.showRewardedVideo({
-        callbacks: {
-          onOpen: () => pauseAudio(),
-          onRewarded: () => { rewarded = true; },
-          onClose: () => {
-            resumeAudio();
-            resolve(rewarded);
+      const finish = (ok: boolean): void => {
+        if (resolved) return;
+        resolved = true;
+        if (safetyTimer !== null) {
+          clearTimeout(safetyTimer);
+          safetyTimer = null;
+        }
+        resumeAudio();
+        resolve(ok);
+      };
+      pauseAudio();
+      try {
+        this.sdk.adv.showRewardedVideo({
+          callbacks: {
+            onOpen: () => pauseAudio(),
+            onRewarded: () => { rewarded = true; },
+            onClose: () => finish(rewarded),
+            onError: () => finish(false),
           },
-          onError: () => {
-            resumeAudio();
-            resolve(false);
-          },
-        },
-      });
+        });
+      } catch {
+        finish(false);
+        return;
+      }
+      if (resolved) return;
+      // Last-resort guard against a broken SDK/ad blocker path. Kept long
+      // enough that normal rewarded videos never resume game audio mid-ad.
+      safetyTimer = window.setTimeout(() => finish(false), 120_000);
     });
   }
 
@@ -302,12 +319,12 @@ class YandexGames {
       }
       let resolved = false;
       // Yandex Games requirement 4.7: while a fullscreen interstitial is
-      // on the screen the game's audio must be muted. We can't subscribe
-      // to a dedicated onOpen for `showFullscreenAdv`, so we pause the
-      // AudioContext optimistically before issuing the call. The matching
-      // resume runs from `finish()` regardless of which terminal callback
-      // fires (onClose / onError / onOffline / 800ms timeout fallback).
+      // on the screen the game's audio must be muted. Current SDK builds
+      // expose `onOpen` for the moment the ad appears; we also pause
+      // optimistically before issuing the call so an instant-open ad
+      // cannot leak a frame of game audio over the ad soundtrack.
       let audioPaused = false;
+      let safetyTimer: number | null = null;
       const pauseAudio = (): void => {
         if (audioPaused) return;
         audioPaused = true;
@@ -318,38 +335,36 @@ class YandexGames {
         audioPaused = false;
         audio.resumeAfterAd();
       };
-      const finish = (wasShown?: boolean): void => {
+      const finish = (): void => {
         if (resolved) return;
         resolved = true;
-        if (wasShown === false) {
-          // The SDK signalled the ad never reached the player (rate-
-          // limited, no-fill, blocked). Release the audio lock without
-          // delay so the game's music is not silently dimmed for nothing.
-          resumeAudio();
-        } else {
-          resumeAudio();
+        if (safetyTimer !== null) {
+          clearTimeout(safetyTimer);
+          safetyTimer = null;
         }
+        resumeAudio();
         resolve();
       };
       pauseAudio();
       try {
         this.sdk.adv.showFullscreenAdv({
           callbacks: {
-            onClose: (wasShown) => finish(wasShown),
-            onError: () => finish(false),
-            onOffline: () => finish(false),
+            onOpen: () => pauseAudio(),
+            onClose: () => finish(),
+            onError: () => finish(),
+            onOffline: () => finish(),
           },
         });
       } catch {
-        finish(false);
+        finish();
+        return;
       }
+      if (resolved) return;
       // Belt-and-braces: if the SDK never fires any callback (e.g.
       // sandboxed iframe, blocked by adblocker), don't strand the
-      // caller forever — release the promise after a short timeout so
-      // navigation still happens. The same timeout also acts as our
-      // safety net for the audio lock: if no terminal callback ever
-      // arrives we don't want music silenced indefinitely.
-      setTimeout(() => finish(false), 800);
+      // caller forever. Keep this much longer than a real interstitial
+      // so game audio cannot resume while the ad is still visible.
+      safetyTimer = window.setTimeout(() => finish(), 120_000);
     });
   }
 

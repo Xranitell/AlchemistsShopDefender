@@ -5587,7 +5587,12 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  max-width: 360px;
+  box-sizing: border-box;
+  max-width: min(360px, calc(var(--vp-width, 100vw) - 32px));
+  max-height: calc(var(--vp-height, 100vh) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding: 14px 18px 12px;
   pointer-events: auto;
   background: linear-gradient(180deg, #1d1530 0%, #110a1c 100%);
@@ -5607,9 +5612,13 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
-.tutorial-text { margin: 0 0 10px; }
+.tutorial-text {
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
 .tutorial-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
 }
@@ -9356,7 +9365,7 @@ body {
 
   /* Tutorial tooltip — keep it inside the viewport. */
   .tutorial-tooltip {
-    max-width: min(70vw, 320px);
+    max-width: min(70vw, 320px, calc(var(--vp-width, 100vw) - 24px));
     font-size: 14px;
     padding: 10px 12px 8px;
   }
@@ -11306,7 +11315,7 @@ body {
 
   /* ── Tutorial tooltip — keep inside the viewport. ──────────────── */
   .tutorial-tooltip {
-    max-width: min(70vw, 360px);
+    max-width: min(70vw, 360px, calc(var(--vp-width, 100vw) - 24px));
     font-size: 13px;
     padding: 9px 11px 7px;
   }
@@ -12428,7 +12437,9 @@ body {
      which clipped the inner panel's last "Доп. волна" row before the
      parent transform got a chance to scale the panel down to fit. */
   max-width: none;
-  max-height: 720px;
+  height: var(--design-h, 720px);
+  max-height: var(--design-h, 720px);
+  min-height: 0;
   transform: scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
@@ -12442,11 +12453,13 @@ body {
      the pre-scale layout box from ballooning past the desktop panel
      size. */
   width: 640px;
-  max-height: 720px;
+  height: 100%;
+  max-height: none;
 }
 :root.viewport-fitted .pause-stats-side {
   width: 480px;
-  max-height: 720px;
+  height: 100%;
+  max-height: none;
 }
 
 /* Narrow-width design (1024 × 576) — the desktop pair of 640 + 480 px
@@ -12803,9 +12816,10 @@ body {
      3. Pin absolutely to the centre of #overlay and apply
         translate(-50%, -50%) scale(var(--ui-scale)).
 
-   On a 768×398 phone landscape the panel paints internally at
-   ~1100 × ~500 and visually at ~605 × ~275 — well inside the viewport.
-   Desktop viewports (ui-scale = 1.0) are unaffected. */
+   The fitted panel must stay under the narrow design height before
+   scaling, so the card chrome is a little tighter than the desktop
+   difficulty selector. Desktop viewports (ui-scale = 1.0) are
+   unaffected. */
 
 :root.viewport-fitted .difficulty-panel {
   /* Render at the full design width regardless of how narrow the real
@@ -12813,7 +12827,7 @@ body {
   width: 1100px;
   max-width: 1100px;
   max-height: none;
-  padding: 24px 28px;
+  padding: 18px 24px;
 
   position: absolute;
   top: 50%;
@@ -12834,9 +12848,9 @@ body {
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
   grid-column: span 2;
-  min-height: 220px;
-  padding: 12px;
-  gap: 6px;
+  min-height: 184px;
+  padding: 10px;
+  gap: 4px;
   border-radius: 8px;
 }
 :root.viewport-fitted .difficulty-card:nth-child(4) { grid-column: 2 / span 2; }
@@ -12847,20 +12861,20 @@ body {
 :root.viewport-fitted .difficulty-subtitle { font-size: 16px; }
 :root.viewport-fitted .difficulty-label {
   font-size: 9px;
-  margin-top: -20px;
+  margin-top: -16px;
   padding: 2px 6px;
   border-width: 1px;
 }
 :root.viewport-fitted .difficulty-name { font-size: 11px; }
-:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 36px; padding: 0; }
+:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 30px; padding: 0; }
 :root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 13px; }
 :root.viewport-fitted .difficulty-icon {
-  font-size: 44px;
-  margin: 6px 0;
+  font-size: 38px;
+  margin: 4px 0;
   width: auto;
   height: auto;
 }
-:root.viewport-fitted .difficulty-glyph { font-size: 44px; }
+:root.viewport-fitted .difficulty-glyph { font-size: 38px; }
 
 /* ════════════════════════════════════════════════════════════════════════
    TOWER-SHOP popup — fit on short viewports.
@@ -13603,14 +13617,19 @@ body {
   max-width: 100vw;
 }
 :root.viewport-fitted .pause-stats-header {
+  flex: 0 0 auto;
   width: 100%;
   padding: 0 8px 10px;
 }
 :root.viewport-fitted .pause-stats-row {
+  flex: 1 1 0;
+  min-height: 0;
   align-self: stretch;
   justify-content: center;
+  overflow: hidden;
 }
 :root.viewport-fitted .pause-stats-footer {
+  flex: 0 0 auto;
   align-self: center;
 }
 
@@ -13622,6 +13641,18 @@ body {
 :root.viewport-fitted .pause-stats-group:not(:has(.pause-stats-side)) .pause-stats-header {
   max-width: 640px;
   margin: 0 auto;
+}
+
+/* Ultra-short browser chrome states can push --ui-scale down to its 0.5
+   readability floor. In that case the normal 576px design box still paints
+   as 288px tall, which is larger than the real viewport on aggressive
+   resize tests. Size the pre-scale group to 2x the measured viewport so the
+   transformed pause surface remains exactly viewport-height. */
+@media (max-height: 288px) {
+  :root.viewport-fitted .pause-stats-group {
+    height: calc(var(--vp-height, 100vh) + var(--vp-height, 100vh));
+    max-height: calc(var(--vp-height, 100vh) + var(--vp-height, 100vh));
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -13681,11 +13712,57 @@ body {
   padding-right: 2px;
 }
 
-/* Re-cap the fitted panel even though the JS-driven `--ui-scale`
-   normally fits it. Belt-and-braces against zoom, font-boosting, or
-   `--ui-scale` flooring at 0.5 on phones below the design height. */
+/* In fit-mode the settings modal should read as a full-height phone
+   sheet instead of a tiny centred card. Size the pre-scale box to the
+   measured viewport divided by the global UI scale; after transform it
+   occupies the full available height. */
 :root.viewport-fitted .settings-panel {
-  max-height: 92dvh;
+  width: min(560px, calc(var(--design-w, 1280px) * 0.58));
+  max-width: none;
+  height: calc(var(--vp-height, 100vh) / var(--ui-scale, 1));
+  max-height: calc(var(--vp-height, 100vh) / var(--ui-scale, 1));
+  padding: 18px 22px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+:root.viewport-fitted .settings-panel .settings-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 12px;
+}
+
+:root.viewport-fitted .settings-panel .settings-section {
+  min-width: 0;
+}
+
+:root.viewport-fitted .settings-panel .settings-section:first-child,
+:root.viewport-fitted .settings-panel .settings-section.settings-danger {
+  grid-column: 1 / -1;
+}
+
+:root.viewport-fitted .settings-panel .settings-volume-row {
+  grid-template-columns: 118px minmax(0, 1fr) 52px;
+  min-height: 34px;
+  gap: 12px;
+}
+
+:root.viewport-fitted .settings-panel .settings-volume-slider {
+  min-width: 0;
+  height: 12px;
+  border-radius: 6px;
+  touch-action: none;
+}
+
+:root.viewport-fitted .settings-panel .settings-volume-slider::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+}
+
+:root.viewport-fitted .settings-panel .settings-volume-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
 }
 
 /* ─── Phone-landscape (≤500 px tall) — 2-column body grid ────────── */
@@ -15696,6 +15773,16 @@ body {
 #overlay.visible > .endless-mod-panel,
 #overlay.visible > .revive-panel {
   animation: ui-panel-rise-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Fit-mode overlays position themselves with translate(-50%, -50%).
+   The generic rise animation also writes `transform`, which leaves the
+   panels' top-left corner at viewport center after animation fill. */
+:root.viewport-fitted #overlay.visible > .settings-panel,
+:root.viewport-fitted #overlay.visible > .difficulty-panel,
+:root.viewport-fitted #overlay.visible > .modifier-preview-panel,
+:root.viewport-fitted #overlay.visible > .craft-panel {
+  animation: none;
 }
 
 /* Stagger entry — apply `.anim-stagger-in` to a flex/grid container and

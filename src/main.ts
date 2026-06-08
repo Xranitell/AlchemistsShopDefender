@@ -565,6 +565,7 @@ function tick(dt: number): void {
       input.endFrame();
       render(ctx!, state);
       hud.update(state);
+      tutorial.update(state);
       return;
     }
   }
