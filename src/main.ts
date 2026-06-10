@@ -105,6 +105,7 @@ import { setLocale, t, onLocaleChange, normalizeToLocale } from './i18n';
 // `:root` so UI code can react to them; the canvas / arena code below
 // reads them directly via `getViewport()`.
 import { installViewportManager, getViewport, onViewportChange } from './engine/viewport';
+import type { ViewportSnapshot } from './engine/viewport';
 import { applyMotionModeFromMeta } from './engine/motion';
 
 const MOBILE_BREAKPOINT = 1024;
@@ -153,12 +154,42 @@ let canvasDpr = 1;
  *  ~768×398 phone viewport the world is 2400×1080 and is rendered at
  *  scale ≈0.37, giving the same dais-to-canvas ratio the player sees
  *  on PC. The HiDPI backing store keeps the resulting raster crisp. */
+/** Logical render dimensions (CSS px) the canvas + arena are sized to,
+ *  given a viewport snapshot.
+ *
+ *  - When the viewport is *smaller* than the reference design
+ *    (`uiScale <= 1`) we render at the real viewport size and the world
+ *    is scaled-to-fit by `getRenderCamera()`.
+ *  - When the viewport is *bigger* (`uiScale > 1`, the `viewport-upscaled`
+ *    path) we used to pin the render surface to the design rectangle
+ *    (1280×720) and let CSS `transform: scale(--ui-scale)` blow it up.
+ *    That kept the pixel-art crisp BUT pinned the canvas to the 16:9
+ *    design aspect, so any viewport wider/taller than 16:9 (ultrawide,
+ *    maximised wide-short windows) got pillar-/letter-box gutters — the
+ *    same bug the main menu had (item 7).
+ *
+ *    Fix: keep the same crisp `--ui-scale` upscale factor but grow the
+ *    pre-scale render surface to `viewport / uiScale` on each axis so
+ *    that after the CSS `scale(--ui-scale)` the rendered canvas equals
+ *    the real viewport exactly (`(vp / s) * s = vp`) — no gutters. The
+ *    design size stays a floor (the limiting axis lands on it, the other
+ *    grows). The world then fills the extra width/height through the
+ *    existing aspect-aware `setArenaSize` / `getRenderCamera` path, just
+ *    like every non-upscaled viewport already does. */
+function getRenderDims(vp: ViewportSnapshot): { w: number; h: number } {
+  if (vp.uiScale > 1.001) {
+    return {
+      w: Math.max(vp.designWidth, Math.round(vp.width / vp.uiScale)),
+      h: Math.max(vp.designHeight, Math.round(vp.height / vp.uiScale)),
+    };
+  }
+  return { w: Math.max(640, vp.width), h: Math.max(360, vp.height) };
+}
+
 function syncArenaToViewport(): void {
   const c = canvas!;
   const vp = getViewport();
-  const renderAtDesignSize = vp.uiScale > 1.001;
-  const w = renderAtDesignSize ? vp.designWidth : Math.max(640, vp.width);
-  const h = renderAtDesignSize ? vp.designHeight : Math.max(360, vp.height);
+  const { w, h } = getRenderDims(vp);
   canvasDpr = vp.dpr;
   // CSS size — what `getBoundingClientRect()` reports and what input
   // mapping uses to translate clientX/Y into game coords.
@@ -185,13 +216,8 @@ onViewportChange(() => {
   // The first call inside `state` setup already used the right size, but
   // subsequent runtime resizes need to reposition the mannequin / runes.
   if (state) {
-    const vp = getViewport();
-    const renderAtDesignSize = vp.uiScale > 1.001;
-    resizeArena(
-      state,
-      renderAtDesignSize ? vp.designWidth : vp.width,
-      renderAtDesignSize ? vp.designHeight : vp.height,
-    );
+    const { w, h } = getRenderDims(getViewport());
+    resizeArena(state, w, h);
   }
 });
 

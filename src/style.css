@@ -1357,8 +1357,15 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--design-w, 1280px);
-  height: var(--design-h, 720px);
+  /* Grow the pre-scale surface to `viewport / ui-scale` on each axis so
+     that after the `scale(--ui-scale)` transform the canvas exactly
+     fills the real viewport (no 16:9 pillar-/letter-box gutters on
+     ultrawide / wide-short windows). The design size is a floor. This
+     mirrors the inline width/height main.ts sets in `getRenderDims`
+     (inline wins, but keep them in sync so the cascade is unambiguous).
+     The world fills the extra space via the aspect-aware camera. */
+  width: max(var(--design-w, 1280px), calc(var(--vp-width, 1280px) / var(--ui-scale, 1)));
+  height: max(var(--design-h, 720px), calc(var(--vp-height, 720px) / var(--ui-scale, 1)));
   transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
