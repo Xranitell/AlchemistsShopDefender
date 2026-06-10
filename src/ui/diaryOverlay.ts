@@ -448,6 +448,7 @@ export class DiaryOverlay {
     const sprite = enemySpriteIconNode(entry.id, 128, {
       silhouette: !discovered,
       fitScale: 0.7,
+      floorOffset: 16,
     });
     if (sprite) icon.appendChild(sprite);
     card.appendChild(icon);
@@ -970,6 +971,8 @@ interface SpriteIconNodeOpts {
    *  Defaults to 0.86 (matches the menu portraits). The bestiary
    *  cards pass a smaller value so tall sprites do not clip. */
   fitScale?: number;
+  /** Pixels to lift bottom-aligned animated sprites inside their canvas. */
+  floorOffset?: number;
 }
 
 function enemySpriteIconNode(
@@ -985,6 +988,7 @@ function enemySpriteIconNode(
       height: size,
       fps: 3,
       fitScale,
+      floorOffset: opts.floorOffset ?? 0,
       extraClass: opts.silhouette ? 'diary-sprite diary-sprite-silhouette' : 'diary-sprite',
     });
     return node;
