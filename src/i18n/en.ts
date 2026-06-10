@@ -13,6 +13,28 @@ export const EN: Record<string, string> = {
   'ui.lang.en': 'EN',
   'ui.lang.tooltip': 'Language',
 
+  // Advertising
+  'ui.ads.interstitialCountdown': 'Ad starts in',
+  'ui.ads.interstitialHint': 'The card choice will open after the ad',
+
+  // Privacy Policy
+  'ui.privacy.title': 'Privacy Policy',
+  'ui.privacy.subtitle': "How Alchemist's Shop: Rune Defense handles player data",
+  'ui.privacy.effective': 'Effective date: June 9, 2026',
+  'ui.privacy.intro': 'This notice explains what information is processed when you play. The game uses the services of the platform on which it is hosted.',
+  'ui.privacy.data.title': 'Information processed',
+  'ui.privacy.data.body': 'The game may receive your platform username, profile picture and internal platform user identifier. It also processes leaderboard scores, game progress, settings and timestamps needed for advertisement reward cooldowns.',
+  'ui.privacy.use.title': 'How information is used',
+  'ui.privacy.use.body': 'This information is used only to run the game, save progress and settings, display leaderboard results, submit scores, provide account features and prevent repeated advertisement rewards during cooldowns.',
+  'ui.privacy.storage.title': 'Storage and platform services',
+  'ui.privacy.storage.body': "Progress and settings may be stored in your browser and through services provided by the hosting platform. Account, leaderboard and advertisement features are processed through the platform SDK under the platform's own privacy terms. The game has no independent account server and does not sell personal data.",
+  'ui.privacy.visibility.title': 'Leaderboard visibility',
+  'ui.privacy.visibility.body': 'If you use platform account or leaderboard features, your username, profile picture and score may be visible to other players in platform leaderboards.',
+  'ui.privacy.choices.title': 'Your choices',
+  'ui.privacy.choices.body': "You can clear local game progress in Settings and manage platform account data through the hosting platform. Clearing browser or site data also removes this acknowledgement, so this notice will appear again. Privacy questions can be sent through the support tools on the game's platform page.",
+  'ui.privacy.acknowledgement': 'Select the button below to acknowledge this Privacy Policy and continue to the game.',
+  'ui.privacy.accept': 'ACCEPT AND CONTINUE',
+
   // ── Main menu ────────────────────────────────────────────────────────
   'ui.menu.title.top': "Alchemist's Shop:",
   'ui.menu.title.bottom': 'Rune Defense',
@@ -85,7 +107,7 @@ export const EN: Record<string, string> = {
   'ui.cards.empty': 'No more upgrade cards — hit "Continue".',
   'ui.cards.next': 'Continue',
   'ui.cards.reroll': 'Reroll',
-  'ui.cards.rerollAd': 'Reroll (Ad)',
+  'ui.cards.rerollAd': 'Reroll by watching an ad',
   'ui.cards.skip': 'Skip',
   'ui.cards.new': 'NEW!',
   'ui.cards.cursed': 'CURSED',
@@ -100,7 +122,7 @@ export const EN: Record<string, string> = {
 
   // ── Victory / defeat / chest ─────────────────────────────────────────
   'ui.victory.title': 'Victory! Alchemist\'s chest',
-  'ui.victory.doubleAd': 'Double reward (ad)',
+  'ui.victory.doubleAd': 'Double the run reward by watching an ad',
   'ui.victory.doubled': 'Chest doubled!',
   'ui.victory.doubledSubtitle': 'Total: +{blue} BE{ancient}.',
   'ui.victory.doubledSubtitleAncient': ', +{n} AE',
@@ -196,9 +218,10 @@ export const EN: Record<string, string> = {
   'ui.exitConfirm.body': 'You will lose your run progress.',
   'ui.exitConfirm.bodyKeyEpic': 'The Epic key spent on this run will not be refunded if you leave now.',
   'ui.exitConfirm.bodyKeyAncient': 'The Ancient key spent on this run will not be refunded if you leave now.',
-  'ui.exitConfirm.exit': 'Exit',
+  'ui.exitConfirm.exit': 'Main menu',
   'ui.exitConfirm.stay': 'Stay',
-  'ui.pause.exitToMenu': 'Exit to menu',
+  'ui.pause.exitToMenu': 'Main menu',
+  'ui.pause.restart': 'Restart',
 
   // ── Dungeon-law announcement toast ──────────────────────────────────
   'ui.lawAnnounce.title': 'New dungeon law',
@@ -574,12 +597,12 @@ export const EN: Record<string, string> = {
   'tutorial.menu-laboratory': 'Talent laboratory — permanent upgrades bought with blue and ancient essence. Bonuses apply to every future run.',
   'tutorial.menu-loadout': 'Mannequin loadout. Pick one active module for Overload and one passive aura — one effect for each slot.',
   'tutorial.menu-diary': 'Alchemist\u2019s Diary. Tabs: Alchemy, Synergies, Bestiary and Towers. Study elements, reactions, enemies and tower stats here.',
-  'tutorial.menu-leaderboard': 'Leaderboards. Compare your endless and daily-event results with other players.',
+  'tutorial.menu-leaderboard': 'Leaderboards. Your best wave reached in a single run is compared across every game mode. Supported platforms also show a daily ranking.',
   'tutorial.menu-daily': 'Daily rewards. Come back once a day to claim gold, keys and essence. The "Claim!" button is live while the "!" badge is showing.',
   'tutorial.menu-battle': 'Ready? Hit "TO BATTLE", pick a difficulty and start the run. Good luck!',
 
   // Settings walkthrough
-  'tutorial.settings-intro': 'This is the settings panel: tune volume, language and animation strength, and check long-term stats. The progress-reset button lives here too.',
+  'tutorial.settings-intro': 'This is the settings panel: tune audio and animation strength, and check long-term stats. The progress-reset button lives here too.',
   'tutorial.settings-audio': 'Audio — two sliders: "SFX" (shots, blasts, UI clicks) and "Music" (background score in runs and menus). Changes apply live; feel free to drag mid-run.',
   'tutorial.settings-language': 'Interface language. Russian and English are available — switching is instant, no reload needed.',
   'tutorial.settings-motion': 'Animations: "Auto" follows the device\u2019s system setting, "Minimal" disables decorative effects (recommended on phones if the game lags), "Full" turns everything on. This is the single most impactful toggle for low-end devices.',
@@ -784,12 +807,13 @@ Object.assign(EN, {
 
   // ── Leaderboards ────────────────────────────────────────────────────
   'ui.lb.title': 'Leaderboards',
-  'ui.lb.tab.endlessWaves': 'Best Wave',
-  'ui.lb.tab.dailyWaves': 'Daily Event',
+  'ui.lb.tab.endlessWaves': 'Overall',
+  'ui.lb.tab.dailyWaves': 'Daily',
   'ui.lb.loading': 'Loading…',
   'ui.lb.empty': 'No entries yet.',
   'ui.lb.signInPrompt': 'Sign in to appear on the leaderboard.',
   'ui.lb.signInBtn': 'Sign in',
+  'ui.lb.crazyGamesPersonal': 'Your best single-run result across all modes. CrazyGames shows the global ranking and resets it weekly.',
 
   // ── Endless modifiers ────────────────────────────────────────────────
   'ui.endless.cycleTitle': 'Endless Cycle {loop}',

@@ -8,7 +8,7 @@ Roguelike Tower Defense / Survival Strategy для веб-платформ (Yand
 
 - **TypeScript + Vite** — статическая сборка, вывод в `dist/`.
 - **HTML5 Canvas 2D** — лёгкий рендер, мгновенный старт (важно для YG SDK).
-- **Yandex Games SDK** — интегрирован через тонкую обёртку [`src/yandex.ts`](src/yandex.ts). Если SDK не загрузился (локалка, CrazyGames, обычный веб) — все вызовы становятся no-op.
+- **Платформенные SDK** — Yandex Games и CrazyGames SDK v3 подключаются через единый фасад [`src/platform.ts`](src/platform.ts). Каждая сборка загружает только SDK своей платформы.
 
 Никаких сторонних игровых движков нет — всё рисование, физика, AI и UI написаны вручную.
 
@@ -18,11 +18,45 @@ Roguelike Tower Defense / Survival Strategy для веб-платформ (Yand
 npm install
 npm run dev          # vite dev-server на http://localhost:5173
 npm run build        # production-сборка в dist/
+npm run build:yandex # Yandex Games SDK
+npm run build:crazygames # CrazyGames SDK v3
 npm run preview      # локальный предпросмотр прод-сборки
 npm run typecheck    # tsc --noEmit
 npm run package      # npm run build + zip в alchemists-shop-rune-defense.zip
 npm run optimize-assets  # пережимает PNG в public/sprites и MP3 в public/audio (требует pngquant, optipng, ffmpeg)
 ```
+
+## CrazyGames leaderboard
+
+CrazyGames supports one global weekly leaderboard per game. The CrazyGames
+build submits the highest wave reached in a single run, across every mode,
+through
+`CrazyGames.SDK.user.submitScore`; the global list itself is rendered by the
+CrazyGames platform and resets automatically each Monday at 09:00 UTC. The
+game exposes only this one overall leaderboard in the CrazyGames build.
+
+Yandex uses two global boards configured in the developer console:
+
+- `endlessWaves`: all-time best wave reached in a single run across all modes.
+- `dailyWaves`: daily best. The date is encoded into the submitted score and
+  filtered on read so the visible ranking resets at 00:00 Europe/Moscow.
+
+Both Yandex boards must use descending score order. `dailyWaves` must allow
+scores above `21000000000000`, because its technical score includes the date.
+
+Configure the Leaderboard tab in the CrazyGames Developer Portal with:
+
+- Leaderboard guide: `Reach the highest wave in any mode`
+- Metric type: `POINTS`
+- Incremental scoring: `false`
+- Score sorting: `DESC`
+- Min/max score: `1` / `100000`
+- Cooldown: `10` seconds
+- Encryption key: `0zx7hxGV34IW2PnBXzkBnN/v7RjAOzprXFNayinyZks=`
+
+The same key is embedded into the CrazyGames build through
+`.env.crazygames`; this is expected for client-side leaderboard submission
+and is not the server-side API key.
 
 Требования: Node.js 18+ (тест на v22.12). `npm install` не требует системных пакетов.
 

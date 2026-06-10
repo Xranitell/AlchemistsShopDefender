@@ -656,9 +656,20 @@ class TutorialController {
     } else {
       this.arrowEl.classList.remove('hidden');
       this.arrowEl.textContent = arrowAbove ? '▲' : '▼';
-      this.arrowEl.style.left = `${clamp(cx - 12, bounds.left + margin, bounds.right - 24 - margin)}px`;
-      const arrowY = arrowAbove ? tipY + rect.height + 4 : tipY - 28;
-      this.arrowEl.style.top = `${clamp(arrowY, bounds.top + 4, bounds.bottom - 32)}px`;
+      const arrowRect = this.arrowEl.getBoundingClientRect();
+      this.arrowEl.style.left = `${clamp(
+        cx - arrowRect.width / 2,
+        bounds.left + margin,
+        bounds.right - arrowRect.width - margin,
+      )}px`;
+      const arrowY = arrowAbove
+        ? tipY + rect.height + 4
+        : tipY - arrowRect.height;
+      this.arrowEl.style.top = `${clamp(
+        arrowY,
+        bounds.top + 4,
+        bounds.bottom - arrowRect.height - 4,
+      )}px`;
     }
   }
 
@@ -745,9 +756,11 @@ class TutorialController {
     // needed when the canvas backing-store size matched the CSS size —
     // now that the canvas runs at a DPR multiplier, that ratio would
     // shrink the spotlight by 1/dpr.
-    const sx = rect.left + screen.x;
-    const sy = rect.top + screen.y;
-    return { cx: sx, cy: sy, radius };
+    const scaleX = this.canvas.clientWidth > 0 ? rect.width / this.canvas.clientWidth : 1;
+    const scaleY = this.canvas.clientHeight > 0 ? rect.height / this.canvas.clientHeight : 1;
+    const sx = rect.left + screen.x * scaleX;
+    const sy = rect.top + screen.y * scaleY;
+    return { cx: sx, cy: sy, radius: radius * Math.max(scaleX, scaleY) };
   }
 }
 

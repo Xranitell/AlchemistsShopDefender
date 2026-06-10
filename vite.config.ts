@@ -1,8 +1,31 @@
 import { defineConfig } from 'vite';
 
-// Yandex Games requires fully relative asset paths inside the uploaded zip.
-export default defineConfig({
+// Both portals require fully relative asset paths inside the uploaded zip.
+export default defineConfig(({ mode }) => ({
   base: './',
+  plugins: [
+    {
+      name: 'platform-sdk',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html) {
+          const src = mode === 'crazygames'
+            ? 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
+            : 'https://yandex.ru/games/sdk/v2';
+          return {
+            html: mode === 'crazygames'
+              ? html.replace('<html lang="ru">', '<html lang="en">')
+              : html,
+            tags: [{
+              tag: 'script',
+              attrs: { src, defer: true },
+              injectTo: 'head',
+            }],
+          };
+        },
+      },
+    },
+  ],
   build: {
     target: 'es2020',
     sourcemap: false,
@@ -78,4 +101,4 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
-});
+}));

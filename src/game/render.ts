@@ -15,7 +15,7 @@ import {
   enemyAnimFps,
 } from '../render/creatureAnims';
 import { drawActiveDoor, getRoomBackdrop, setBiome, getActiveBiomePalette } from '../render/room';
-import { getDais, drawAbilitySlotsOverlay } from '../render/dais';
+import { getDais } from '../render/dais';
 import {
   drawTurret,
   getTurretFootprint,
@@ -131,13 +131,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawDoorOverlays(ctx, state);
   // Stone dais beneath the mannequin (cached).
   ctx.drawImage(getDais(width, height), 0, 0);
-  drawAbilitySlotsOverlay(
-    ctx,
-    state.mannequin.pos.x,
-    state.mannequin.pos.y,
-    state.worldTime,
-    ['cloud', 'flame', 'cloud', 'shield'],
-  );
   drawDangerRim(ctx, state);
   drawRunePoints(ctx, state);
   drawScorchDecals(ctx);

@@ -29,6 +29,7 @@ const STABILITY_CSS = `
 `;
 
 const SEED_SAVE = {
+  isShowed: true,
   locale: 'ru',
   localeUserChoice: true,
   blueEssence: 99,
@@ -66,6 +67,7 @@ async function pinRandomness(page: Page): Promise<void> {
 async function seedSave(page: Page): Promise<void> {
   await page.addInitScript((seed) => {
     localStorage.setItem('asd_meta_v2', JSON.stringify(seed));
+    localStorage.setItem('asd_platform_launched_v1', '1');
   }, SEED_SAVE);
 }
 
@@ -96,6 +98,65 @@ async function openLoadout(page: Page): Promise<void> {
   );
 }
 
+async function expectLoadoutToFit(page: Page): Promise<void> {
+  const layout = await page.locator('.lo-panel').evaluate((panel) => {
+    const rectOf = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+      };
+    };
+    const body = panel.querySelector<HTMLElement>('.lo-body')!;
+    const bodyStyle = getComputedStyle(body);
+
+    return {
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      panel: rectOf(panel),
+      body: {
+        ...rectOf(body),
+        clientHeight: body.clientHeight,
+        scrollHeight: body.scrollHeight,
+        scrollTop: body.scrollTop,
+        scrollbarWidth: body.offsetWidth - body.clientWidth,
+        overflowY: bodyStyle.overflowY,
+      },
+      cards: Array.from(panel.querySelectorAll('.lo-card'), rectOf),
+      cta: rectOf(panel.querySelector('.lo-cta')!),
+    };
+  });
+
+  expect(layout.panel.left).toBeGreaterThanOrEqual(-1);
+  expect(layout.panel.top).toBeGreaterThanOrEqual(-1);
+  expect(layout.panel.right).toBeLessThanOrEqual(layout.viewport.width + 1);
+  expect(layout.panel.bottom).toBeLessThanOrEqual(layout.viewport.height + 1);
+  expect(layout.body.scrollHeight).toBeLessThanOrEqual(layout.body.clientHeight);
+  expect(layout.body.scrollbarWidth).toBe(0);
+  expect(layout.body.scrollTop).toBe(0);
+  expect(layout.cards).toHaveLength(8);
+
+  for (const card of layout.cards) {
+    expect(card.left).toBeGreaterThanOrEqual(layout.body.left - 1);
+    expect(card.top).toBeGreaterThanOrEqual(layout.body.top - 1);
+    expect(card.right).toBeLessThanOrEqual(layout.body.right + 1);
+    expect(card.bottom).toBeLessThanOrEqual(layout.body.bottom + 1);
+  }
+
+  expect(layout.cta.left).toBeGreaterThanOrEqual(layout.panel.left);
+  expect(layout.cta.top).toBeGreaterThanOrEqual(layout.panel.top);
+  expect(layout.cta.right).toBeLessThanOrEqual(layout.panel.right);
+  expect(layout.cta.bottom).toBeLessThanOrEqual(layout.panel.bottom);
+
+  if (layout.viewport.height <= 540 && layout.viewport.width < 1024) {
+    expect(layout.body.overflowY).toBe('hidden');
+  }
+}
+
 test.describe('loadout overlay — first paint', () => {
   test.beforeEach(async ({ page }) => {
     await pinRandomness(page);
@@ -110,6 +171,32 @@ test.describe('loadout overlay — first paint', () => {
     await page.addStyleTag({ content: STABILITY_CSS });
     await waitForMenuStable(page);
     await openLoadout(page);
+    await expectLoadoutToFit(page);
     await expect(page).toHaveScreenshot();
+  });
+
+  test('has no scrollbar in Yandex mobile landscape embeds', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== '1280x576');
+    const yandexEmbeds = [
+      { name: 'iPhone 12 Pro', width: 844, height: 357 },
+      { name: 'iPhone XR', width: 896, height: 381 },
+      { name: 'Galaxy S20 Ultra', width: 915, height: 379 },
+    ];
+
+    for (const viewport of yandexEmbeds) {
+      await test.step(viewport.name, async () => {
+        await page.setViewportSize({
+          width: viewport.width,
+          height: viewport.height,
+        });
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await page.addStyleTag({ content: STABILITY_CSS });
+        await waitForMenuStable(page);
+        await openLoadout(page);
+        await expectLoadoutToFit(page);
+      });
+    }
   });
 });

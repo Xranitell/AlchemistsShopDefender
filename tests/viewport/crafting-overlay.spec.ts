@@ -34,6 +34,7 @@ const STABILITY_CSS = `
 `;
 
 const SEED_SAVE = {
+  isShowed: true,
   blueEssence: 69,
   ancientEssence: 0,
   epicKeys: 0,
@@ -77,6 +78,7 @@ async function pinRandomness(page: Page): Promise<void> {
 async function seedSave(page: Page): Promise<void> {
   await page.addInitScript((seed) => {
     localStorage.setItem('asd_meta_v2', JSON.stringify(seed));
+    localStorage.setItem('asd_platform_launched_v1', '1');
   }, SEED_SAVE);
 }
 

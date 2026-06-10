@@ -10,7 +10,7 @@ import type { Vec2 } from './math';
  */
 function isInsideOverlay(target: HTMLElement | null): boolean {
   if (!target || !target.closest) return false;
-  return !!target.closest('#overlay.visible');
+  return !!target.closest('#overlay.visible, .pause-stats-overlay');
 }
 
 export interface InputState {
@@ -72,9 +72,15 @@ export class Input {
    *  hit-test off by `dpr`. */
   private toGame(clientX: number, clientY: number): Vec2 {
     this.syncRect();
+    const scaleX = this.canvas.clientWidth > 0
+      ? this.canvas.clientWidth / Math.max(1, this.rectRight - this.rectLeft)
+      : 1;
+    const scaleY = this.canvas.clientHeight > 0
+      ? this.canvas.clientHeight / Math.max(1, this.rectBottom - this.rectTop)
+      : 1;
     return {
-      x: clientX - this.rectLeft,
-      y: clientY - this.rectTop,
+      x: (clientX - this.rectLeft) * scaleX,
+      y: (clientY - this.rectTop) * scaleY,
     };
   }
 
@@ -119,6 +125,7 @@ export class Input {
       if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT') return;
       if ((e.target as HTMLElement).closest?.('button')) return;
       if ((e.target as HTMLElement).closest?.('.tower-shop')) return;
+      if (isInsideOverlay(e.target as HTMLElement | null)) return;
       this.state.mouse = this.toGame(e.clientX, e.clientY);
       this.state.mouseDown = true;
       this.state.mousePressedThisFrame = true;

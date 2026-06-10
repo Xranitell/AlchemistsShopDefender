@@ -19,15 +19,14 @@
  *      --vp-height : real visual viewport height in CSS pixels.
  *      --vp-dpr    : device pixel ratio, capped at MAX_DPR.
  *      --ui-scale  : uniform scale that fits a 1280×720 reference design
- *                    into the current viewport (clamped to [0.5, 1]).
+ *                    into the current viewport (with a 0.5 lower bound).
  *      --hud-scale : same as `--ui-scale` but floored at MIN_HUD_SCALE so
  *                    in-battle buttons keep a 36+ CSS px tap target.
  *      --safe-top  : top safe-area inset (notch / status-bar cutout).
  *      --safe-bottom : bottom safe-area inset (home indicator / chrome).
  *
- *    A :root.viewport-fitted class is added when --ui-scale < 1 so CSS
- *    rules that need to know "we are smaller than the design size" can
- *    branch without re-doing the math.
+ *    A :root.viewport-fitted class is added whenever the reference design
+ *    is scaled or switched so CSS can preserve one stable composition.
  *
  * The manager listens to `resize`, `orientationchange`, and the
  * VisualViewport API so it stays in sync when the WebView or browser
@@ -182,7 +181,7 @@ function readViewport(): ViewportSnapshot {
   }
 
   const uiScaleRaw = Math.min(width / designWidth, height / designHeight);
-  const uiScale = Math.max(MIN_UI_SCALE, Math.min(1, uiScaleRaw));
+  const uiScale = Math.max(MIN_UI_SCALE, uiScaleRaw);
   // The HUD has tappable buttons whose hit area shrinks linearly with
   // CSS `transform: scale()`. We floor the HUD-only scale so a 44 CSS
   // px button never lands below ~37 px on the smallest phone, but we
@@ -274,8 +273,10 @@ function applySnapshotToCss(snap: ViewportSnapshot): void {
   const isNarrowDesign =
     snap.designWidth !== DESIGN_WIDTH_WIDE ||
     snap.designHeight !== DESIGN_HEIGHT_WIDE;
-  const fitted = snap.uiScale < 0.999 || isNarrowDesign;
+  const upscaled = snap.uiScale > 1.001;
+  const fitted = snap.uiScale < 0.999 || upscaled || isNarrowDesign;
   root.classList.toggle('viewport-fitted', fitted);
+  root.classList.toggle('viewport-upscaled', upscaled);
   // A second, more specific marker class. Some fit-mode rules (e.g.
   // title font-size) need different values on the narrow-WIDTH design
   // vs the wide-width designs because the same `clamp(min, vw, max)`

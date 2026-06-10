@@ -13,6 +13,7 @@ const STABILITY_CSS = `
 `;
 
 const SEED_SAVE = {
+  isShowed: true,
   locale: 'ru',
   localeUserChoice: true,
   blueEssence: 99,
@@ -40,6 +41,7 @@ const SEED_SAVE = {
 async function seedSave(page: Page): Promise<void> {
   await page.addInitScript((seed) => {
     localStorage.setItem('asd_meta_v2', JSON.stringify(seed));
+    localStorage.setItem('asd_platform_launched_v1', '1');
   }, SEED_SAVE);
 }
 
@@ -95,6 +97,21 @@ async function openAncientPauseTutorial(page: Page): Promise<void> {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       ),
   );
+}
+
+async function openAncientPause(page: Page): Promise<void> {
+  await page.click('.mm-battle-btn');
+  await page.waitForSelector('.difficulty-ancient', { state: 'visible', timeout: 5_000 });
+  await page.click('.difficulty-ancient');
+  await page.waitForSelector('.mp-confirm', { state: 'visible', timeout: 5_000 });
+  await page.click('.mp-confirm');
+  await page.waitForSelector('.blessing-card', { state: 'visible', timeout: 5_000 });
+  await page.locator('.blessing-card').first().click();
+  await page.waitForSelector('.curse-card', { state: 'visible', timeout: 5_000 });
+  await page.locator('.curse-card').first().click();
+  await page.waitForSelector('.hud-pause-btn', { state: 'visible', timeout: 5_000 });
+  await page.click('.hud-pause-btn');
+  await page.waitForSelector('.pause-stats-overlay', { state: 'visible', timeout: 5_000 });
 }
 
 async function advanceToExitTutorialStep(page: Page): Promise<void> {
@@ -168,6 +185,26 @@ test.describe('pause tutorial viewport bounds', () => {
     await expectTutorialInViewport(page);
   });
 
+  test('scales the pause tutorial with fullscreen UI', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== '1920x1080', 'Covered by the fullscreen project.');
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.addStyleTag({ content: STABILITY_CSS });
+    await waitForMenuStable(page);
+    await openPauseTutorial(page);
+    await expectTutorialInViewport(page);
+
+    const tooltip = await page.locator('.tutorial-tooltip').evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return {
+        renderedWidth: rect.width,
+        logicalWidth: (el as HTMLElement).offsetWidth,
+      };
+    });
+    expect(tooltip.renderedWidth / tooltip.logicalWidth).toBeGreaterThanOrEqual(1.4);
+    expect(tooltip.renderedWidth).toBeGreaterThan(500);
+  });
+
   test('keeps the Ancient pause footer inside the phone viewport', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== '768x398', 'Covered by the narrow phone project.');
 
@@ -194,5 +231,34 @@ test.describe('pause tutorial viewport bounds', () => {
         ),
     );
     await expectTutorialInViewport(page);
+  });
+
+  test('scrolls a long pause column with the mouse wheel', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== '1280x576', 'Uses a short desktop-like viewport.');
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForMenuStable(page);
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('asd_meta_v2');
+      const meta = raw ? JSON.parse(raw) : {};
+      meta.pauseTutorialDone = true;
+      localStorage.setItem('asd_meta_v2', JSON.stringify(meta));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForMenuStable(page);
+    await openAncientPause(page);
+
+    const side = page.locator('.pause-stats-side');
+    const dimensions = await side.evaluate((el) => ({
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+    }));
+    expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+
+    const box = await side.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.wheel(0, 320);
+    await expect.poll(() => side.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   });
 });

@@ -943,7 +943,15 @@ body {
     linear-gradient(180deg, rgba(8, 6, 14, 0.9), rgba(8, 6, 14, 0.95));
   align-items: center;
   justify-content: center;
+  /* The generic overlay is scrollable for long settings/stat panels.
+     Card drafts are a fixed single-screen composition, and even a
+     sub-pixel glow must never turn them into a scroll container. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  touch-action: none;
 }
+#overlay.cards-mode::-webkit-scrollbar { display: none; }
 
 /* For the first 2 seconds after the card draft appears we lock all clickable
  * surfaces inside the overlay so an in-progress click on the game canvas
@@ -1068,6 +1076,8 @@ body {
    * desktop sizes. Still capped at 96vw on smaller screens. */
   max-width: min(96vw, 1280px);
   width: 100%;
+  max-height: 100%;
+  overflow: visible;
 }
 
 .cards-stage-title {
@@ -1296,9 +1306,19 @@ body {
 .card-rh.cursed .card-rh-frame {
   background: linear-gradient(180deg, rgba(48, 14, 28, 0.98), rgba(20, 6, 14, 0.98));
   border-color: var(--rh-color);
+  padding: 14px 16px 18px;
+  gap: 7px;
   box-shadow:
     0 0 0 1px rgba(255, 80, 110, 0.25) inset,
     0 0 28px rgba(255, 50, 90, 0.45) inset;
+}
+.card-rh.cursed .card-rh-top {
+  margin-top: 3px;
+  margin-bottom: 1px;
+}
+.card-rh.cursed .card-rh-glyph {
+  width: clamp(38px, 18cqi, 52px);
+  height: clamp(38px, 18cqi, 52px);
 }
 .card-rh.cursed .card-rh-tag.cursed {
   color: #ffe2e7;
@@ -1306,6 +1326,55 @@ body {
   padding: 2px 8px;
   border-radius: 3px;
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+.card-rh.cursed .card-rh-title {
+  font-size: clamp(8px, 4cqi + 1px, 14px);
+}
+.card-rh.cursed .card-rh-divider {
+  margin: 2px 8px 3px;
+}
+.card-rh.cursed .card-rh-effects {
+  font-size: clamp(12px, 5.2cqi + 1px, 18px);
+  gap: 4px;
+  padding: 0 2px;
+}
+.card-rh.cursed .card-rh-effects li {
+  line-height: 1.2;
+}
+.card-rh.cursed .card-rh-effects li.card-rh-unique {
+  padding: 3px 6px;
+  margin: 2px -2px;
+}
+.card-rh.card-rh-content-tight .card-rh-frame {
+  padding: 10px 12px 12px;
+  gap: 3px;
+}
+.card-rh.card-rh-content-tight .card-rh-top {
+  margin: 0;
+}
+
+:root.viewport-upscaled #game-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--design-w, 1280px);
+  height: var(--design-h, 720px);
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+.card-rh.card-rh-content-tight .card-rh-glyph {
+  width: clamp(30px, 14cqi, 42px);
+  height: clamp(30px, 14cqi, 42px);
+}
+.card-rh.card-rh-content-tight .card-rh-divider {
+  margin: 1px 6px 2px;
+}
+.card-rh.card-rh-content-tight .card-rh-effects li.card-rh-unique {
+  padding-block: 2px;
+  margin-block: 1px;
+}
+.card-rh.card-rh-content-tight .card-rh-effects li.card-rh-sep {
+  margin-block: 2px;
 }
 
 /* Animated legendary border-shimmer. The pulsing inset glow stays on the
@@ -2946,6 +3015,17 @@ body {
   grid-template-rows: 1fr;
   opacity: 1;
   margin-top: 8px;
+}
+.mm-col-right.leaderboard-hidden .mm-daily-calendar {
+  flex: 1 1 auto;
+}
+.mm-col-right.leaderboard-hidden .mm-daily-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 8px;
+}
+.mm-col-right.leaderboard-hidden .mm-daily-chev {
+  display: none;
 }
 
 /* While daily is open the leaderboard shrinks to a compact form so
@@ -5612,6 +5692,13 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+:root.viewport-upscaled .tutorial-tooltip {
+  transform-origin: top left;
+  transform: translateY(6px) scale(var(--ui-scale, 1));
+}
+:root.viewport-upscaled .tutorial-root.step-visible .tutorial-tooltip {
+  transform: scale(var(--ui-scale, 1));
+}
 .tutorial-text {
   margin: 0 0 10px;
   overflow-wrap: anywhere;
@@ -5654,6 +5741,9 @@ body {
   pointer-events: none;
   /* No bobbing animation — keeps the arrow rock-steady so the
    * highlighted target feels framed rather than shaken. */
+}
+:root.viewport-upscaled .tutorial-arrow {
+  font-size: calc(28px * var(--ui-scale, 1));
 }
 .tutorial-arrow.hidden { display: none; }
 
@@ -5839,6 +5929,18 @@ body {
   display: flex;
   gap: 4px;
   margin-bottom: 14px;
+}
+.lb-scope-note {
+  margin: -5px 0 9px;
+  color: var(--fg-dim, #a0a0b0);
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  line-height: 1.15;
+  text-align: center;
+}
+.lb-panel-compact .lb-scope-note {
+  margin: -3px 0 6px;
+  font-size: 11px;
 }
 .lb-tab {
   all: unset;
@@ -7819,7 +7921,9 @@ body {
   position: relative;
   isolation: isolate;
   max-height: 80vh;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   /* Allow vertical touch-scroll on phones; the global
      `body { touch-action: none }` would otherwise eat the gesture. */
   touch-action: pan-y;
@@ -8267,6 +8371,8 @@ body {
 .pause-stats-footer {
   display: flex;
   justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 14px 4px 4px;
 }
 .pause-stats-exit-btn {
@@ -8299,6 +8405,95 @@ body {
 .pause-stats-exit-btn:active {
   transform: translateY(1px);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.pause-stats-restart-btn {
+  color: #d7f7ff;
+  border-color: rgba(125, 249, 255, 0.45);
+}
+.pause-stats-restart-btn:hover {
+  color: #7df9ff;
+  border-color: rgba(125, 249, 255, 0.8);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(125, 249, 255, 0.24);
+}
+
+/* Blocks all game input while the CrazyGames SDK is resolving or showing
+ * a video ad. Audio is muted separately on the SDK's adStarted callback. */
+.platform-ad-blocker {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #f0e3c8;
+  background: rgba(8, 5, 12, 0.88);
+  font: 12px/1.4 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: wait;
+}
+.platform-ad-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 209, 102, 0.24);
+  border-top-color: #ffd166;
+  border-radius: 50%;
+  animation: platform-ad-spin 0.75s linear infinite;
+}
+@keyframes platform-ad-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Three-second warning before a scheduled Yandex interstitial. */
+.interstitial-countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  background:
+    radial-gradient(circle at center, rgba(73, 42, 30, 0.32), transparent 48%),
+    rgba(5, 4, 10, 0.94);
+  backdrop-filter: blur(7px);
+}
+.interstitial-countdown-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(88vw, 520px);
+  padding: 30px 34px;
+  color: #f0e3c8;
+  background: linear-gradient(180deg, rgba(42, 24, 26, 0.98), rgba(16, 10, 18, 0.98));
+  border: 3px solid #18090b;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 209, 102, 0.68),
+    inset 0 0 0 6px rgba(93, 44, 31, 0.78),
+    0 20px 70px rgba(0, 0, 0, 0.75);
+  text-align: center;
+}
+.interstitial-countdown-label {
+  color: #ffd77a;
+  font: 13px/1.45 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.interstitial-countdown-value {
+  color: #ff9d4d;
+  font: 54px/1 'Press Start 2P', 'VT323', monospace;
+  text-shadow: 0 0 18px rgba(255, 126, 53, 0.52);
+}
+.interstitial-countdown-hint {
+  color: #d4bdab;
+  font: 20px/1.2 'VT323', monospace;
 }
 
 /* ── Exit-to-menu confirm dialog (rendered inside the pause overlay) ──
@@ -12396,6 +12591,90 @@ body {
   transform: scale(var(--hud-scale, 1));
 }
 
+/* Large/fullscreen viewports use the same 1280x720 HUD composition as the
+   normal game window. Scale the complete HUD stage instead of stretching
+   its left/centre/right anchors across the physical screen. */
+:root.viewport-upscaled #hud {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: var(--design-w, 1280px);
+  height: var(--design-h, 720px);
+  padding: 0;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+:root.viewport-upscaled .hud-top {
+  top: 4px;
+  left: 18px;
+  right: 18px;
+  transform: none;
+}
+:root.viewport-upscaled .hud-bottom-row {
+  bottom: 18px;
+  left: 22px;
+  right: 22px;
+  transform: none;
+}
+
+/* Fullscreen panels that do not have a dedicated fit-mode adapter still
+   scale as one surface. Dedicated panels below override this generic rule
+   with their own design dimensions. */
+:root.viewport-upscaled #overlay.visible > .panel:not(.meta-tree-panel):not(.settings-panel):not(.difficulty-panel):not(.modifier-preview-panel):not(.craft-panel):not(.chest-overlay):not(.defeat-overlay):not(.privacy-policy-panel) {
+  animation: none;
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: center center;
+  max-height: calc(var(--design-h, 720px) * 0.94);
+}
+
+:root.viewport-upscaled .meta-tree-panel {
+  position: fixed;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: var(--design-w, 1280px);
+  height: var(--design-h, 720px);
+  min-height: var(--design-h, 720px);
+  max-width: none;
+  max-height: none;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+/* Screens with their own fullscreen backdrop do not sit directly under
+   #overlay. Scale their inner panel from the same reference rectangle. */
+:root.viewport-upscaled .blessing-panel,
+:root.viewport-upscaled .dev-panel,
+:root.viewport-upscaled .revive-panel {
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+:root.viewport-upscaled .blessing-panel {
+  width: 760px;
+  max-width: 760px;
+  max-height: calc(var(--design-h, 720px) * 0.92);
+}
+:root.viewport-upscaled .dev-panel {
+  width: 640px;
+  max-width: 640px;
+  max-height: calc(var(--design-h, 720px) * 0.92);
+}
+:root.viewport-upscaled .revive-panel {
+  width: 400px;
+  max-width: 400px;
+}
+:root.viewport-upscaled .diary-overlay {
+  padding: 0;
+}
+:root.viewport-upscaled .diary-panel {
+  width: min(1180px, calc(var(--design-w, 1280px) - 32px));
+  height: calc(var(--design-h, 720px) * 0.82);
+  max-width: none;
+  max-height: none;
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    PAUSE-STATS overlay — fit-mode adapter (mobile phase 4).
 
@@ -12856,18 +13135,24 @@ body {
 :root.viewport-fitted .difficulty-card:nth-child(4) { grid-column: 2 / span 2; }
 :root.viewport-fitted .difficulty-card:nth-child(5) { grid-column: 4 / span 2; }
 
-/* Restore desktop typography for header + card body. */
-:root.viewport-fitted .difficulty-header h2 { font-size: 16px; }
-:root.viewport-fitted .difficulty-subtitle { font-size: 16px; }
+/* Compensate for the parent fit transform so text remains readable on
+   short landscape phones instead of ending up at 7-9 physical pixels. */
+:root.viewport-fitted .difficulty-header h2 { font-size: 20px; }
+:root.viewport-fitted .difficulty-subtitle { font-size: 18px; }
 :root.viewport-fitted .difficulty-label {
-  font-size: 9px;
+  font-size: 11px;
   margin-top: -16px;
   padding: 2px 6px;
   border-width: 1px;
 }
-:root.viewport-fitted .difficulty-name { font-size: 11px; }
-:root.viewport-fitted .difficulty-flavor { font-size: 13px; min-height: 30px; padding: 0; }
-:root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 13px; }
+:root.viewport-fitted .difficulty-name { font-size: 15px; }
+:root.viewport-fitted .difficulty-flavor {
+  font-size: 16px;
+  line-height: 1.15;
+  min-height: 36px;
+  padding: 0;
+}
+:root.viewport-fitted .difficulty-cost { padding: 5px 8px; font-size: 15px; }
 :root.viewport-fitted .difficulty-icon {
   font-size: 38px;
   margin: 4px 0;
@@ -12968,6 +13253,33 @@ body {
   gap: 22px;
 }
 
+/* Cursed drafts carry up to five effect rows. Give them wider, slightly
+   squarer cards and reclaim height from the surrounding stage chrome. */
+:root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-stage {
+  padding: 16px 24px;
+  gap: 10px;
+  width: 940px;
+  max-width: none;
+}
+:root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-stage-title {
+  font-size: 22px;
+  letter-spacing: 4px;
+  padding: 4px 20px;
+}
+:root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-stage-subtitle {
+  font-size: 16px;
+  line-height: 1.25;
+  margin-bottom: 0;
+  max-width: 760px;
+}
+:root.viewport-fitted #overlay.cards-mode.cursed-mode .cards-rh {
+  grid-template-columns: repeat(3, minmax(0, 282px));
+  gap: 16px;
+}
+:root.viewport-fitted #overlay.cards-mode.cursed-mode .card-rh.cursed {
+  aspect-ratio: 3 / 3.75;
+}
+
 
 /* ════════════════════════════════════════════════════════════════════════
    Crafting overlay (Зельеварка) — fit-mode adaptation.
@@ -13046,6 +13358,25 @@ body {
   min-height: 0;
   max-height: none;
 }
+
+/* The landscape media query above intentionally compresses the brewery
+   before fit-mode scales the complete panel. Restore larger source text
+   here so the final, transformed result remains legible. */
+:root.viewport-fitted .craft-title { font-size: 22px; }
+:root.viewport-fitted .craft-tagline { font-size: 11px; }
+:root.viewport-fitted .craft-sub { font-size: 16px; }
+:root.viewport-fitted .craft-section-title { font-size: 12px; }
+:root.viewport-fitted .craft-inv-slot { font-size: 17px; }
+:root.viewport-fitted .craft-ing-cell,
+:root.viewport-fitted .craft-ing-name { font-size: 16px; }
+:root.viewport-fitted .craft-ing-count { font-size: 17px; }
+:root.viewport-fitted .craft-recipe-name { font-size: 15px; }
+:root.viewport-fitted .craft-recipe-desc {
+  font-size: 15px;
+  line-height: 1.2;
+}
+:root.viewport-fitted .craft-cost-chip { font-size: 14px; }
+:root.viewport-fitted .craft-brew-btn { font-size: 13px; }
 
 /* ════════════════════════════════════════════════════════════════════════
    Modifier-preview panel — fit-mode adaptation.
@@ -13129,6 +13460,16 @@ body {
   margin-bottom: 8px;
   padding: 6px 10px;
 }
+:root.viewport-fitted .modifier-preview-panel .mp-tagline { font-size: 12px; }
+:root.viewport-fitted .modifier-preview-panel .mp-subtitle { font-size: 18px; }
+:root.viewport-fitted .modifier-preview-panel .mp-stat { font-size: 17px; }
+:root.viewport-fitted .modifier-preview-panel .mp-lines { font-size: 18px; }
+:root.viewport-fitted .modifier-preview-panel .mp-warn { font-size: 16px; }
+:root.viewport-fitted .modifier-preview-panel.mp-mode-epic .mp-warn,
+:root.viewport-fitted .modifier-preview-panel.mp-mode-ancient .mp-warn {
+  font-size: 13px;
+}
+:root.viewport-fitted .modifier-preview-panel .mp-btn { font-size: 13px; }
 
 /* ════════════════════════════════════════════════════════════════════════
    Loadout overlay (Снаряжение манекена) — fit-mode adaptation.
@@ -13176,15 +13517,15 @@ body {
   margin-bottom: 8px;
 }
 :root.viewport-fitted .lo-title {
-  font-size: 18px;
+  font-size: 22px;
   margin: 0 0 2px;
 }
 :root.viewport-fitted .lo-tagline {
-  font-size: 9px;
+  font-size: 11px;
   margin: 2px 0 4px;
 }
 :root.viewport-fitted .lo-subtitle {
-  font-size: 14px;
+  font-size: 16px;
   margin: 4px auto 0;
 }
 
@@ -13202,7 +13543,7 @@ body {
   gap: 6px;
 }
 :root.viewport-fitted .lo-section-title {
-  font-size: 10px;
+  font-size: 12px;
   padding: 4px 8px;
 }
 :root.viewport-fitted .lo-grid {
@@ -13216,14 +13557,14 @@ body {
   font-size: 18px;
 }
 :root.viewport-fitted .lo-card-name {
-  font-size: 9px;
+  font-size: 12px;
 }
 :root.viewport-fitted .lo-card-desc {
-  font-size: 11px;
-  line-height: 1.1;
+  font-size: 14px;
+  line-height: 1.15;
 }
 :root.viewport-fitted .lo-card-badge {
-  font-size: 7px;
+  font-size: 9px;
   padding: 1px 4px;
   top: 4px;
   right: 4px;
@@ -13231,7 +13572,7 @@ body {
 
 :root.viewport-fitted .lo-cta {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: 13px;
   padding: 9px 22px;
 }
 
@@ -13260,7 +13601,7 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.15;
 }
 :root.viewport-fitted-narrow .lo-card {
@@ -13268,6 +13609,30 @@ body {
 }
 :root.viewport-fitted-narrow .lo-card-icon {
   font-size: 20px;
+}
+
+/* Short Yandex landscape embeds can leave the narrow loadout grid one
+   rounded layout pixel taller than its flex region. That single pixel was
+   enough for Chromium to reserve a full vertical scrollbar even though all
+   eight cards were already visible. Compact the four card rows slightly and
+   make the picker a fixed, non-scrollable composition. */
+@media (orientation: landscape) and (max-height: 540px) {
+  :root.viewport-fitted-narrow .lo-body {
+    overflow: hidden;
+    padding-right: 0;
+    scrollbar-width: none;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  :root.viewport-fitted-narrow .lo-body::-webkit-scrollbar {
+    display: none;
+  }
+
+  :root.viewport-fitted-narrow .lo-grid {
+    column-gap: 8px;
+    row-gap: 7px;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -13411,25 +13776,6 @@ body {
     grid-template-columns: repeat(3, minmax(0, 220px));
     gap: 14px;
   }
-  .card-rh.cursed .card-rh-effects {
-    font-size: 12px;
-    gap: 3px;
-    padding: 0 2px;
-  }
-  .card-rh.cursed .card-rh-effects li {
-    line-height: 1.2;
-  }
-  .card-rh.cursed .card-rh-effects li.card-rh-unique {
-    padding: 2px 6px;
-    margin: 2px -2px;
-  }
-  .card-rh.cursed .card-rh-title {
-    /* Cursed cards keep the same auto-scaling formula as regular cards
-     * (defined on the base `.card-rh-title` rule), but with a slightly
-     * tighter max so the curse glyph + name still fit. */
-    font-size: clamp(8px, 4cqi + 1px, 13px);
-  }
-
   /* Pin the action-row chip used as the gold/reroll counter so it can
      never float free of its host pill on touch devices. The pixel-art
      skewX(-12deg) chip relies on its containing flex item for
@@ -13452,6 +13798,57 @@ body {
    on), so going to 1fr at <= 1024 px would only *grow* the cards
    wider — which is what produced the 932 × 430 overflow that hid
    them behind the action row. */
+
+/* Yandex Games embeds the game below its own platform bar, leaving a
+   390-414 px-tall landscape viewport on common phones. Fit mode used to
+   restore the desktop stage chrome after the legacy mobile rules had
+   compacted it, so the action row landed just below the clipped overlay.
+   Keep the card faces readable and reclaim height from surrounding
+   padding, headings and controls instead. */
+@media (orientation: landscape) and (max-height: 540px) {
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-stage {
+    padding: 10px 22px;
+    gap: 8px;
+    max-width: 960px;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-stage-title {
+    font-size: 20px;
+    letter-spacing: 4px;
+    padding: 4px 20px;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-stage-subtitle {
+    font-size: 16px;
+    line-height: 1.15;
+    margin-bottom: 0;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-rh,
+  :root.viewport-fitted-narrow #overlay.cards-mode.cursed-mode .cards-rh {
+    grid-template-columns: repeat(3, minmax(0, 220px));
+    gap: 14px;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode.cursed-mode .cards-stage {
+    padding: 8px 20px;
+    gap: 6px;
+    width: 940px;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-action-row {
+    gap: 12px;
+    margin-top: 0;
+    flex-wrap: nowrap;
+  }
+
+  :root.viewport-fitted-narrow #overlay.cards-mode .cards-action-pill {
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 18px;
+    white-space: nowrap;
+  }
+}
 
 /* ════════════════════════════════════════════════════════════════════════
    MOBILE REFINEMENTS — round 2
@@ -15764,10 +16161,12 @@ body {
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
-/* Panels inside the overlay rise on entry. Limited to the centred panel
-   variants — the fullscreen main menu / meta-tree have their own bespoke
-   intros and aren't included so we don't double-animate them. */
-#overlay.visible > .panel,
+/* Panels inside the overlay rise on entry. Panels that centre themselves
+   with a translate transform must stay out of this animation because its
+   fill state would replace that transform and leave them at 50% / 50%.
+   Keep the full filter inside :where() so adding exclusions cannot raise
+   this rule's specificity above the dedicated fit-mode panel rules. */
+#overlay.visible > :where(.panel:not(.meta-tree-panel):not(.settings-panel):not(.difficulty-panel):not(.modifier-preview-panel):not(.craft-panel):not(.chest-overlay):not(.defeat-overlay):not(.privacy-policy-panel)),
 #overlay.visible > .difficulty-panel,
 #overlay.visible > .crafting-panel,
 #overlay.visible > .endless-mod-panel,
@@ -15781,7 +16180,9 @@ body {
 :root.viewport-fitted #overlay.visible > .settings-panel,
 :root.viewport-fitted #overlay.visible > .difficulty-panel,
 :root.viewport-fitted #overlay.visible > .modifier-preview-panel,
-:root.viewport-fitted #overlay.visible > .craft-panel {
+:root.viewport-fitted #overlay.visible > .craft-panel,
+:root.viewport-fitted #overlay.visible > .chest-overlay,
+:root.viewport-fitted #overlay.visible > .defeat-overlay {
   animation: none;
 }
 
@@ -15864,5 +16265,263 @@ body {
   .value-pulse,
   .hud-potion-slot:not(:disabled) {
     animation: none;
+  }
+}
+
+/* Mandatory one-time Privacy Policy acknowledgement. The outer overlay
+   owns input, while only the document body scrolls on short viewports. */
+#overlay.privacy-policy-mode {
+  z-index: 5000;
+  padding: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(122, 65, 38, 0.28), transparent 48%),
+    repeating-linear-gradient(0deg, rgba(255, 209, 102, 0.018) 0 1px, transparent 1px 5px),
+    rgba(5, 4, 10, 0.96);
+  backdrop-filter: blur(7px);
+}
+
+.privacy-policy-panel {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 820px);
+  height: min(92dvh, 620px);
+  max-width: 820px;
+  max-height: 620px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  color: #eadfcb;
+  background:
+    linear-gradient(rgba(255, 209, 102, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 209, 102, 0.02) 1px, transparent 1px),
+    radial-gradient(circle at 14% 0%, rgba(192, 91, 42, 0.17), transparent 34%),
+    linear-gradient(145deg, rgba(40, 21, 24, 0.99), rgba(15, 10, 18, 0.99));
+  background-size: 22px 22px, 22px 22px, auto, auto;
+  border: 3px solid #18090b;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 209, 102, 0.72),
+    inset 0 0 0 6px rgba(93, 44, 31, 0.92),
+    inset 0 0 80px rgba(0, 0, 0, 0.55),
+    0 0 0 2px #331319,
+    0 24px 80px rgba(0, 0, 0, 0.8),
+    0 0 35px rgba(255, 119, 49, 0.14);
+}
+
+.privacy-policy-panel::before,
+.privacy-policy-panel::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+.privacy-policy-panel::before {
+  top: 7px;
+  left: 7px;
+  border-top: 3px solid #ffd166;
+  border-left: 3px solid #ffd166;
+}
+.privacy-policy-panel::after {
+  right: 7px;
+  bottom: 7px;
+  border-right: 3px solid #ff8b42;
+  border-bottom: 3px solid #ff8b42;
+}
+
+.privacy-policy-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 16px;
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid rgba(255, 209, 102, 0.34);
+  background: linear-gradient(90deg, rgba(109, 43, 28, 0.52), rgba(27, 14, 20, 0.72));
+}
+.privacy-policy-seal {
+  display: grid;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  color: #3b160a;
+  background: radial-gradient(circle at 35% 30%, #fff1a8, #e99a31 58%, #7f351a);
+  border: 3px solid #2a0d08;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 247, 185, 0.5),
+    0 0 0 2px #b65c26,
+    0 0 18px rgba(255, 158, 49, 0.36);
+  font: 11px/1 'Press Start 2P', monospace;
+  text-shadow: 1px 1px 0 rgba(255, 236, 165, 0.55);
+}
+.privacy-policy-heading {
+  min-width: 0;
+}
+.privacy-policy-heading h2 {
+  margin: 0 0 7px;
+  color: #ffd77a;
+  font-size: clamp(15px, 2.2vw, 22px);
+  line-height: 1.35;
+  letter-spacing: 2px;
+}
+.privacy-policy-heading p {
+  margin: 0;
+  color: #d4ad88;
+  font: 18px/1.2 'VT323', monospace;
+}
+
+.privacy-policy-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px 30px 22px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #b75d2b #170d13;
+  scrollbar-width: thin;
+  touch-action: pan-y;
+}
+.privacy-policy-body::-webkit-scrollbar {
+  width: 9px;
+}
+.privacy-policy-body::-webkit-scrollbar-track {
+  background: #170d13;
+}
+.privacy-policy-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(#ffd166, #a44724);
+  border: 2px solid #170d13;
+}
+.privacy-policy-effective {
+  display: inline-block;
+  margin: 0 0 13px;
+  padding: 5px 9px;
+  color: #ffd98a;
+  background: rgba(91, 42, 31, 0.72);
+  border: 1px solid rgba(255, 209, 102, 0.42);
+  font: 13px/1.2 'Press Start 2P', 'VT323', monospace;
+}
+.privacy-policy-intro,
+.privacy-policy-section p {
+  margin: 0;
+  color: #e8ddca;
+  font: 18px/1.28 'VT323', monospace;
+  letter-spacing: 0.25px;
+}
+.privacy-policy-intro {
+  margin-bottom: 17px;
+  color: #fff0d0;
+  font-size: 20px;
+}
+.privacy-policy-section {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 0 0 0 18px;
+}
+.privacy-policy-section::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 1px;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(#ffd166, rgba(196, 76, 38, 0.2));
+  box-shadow: 0 0 8px rgba(255, 173, 66, 0.25);
+}
+.privacy-policy-section h3 {
+  margin: 0 0 7px;
+  color: #ffbf5a;
+  font: 11px/1.35 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.privacy-policy-footer {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  padding: 15px 28px 18px;
+  border-top: 1px solid rgba(255, 209, 102, 0.32);
+  background: linear-gradient(90deg, rgba(29, 15, 19, 0.98), rgba(67, 29, 24, 0.98));
+}
+.privacy-policy-footer p {
+  margin: 0;
+  color: #c9b9a4;
+  font: 16px/1.2 'VT323', monospace;
+}
+.privacy-policy-accept {
+  min-height: 48px;
+  padding: 12px 18px;
+  color: #381305;
+  background: linear-gradient(180deg, #ffe29a 0%, #f3b443 52%, #d77b25 100%);
+  border: 3px solid #2b0d07;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 194, 0.78),
+    0 4px 0 #6f2c18,
+    0 0 18px rgba(255, 177, 64, 0.3);
+  font: 10px/1.35 'Press Start 2P', monospace;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.privacy-policy-accept:hover,
+.privacy-policy-accept:focus-visible {
+  filter: brightness(1.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 194, 0.9),
+    0 4px 0 #6f2c18,
+    0 0 25px rgba(255, 202, 82, 0.48);
+  outline: 2px solid #fff1ae;
+  outline-offset: 2px;
+}
+.privacy-policy-accept:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 194, 0.8),
+    0 1px 0 #6f2c18;
+}
+.privacy-policy-accept:disabled {
+  cursor: wait;
+  filter: saturate(0.55);
+}
+
+:root.viewport-fitted #overlay.visible > .privacy-policy-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 820px;
+  height: min(620px, calc(var(--design-h, 720px) * 0.9));
+  max-width: none;
+  max-height: none;
+  animation: none;
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
+
+@media (max-width: 720px), (max-height: 540px) {
+  .privacy-policy-header {
+    gap: 12px;
+    padding: 14px 22px 12px;
+  }
+  .privacy-policy-seal {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    font-size: 9px;
+  }
+  .privacy-policy-body {
+    padding: 14px 24px 17px;
+  }
+  .privacy-policy-footer {
+    gap: 14px;
+    padding: 11px 22px 14px;
   }
 }

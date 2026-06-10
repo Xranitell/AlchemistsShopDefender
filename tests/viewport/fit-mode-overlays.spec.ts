@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const SEED_SAVE = {
+  isShowed: true,
   locale: 'en',
   localeUserChoice: true,
   blueEssence: 99,
@@ -49,6 +50,7 @@ async function pinRandomness(page: Page): Promise<void> {
 async function seedSave(page: Page): Promise<void> {
   await page.addInitScript((seed) => {
     localStorage.setItem('asd_meta_v2', JSON.stringify(seed));
+    localStorage.setItem('asd_platform_launched_v1', '1');
   }, SEED_SAVE);
 }
 
@@ -113,6 +115,41 @@ async function expectPanelInsideViewport(page: Page, selector: string): Promise<
   expect(bounds.bottom).toBeGreaterThan(bounds.viewport.height * 0.5 + 8);
 }
 
+async function expectPanelCenteredWithoutPageScroll(
+  page: Page,
+  selector: string,
+): Promise<void> {
+  const layout = await page.locator(selector).evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return {
+      centerX: rect.left + rect.width / 2,
+      centerY: rect.top + rect.height / 2,
+      animationName: style.animationName,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      document: {
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+        clientWidth: document.documentElement.clientWidth,
+        clientHeight: document.documentElement.clientHeight,
+      },
+    };
+  });
+
+  expect(layout.animationName).not.toContain('ui-panel-rise-in');
+  expect(layout.centerX).toBeCloseTo(layout.viewport.width / 2, 0);
+  expect(layout.centerY).toBeCloseTo(layout.viewport.height / 2, 0);
+  expect(layout.document.scrollWidth).toBeLessThanOrEqual(
+    layout.document.clientWidth,
+  );
+  expect(layout.document.scrollHeight).toBeLessThanOrEqual(
+    layout.document.clientHeight,
+  );
+}
+
 async function expectSettingsSlidersUsable(page: Page): Promise<void> {
   const slider = page.locator('.settings-volume-slider').first();
   const box = await slider.boundingBox();
@@ -163,5 +200,42 @@ test.describe('fit-mode overlay panel placement', () => {
     await page.waitForSelector('.craft-panel', { state: 'visible', timeout: 5_000 });
     await waitForEntryAnimation(page);
     await expectPanelInsideViewport(page, '.craft-panel');
+  });
+
+  test('centers transform-scaled menu overlays in an upscaled CrazyGames viewport', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(90_000);
+    test.skip(testInfo.project.name !== '1280x576');
+    await page.setViewportSize({ width: 1323, height: 741 });
+
+    await openFreshMenu(page);
+    await page.click('.mm-settings-gear');
+    await page.waitForSelector('.settings-panel', { state: 'visible', timeout: 5_000 });
+    await waitForEntryAnimation(page);
+    await expectPanelCenteredWithoutPageScroll(page, '.settings-panel');
+
+    await openFreshMenu(page);
+    await page.click('.mm-battle-btn');
+    await page.waitForSelector('.difficulty-panel', { state: 'visible', timeout: 5_000 });
+    await waitForEntryAnimation(page);
+    await expectPanelCenteredWithoutPageScroll(page, '.difficulty-panel');
+
+    await openFreshMenu(page);
+    await page.click('.mm-shop-card');
+    await page.waitForSelector('.craft-panel', { state: 'visible', timeout: 5_000 });
+    await waitForEntryAnimation(page);
+    await expectPanelCenteredWithoutPageScroll(page, '.craft-panel');
+
+    await openFreshMenu(page);
+    await page.click('.mm-battle-btn');
+    await page.waitForSelector('.difficulty-ancient', { state: 'visible', timeout: 5_000 });
+    await page.click('.difficulty-ancient');
+    await page.waitForSelector('.modifier-preview-panel', {
+      state: 'visible',
+      timeout: 5_000,
+    });
+    await waitForEntryAnimation(page);
+    await expectPanelCenteredWithoutPageScroll(page, '.modifier-preview-panel');
   });
 });

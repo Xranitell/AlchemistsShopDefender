@@ -32,6 +32,8 @@ export class MainMenu {
     onCrafting: () => void;
     onLoadout: () => void;
     onDiary: () => void;
+    showLanguage?: boolean;
+    showLeaderboard?: boolean;
   }): void {
     this.leaderboardCollapseCleanup?.();
     this.leaderboardCollapseCleanup = null;
@@ -110,7 +112,9 @@ export class MainMenu {
 
     const topRight = document.createElement('div');
     topRight.className = 'mm-top-right';
-    topRight.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
+    if (opts.showLanguage !== false) {
+      topRight.appendChild(buildLangSwitcher(opts.meta, () => opts.onSettings()));
+    }
     // Settings gear button
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'mm-settings-gear';
@@ -266,15 +270,21 @@ export class MainMenu {
     const rightCol = document.createElement('div');
     rightCol.className = 'mm-col mm-col-right';
 
-    const lbWrap = document.createElement('div');
-    lbWrap.className = 'mm-card mm-lb-card';
-    lbWrap.dataset.tutorialTarget = 'menu-leaderboard';
-    const lbTitle = document.createElement('div');
-    lbTitle.className = 'mm-card-title';
-    lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span><span class="mm-lb-chev">▾</span>`;
-    lbWrap.appendChild(lbTitle);
-    lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
-    rightCol.appendChild(lbWrap);
+    let lbWrap: HTMLElement | null = null;
+    let lbTitle: HTMLElement | null = null;
+    if (opts.showLeaderboard !== false) {
+      lbWrap = document.createElement('div');
+      lbWrap.className = 'mm-card mm-lb-card';
+      lbWrap.dataset.tutorialTarget = 'menu-leaderboard';
+      lbTitle = document.createElement('div');
+      lbTitle.className = 'mm-card-title';
+      lbTitle.innerHTML = `<span class="mm-lb-icon">🏆</span><span>${t('ui.menu.leaderboard')}</span><span class="mm-lb-chev">▾</span>`;
+      lbWrap.appendChild(lbTitle);
+      lbWrap.appendChild(buildLeaderboardPanel({ topN: 10, compact: true }));
+      rightCol.appendChild(lbWrap);
+    } else {
+      rightCol.classList.add('leaderboard-hidden');
+    }
 
     rightCol.appendChild(this.buildInlineDailyCalendar(opts, () => {
       // After a successful daily claim the menu is fully re-rendered,
@@ -283,7 +293,7 @@ export class MainMenu {
 
     // Toggle handlers — clicking the leaderboard while daily is open
     // collapses it back. Clicking the daily header toggles open / closed.
-    lbWrap.addEventListener('click', () => {
+    lbWrap?.addEventListener('click', () => {
       if (rightCol.classList.contains('daily-open')) {
         rightCol.classList.remove('daily-open');
       }
@@ -307,7 +317,13 @@ export class MainMenu {
 
     this.root.appendChild(wrap);
     this.root.classList.add('visible');
-    this.leaderboardCollapseCleanup = this.installInlineLeaderboardCollapse(rightCol, lbWrap, lbTitle);
+    if (lbWrap && lbTitle) {
+      this.leaderboardCollapseCleanup = this.installInlineLeaderboardCollapse(
+        rightCol,
+        lbWrap,
+        lbTitle,
+      );
+    }
   }
 
   isVisible(): boolean {

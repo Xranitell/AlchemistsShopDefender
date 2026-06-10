@@ -21,13 +21,19 @@ export function placePopupNearAnchor(
   const topOffset = options.topOffset ?? -20;
   const margin = options.margin ?? 8;
 
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const parent = el.parentElement;
+  const parentRect = parent?.getBoundingClientRect();
+  const parentW = parent?.clientWidth || window.innerWidth;
+  const parentH = parent?.clientHeight || window.innerHeight;
+  const scaleX = parentRect && parentW > 0 ? parentRect.width / parentW : 1;
+  const scaleY = parentRect && parentH > 0 ? parentRect.height / parentH : 1;
+  const vw = parentW;
+  const vh = parentH;
 
   // Measure first so we can flip / clamp based on the real popup size.
   const rect = el.getBoundingClientRect();
-  const popupW = rect.width;
-  const popupH = rect.height;
+  const popupW = rect.width / Math.max(0.001, scaleX);
+  const popupH = rect.height / Math.max(0.001, scaleY);
 
   // Default: place to the right of the anchor.
   let left = anchor.x + rightOffset;

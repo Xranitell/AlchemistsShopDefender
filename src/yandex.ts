@@ -7,6 +7,12 @@
 // stubbed to no-ops so we can develop and run the game offline.
 
 import { audio } from './audio/audio';
+import {
+  DAILY_WAVES_BOARD_ID,
+  dailyDateFromBoardId,
+  decodeDailyScore,
+  encodeDailyScore,
+} from './game/leaderboardRules';
 
 declare global {
   interface Window {
@@ -17,17 +23,30 @@ declare global {
 }
 
 interface YaLeaderboards {
-  setLeaderboardScore(boardName: string, score: number): Promise<void>;
-  getLeaderboardEntries(
+  setScore(boardName: string, score: number, extraData?: string): Promise<void>;
+  getEntries(
     boardName: string,
-    opts?: { quantityTop?: number; quantityAround?: number },
+    opts?: {
+      includeUser?: boolean;
+      quantityTop?: number;
+      quantityAround?: number;
+    },
   ): Promise<{
     entries: {
       rank: number;
       score: number;
+      extraData?: string;
       player: { publicName: string; scopePermissions?: { avatar?: string }; getAvatarSrc?(size: string): string };
     }[];
   }>;
+}
+
+interface YaLegacyLeaderboards {
+  setLeaderboardScore(boardName: string, score: number, extraData?: string): Promise<void>;
+  getLeaderboardEntries(
+    boardName: string,
+    opts?: { quantityTop?: number; quantityAround?: number },
+  ): ReturnType<YaLeaderboards['getEntries']>;
 }
 
 /** Subset of the player object the SDK returns from getPlayer().
@@ -76,7 +95,8 @@ interface YGameSdk {
   };
   auth?: YaAuth;
   getPlayer?(opts?: { scopes?: boolean }): Promise<YaPlayer>;
-  getLeaderboards?(): Promise<YaLeaderboards>;
+  leaderboards?: YaLeaderboards;
+  getLeaderboards?(): Promise<YaLegacyLeaderboards>;
   /** Player environment — the Yandex SDK exposes the user's preferred
    *  interface language here. We forward this to our i18n engine so the
    *  Yandex console stops flagging "i18n не используется" and players
@@ -152,9 +172,7 @@ class YandexGames {
     }
     try {
       this.sdk = await window.YaGames.init();
-      if (this.sdk.getLeaderboards) {
-        this.lb = await this.sdk.getLeaderboards();
-      }
+      this.lb = await this.resolveLeaderboards(this.sdk);
       // Probe the player so we know whether leaderboard writes will be
       // accepted. Yandex rejects setLeaderboardScore from `'lite'`
       // (anonymous) players, so we surface auth state to the UI.
@@ -173,6 +191,21 @@ class YandexGames {
       this.player = null;
     }
     for (const cb of this.authListeners) cb();
+  }
+
+  private async resolveLeaderboards(sdk: YGameSdk): Promise<YaLeaderboards | null> {
+    if (sdk.leaderboards) return sdk.leaderboards;
+    if (!sdk.getLeaderboards) return null;
+    const legacy = await sdk.getLeaderboards();
+    return {
+      setScore: (boardName, score, extraData) =>
+        legacy.setLeaderboardScore(boardName, score, extraData),
+      getEntries: (boardName, opts) =>
+        legacy.getLeaderboardEntries(boardName, {
+          quantityTop: opts?.quantityTop,
+          quantityAround: opts?.quantityAround,
+        }),
+    };
   }
 
   /** Subscribe to player auth-state changes. The callback fires after
@@ -218,11 +251,9 @@ class YandexGames {
     await this.refreshPlayer();
     // Re-fetch the leaderboards handle — Yandex docs note that the
     // leaderboards object is bound to the player session at call time.
-    if (this.sdk.getLeaderboards) {
-      try {
-        this.lb = await this.sdk.getLeaderboards();
-      } catch { /* keep previous handle */ }
-    }
+    try {
+      this.lb = await this.resolveLeaderboards(this.sdk);
+    } catch { /* keep previous handle */ }
     return this.isAuthorized();
   }
 
@@ -311,10 +342,10 @@ class YandexGames {
    *  the resolved promise without ever blocking the player. On non-
    *  Yandex hosts (local dev / CrazyGames) the SDK is null and this
    *  resolves immediately with no visible side-effect. */
-  showFullscreen(): Promise<void> {
+  showFullscreen(): Promise<boolean> {
     return new Promise((resolve) => {
       if (!this.sdk?.adv) {
-        resolve();
+        resolve(false);
         return;
       }
       let resolved = false;
@@ -335,7 +366,7 @@ class YandexGames {
         audioPaused = false;
         audio.resumeAfterAd();
       };
-      const finish = (): void => {
+      const finish = (wasShown: boolean): void => {
         if (resolved) return;
         resolved = true;
         if (safetyTimer !== null) {
@@ -343,20 +374,20 @@ class YandexGames {
           safetyTimer = null;
         }
         resumeAudio();
-        resolve();
+        resolve(wasShown);
       };
       pauseAudio();
       try {
         this.sdk.adv.showFullscreenAdv({
           callbacks: {
             onOpen: () => pauseAudio(),
-            onClose: () => finish(),
-            onError: () => finish(),
-            onOffline: () => finish(),
+            onClose: (wasShown) => finish(wasShown),
+            onError: () => finish(false),
+            onOffline: () => finish(false),
           },
         });
       } catch {
-        finish();
+        finish(false);
         return;
       }
       if (resolved) return;
@@ -364,7 +395,7 @@ class YandexGames {
       // sandboxed iframe, blocked by adblocker), don't strand the
       // caller forever. Keep this much longer than a real interstitial
       // so game audio cannot resume while the ad is still visible.
-      safetyTimer = window.setTimeout(() => finish(), 120_000);
+      safetyTimer = window.setTimeout(() => finish(false), 120_000);
     });
   }
 
@@ -422,7 +453,15 @@ class YandexGames {
         });
       }
       try {
-        await lb.setLeaderboardScore(boardId, score);
+        const dailyDate = dailyDateFromBoardId(boardId);
+        const physicalBoardId = dailyDate === null ? boardId : DAILY_WAVES_BOARD_ID;
+        const submittedScore = dailyDate === null
+          ? score
+          : encodeDailyScore(dailyDate, score);
+        const extraData = dailyDate === null
+          ? undefined
+          : JSON.stringify({ date: dailyDate, score: Math.floor(score) });
+        await lb.setScore(physicalBoardId, submittedScore, extraData);
       } catch (err) {
         console.warn('[YandexGames] setLeaderboardScore failed', err);
       } finally {
@@ -436,11 +475,26 @@ class YandexGames {
   async getTopPlayers(boardId: string, limit = 10): Promise<LeaderboardEntry[]> {
     if (this.lb) {
       try {
-        const res = await this.lb.getLeaderboardEntries(boardId, {
-          quantityTop: limit,
+        const dailyDate = dailyDateFromBoardId(boardId);
+        const physicalBoardId = dailyDate === null ? boardId : DAILY_WAVES_BOARD_ID;
+        const res = await this.lb.getEntries(physicalBoardId, {
+          includeUser: false,
+          quantityTop: dailyDate === null ? limit : 20,
           quantityAround: 0,
         });
-        return res.entries.map((e) => ({
+        if (dailyDate !== null) {
+          return res.entries
+            .map((entry) => ({ entry, decoded: decodeDailyScore(entry.score) }))
+            .filter(({ decoded }) => decoded.date === dailyDate)
+            .slice(0, limit)
+            .map(({ entry, decoded }, index) => ({
+              rank: index + 1,
+              name: entry.player.publicName || '???',
+              score: decoded.score,
+              avatarUrl: entry.player.getAvatarSrc?.('small') ?? '',
+            }));
+        }
+        return res.entries.slice(0, limit).map((e) => ({
           rank: e.rank,
           name: e.player.publicName || '???',
           score: e.score,

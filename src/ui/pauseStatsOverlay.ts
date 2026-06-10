@@ -14,14 +14,20 @@ export class PauseStatsOverlay {
   private panel: HTMLElement | null = null;
   private onCloseCallback: (() => void) | null = null;
   private onExitCallback: (() => void) | null = null;
+  private onRestartCallback: (() => void) | null = null;
 
   constructor(
     root: HTMLElement,
-    opts?: { onClose?: () => void; onExitToMenu?: () => void },
+    opts?: {
+      onClose?: () => void;
+      onExitToMenu?: () => void;
+      onRestart?: () => void;
+    },
   ) {
     this.root = root;
     this.onCloseCallback = opts?.onClose ?? null;
     this.onExitCallback = opts?.onExitToMenu ?? null;
+    this.onRestartCallback = opts?.onRestart ?? null;
   }
 
   show(state: GameState): void {
@@ -225,18 +231,32 @@ export class PauseStatsOverlay {
     // Sits below the stats panels. Tapping it spawns an inline confirm
     // dialog that *covers* the stats so the player can't accidentally
     // dismiss the run.
-    if (this.onExitCallback) {
+    if (this.onExitCallback || this.onRestartCallback) {
       const footer = document.createElement('div');
       footer.className = 'pause-stats-footer';
+      if (this.onRestartCallback) {
+        const restartBtn = document.createElement('button');
+        restartBtn.type = 'button';
+        restartBtn.className = 'pause-stats-exit-btn pause-stats-restart-btn';
+        restartBtn.textContent = t('ui.pause.restart');
+        restartBtn.addEventListener('click', () => {
+          const cb = this.onRestartCallback;
+          this.hide();
+          if (cb) cb();
+        });
+        footer.appendChild(restartBtn);
+      }
+      if (this.onExitCallback) {
       const exitBtn = document.createElement('button');
       exitBtn.type = 'button';
       exitBtn.className = 'pause-stats-exit-btn';
       exitBtn.dataset.tutorialTarget = 'pause-exit';
-      exitBtn.textContent = tWithFallback('ui.pause.exitToMenu', 'Exit to menu');
+      exitBtn.textContent = tWithFallback('ui.pause.exitToMenu', 'Main menu');
       exitBtn.addEventListener('click', () => {
         this.openExitConfirm(state, wrap);
       });
       footer.appendChild(exitBtn);
+      }
       group.appendChild(footer);
     }
 

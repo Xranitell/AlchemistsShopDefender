@@ -1,16 +1,20 @@
-import { yandex, type LeaderboardEntry } from '../yandex';
+import { platform, type LeaderboardEntry } from '../platform';
 import { t } from '../i18n';
 import { dailyBoardId } from '../game/world';
+import {
+  ALL_TIME_WAVES_BOARD_ID,
+  DAILY_WAVES_BOARD_ID,
+} from '../game/leaderboardRules';
 
-// Two leaderboards exposed by the game. The technical board ids match
-// what we submit in main.ts: `endlessWaves` (any-mode best wave) and
-// `dailyWaves` (permanent daily-event board, resolved at fetch time via
-// dailyBoardId()).
-type BoardTab = 'endlessWaves' | 'dailyWaves';
+// Yandex exposes both boards. CrazyGames supports one weekly leaderboard,
+// shared by every game mode.
+type BoardTab =
+  | typeof ALL_TIME_WAVES_BOARD_ID
+  | typeof DAILY_WAVES_BOARD_ID;
 
 const TABS: { id: BoardTab; labelKey: string }[] = [
-  { id: 'endlessWaves', labelKey: 'ui.lb.tab.endlessWaves' },
-  { id: 'dailyWaves', labelKey: 'ui.lb.tab.dailyWaves' },
+  { id: ALL_TIME_WAVES_BOARD_ID, labelKey: 'ui.lb.tab.endlessWaves' },
+  { id: DAILY_WAVES_BOARD_ID, labelKey: 'ui.lb.tab.dailyWaves' },
 ];
 
 /**
@@ -40,6 +44,13 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   const body = document.createElement('div');
   body.className = 'lb-body';
 
+  if (platform.leaderboardEntriesArePersonal) {
+    const scopeNote = document.createElement('div');
+    scopeNote.className = 'lb-scope-note';
+    scopeNote.textContent = t('ui.lb.crazyGamesPersonal');
+    panel.appendChild(scopeNote);
+  }
+
   // Sign-in CTA. Only rendered when the SDK reports the player as
   // unauthenticated ('lite' guest mode) — Yandex rejects leaderboard
   // writes from those players, so showing them an empty board with
@@ -49,7 +60,7 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
   authPrompt.className = 'lb-auth-prompt';
 
   const updateAuthPrompt = (): void => {
-    if (yandex.isAuthorized()) {
+    if (platform.isAuthorized()) {
       authPrompt.style.display = 'none';
       authPrompt.innerHTML = '';
       return;
@@ -65,7 +76,7 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
     btn.textContent = t('ui.lb.signInBtn');
     btn.addEventListener('click', () => {
       btn.disabled = true;
-      void yandex.signIn().then(() => {
+      void platform.signIn().then(() => {
         // Refresh the currently-active tab so the player's freshly-
         // submitted score (if a previous run was already finished) shows
         // up immediately.
@@ -83,15 +94,16 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
     tabBar.querySelectorAll('.lb-tab').forEach((el) => el.classList.remove('active'));
     tabBar.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
     body.innerHTML = `<div class="lb-loading">${t('ui.lb.loading')}</div>`;
-    // Daily tab resolves through dailyBoardId() so we always read the
-    // same permanent board name across the lifetime of the game.
-    const boardId = tab === 'dailyWaves' ? dailyBoardId() : tab;
-    void yandex.getTopPlayers(boardId, topN).then((entries) => {
+    // Resolve the date on every load so an open menu follows the new
+    // Moscow day after midnight.
+    const boardId = tab === DAILY_WAVES_BOARD_ID ? dailyBoardId() : tab;
+    void platform.getTopPlayers(boardId, topN).then((entries) => {
       renderEntries(body, entries);
     });
   };
 
-  for (const def of TABS) {
+  const visibleTabs = platform.supportsDailyLeaderboard ? TABS : TABS.slice(0, 1);
+  for (const def of visibleTabs) {
     const btn = document.createElement('button');
     btn.className = 'lb-tab';
     btn.dataset.tab = def.id;
@@ -106,10 +118,10 @@ export function buildLeaderboardPanel(opts: { topN?: number; compact?: boolean }
 
   // Auth state is async — when SDK init resolves later, refresh the prompt.
   updateAuthPrompt();
-  yandex.onAuthChange(() => updateAuthPrompt());
+  platform.onAuthChange(() => updateAuthPrompt());
 
   // Initial tab
-  loadTab('endlessWaves');
+  loadTab(ALL_TIME_WAVES_BOARD_ID);
 
   return panel;
 }
@@ -128,7 +140,7 @@ function renderEntries(body: HTMLElement, entries: LeaderboardEntry[]): void {
 
     const rank = document.createElement('span');
     rank.className = 'lb-rank';
-    rank.textContent = `#${entry.rank}`;
+    rank.textContent = entry.rank > 0 ? `#${entry.rank}` : '—';
 
     const avatar = document.createElement('span');
     avatar.className = 'lb-avatar';
