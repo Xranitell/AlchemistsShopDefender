@@ -218,12 +218,8 @@ export const EN: Record<string, string> = {
   'ui.exitConfirm.body': 'You will lose your run progress.',
   'ui.exitConfirm.bodyKeyEpic': 'The Epic key spent on this run will not be refunded if you leave now.',
   'ui.exitConfirm.bodyKeyAncient': 'The Ancient key spent on this run will not be refunded if you leave now.',
-<<<<<<< HEAD
-  'ui.exitConfirm.exit': 'Main menu',
-=======
   'ui.exitConfirm.halfReward': 'On exit you will receive only half of the earned essences.',
   'ui.exitConfirm.exit': 'Exit',
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
   'ui.exitConfirm.stay': 'Stay',
   'ui.pause.exitToMenu': 'Main menu',
   'ui.pause.restart': 'Restart',
