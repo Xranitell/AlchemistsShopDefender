@@ -36,6 +36,9 @@ const SAVE_KEY = 'asd_meta_v2';
 export type MotionMode = 'auto' | 'minimal' | 'full';
 
 export interface MetaSave {
+  /** One-time Privacy Policy acknowledgement for platforms that require it.
+   *  Missing values migrate to false; platforms without the gate ignore it. */
+  isShowed: boolean;
   blueEssence: number;
   ancientEssence: number;
   keys: number;
@@ -45,15 +48,10 @@ export interface MetaSave {
   ancientKeys: number;
   purchased: string[];
   bestWave: number;
-  /** Per-leaderboard high-water marks. Keys are Yandex Games board
-   *  ids (`'endlessWaves'`, `'dailyWaves'`) and values are the best
-   *  score the player has ever submitted to that board on this
-   *  device. Used to gate `setLeaderboardScore` calls so a worse
-   *  later run never overwrites a better earlier one, regardless of
-   *  how the Yandex dashboard sort order is configured. Persisted
-   *  separately from `bestWave` so daily and endless boards can
-   *  diverge — the player's best daily-event score may be lower
-   *  than their endless best. */
+  /** Per-leaderboard high-water marks. `endlessWaves` is the best wave
+   *  reached in one run; dated `dailyWaves:YYYYMMDD` keys reset the visible daily
+   *  record at Moscow midnight. Values are retained locally so records
+   *  can be synchronized after a guest later authorizes with a platform. */
   bestLeaderboardScores: Partial<Record<string, number>>;
   totalRuns: number;
   // Daily rewards
@@ -140,6 +138,7 @@ export interface MetaSave {
 
 export function newMetaSave(): MetaSave {
   return {
+    isShowed: false,
     blueEssence: 0,
     ancientEssence: 0,
     keys: 0,
@@ -272,6 +271,7 @@ export function loadMeta(): MetaSave {
     if (!source) return newMetaSave();
     const data = JSON.parse(source) as Partial<MetaSave>;
     const result: MetaSave = {
+      isShowed: data.isShowed === true,
       blueEssence: data.blueEssence ?? 0,
       ancientEssence: data.ancientEssence ?? 0,
       keys: data.keys ?? 0,
@@ -370,9 +370,24 @@ export function saveMeta(meta: MetaSave): void {
 }
 
 export function resetMeta(): void {
+  let privacyWasShown = false;
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as Partial<MetaSave>;
+      privacyWasShown = data.isShowed === true;
+    }
+  } catch {
+    // A corrupt save must not prevent the reset itself.
+  }
   try {
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem('asd_meta_v1');
+    if (privacyWasShown) {
+      const fresh = newMetaSave();
+      fresh.isShowed = true;
+      localStorage.setItem(SAVE_KEY, JSON.stringify(fresh));
+    }
   } catch {
     // ignore
   }

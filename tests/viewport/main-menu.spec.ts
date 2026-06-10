@@ -95,6 +95,10 @@ async function waitForMenuStable(page: Page): Promise<void> {
 test.describe('main menu — first paint', () => {
   test.beforeEach(async ({ page }) => {
     await pinRandomness(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('asd_meta_v2', JSON.stringify({ isShowed: true }));
+      localStorage.setItem('asd_platform_launched_v1', '1');
+    });
     await page.addStyleTag({ content: STABILITY_CSS }).catch(() => {
       /* The page hasn't loaded yet on the first call; we re-inject
        * after navigation below. The catch makes that race harmless. */

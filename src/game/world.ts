@@ -15,6 +15,7 @@ import { getEventForWeekday, type DailyEventDef } from '../data/dailyEvents';
 import { MUTATORS, MUTATOR_BY_ID, mutatorCountForDifficulty, type MutatorId } from '../data/mutators';
 import { CONTRACTS, contractCountForDifficulty, type ContractId } from '../data/contracts';
 import { ENDLESS_MODIFIER_POOL } from './state';
+import { dailyBoardIdForDate } from './leaderboardRules';
 
 const ARENA_W = 1280;
 const ARENA_H = 720;
@@ -344,12 +345,10 @@ export function dailySeed(): number {
   return ((y * 10000 + m * 100 + d) >>> 0);
 }
 
-/** Board id for the daily-event leaderboard. Static (`dailyWaves`) — the
- *  same Yandex board is reused every day instead of rolling over per-MSK
- *  midnight, so players see the same accumulated table no matter which
- *  weekday's event they ran. */
+/** Logical board id for today's daily-event leaderboard. Platform adapters
+ *  map it to their own storage while preserving the Moscow-date suffix. */
 export function dailyBoardId(): string {
-  return 'dailyWaves';
+  return dailyBoardIdForDate(dailySeed());
 }
 
 /** Apply passive biome modifiers to the state. Call once after

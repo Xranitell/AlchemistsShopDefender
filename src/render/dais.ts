@@ -1,8 +1,6 @@
 // Central stone dais beneath the mannequin. Drawn as a circular platform with
-// concentric rings, decorative crystal altar at the top, and four ability
-// rings arranged around the central position. The dais is baked once to an
-// offscreen canvas; the only per-frame work is the ability glyph rotation /
-// pulse, which the renderer overlays on top.
+// concentric rings and a decorative crystal altar at the top. The dais is
+// baked once to an offscreen canvas.
 
 import { COLORS } from './palette';
 import { drawSprite } from './sprite';
@@ -13,8 +11,6 @@ let _bakedSize: { w: number; h: number } | null = null;
 
 export const DAIS_RADIUS_OUTER = 170;
 export const DAIS_RADIUS_INNER = 126;
-export const DAIS_RING_RADIUS = 76;
-export const DAIS_RING_HALF = 23;
 
 export function getDais(width: number, height: number): HTMLCanvasElement {
   if (_baked && _bakedSize && _bakedSize.w === width && _bakedSize.h === height) {
@@ -80,140 +76,9 @@ export function getDais(width: number, height: number): HTMLCanvasElement {
   const s = getSprites();
   drawSprite(ctx, s.crystalAltar, cx, cy - DAIS_RADIUS_INNER * 0.62 + 4, 3);
 
-  // Four ability ring slots (decorative — purely visual indicators of
-  // mannequin loadout). Positioned in a 2x2 grid around the centre.
-  const slotPositions = getAbilitySlotPositions(cx, cy);
-  for (let i = 0; i < slotPositions.length; i++) {
-    drawAbilitySlotBase(ctx, slotPositions[i]!.x, slotPositions[i]!.y);
-  }
-
   _baked = c;
   _bakedSize = { w: width, h: height };
   return c;
-}
-
-export function getAbilitySlotPositions(
-  cx: number,
-  cy: number,
-): { x: number; y: number }[] {
-  // 2 above, 2 below — like the reference.
-  const dx = 67;
-  const dyTop = -22;
-  const dyBot = 34;
-  return [
-    { x: cx - dx, y: cy + dyTop },
-    { x: cx + dx, y: cy + dyTop },
-    { x: cx - dx, y: cy + dyBot },
-    { x: cx + dx, y: cy + dyBot },
-  ];
-}
-
-function drawAbilitySlotBase(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  // Outer dark ring
-  ctx.fillStyle = COLORS.ringDark;
-  ctx.beginPath();
-  ctx.arc(x, y, DAIS_RING_HALF + 3, 0, Math.PI * 2);
-  ctx.fill();
-  // Mid ring
-  ctx.fillStyle = COLORS.ringMid;
-  ctx.beginPath();
-  ctx.arc(x, y, DAIS_RING_HALF + 1, 0, Math.PI * 2);
-  ctx.fill();
-  // Stone interior
-  ctx.fillStyle = COLORS.daisMid;
-  ctx.beginPath();
-  ctx.arc(x, y, DAIS_RING_HALF - 1, 0, Math.PI * 2);
-  ctx.fill();
-  // Cyan inner lip
-  ctx.fillStyle = COLORS.ringHi;
-  ctx.beginPath();
-  ctx.arc(x, y, DAIS_RING_HALF, 0, Math.PI * 2);
-  ctx.arc(x, y, DAIS_RING_HALF - 1, 0, Math.PI * 2, true);
-  ctx.fill();
-}
-
-// Draw the per-frame glow pulse and ability glyph on top of each slot.
-export function drawAbilitySlotsOverlay(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  worldTime: number,
-  glyphs: AbilityGlyph[],
-): void {
-  const slots = getAbilitySlotPositions(cx, cy);
-  for (let i = 0; i < slots.length; i++) {
-    const s = slots[i]!;
-    const glyph = glyphs[i] ?? 'cloud';
-    const pulse = 0.5 + 0.5 * Math.sin(worldTime * 2 + i * 1.4);
-    // Cyan inner glow
-    ctx.save();
-    ctx.globalAlpha = 0.35 + 0.25 * pulse;
-    ctx.strokeStyle = COLORS.ringGlow;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, DAIS_RING_HALF + 1, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-    drawAbilityGlyph(ctx, s.x, s.y, glyph);
-  }
-}
-
-export type AbilityGlyph = 'cloud' | 'flame' | 'shield' | 'mark';
-
-function drawAbilityGlyph(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  glyph: AbilityGlyph,
-): void {
-  ctx.save();
-  ctx.translate(x, y);
-  switch (glyph) {
-    case 'cloud':
-      ctx.fillStyle = COLORS.aetherA;
-      pixel(ctx, -4, -2, 8, 4);
-      pixel(ctx, -2, -5, 4, 2);
-      pixel(ctx, 1, -4, 3, 2);
-      pixel(ctx, -5, 0, 2, 2);
-      pixel(ctx, 4, 0, 2, 2);
-      ctx.fillStyle = COLORS.aetherB;
-      pixel(ctx, -3, -1, 6, 2);
-      break;
-    case 'flame':
-      ctx.fillStyle = COLORS.fireB;
-      pixel(ctx, -1, -6, 2, 2);
-      pixel(ctx, -3, -4, 6, 4);
-      pixel(ctx, -4, 0, 8, 3);
-      ctx.fillStyle = COLORS.fireA;
-      pixel(ctx, -1, -3, 2, 4);
-      pixel(ctx, -2, 0, 4, 2);
-      break;
-    case 'shield':
-      ctx.fillStyle = COLORS.daisDark;
-      pixel(ctx, -4, -5, 8, 2);
-      pixel(ctx, -4, -3, 8, 6);
-      pixel(ctx, -3, 3, 6, 1);
-      pixel(ctx, -2, 4, 4, 1);
-      pixel(ctx, -1, 5, 2, 1);
-      ctx.fillStyle = COLORS.daisHi;
-      pixel(ctx, -3, -4, 6, 1);
-      ctx.fillStyle = COLORS.crystalB;
-      pixel(ctx, -1, -1, 2, 2);
-      break;
-    case 'mark':
-      ctx.fillStyle = COLORS.fireA;
-      pixel(ctx, -4, -4, 2, 2);
-      pixel(ctx, 2, -4, 2, 2);
-      pixel(ctx, -2, -2, 4, 4);
-      pixel(ctx, -4, 2, 2, 2);
-      pixel(ctx, 2, 2, 2, 2);
-      break;
-  }
-  ctx.restore();
-}
-
-function pixel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-  ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }
 
 function drawRimBlocks(

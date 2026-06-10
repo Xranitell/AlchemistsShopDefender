@@ -11,7 +11,12 @@ export class SettingsOverlay {
     this.root = root;
   }
 
-  show(opts: { meta: MetaSave; onClose: () => void; onReset: () => void }): void {
+  show(opts: {
+    meta: MetaSave;
+    onClose: () => void;
+    onReset: () => void;
+    showLanguage?: boolean;
+  }): void {
     this.root.innerHTML = '';
     const panel = document.createElement('div');
     panel.className = 'panel settings-panel';
@@ -42,9 +47,11 @@ export class SettingsOverlay {
     body.appendChild(audioSection);
 
     // Language section (PR-9 i18n).
-    const languageSection = buildLanguageSection(opts.meta);
-    languageSection.dataset.tutorialTarget = 'settings-language';
-    body.appendChild(languageSection);
+    if (opts.showLanguage !== false) {
+      const languageSection = buildLanguageSection(opts.meta);
+      languageSection.dataset.tutorialTarget = 'settings-language';
+      body.appendChild(languageSection);
+    }
 
     // Motion / animation section. Lets the player override the OS
     // `prefers-reduced-motion` query in either direction. Default for new

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:yandex": "tsc -b && vite build --mode yandex",
+    "build:crazygames": "tsc -b && vite build --mode crazygames",
     "preview": "vite preview --host",
     "typecheck": "tsc -b --noEmit",
     "lint": "tsc -b --noEmit",

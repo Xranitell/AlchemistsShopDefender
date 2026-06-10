@@ -2,7 +2,7 @@ import './style.css';
 import { Input } from './engine/input';
 import { Loop } from './engine/loop';
 import { dist } from './engine/math';
-import { yandex } from './yandex';
+import { platform, type RewardId } from './platform';
 import {
   buildInitialState,
   applyBiomeModifiers,
@@ -21,6 +21,14 @@ import { updateReactionPools } from './game/reactions';
 import { updateTowers } from './game/tower';
 import { updateProjectiles } from './game/projectile';
 import { startNextWave, startPause, updateWave, totalWaves, confirmEndlessModifier, INITIAL_PREP_DURATION } from './game/wave';
+import {
+  isScheduledInterstitialWave,
+  shouldUseInterstitialCountdown,
+} from './game/interstitialSchedule';
+import {
+  ALL_TIME_WAVES_BOARD_ID,
+  leaderboardWaveNumber,
+} from './game/leaderboardRules';
 import { applyCard, beginNewDraft, rerollForAd, rerollForGold, rollCardOptions, shouldDraftCursed } from './game/cards';
 import { tickOverloadEffect, tickModuleTimers } from './game/overload';
 import { tickShake, resetShake } from './engine/shake';
@@ -51,9 +59,12 @@ import { EndlessModifierOverlay } from './ui/endlessModifierOverlay';
 import { DailyEventOverlay } from './ui/dailyEventOverlay';
 import { BlessingOverlay } from './ui/blessingOverlay';
 import { ReviveOverlay } from './ui/reviveOverlay';
+import { PrivacyPolicyOverlay } from './ui/privacyPolicyOverlay';
+import { InterstitialCountdownOverlay } from './ui/interstitialCountdownOverlay';
 import { PauseStatsOverlay } from './ui/pauseStatsOverlay';
 import { LawAnnounceOverlay } from './ui/lawAnnounceOverlay';
 import { MUTATOR_BY_ID } from './data/mutators';
+import { shouldReportGameplayActive } from './game/platformGameplay';
 import type { DifficultyMode } from './data/difficulty';
 import { BP_XP_PER_WAVE, BP_XP_PER_KILL, BP_XP_VICTORY } from './data/battlePass';
 import { CONTRACT_BY_ID, type ContractId, type ContractDef } from './data/contracts';
@@ -145,8 +156,9 @@ let canvasDpr = 1;
 function syncArenaToViewport(): void {
   const c = canvas!;
   const vp = getViewport();
-  const w = Math.max(640, vp.width);
-  const h = Math.max(360, vp.height);
+  const renderAtDesignSize = vp.uiScale > 1.001;
+  const w = renderAtDesignSize ? vp.designWidth : Math.max(640, vp.width);
+  const h = renderAtDesignSize ? vp.designHeight : Math.max(360, vp.height);
   canvasDpr = vp.dpr;
   // CSS size — what `getBoundingClientRect()` reports and what input
   // mapping uses to translate clientX/Y into game coords.
@@ -174,14 +186,25 @@ onViewportChange(() => {
   // subsequent runtime resizes need to reposition the mannequin / runes.
   if (state) {
     const vp = getViewport();
-    resizeArena(state, vp.width, vp.height);
+    const renderAtDesignSize = vp.uiScale > 1.001;
+    resizeArena(
+      state,
+      renderAtDesignSize ? vp.designWidth : vp.width,
+      renderAtDesignSize ? vp.designHeight : vp.height,
+    );
   }
 });
 
 let meta: MetaSave = loadMeta();
+let leaderboardSyncPromise: Promise<void> | null = null;
 // Apply the saved locale before any UI is rendered so the very first
 // frames already show the player's language preference.
+if (platform.englishOnly) {
+  meta.locale = 'en';
+  meta.localeUserChoice = true;
+}
 setLocale(meta.locale);
+document.documentElement.lang = meta.locale;
 // Apply the saved motion mode (toggles `:root.motion-reduced` for the
 // reduced-motion CSS rules) before the first paint so we never flash
 // the full animation set on a phone that should be on `'minimal'`.
@@ -223,6 +246,9 @@ function isInFullscreen(): boolean {
   );
 }
 function requestFullscreenOnGesture(): void {
+  // CrazyGames provides fullscreen controls at platform level and forbids
+  // custom in-game fullscreen requests.
+  if (platform.kind === 'crazygames') return;
   if (isInFullscreen()) return;
   const el = document.documentElement;
   const rfs = el.requestFullscreen
@@ -244,8 +270,10 @@ function detachFullscreenGestureListeners(): void {
     window.removeEventListener(evt, requestFullscreenOnGesture);
   }
 }
-for (const evt of FS_GESTURE_EVENTS) {
-  window.addEventListener(evt, requestFullscreenOnGesture, { passive: true });
+if (platform.kind !== 'crazygames') {
+  for (const evt of FS_GESTURE_EVENTS) {
+    window.addEventListener(evt, requestFullscreenOnGesture, { passive: true });
+  }
 }
 // Once fullscreen is entered (regardless of how — our gesture handler,
 // the OS hotkey, the host iframe), drop the listeners so we don't keep
@@ -296,7 +324,7 @@ document.addEventListener('wheel', (e) => {
   // The brewery / talent-tree / loadout overlays explicitly opt-in to
   // native scrolling on their inner panels. Anything else (the canvas,
   // the HUD) must not scroll the document.
-  if (target && target.closest && target.closest('#overlay.visible')) return;
+  if (target?.closest('#overlay.visible, .pause-stats-overlay')) return;
   e.preventDefault();
 }, { passive: false });
 
@@ -351,6 +379,8 @@ const endlessModOverlay = new EndlessModifierOverlay(overlayRoot);
 const dailyEventOverlay = new DailyEventOverlay(overlayRoot);
 const blessingOverlay = new BlessingOverlay(overlayRoot);
 const reviveOverlay = new ReviveOverlay(overlayRoot);
+const privacyPolicyOverlay = new PrivacyPolicyOverlay(overlayRoot);
+const interstitialCountdown = new InterstitialCountdownOverlay();
 const craftingOverlay = new CraftingOverlay(overlayRoot);
 const pauseStats = new PauseStatsOverlay(document.body, {
   onClose: () => {
@@ -365,6 +395,8 @@ const pauseStats = new PauseStatsOverlay(document.body, {
       meta.pauseTutorialDone = true;
       saveMeta(meta);
     }
+    if (state.phase === 'wave') platform.gameplayStart();
+    else platform.gameplayStop();
   },
   onExitToMenu: () => {
     // Player chose to abandon the run from the pause menu after the
@@ -392,7 +424,15 @@ const pauseStats = new PauseStatsOverlay(document.body, {
       if (wave > meta.bestWave) meta.bestWave = wave;
       saveMeta(meta);
     }
+    platform.gameplayStop();
     restart();
+  },
+  onRestart: () => {
+    userPaused = false;
+    hud.setPaused(false);
+    tutorial.cancelSequence('pauseOpen');
+    platform.gameplayStop();
+    void restartCurrentRun();
   },
 });
 
@@ -426,6 +466,7 @@ function togglePause(): void {
   userPaused = !userPaused;
   hud.setPaused(userPaused);
   if (userPaused) {
+    platform.gameplayStop();
     pauseStats.show(state);
     // First-time pause walkthrough — fires once per save. Steps whose
     // section isn't on-screen for this difficulty (e.g. contracts on a
@@ -444,6 +485,8 @@ function togglePause(): void {
     }
   } else {
     pauseStats.hide();
+    if (state.phase === 'wave') platform.gameplayStart();
+    else platform.gameplayStop();
     // The player closing the pause panel mid-walkthrough still counts
     // as "they've seen it" — flip the flag so re-opening pause doesn't
     // restart the same sequence from step one. We only flip when the
@@ -457,13 +500,78 @@ function togglePause(): void {
   }
 }
 
+let waveTransitionPending = false;
+let cardOverlayTransitionPending = false;
+let cardOverlayTransitionId = 0;
+let runTransitionPending = false;
+
+async function showMidgameInterstitial(
+  isStillValid: () => boolean = () => true,
+): Promise<boolean> {
+  if (!platform.canShowInterstitial() || !isStillValid()) return false;
+  if (!shouldUseInterstitialCountdown(platform.kind)) {
+    return platform.showInterstitial();
+  }
+
+  const countdownCompleted = await interstitialCountdown.show(3);
+  if (!countdownCompleted || !isStillValid()) return false;
+  return platform.showInterstitial();
+}
+
+async function requestStartNextWave(): Promise<void> {
+  if (
+    runTransitionPending
+    || waveTransitionPending
+    || state.phase !== 'preparing'
+  ) return;
+  waveTransitionPending = true;
+  const runState = state;
+
+  platform.gameplayStop();
+  if (state !== runState || state.phase !== 'preparing') {
+    waveTransitionPending = false;
+    return;
+  }
+
+  startNextWave(state);
+  waveTransitionPending = false;
+  if ((state.phase as GameState['phase']) === 'wave') platform.gameplayStart();
+  else platform.gameplayStop();
+}
+
+async function requestShowCardOverlay(): Promise<void> {
+  if (cardOverlayTransitionPending || state.phase !== 'card_select') return;
+  cardOverlayTransitionPending = true;
+  const runState = state;
+  const requestId = ++cardOverlayTransitionId;
+  const completedWave = currentRunWaveResult();
+  const shouldShowWaveAd = isScheduledInterstitialWave(completedWave);
+  const transitionIsValid = (): boolean =>
+    requestId === cardOverlayTransitionId
+    && state === runState
+    && state.phase === 'card_select';
+
+  platform.gameplayStop();
+  if (shouldShowWaveAd) {
+    await showMidgameInterstitial(transitionIsValid);
+  }
+
+  if (!transitionIsValid()) {
+    cardOverlayTransitionPending = false;
+    return;
+  }
+
+  showCardOverlay();
+  cardOverlayTransitionPending = false;
+}
+
 const hud = new Hud(hudRoot, {
   onPause: () => togglePause(),
   onSkipPause: () => {
     if (state.phase === 'preparing') {
       towerShop.close();
       mannequinShop.close();
-      startNextWave(state);
+      void requestStartNextWave();
     }
   },
   onActivateOverload: () => { state.overloadRequested = true; },
@@ -515,7 +623,12 @@ tutorial.attach(canvas, {
 });
 
 void (async () => {
-  await yandex.init();
+  // Capture this before SDK initialization or locale normalization can
+  // create a meta save. Platforms with a policy gate consume it after
+  // acknowledgement; Yandex proceeds directly into the first run.
+  platform.prepareFirstLaunch();
+  await platform.init();
+  void syncSavedLeaderboardScores();
   // Yandex Games requirement 2.14: every game must read the player's
   // preferred language from `environment.i18n.lang` on each launch, or
   // the publishing console flags it as "i18n не используется" / "I18N
@@ -523,16 +636,37 @@ void (async () => {
   // pull the SDK language at startup, even for returning players who
   // have explicitly picked a locale — we just don't apply it in that
   // case so a manual choice still wins over the SDK.
-  const sdkLocale = normalizeToLocale(yandex.getLang());
-  if (!meta.localeUserChoice && sdkLocale !== meta.locale) {
+  const sdkLocale = normalizeToLocale(platform.getLang());
+  if (platform.englishOnly) {
+    setLocale('en');
+    meta.locale = 'en';
+    meta.localeUserChoice = true;
+    document.documentElement.lang = 'en';
+    saveMeta(meta);
+  } else if (!meta.localeUserChoice && sdkLocale !== meta.locale) {
     setLocale(sdkLocale);
     meta.locale = sdkLocale;
+    document.documentElement.lang = sdkLocale;
     saveMeta(meta);
   }
-  yandex.loadingReady();
+  platform.loadingReady();
   hideAppLoader();
-  showMainMenu();
-  loop.start();
+  const continueLaunch = (): void => {
+    if (platform.consumeFirstLaunch()) startRun('normal');
+    else showMainMenu();
+    loop.start();
+  };
+  if (platform.requiresPrivacyPolicy && !meta.isShowed) {
+    platform.gameplayStop();
+    privacyPolicyOverlay.show(() => {
+      meta.isShowed = true;
+      saveMeta(meta);
+      privacyPolicyOverlay.hide();
+      continueLaunch();
+    });
+  } else {
+    continueLaunch();
+  }
 })();
 
 /** Last cursor style applied to the game canvas. Cached so we only touch
@@ -558,6 +692,15 @@ function syncCanvasCursor(): void {
 
 function tick(dt: number): void {
   syncCanvasCursor();
+  const platformGameplayActive = shouldReportGameplayActive({
+    phase: state.phase,
+    userPaused,
+    tutorialVisible: tutorial.isShowingStep(),
+    revivePaused: state.revivePaused,
+    transitionPending: runTransitionPending,
+  });
+  if (platformGameplayActive) platform.gameplayStart();
+  else platform.gameplayStop();
   // Convert screen mouse position to world coordinates through inverse iso transform
   const cam = getRenderCamera(state.arena.width, state.arena.height);
   state.aim = screenToWorld(input.state.mouse.x, input.state.mouse.y, cam);
@@ -576,6 +719,7 @@ function tick(dt: number): void {
       input.endFrame();
       render(ctx!, state);
       hud.update(state);
+      tutorial.update(state);
       return;
     }
   }
@@ -640,7 +784,7 @@ function tick(dt: number): void {
   if (input.state.keysPressedThisFrame.has('Space')) {
     if (state.phase === 'preparing') {
       towerShop.close();
-      startNextWave(state);
+      void requestStartNextWave();
     }
   }
   // Potion hotkeys: 1..4 maps to inventory slots 0..3. Works during the
@@ -664,7 +808,7 @@ function tick(dt: number): void {
       state.waveState.pauseDurationLeft -= dt;
       if (state.waveState.pauseDurationLeft <= 0) {
         towerShop.close();
-        startNextWave(state);
+        void requestStartNextWave();
       }
     }
 
@@ -723,7 +867,7 @@ function tick(dt: number): void {
     !reviveOverlay.isVisible();
   if (!metaMenuOpen) {
     if (state.phase === 'card_select' && !overlay.isVisible()) {
-      showCardOverlay();
+      void requestShowCardOverlay();
     }
     if (state.phase === 'endless_modifier_select' && !endlessModOverlay.isVisible()) {
       showEndlessModifierOverlay();
@@ -831,18 +975,14 @@ function handleClick(at: { x: number; y: number }): void {
 function canvasToScreen(c: HTMLCanvasElement, gamePos: { x: number; y: number }) {
   const cam = getRenderCamera(state.arena.width, state.arena.height);
   const canvasPos = worldToScreen(gamePos.x, gamePos.y, cam);
-  const rect = c.getBoundingClientRect();
-  const sx = rect.width / c.width;
-  const sy = rect.height / c.height;
-  const parent = c.parentElement!.getBoundingClientRect();
-  return {
-    x: rect.left - parent.left + canvasPos.x * sx,
-    y: rect.top - parent.top + canvasPos.y * sy,
-  };
+  // The canvas and HUD share one logical design coordinate system. Their
+  // common fullscreen transform adds any outer gutters after placement.
+  void c;
+  return canvasPos;
 }
 
 function showCardOverlay(): void {
-  yandex.gameplayStop();
+  platform.gameplayStop();
   beginNewDraft(state);
   state.cardChoice.options = rollCardOptions(state);
   renderCardOverlay();
@@ -860,7 +1000,7 @@ function showCardOverlay(): void {
           submitWaveLeaderboards();
           startPause(state);
           announceNewDungeonLawIfChanged(prevMutators);
-          yandex.gameplayStart();
+          platform.gameplayStop();
         }},
       ],
     });
@@ -886,6 +1026,7 @@ function announceNewDungeonLawIfChanged(prev: readonly string[]): void {
  *  when the draft is first shown and after every reroll. */
 function renderCardOverlay(): void {
   const options = state.cardChoice.options;
+  const cardAdCooldown = platform.getRewardCooldownRemaining('cardReroll');
   const idx = state.waveState.currentIndex;
   const cursed = shouldDraftCursed(state);
   const title = cursed
@@ -908,7 +1049,7 @@ function renderCardOverlay(): void {
       submitWaveLeaderboards();
       startPause(state);
       announceNewDungeonLawIfChanged(prevMutators);
-      yandex.gameplayStart();
+      platform.gameplayStop();
     },
     // Skip: dismiss the draft entirely without applying a card. We still
     // notify the tutorial so the "you've seen the draft" gate trips.
@@ -920,7 +1061,7 @@ function renderCardOverlay(): void {
       submitWaveLeaderboards();
       startPause(state);
       announceNewDungeonLawIfChanged(prevMutators);
-      yandex.gameplayStart();
+      platform.gameplayStop();
     } : undefined,
     rerollGold: options.length > 0 ? {
       cost: state.cardChoice.rerollCost,
@@ -929,13 +1070,17 @@ function renderCardOverlay(): void {
         if (rerollForGold(state)) renderCardOverlay();
       },
     } : undefined,
-    rerollAd: options.length > 0 && !state.cardChoice.freeRerollUsed ? {
+    rerollAd: options.length > 0
+      && (!state.cardChoice.freeRerollUsed || cardAdCooldown > 0) ? {
       onReroll: () => {
-        void yandex.showRewarded().then((ok) => {
+        if (state.cardChoice.freeRerollUsed) return;
+        void platform.showRewarded('cardReroll').then((ok) => {
           if (!ok) return;
           if (rerollForAd(state)) renderCardOverlay();
         });
       },
+      cooldownRemainingMs: () => platform.getRewardCooldownRemaining('cardReroll'),
+      hideWhenCooldownEnds: state.cardChoice.freeRerollUsed,
     } : undefined,
   });
 
@@ -967,7 +1112,7 @@ function showEndlessModifierOverlay(): void {
     onConfirm: () => {
       endlessModOverlay.hide();
       confirmEndlessModifier(state);
-      yandex.gameplayStart();
+      platform.gameplayStart();
     },
   });
 }
@@ -1034,35 +1179,29 @@ function awardRunEssence(victory: boolean): { blue: number; ancient: number; epi
   }
   saveMeta(meta);
 
-  // Submit scores to the two Yandex Games leaderboards. `endlessWaves`
-  // tracks the highest wave reached across any run; `dailyWaves` is a
-  // permanent board for daily-event runs (no per-day rollover — the same
-  // table is reused every weekday). Same submit logic also runs after
-  // every cleared wave (`submitWaveLeaderboards`) so abandon-mid-run
-  // flows are still reflected — but we keep the run-end submit as a
-  // safety net in case the wave-clear hook didn't fire (e.g. defeat
-  // happens partway through a wave with no preceding clear).
+  // Submit the highest wave reached in this run. The run-end call matters
+  // because a defeat on wave N must record N even though it was not cleared.
   submitWaveLeaderboards();
 
   return { blue: reward.blue, ancient: reward.ancient, epicKeys: reward.epicKeys, ancientKeys: reward.ancientKeys, bpXp, contractBlue, contractAncient, completedContracts };
 }
 
-/** Cumulative wave count for the current run including endless / daily
- *  loops. Used as the leaderboard score input so a player who loops
- *  past the wave list keeps moving up the board instead of getting
- *  reset to a low number when `currentIndex` rolls back to 0. */
-function cumulativeWaveCount(): number {
-  return state.endlessLoop * totalWaves(state) + state.waveState.currentIndex + 1;
+/** Highest wave reached in the current run, including endless loops. */
+function currentRunWaveResult(): number {
+  return leaderboardWaveNumber(
+    state.endlessLoop,
+    totalWaves(state),
+    state.waveState.currentIndex,
+    state.phase,
+  );
 }
 
-/** Push the current run's progress to the relevant Yandex leaderboards.
+/** Push the current run's wave result to the platform's logical boards.
  *  We persist the player's per-board best in `meta.bestLeaderboardScores`
  *  and only call `setLeaderboardScore` when the current run beats it,
- *  so a worse run never overwrites the high-water mark on the Yandex
- *  board (Yandex respects the "best score wins" rule only when the
- *  board is configured with the right sort order in the developer
- *  console; gating the call client-side makes the behaviour correct
- *  regardless of dashboard configuration).
+ *  so a worse run never overwrites the all-time or current-day high-water
+ *  mark. The daily board uses a dated logical id and starts clean at Moscow
+ *  midnight.
  *
  *  Why this exists separately from `awardRunEssence`: previously the
  *  leaderboard was only updated on victory or defeat. A player who
@@ -1071,22 +1210,64 @@ function cumulativeWaveCount(): number {
  *  silently dropped their progress. Calling this from the wave-cleared
  *  hooks ensures the board reflects the run as it happens. */
 function submitWaveLeaderboards(): void {
-  const wave = cumulativeWaveCount();
+  const wave = currentRunWaveResult();
   if (wave < 1) return;
+
   let bestsChanged = false;
-  const tryUpdate = (boardId: string): void => {
+  const recordBest = (boardId: string): boolean => {
     const prev = meta.bestLeaderboardScores[boardId] ?? 0;
-    if (wave <= prev) return;
+    if (wave <= prev) return false;
     meta.bestLeaderboardScores[boardId] = wave;
     bestsChanged = true;
-    void yandex.setLeaderboardScore(boardId, wave);
+    return true;
   };
-  tryUpdate('endlessWaves');
-  if (state.difficulty === 'daily') {
-    tryUpdate(dailyBoardId());
+
+  const allTimeImproved = recordBest(ALL_TIME_WAVES_BOARD_ID);
+  // CrazyGames has one weekly board shared by every mode. Report each
+  // checkpoint so its adapter can restore the saved single-run best after
+  // a platform reset.
+  if (allTimeImproved || platform.kind === 'crazygames') {
+    void platform.setLeaderboardScore(ALL_TIME_WAVES_BOARD_ID, wave);
+  }
+
+  if (platform.supportsDailyLeaderboard && state.difficulty === 'daily') {
+    const boardId = dailyBoardId();
+    if (recordBest(boardId)) {
+      void platform.setLeaderboardScore(boardId, wave);
+    }
   }
   if (bestsChanged) saveMeta(meta);
 }
+
+async function syncSavedLeaderboardScores(): Promise<void> {
+  // CrazyGames can mirror the saved overall score before authorization.
+  // Yandex rejects SDK writes for lite users.
+  if (platform.kind === 'yandex' && !platform.isAuthorized()) return;
+  if (leaderboardSyncPromise) return leaderboardSyncPromise;
+
+  const scores: Array<[string, number]> = [];
+  const allTime = meta.bestLeaderboardScores[ALL_TIME_WAVES_BOARD_ID] ?? 0;
+  if (allTime > 0) scores.push([ALL_TIME_WAVES_BOARD_ID, allTime]);
+
+  if (platform.supportsDailyLeaderboard) {
+    const todayBoardId = dailyBoardId();
+    const daily = meta.bestLeaderboardScores[todayBoardId] ?? 0;
+    if (daily > 0) scores.push([todayBoardId, daily]);
+  }
+  if (scores.length === 0) return;
+
+  leaderboardSyncPromise = Promise.all(
+    scores.map(([boardId, score]) =>
+      platform.setLeaderboardScore(boardId, score)),
+  ).then(() => undefined).finally(() => {
+    leaderboardSyncPromise = null;
+  });
+  return leaderboardSyncPromise;
+}
+
+platform.onAuthChange(() => {
+  void syncSavedLeaderboardScores();
+});
 
 /** Build the per-currency reward grid that replaces the old single-line
  *  text breakdown on the victory chest screen. Each non-zero currency
@@ -1156,8 +1337,46 @@ function doubleRewards(r: { blue: number; ancient: number; epicKeys: number; anc
   saveMeta(meta);
 }
 
+function bindRewardCooldown(
+  button: HTMLButtonElement,
+  rewardId: RewardId,
+  readyLabel: string,
+): () => void {
+  let timer: number | null = null;
+  const update = (): void => {
+    if (!button.isConnected) {
+      if (timer !== null) window.clearInterval(timer);
+      timer = null;
+      return;
+    }
+    const remaining = platform.getRewardCooldownRemaining(rewardId);
+    if (remaining <= 0) {
+      button.disabled = false;
+      button.textContent = readyLabel;
+      if (timer !== null) window.clearInterval(timer);
+      timer = null;
+      return;
+    }
+    const totalSeconds = Math.ceil(remaining / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    button.disabled = true;
+    button.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+  const refresh = (): void => {
+    if (timer !== null) window.clearInterval(timer);
+    timer = null;
+    update();
+    if (platform.getRewardCooldownRemaining(rewardId) > 0) {
+      timer = window.setInterval(update, 250);
+    }
+  };
+  refresh();
+  return refresh;
+}
+
 function showVictory(): void {
-  yandex.gameplayStop();
+  platform.gameplayStop();
   audio.playSfx('waveWin');
   audio.playMusic('menu');
   if (!meta.tutorialDone) {
@@ -1359,14 +1578,20 @@ function showVictory(): void {
       footer.className = 'menu-buttons chest-footer';
 
       const adBtn = document.createElement('button');
-      adBtn.textContent = t('ui.victory.doubleAd');
+      const adLabel = t('ui.victory.doubleAd');
+      adBtn.textContent = adLabel;
       adBtn.className = 'chest-cta-double';
       adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+      const refreshAdButton = bindRewardCooldown(adBtn, 'runRewardDouble', adLabel);
       adBtn.addEventListener('click', () => {
         audio.playSfx('uiClick');
-        if (doubled) return;
-        void yandex.showRewarded().then((ok) => {
-          if (!ok) return;
+        if (doubled || platform.getRewardCooldownRemaining('runRewardDouble') > 0) return;
+        adBtn.disabled = true;
+        void platform.showRewarded('runRewardDouble').then((ok) => {
+          if (!ok) {
+            refreshAdButton();
+            return;
+          }
           doubled = true;
           doubleRewards(reward);
           showRewardDoubledOverlay({
@@ -1375,7 +1600,9 @@ function showVictory(): void {
             ancientAmount: reward.ancient * 2,
             primary: {
               label: t('ui.common.toMenu'),
-              onClick: () => restart(),
+              onClick: () => {
+                restart();
+              },
             },
           });
         });
@@ -1390,7 +1617,6 @@ function showVictory(): void {
         // Regular interstitial on run-end → menu navigation.
         // SDK rate-limits internally so back-to-back retries
         // won't repeatedly play ads.
-        void yandex.showFullscreen();
         restart();
       });
       footer.appendChild(menuBtn);
@@ -1457,7 +1683,7 @@ let gameOverShown = false;
 function showGameOver(): void {
   if (gameOverShown) return;
   gameOverShown = true;
-  yandex.gameplayStop();
+  platform.gameplayStop();
   audio.playSfx('runDefeat');
   audio.playMusic('menu');
   tutorial.stop();
@@ -1631,7 +1857,6 @@ function showGameOver(): void {
     // ad guidelines — fire a fullscreen ad in parallel with the retry.
     // The SDK rate-limits internally (~once / 60 s) so chained retries
     // won't spam the player.
-    void yandex.showFullscreen();
     // Epic / Ancient retries cost a key. Without this guard the player
     // could farm dungeons indefinitely from the defeat screen, even with
     // zero keys in inventory, since `consumeKey` was never called on
@@ -1641,8 +1866,8 @@ function showGameOver(): void {
       restart();
       return;
     }
-    overlay.hide();
-    startRun(lastMode);
+    tryBtn.disabled = true;
+    void restartCurrentRun(lastMode);
   });
   ctaWrap.appendChild(tryBtn);
 
@@ -1651,13 +1876,19 @@ function showGameOver(): void {
 
   const adBtn = document.createElement('button');
   adBtn.className = 'defeat-cta-secondary defeat-cta-double';
-  adBtn.textContent = t('ui.victory.doubleAd');
+  const adLabel = t('ui.victory.doubleAd');
+  adBtn.textContent = adLabel;
   adBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
+  const refreshAdButton = bindRewardCooldown(adBtn, 'runRewardDouble', adLabel);
   adBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
-    if (doubled) return;
-    void yandex.showRewarded().then((ok) => {
-      if (!ok) return;
+    if (doubled || platform.getRewardCooldownRemaining('runRewardDouble') > 0) return;
+    adBtn.disabled = true;
+    void platform.showRewarded('runRewardDouble').then((ok) => {
+      if (!ok) {
+        refreshAdButton();
+        return;
+      }
       doubled = true;
       doubleRewards(reward);
       // `doubleRewards` only credits the meta, doesn't mutate `reward`,
@@ -1674,13 +1905,14 @@ function showGameOver(): void {
               restart();
               return;
             }
-            overlay.hide();
-            startRun(lastMode);
+            void restartCurrentRun(lastMode);
           },
         },
         secondary: {
           label: t('ui.common.toMenu'),
-          onClick: () => restart(),
+          onClick: () => {
+            restart();
+          },
         },
       });
     });
@@ -1693,7 +1925,6 @@ function showGameOver(): void {
   menuBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
   menuBtn.addEventListener('click', () => {
     audio.playSfx('uiClick');
-    void yandex.showFullscreen();
     restart();
   });
   secondaryRow.appendChild(menuBtn);
@@ -1820,7 +2051,6 @@ function showRewardDoubledOverlay(opts: {
     audio.playSfx('uiClick');
     // Run-end CTA → fullscreen interstitial. SDK rate-limits internally,
     // so back-to-back retries do not stack ads.
-    void yandex.showFullscreen();
     opts.primary.onClick();
   });
   ctaWrap.appendChild(primaryBtn);
@@ -1835,7 +2065,6 @@ function showRewardDoubledOverlay(opts: {
     secondaryBtn.addEventListener('mouseenter', () => audio.playSfx('uiHover'));
     secondaryBtn.addEventListener('click', () => {
       audio.playSfx('uiClick');
-      void yandex.showFullscreen();
       secondary.onClick();
     });
     secondaryRow.appendChild(secondaryBtn);
@@ -1848,23 +2077,21 @@ function showRewardDoubledOverlay(opts: {
   root.classList.add('visible');
 }
 
-/** Wrap a navigation handler so a regular fullscreen interstitial fires
- *  alongside it. The Yandex SDK rate-limits `showFullscreenAdv` internally
- *  (≈1 ad / 60 s), so calling this from every menu button is safe — most
- *  clicks will be silent no-ops. We fire the ad and run the handler in
- *  parallel rather than awaiting the ad, otherwise the menu would feel
- *  laggy on every tap. The ad simply renders on top of whatever screen
- *  the handler navigates to; closing it returns the player to the new
- *  screen. */
-function withInterstitial(handler: () => void): () => void {
-  return () => {
-    void yandex.showFullscreen();
-    handler();
-  };
+/** Keeps existing menu callback wiring while navigation ads stay disabled. */
+function withNavigationInterstitial(handler: () => void): () => void {
+  return handler;
 }
 
 function showMainMenu(): void {
   meta = loadMeta();
+  if (platform.englishOnly && meta.locale !== 'en') {
+    meta.locale = 'en';
+    meta.localeUserChoice = true;
+    saveMeta(meta);
+  }
+  if (platform.englishOnly) setLocale('en');
+  document.documentElement.lang = meta.locale;
+  platform.gameplayStop();
   audio.setVolumes({ sfxVolume: meta.sfxVolume, uiSfxVolume: meta.uiSfxVolume, musicVolume: meta.musicVolume });
   applyMotionModeFromMeta(meta);
   audio.playMusic('menu');
@@ -1883,37 +2110,39 @@ function showMainMenu(): void {
   };
   mainMenu.show({
     meta,
-    onBattle: withInterstitial(() => {
+    showLanguage: !platform.englishOnly,
+    showLeaderboard: platform.supportsLeaderboards,
+    onBattle: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDifficultySelect();
     }),
-    onLaboratory: withInterstitial(() => {
+    onLaboratory: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showLaboratory();
     }),
-    onDailyRewards: withInterstitial(() => {
+    onDailyRewards: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDailyRewards();
     }),
-    onSettings: withInterstitial(() => {
+    onSettings: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showSettings();
     }),
-    onCrafting: withInterstitial(() => {
+    onCrafting: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showCrafting();
     }),
-    onLoadout: withInterstitial(() => {
+    onLoadout: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showLoadout();
     }),
-    onDiary: withInterstitial(() => {
+    onDiary: withNavigationInterstitial(() => {
       dismissMenuTutorial();
       mainMenu.hide();
       showDiary();
@@ -2029,6 +2258,9 @@ function consumeKey(mode: DifficultyMode): boolean {
 }
 
 function startRun(mode: DifficultyMode): void {
+  interstitialCountdown.hide(false);
+  cardOverlayTransitionId += 1;
+  cardOverlayTransitionPending = false;
   const seed = mode === 'daily' ? dailySeed() : undefined;
   state = buildInitialState(seed, mode);
   gameOverShown = false;
@@ -2073,7 +2305,7 @@ function startRun(mode: DifficultyMode): void {
     state.phase = 'preparing';
     state.waveState.pauseDurationLeft = INITIAL_PREP_DURATION;
     state.waveState.pauseTime = 0;
-    yandex.gameplayStart();
+    platform.gameplayStop();
   };
   // Roll & show the "Дар алхимика" picker. Epic = 1 of 3 blessings;
   // Ancient = 1 of 3 blessings + 1 of 3 curses (mandatory). Other modes
@@ -2168,6 +2400,7 @@ function showSettings(): void {
   };
   settingsOverlay.show({
     meta,
+    showLanguage: !platform.englishOnly,
     onClose: () => {
       dismissSettingsTutorial();
       settingsOverlay.hide();
@@ -2207,7 +2440,34 @@ function showSettings(): void {
 // from older save files, and we don't want to drop the dependency in
 // case a future build wants to re-introduce a revive moment elsewhere.
 
+async function restartCurrentRun(
+  mode: DifficultyMode = state.difficulty,
+): Promise<void> {
+  if (runTransitionPending) return;
+  runTransitionPending = true;
+  interstitialCountdown.hide(false);
+  platform.gameplayStop();
+  waveTransitionPending = false;
+  cardOverlayTransitionId += 1;
+  cardOverlayTransitionPending = false;
+  try {
+    await showMidgameInterstitial();
+    overlay.hide();
+    lawAnnounce.hide();
+    pauseStats.hide();
+    startRun(mode);
+  } finally {
+    runTransitionPending = false;
+  }
+}
+
 function restart(): void {
+  runTransitionPending = false;
+  interstitialCountdown.hide(false);
+  platform.gameplayStop();
+  waveTransitionPending = false;
+  cardOverlayTransitionId += 1;
+  cardOverlayTransitionPending = false;
   overlay.hide();
   // Force-dismiss any in-flight UI toasts so they don't bleed onto the
   // main menu on restart / exit-to-menu.

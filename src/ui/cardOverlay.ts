@@ -5,6 +5,9 @@ import { t } from '../i18n';
 
 export class CardOverlay {
   private root: HTMLElement;
+  private layoutObserver: ResizeObserver | null = null;
+  private layoutFrame: number | null = null;
+  private layoutSchedule: (() => void) | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -21,7 +24,11 @@ export class CardOverlay {
     /** When provided, the overlay renders a "reroll for gold" button. */
     rerollGold?: { cost: number; canAfford: boolean; onReroll: () => void };
     /** When provided, the overlay renders a "free reroll via ad" button. */
-    rerollAd?: { onReroll: () => void };
+    rerollAd?: {
+      onReroll: () => void;
+      cooldownRemainingMs?: () => number;
+      hideWhenCooldownEnds?: boolean;
+    };
     /** When provided, the overlay renders a "Skip" pill that lets the player
      *  decline the current offer entirely (no card applied). */
     onSkip?: () => void;
@@ -30,6 +37,7 @@ export class CardOverlay {
      *  cursed offering. */
     cursed?: boolean;
   }): void {
+    this.stopAdaptiveLayout();
     this.root.innerHTML = '';
     this.root.classList.add('cards-mode');
     this.root.classList.toggle('cursed-mode', !!options.cursed);
@@ -97,14 +105,20 @@ export class CardOverlay {
         );
       }
       if (options.rerollAd) {
-        row.appendChild(
-          buildActionPill({
-            label: t('ui.cards.rerollAd'),
-            counter: '1',
-            accent: true,
-            onClick: () => options.rerollAd!.onReroll(),
-          }),
-        );
+        const pill = buildActionPill({
+          label: t('ui.cards.rerollAd'),
+          accent: true,
+          onClick: () => options.rerollAd!.onReroll(),
+        });
+        row.appendChild(pill);
+        if (options.rerollAd.cooldownRemainingMs) {
+          this.bindCooldown(
+            pill,
+            t('ui.cards.rerollAd'),
+            options.rerollAd.cooldownRemainingMs,
+            options.rerollAd.hideWhenCooldownEnds === true,
+          );
+        }
       }
       if (options.onSkip) {
         row.appendChild(
@@ -144,15 +158,19 @@ export class CardOverlay {
       lockHint.classList.add('unlocked');
       window.setTimeout(() => lockHint.remove(), 320);
     }, 2000);
+
+    this.startAdaptiveLayout(stage);
   }
 
   private preLockTimeout: number | null = null;
+  private cooldownTimer: number | null = null;
 
   showSimple(opts: {
     title: string;
     subtitle: string;
     buttons: { label: string; primary?: boolean; onClick: () => void }[];
   }): void {
+    this.stopAdaptiveLayout();
     this.root.innerHTML = '';
     this.root.classList.remove('cards-mode');
     const panel = document.createElement('div');
@@ -186,9 +204,14 @@ export class CardOverlay {
   }
 
   hide(): void {
+    this.stopAdaptiveLayout();
     if (this.preLockTimeout != null) {
       window.clearTimeout(this.preLockTimeout);
       this.preLockTimeout = null;
+    }
+    if (this.cooldownTimer != null) {
+      window.clearInterval(this.cooldownTimer);
+      this.cooldownTimer = null;
     }
     this.root.classList.remove('visible');
     this.root.classList.remove('cards-mode');
@@ -204,6 +227,174 @@ export class CardOverlay {
   getRootElement(): HTMLElement {
     return this.root;
   }
+
+  private startAdaptiveLayout(stage: HTMLElement): void {
+    const schedule = (): void => {
+      if (!stage.isConnected) return;
+      if (this.layoutFrame != null) window.cancelAnimationFrame(this.layoutFrame);
+      this.layoutFrame = window.requestAnimationFrame(() => {
+        this.layoutFrame = null;
+        for (const card of stage.querySelectorAll<HTMLElement>('.card-rh')) {
+          fitCardContent(card);
+        }
+      });
+    };
+
+    if (typeof ResizeObserver !== 'undefined') {
+      this.layoutObserver = new ResizeObserver(schedule);
+      this.layoutObserver.observe(stage);
+      const row = stage.querySelector<HTMLElement>('.cards-rh');
+      if (row) this.layoutObserver.observe(row);
+    }
+
+    this.layoutSchedule = schedule;
+    window.addEventListener('resize', schedule);
+    schedule();
+    void document.fonts.ready.then(schedule);
+  }
+
+  private stopAdaptiveLayout(): void {
+    if (this.layoutSchedule) {
+      window.removeEventListener('resize', this.layoutSchedule);
+      this.layoutSchedule = null;
+    }
+    this.layoutObserver?.disconnect();
+    this.layoutObserver = null;
+    if (this.layoutFrame != null) {
+      window.cancelAnimationFrame(this.layoutFrame);
+      this.layoutFrame = null;
+    }
+  }
+
+  private bindCooldown(
+    button: HTMLButtonElement,
+    readyLabel: string,
+    remainingMs: () => number,
+    hideWhenReady: boolean,
+  ): void {
+    if (this.cooldownTimer != null) window.clearInterval(this.cooldownTimer);
+    const label = button.querySelector<HTMLElement>('.cards-action-label');
+    const counter = button.querySelector<HTMLElement>('.cards-action-counter');
+    const update = (): void => {
+      const remaining = remainingMs();
+      if (remaining <= 0) {
+        if (hideWhenReady) {
+          button.remove();
+          if (this.cooldownTimer != null) {
+            window.clearInterval(this.cooldownTimer);
+            this.cooldownTimer = null;
+          }
+          return;
+        }
+        button.disabled = false;
+        if (label) label.textContent = readyLabel;
+        if (counter) {
+          counter.style.display = '';
+        }
+        if (this.cooldownTimer != null) {
+          window.clearInterval(this.cooldownTimer);
+          this.cooldownTimer = null;
+        }
+        return;
+      }
+      button.disabled = true;
+      if (label) label.textContent = formatCooldown(remaining);
+      if (counter) counter.style.display = 'none';
+    };
+    update();
+    if (remainingMs() > 0) {
+      this.cooldownTimer = window.setInterval(update, 250);
+    }
+  }
+}
+
+function fitCardContent(card: HTMLElement): void {
+  const frame = card.querySelector<HTMLElement>('.card-rh-frame');
+  const title = card.querySelector<HTMLElement>('.card-rh-title');
+  const effects = card.querySelector<HTMLElement>('.card-rh-effects');
+  const synergy = card.querySelector<HTMLElement>('.card-rh-synergy');
+  if (!frame || !title || !effects) return;
+
+  card.classList.remove('card-rh-content-tight');
+  card.removeAttribute('data-content-scale');
+  resetAdaptiveStyles(frame, title, effects, synergy);
+  if (!cardContentOverflows(frame, effects)) return;
+
+  if (applyTextScale(card, frame, title, effects, synergy, 0.94, 0.68)) return;
+
+  // Only trade decorative whitespace for content after ordinary font scaling
+  // has failed. This keeps short cards visually identical to the base design.
+  card.classList.add('card-rh-content-tight');
+  resetAdaptiveStyles(frame, title, effects, synergy);
+  applyTextScale(card, frame, title, effects, synergy, 1, 0.58);
+}
+
+function applyTextScale(
+  card: HTMLElement,
+  frame: HTMLElement,
+  title: HTMLElement,
+  effects: HTMLElement,
+  synergy: HTMLElement | null,
+  start: number,
+  minimum: number,
+): boolean {
+  const titleStyle = getComputedStyle(title);
+  const effectsStyle = getComputedStyle(effects);
+  const frameStyle = getComputedStyle(frame);
+  const synergyStyle = synergy ? getComputedStyle(synergy) : null;
+  const baseTitle = parseFloat(titleStyle.fontSize);
+  const baseEffects = parseFloat(effectsStyle.fontSize);
+  const baseEffectsGap = parseFloat(effectsStyle.rowGap) || parseFloat(effectsStyle.gap) || 0;
+  const baseFrameGap = parseFloat(frameStyle.rowGap) || parseFloat(frameStyle.gap) || 0;
+  const baseSynergy = synergyStyle ? parseFloat(synergyStyle.fontSize) : 0;
+
+  for (let scale = start; scale >= minimum - 0.001; scale -= 0.04) {
+    const rounded = Math.round(scale * 100) / 100;
+    title.style.fontSize = `${Math.max(7, baseTitle * rounded)}px`;
+    effects.style.fontSize = `${Math.max(8, baseEffects * rounded)}px`;
+    effects.style.gap = `${Math.max(1, baseEffectsGap * rounded)}px`;
+    frame.style.gap = `${Math.max(3, baseFrameGap * rounded)}px`;
+    if (synergy) synergy.style.fontSize = `${Math.max(8, baseSynergy * rounded)}px`;
+    card.setAttribute('data-content-scale', rounded.toFixed(2));
+    if (!cardContentOverflows(frame, effects)) return true;
+  }
+  return false;
+}
+
+function resetAdaptiveStyles(
+  frame: HTMLElement,
+  title: HTMLElement,
+  effects: HTMLElement,
+  synergy: HTMLElement | null,
+): void {
+  frame.style.removeProperty('gap');
+  title.style.removeProperty('font-size');
+  effects.style.removeProperty('font-size');
+  effects.style.removeProperty('gap');
+  synergy?.style.removeProperty('font-size');
+}
+
+function cardContentOverflows(frame: HTMLElement, effects: HTMLElement): boolean {
+  const tolerance = 1;
+  if (frame.scrollHeight > frame.clientHeight + tolerance) return true;
+  if (frame.scrollWidth > frame.clientWidth + tolerance) return true;
+  if (effects.scrollHeight > effects.clientHeight + tolerance) return true;
+  if (effects.scrollWidth > effects.clientWidth + tolerance) return true;
+
+  const frameRect = frame.getBoundingClientRect();
+  const flowElements = Array.from(frame.children)
+    .filter((child): child is HTMLElement => child instanceof HTMLElement)
+    .filter((child) => getComputedStyle(child).position !== 'absolute');
+  const lastFlowElement = flowElements[flowElements.length - 1];
+  if (!lastFlowElement) return false;
+  return lastFlowElement.getBoundingClientRect().bottom > frameRect.bottom - 2;
+}
+
+function formatCooldown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 /** Build one card in the Reaper-Hunt-style layout: angled top with a category

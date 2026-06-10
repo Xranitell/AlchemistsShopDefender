@@ -167,7 +167,7 @@ export class AudioEngine {
    *  user-gesture handler (click, keydown) to satisfy autoplay policy. */
   ensureStarted(): void {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') {
+      if (this.ctx.state === 'suspended' && this.adPauseDepth === 0 && !document.hidden) {
         void this.ctx.resume();
       }
       return;
@@ -197,8 +197,11 @@ export class AudioEngine {
 
     this.noiseBuffer = makeNoiseBuffer(ctx, 0.4);
 
-    // Resume if the engine was created in a suspended state (some browsers).
-    if (ctx.state === 'suspended') {
+    // Resume if the engine was created in a suspended state (some browsers),
+    // unless an ad lock is already active.
+    if (this.adPauseDepth > 0 || document.hidden) {
+      void ctx.suspend().catch(() => {});
+    } else if (ctx.state === 'suspended') {
       void ctx.resume();
     }
 
