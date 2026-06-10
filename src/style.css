@@ -5377,7 +5377,7 @@ body {
 }
 .lo-card-desc {
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
   color: #cdd0da;
 }
@@ -13613,7 +13613,7 @@ body {
   font-size: 12px;
 }
 :root.viewport-fitted .lo-card-desc {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.15;
 }
 :root.viewport-fitted .lo-card-badge {
@@ -16619,32 +16619,38 @@ body {
    extra lines, otherwise the sixth tower plus cancel button can slip
    below the visible area. */
 :root.viewport-fitted .tower-shop {
-  min-width: clamp(250px, 34vw, 300px);
-  max-width: min(300px, calc(100vw - 16px));
+  /* Height-adaptive build menu: grows with available viewport height
+     (taller screens → bigger panel + text) but never exceeds the stage,
+     because the base `.tower-shop` rule keeps max-height + overflow-y:auto.
+     The clamp minimums preserve the must-fit guarantee on short embeds. */
+  min-width: clamp(250px, 34vw, 320px);
+  max-width: min(340px, calc(100vw - 16px));
   max-height: calc(100dvh - max(16px, var(--safe-top, 0px) + var(--safe-bottom, 0px) + 12px));
-  padding: 6px;
-  gap: 3px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(6px, 1.1vh, 12px) clamp(6px, 1vw, 11px);
+  gap: clamp(3px, 0.7vh, 6px);
 }
 :root.viewport-fitted .tower-shop button {
   min-height: 0;
-  padding: 5px 7px;
-  gap: 5px;
-  font-size: 8px;
-  line-height: 1.18;
+  padding: clamp(5px, 1vh, 10px) clamp(7px, 1.1vw, 12px);
+  gap: clamp(5px, 0.9vw, 8px);
+  font-size: clamp(8px, 1.55vh, 13px);
+  line-height: 1.2;
 }
 :root.viewport-fitted .tower-shop button > span:first-child {
   min-width: 0;
   white-space: nowrap;
 }
 :root.viewport-fitted .tower-shop .cost {
-  padding: 2px 5px;
-  font-size: 8px;
+  padding: clamp(2px, 0.45vh, 4px) clamp(5px, 0.8vw, 8px);
+  font-size: clamp(8px, 1.4vh, 12px);
   line-height: 1;
 }
 :root.viewport-fitted .tower-shop-rune-banner {
-  font-size: 8px;
-  line-height: 1.15;
-  padding: 3px 5px;
+  font-size: clamp(8px, 1.4vh, 12px);
+  line-height: 1.18;
+  padding: clamp(3px, 0.6vh, 5px) clamp(5px, 0.8vw, 8px);
   margin-bottom: 1px;
 }
 
