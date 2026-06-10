@@ -13139,11 +13139,7 @@ body {
   width: 820px;
   max-width: 820px;
   max-height: none;
-<<<<<<< HEAD
   padding: 18px 24px;
-=======
-  padding: 14px 16px;
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
 
   position: absolute;
   top: 50%;
@@ -13166,13 +13162,8 @@ body {
 :root.viewport-fitted .difficulty-card:nth-child(4),
 :root.viewport-fitted .difficulty-card:nth-child(5) {
   grid-column: span 2;
-<<<<<<< HEAD
   min-height: 184px;
   padding: 10px;
-=======
-  min-height: 144px;
-  padding: 8px;
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
   gap: 4px;
   border-radius: 8px;
 }
@@ -13189,7 +13180,6 @@ body {
   padding: 2px 6px;
   border-width: 1px;
 }
-<<<<<<< HEAD
 :root.viewport-fitted .difficulty-name { font-size: 15px; }
 :root.viewport-fitted .difficulty-flavor {
   font-size: 16px;
@@ -13205,18 +13195,6 @@ body {
   height: auto;
 }
 :root.viewport-fitted .difficulty-glyph { font-size: 38px; }
-=======
-:root.viewport-fitted .difficulty-name { font-size: 11px; }
-:root.viewport-fitted .difficulty-flavor { font-size: 12px; min-height: 24px; padding: 0; }
-:root.viewport-fitted .difficulty-cost { padding: 4px 7px; font-size: 12px; }
-:root.viewport-fitted .difficulty-icon {
-  font-size: 32px;
-  margin: 2px 0;
-  width: auto;
-  height: auto;
-}
-:root.viewport-fitted .difficulty-glyph { font-size: 32px; }
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
 
 /* ════════════════════════════════════════════════════════════════════════
    TOWER-SHOP popup — fit on short viewports.
@@ -14177,7 +14155,6 @@ body {
    measured viewport divided by the global UI scale; after transform it
    occupies the full available height. */
 :root.viewport-fitted .settings-panel {
-<<<<<<< HEAD
   width: min(560px, calc(var(--design-w, 1280px) * 0.58));
   max-width: none;
   height: calc(var(--vp-height, 100vh) / var(--ui-scale, 1));
@@ -14224,11 +14201,6 @@ body {
 :root.viewport-fitted .settings-panel .settings-volume-slider::-moz-range-thumb {
   width: 24px;
   height: 24px;
-=======
-  max-width: min(90vw, 800px);
-  width: 90vw;
-  max-height: 92dvh;
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
 }
 
 /* ─── Phone-landscape (≤500 px tall) — 2-column body grid ────────── */
@@ -16337,7 +16309,6 @@ body {
   }
 }
 
-<<<<<<< HEAD
 /* Mandatory one-time Privacy Policy acknowledgement. The outer overlay
    owns input, while only the document body scrolls on short viewports. */
 #overlay.privacy-policy-mode {
@@ -16572,7 +16543,9 @@ body {
   max-width: none;
   max-height: none;
   animation: none;
-=======
+  transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
+  transform-origin: center center;
+}
 
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -16592,18 +16565,6 @@ body {
 /* Phase 6 max-height removed: the Phase 4 transform-based scaling
    (max-height: none + scale(var(--ui-scale))) handles fitting correctly.
    Setting max-height in CSS px on a scaled panel clips incorrectly. */
-
-:root.viewport-fitted .difficulty-card,
-:root.viewport-fitted .difficulty-card:nth-child(4),
-:root.viewport-fitted .difficulty-card:nth-child(5) {
-  min-height: 144px;
-  padding: 8px;
-  gap: 4px;
-}
-
-:root.viewport-fitted .difficulty-name {
-  font-size: 10px;
-}
 
 /* @media (max-height: 600px) difficulty overrides removed:
    transform scaling via --ui-scale handles all viewport sizes.
@@ -16687,12 +16648,10 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
   transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
 
-<<<<<<< HEAD
 @media (max-width: 720px), (max-height: 540px) {
   .privacy-policy-header {
     gap: 12px;
@@ -16712,7 +16671,6 @@ body {
     padding: 11px 22px 14px;
   }
 }
-=======
 /* The generic panel enter animation writes its own `transform` with
    `animation-fill-mode: both`, which overrides the fitted centering
    transform above and pushes the difficulty panel off-screen. */
@@ -16902,4 +16860,3 @@ body {
    (blessings, laws, contracts) and buttons fit properly */
 :root.viewport-fitted-narrow .pause-stats-inner { width: min(500px, 100%); }
 :root.viewport-fitted-narrow .pause-stats-side  { width: 420px; }
->>>>>>> 201fe3aa5a22f9688eb5583153fd2ca714aeafe3
