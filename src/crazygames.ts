@@ -150,6 +150,15 @@ class CrazyGamesPlatform {
     if (boardId !== ALL_TIME_WAVES_BOARD_ID) return;
     this.writePersonalBest(ALL_TIME_WAVES_BOARD_ID, normalizedScore);
 
+    // CrazyGames native leaderboard submission only runs when a real
+    // encryption key is configured (VITE_CRAZYGAMES_LEADERBOARD_KEY at
+    // build time). When no leaderboard is set up the native submitScore
+    // call is unused, so we skip it entirely instead of attempting an
+    // encryption that would always throw and log a warning. The in-game
+    // leaderboard UI keeps working off the local personal best written
+    // above.
+    if (!isLeaderboardConfigured()) return;
+
     // CrazyGames exposes one weekly leaderboard per game. Its score is the
     // highest wave reached in a single run, shared by every game mode.
 
@@ -289,6 +298,18 @@ class CrazyGamesPlatform {
     } catch {
       // The official score can still be submitted if local storage is blocked.
     }
+  }
+}
+
+/** True only when a valid 32-byte CrazyGames leaderboard encryption key
+ *  is configured at build time. When false the native `submitScore` call
+ *  is treated as unused and skipped (see `setLeaderboardScore`). */
+function isLeaderboardConfigured(): boolean {
+  if (!LEADERBOARD_KEY) return false;
+  try {
+    return decodeBase64(LEADERBOARD_KEY).length === 32;
+  } catch {
+    return false;
   }
 }
 
