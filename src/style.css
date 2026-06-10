@@ -1357,8 +1357,15 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: var(--design-w, 1280px);
-  height: var(--design-h, 720px);
+  /* Grow the pre-scale surface to `viewport / ui-scale` on each axis so
+     that after the `scale(--ui-scale)` transform the canvas exactly
+     fills the real viewport (no 16:9 pillar-/letter-box gutters on
+     ultrawide / wide-short windows). The design size is a floor. This
+     mirrors the inline width/height main.ts sets in `getRenderDims`
+     (inline wins, but keep them in sync so the cascade is unambiguous).
+     The world fills the extra space via the aspect-aware camera. */
+  width: max(var(--design-w, 1280px), calc(var(--vp-width, 1280px) / var(--ui-scale, 1)));
+  height: max(var(--design-h, 720px), calc(var(--vp-height, 720px) / var(--ui-scale, 1)));
   transform: translate(-50%, -50%) scale(var(--ui-scale, 1));
   transform-origin: center center;
 }
@@ -3884,7 +3891,7 @@ body {
 }
 .difficulty-flavor {
   font-family: 'VT323', monospace;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--fg-dim);
   line-height: 1.25;
   min-height: 36px;
@@ -5370,7 +5377,7 @@ body {
 }
 .lo-card-desc {
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
   color: #cdd0da;
 }
@@ -6750,7 +6757,7 @@ body {
 }
 .craft-recipe-desc {
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 18px;
   color: #cdd0da;
   line-height: 1.25;
 }
@@ -9523,7 +9530,7 @@ body {
   .difficulty-icon { width: 64px; height: 64px; font-size: 32px; margin: 4px 0; }
   .difficulty-glyph { font-size: 44px; }
   .difficulty-name { font-size: 10px; }
-  .difficulty-flavor { font-size: 12px; min-height: 0; padding: 0; }
+  .difficulty-flavor { font-size: 14px; min-height: 0; padding: 0; }
   .difficulty-cost { padding: 4px 8px; font-size: 12px; }
   .difficulty-label { font-size: 9px; margin-top: -16px; padding: 2px 6px; border-width: 1px; }
   .difficulty-header h2 { font-size: 13px; }
@@ -10849,7 +10856,7 @@ body {
   .craft-recipes        { gap: 6px; padding-right: 6px; }
   .craft-recipe         { padding: 8px 10px; column-gap: 8px; row-gap: 4px; }
   .craft-recipe-name    { font-size: 13px; }
-  .craft-recipe-desc    { font-size: 11px; line-height: 1.2; }
+  .craft-recipe-desc    { font-size: 13px; line-height: 1.2; }
   .craft-recipe-glyph   { font-size: 22px; }
   .craft-cost-chip      { padding: 2px 6px; font-size: 11px; }
   .craft-cost-chip .craft-ing-glyph { font-size: 14px; }
@@ -11420,7 +11427,7 @@ body {
   .difficulty-icon { width: 60px; height: 60px; font-size: 28px; margin: 4px 0; }
   .difficulty-glyph { font-size: 40px; }
   .difficulty-name { font-size: 11px; }
-  .difficulty-flavor { font-size: 12px; padding: 0; min-height: 0; }
+  .difficulty-flavor { font-size: 14px; padding: 0; min-height: 0; }
   .difficulty-cost { padding: 4px 8px; font-size: 12px; }
   .difficulty-label {
     font-size: 9px;
@@ -13193,7 +13200,7 @@ body {
 }
 :root.viewport-fitted .difficulty-name { font-size: 15px; }
 :root.viewport-fitted .difficulty-flavor {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.15;
   min-height: 36px;
   padding: 0;
@@ -13418,7 +13425,7 @@ body {
 :root.viewport-fitted .craft-ing-count { font-size: 17px; }
 :root.viewport-fitted .craft-recipe-name { font-size: 15px; }
 :root.viewport-fitted .craft-recipe-desc {
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.2;
 }
 :root.viewport-fitted .craft-cost-chip { font-size: 14px; }
@@ -13606,7 +13613,7 @@ body {
   font-size: 12px;
 }
 :root.viewport-fitted .lo-card-desc {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.15;
 }
 :root.viewport-fitted .lo-card-badge {
@@ -16612,32 +16619,38 @@ body {
    extra lines, otherwise the sixth tower plus cancel button can slip
    below the visible area. */
 :root.viewport-fitted .tower-shop {
-  min-width: clamp(250px, 34vw, 300px);
-  max-width: min(300px, calc(100vw - 16px));
+  /* Height-adaptive build menu: grows with available viewport height
+     (taller screens → bigger panel + text) but never exceeds the stage,
+     because the base `.tower-shop` rule keeps max-height + overflow-y:auto.
+     The clamp minimums preserve the must-fit guarantee on short embeds. */
+  min-width: clamp(250px, 34vw, 320px);
+  max-width: min(340px, calc(100vw - 16px));
   max-height: calc(100dvh - max(16px, var(--safe-top, 0px) + var(--safe-bottom, 0px) + 12px));
-  padding: 6px;
-  gap: 3px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(6px, 1.1vh, 12px) clamp(6px, 1vw, 11px);
+  gap: clamp(3px, 0.7vh, 6px);
 }
 :root.viewport-fitted .tower-shop button {
   min-height: 0;
-  padding: 5px 7px;
-  gap: 5px;
-  font-size: 8px;
-  line-height: 1.18;
+  padding: clamp(5px, 1vh, 10px) clamp(7px, 1.1vw, 12px);
+  gap: clamp(5px, 0.9vw, 8px);
+  font-size: clamp(8px, 1.55vh, 13px);
+  line-height: 1.2;
 }
 :root.viewport-fitted .tower-shop button > span:first-child {
   min-width: 0;
   white-space: nowrap;
 }
 :root.viewport-fitted .tower-shop .cost {
-  padding: 2px 5px;
-  font-size: 8px;
+  padding: clamp(2px, 0.45vh, 4px) clamp(5px, 0.8vw, 8px);
+  font-size: clamp(8px, 1.4vh, 12px);
   line-height: 1;
 }
 :root.viewport-fitted .tower-shop-rune-banner {
-  font-size: 8px;
-  line-height: 1.15;
-  padding: 3px 5px;
+  font-size: clamp(8px, 1.4vh, 12px);
+  line-height: 1.18;
+  padding: clamp(3px, 0.6vh, 5px) clamp(5px, 0.8vw, 8px);
   margin-bottom: 1px;
 }
 
