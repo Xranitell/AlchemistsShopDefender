@@ -5078,7 +5078,7 @@ body {
 }
 .blessing-flavor {
   font-family: 'VT323', monospace;
-  font-size: 14px;
+  font-size: 16px;
   color: #c4c4d4;
   font-style: italic;
   min-height: 1em;
@@ -5106,7 +5106,7 @@ body {
   .blessing-grid { grid-template-columns: 1fr; }
   .blessing-icon { font-size: 36px; }
   .blessing-name { font-size: 10px; }
-  .blessing-flavor { font-size: 13px; }
+  .blessing-flavor { font-size: 15px; }
   .blessing-effect { font-size: 15px; }
   .blessing-title { font-size: 18px; }
   .blessing-title.curse { font-size: 19px; }
@@ -5516,7 +5516,7 @@ body {
 }
 .mm-loadout-slot-name {
   font-family: 'VT323', monospace;
-  font-size: 16px;
+  font-size: 18px;
   color: #fff2c2;
   text-shadow:
     -1px -1px 0 #060008, 1px -1px 0 #060008,
@@ -5527,7 +5527,7 @@ body {
 }
 .mm-loadout-hint {
   font-family: 'VT323', monospace;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--fg-dim);
   text-align: center;
   letter-spacing: 0.5px;
@@ -9652,7 +9652,7 @@ body {
   .blessing-card { padding: 10px 8px; gap: 4px; }
   .blessing-icon { font-size: 32px; }
   .blessing-name { font-size: 9px; }
-  .blessing-flavor { font-size: 12px; }
+  .blessing-flavor { font-size: 14px; }
   .blessing-effect { font-size: 13px; }
   .blessing-title { font-size: 13px; }
   .blessing-subtitle { font-size: 14px; }
@@ -11481,7 +11481,7 @@ body {
   .blessing-card { min-height: 108px; padding: 10px 10px; gap: 4px; }
   .blessing-icon { font-size: 32px; }
   .blessing-name { font-size: 10px; }
-  .blessing-flavor { font-size: 12px; }
+  .blessing-flavor { font-size: 14px; }
   .blessing-effect { font-size: 14px; padding: 3px 7px; }
 
   /* ── Card draft (Roundhouse cards) ─────────────────────────────── */
@@ -11670,7 +11670,7 @@ body {
   .blessing-card { min-height: 86px; padding: 8px; }
   .blessing-icon { font-size: 26px; }
   .blessing-name { font-size: 9px; }
-  .blessing-flavor { font-size: 11px; }
+  .blessing-flavor { font-size: 13px; }
   .blessing-effect { font-size: 12px; }
 
   .cards-stage { gap: 8px; padding: 8px 14px; }
@@ -11942,7 +11942,18 @@ body {
   inset: auto;
   top: 50%;
   left: 50%;
-  width: var(--design-w, 1280px);
+  /* Fill the real viewport horizontally instead of pinning to the
+     design width and letting the uniform scale leave side gutters on
+     viewports wider than the 16:9 design (ultrawide / wide-short
+     windows). We expand the pre-scale width so that, after the
+     `scale(--ui-scale)` transform, the rendered width equals the real
+     viewport width: (vp-width / ui-scale) * ui-scale = vp-width.
+     `max(design-w, …)` keeps the design width as a floor so tall /
+     narrow viewports (where ui-scale is width-limited) never shrink
+     below the reference. The side columns keep their own fixed widths
+     and only the flex:1 centre column grows, so the art never distorts
+     — the columns simply anchor to the viewport edges. */
+  width: max(var(--design-w, 1280px), calc(var(--vp-width, 1280px) / var(--ui-scale, 1)));
   height: var(--design-h, 720px);
   min-height: var(--design-h, 720px);
   max-width: none;
@@ -12099,7 +12110,7 @@ body {
   font-size: 10px;
 }
 :root.viewport-fitted .main-menu .mm-loadout-slot-name {
-  font-size: 13px;
+  font-size: 15px;
 }
 /* Click-to-open hint is redundant in fit-mode (the whole card is the
    click target and the slots already have a yellow / cyan glow that
@@ -12548,7 +12559,7 @@ body {
   letter-spacing: 1px;
 }
 :root.viewport-fitted-narrow .main-menu .mm-loadout-slot-name {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* ════════════════════════════════════════════════════════════════════════
